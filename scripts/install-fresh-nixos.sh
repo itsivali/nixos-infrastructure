@@ -25,6 +25,16 @@ run_nix() {
   nix --extra-experimental-features "$NIX_FEATURES" "$@"
 }
 
+# Run a nix subcommand inside a shell that has git on PATH.
+# nix fmt and nix flake check both shell out to git internally
+# (to resolve the repo root and honour .gitignore), so they
+# must run in an environment where git exists.
+run_nix_with_git() {
+  nix --extra-experimental-features "$NIX_FEATURES" \
+    shell nixpkgs#git -c \
+    nix --extra-experimental-features "$NIX_FEATURES" "$@"
+}
+
 require_nixos() {
   [ -f /etc/NIXOS ] || die "This installer must run on NixOS."
   command -v sudo >/dev/null 2>&1 || die "sudo is required."
@@ -96,7 +106,7 @@ format_repo() {
 
   (
     cd "$REPO_DIR"
-    run_nix fmt
+    run_nix_with_git fmt
   )
 }
 
@@ -105,7 +115,7 @@ validate_config() {
 
   (
     cd "$REPO_DIR"
-    run_nix flake check --print-build-logs
+    run_nix_with_git flake check --print-build-logs
   )
 }
 

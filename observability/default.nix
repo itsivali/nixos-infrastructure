@@ -190,7 +190,7 @@ in
     security.auditd.enable = true;
 
     # ── journald (unconditional) ──────────────────────────────────────────────
-    systemd.journald.extraConfig = ''
+    services.journald.extraConfig = ''
       Storage=persistent
       Compress=yes
       ForwardToSyslog=no

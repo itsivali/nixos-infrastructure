@@ -11,6 +11,21 @@ in
       default = null;
       description = "Optional file containing a reusable or ephemeral Tailscale auth key.";
     };
+    acceptDns = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Allow Tailscale to manage system DNS. Keep false to avoid internet loss during setup.";
+    };
+    acceptRoutes = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Accept tailnet subnet or exit-node routes. Keep false until explicitly configured.";
+    };
+    advertiseExitNode = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Advertise this laptop as a tailnet exit node.";
+    };
     tailnetDomain = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
@@ -22,17 +37,56 @@ in
   config = lib.mkIf cfg.enable {
     services.tailscale = {
       enable = true;
+      package = pkgs.tailscale;
       authKeyFile = cfg.authKeyFile;
-      useRoutingFeatures = "client";
+      useRoutingFeatures = if cfg.advertiseExitNode then "both" else "client";
       openFirewall = false;
-      extraUpFlags = [
-        "--accept-dns=false"
-        "--accept-routes=false"
-        "--ssh"
-      ];
+      extraUpFlags =
+        [
+          "--hostname=${config.networking.hostName}"
+          "--accept-dns=${lib.boolToString cfg.acceptDns}"
+          "--accept-routes=${lib.boolToString cfg.acceptRoutes}"
+          "--ssh"
+        ]
+        ++ lib.optional cfg.advertiseExitNode "--advertise-exit-node";
+    };
+
+    boot.kernel.sysctl = lib.mkIf cfg.advertiseExitNode {
+      "net.ipv4.ip_forward" = 1;
+      "net.ipv6.conf.all.forwarding" = 1;
     };
 
     environment.systemPackages = [ pkgs.tailscale ];
+
+    systemd.services.tailscaled = {
+      wants = [ "network-online.target" ];
+      after = [ "network-online.target" ];
+      unitConfig.StartLimitIntervalSec = 0;
+      serviceConfig = {
+        Restart = "always";
+        RestartSec = "5s";
+      };
+    };
+
+    systemd.services.tailscale-watchdog = {
+      description = "Tailscale health watchdog";
+      after = [ "tailscaled.service" ];
+      wantedBy = [ "multi-user.target" ];
+      serviceConfig = {
+        Type = "simple";
+        Restart = "always";
+        RestartSec = "30s";
+      };
+      script = ''
+        while true; do
+          if ! ${pkgs.tailscale}/bin/tailscale status >/dev/null 2>&1; then
+            echo "[tailscale-watchdog] restarting tailscaled"
+            ${pkgs.systemd}/bin/systemctl restart tailscaled.service
+          fi
+          sleep 25
+        done
+      '';
+    };
 
     systemd.services.tailscale-split-dns = lib.mkIf (cfg.tailnetDomain != null) {
       description = "Configure non-authoritative Tailscale split DNS";

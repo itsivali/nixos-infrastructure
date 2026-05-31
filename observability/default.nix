@@ -29,9 +29,16 @@ in
     enable = true;
     rules = [
       "-w /etc/passwd -p wa -k identity"
+      "-w /etc/shadow -p wa -k identity"
       "-w /etc/group -p wa -k identity"
-      "-w /etc/sudoers -p wa -k privilege"
+      "-w /etc/gshadow -p wa -k identity"
+      "-w /etc/sudoers -p wa -k sudoers"
+      "-w /run/current-system/sw/bin/sudo -p x -k priv_esc"
+      "-w /etc/ssh/ -p wa -k ssh"
+      "-w /etc/systemd/system/ -p wa -k systemd"
       "-a always,exit -F arch=b64 -S execve -k exec"
+      "-a always,exit -F arch=b32 -S execve -k exec"
+      "-e 2"
     ];
   };
 

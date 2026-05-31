@@ -1,6 +1,12 @@
 { config, gitlabUrl, hostName, pkgs, ... }:
 
 {
+  imports =
+    if builtins.pathExists ./hardware-configuration.nix then
+      [ ./hardware-configuration.nix ]
+    else
+      [ ];
+
   ###########################################################
   # HOST IDENTITY
   ###########################################################
@@ -11,20 +17,9 @@
   # HARDWARE BOUNDARY
   ###########################################################
 
-  # Keep hardware-specific disk and device state at the host edge. Replace
-  # these labels with the generated hardware-configuration.nix values after
-  # installation if the laptop uses different labels or filesystems.
-  fileSystems."/" = {
-    device = "/dev/disk/by-label/nixos";
-    fsType = "ext4";
-  };
-
-  fileSystems."/boot" = {
-    device = "/dev/disk/by-label/boot";
-    fsType = "vfat";
-  };
-
-  swapDevices = [ ];
+  # The installer copies /etc/nixos/hardware-configuration.nix here. Keeping it
+  # host-local prevents generated disk, filesystem, GPU, and firmware details
+  # from leaking into reusable modules.
 
   ###########################################################
   # LOCALE
@@ -49,13 +44,9 @@
 
   ivali.tailscale = {
     enable = true;
-    authKeyFile = config.sops.secrets.tailscale_authkey.path;
-  };
-
-  sops.secrets.tailscale_authkey = {
-    sopsFile = ../secrets/tailscale.yaml;
-    owner = "root";
-    mode = "0400";
+    # Keep first install non-interactive and resilient. Add a SOPS-managed
+    # authKeyFile later if you want unattended tailnet enrollment.
+    authKeyFile = null;
   };
 
   ###########################################################

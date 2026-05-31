@@ -14,5 +14,6 @@ with pkgs; [
   lazygit
   ripgrep
   starship
+  watchexec
   zoxide
 ]

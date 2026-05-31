@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v nix >/dev/null 2>&1; then
+  echo "nix is required to format Nix files" >&2
+  exit 1
+fi
+
+mapfile -t nix_files < <(
+  git diff --cached --name-only --diff-filter=ACMR |
+    grep -E '\.nix$' || true
+)
+
+if [ "${#nix_files[@]}" -eq 0 ]; then
+  exit 0
+fi
+
+nix --extra-experimental-features "nix-command flakes" fmt -- "${nix_files[@]}"
+git add "${nix_files[@]}"

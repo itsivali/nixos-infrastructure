@@ -44,7 +44,6 @@ in
     terraform
     # Modern TypeScript runner; the legacy runner is intentionally omitted.
     tsxPackage
-    vscode
     yarn
   ];
 

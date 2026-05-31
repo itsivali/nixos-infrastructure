@@ -236,7 +236,6 @@ ivali.tailscale = {
 
 ```text
 .
-├── apps/                  # Desktop applications such as LocalSend and VS Code
 ├── boot/                  # Kernel, bootloader, zram, sysctl tuning
 ├── ci/                    # Native NixOS GitLab Runner module
 ├── desktop/               # Lean GNOME module
@@ -245,11 +244,57 @@ ivali.tailscale = {
 ├── hosts/                 # Host-specific config and generated hardware config
 ├── networking/            # DNS, SSH, NetworkManager, timezone
 ├── observability/         # Grafana, Prometheus, Loki, Promtail, auditd
-├── packages/              # System and user package sets
+├── packages/              # GUI, terminal, system, and user package sets
 ├── security/              # Firewall, Tailscale, hardening, fail2ban
 ├── scripts/               # Fresh install bootstrap
 └── tests/                 # NixOS smoke tests
 ```
+
+## Package Management
+
+GUI apps and terminal apps are intentionally separated under `packages/`.
+
+Add GUI desktop applications here:
+
+```text
+packages/gui/default.nix
+```
+
+Examples:
+
+```nix
+with pkgs; [
+  localsend
+  vscode
+]
+```
+
+Add terminal applications here:
+
+```text
+packages/terminal/default.nix
+```
+
+Examples:
+
+```nix
+with pkgs; [
+  bat
+  btop
+  git
+  jq
+  ripgrep
+]
+```
+
+The aggregator files keep the install surfaces simple:
+
+- `packages/system/default.nix` imports terminal and GUI packages for system-wide installation.
+- `packages/user/default.nix` imports terminal packages for Home Manager user packages.
+
+Put language toolchains and service-like developer dependencies in `developer/default.nix`
+instead of `packages/terminal/default.nix`. For example: Docker, Terraform,
+Node.js, Python, Flutter, and Cursor belong in `developer/`.
 
 ## GitLab CI/CD
 

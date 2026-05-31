@@ -31,17 +31,33 @@ require_nixos() {
   [ "$(id -u)" -ne 0 ] || die "Run this as your normal user, not with sudo. The script asks for sudo only when needed."
 }
 
-enable_nix_features_for_system() {
-  log "Enabling flakes and nix-command for this fresh NixOS install"
+enable_nix_features_for_session() {
+  # On a fresh NixOS install, /etc/nix is on a read-only path managed by
+  # the Nix module system — writing there with sudo tee fails.
+  #
+  # We write to the user-level config instead, which is always writable
+  # and is picked up by all subsequent nix invocations in this session.
+  # The system-level setting (nix.settings.experimental-features) should
+  # live in your flake's NixOS module; this is just a bootstrap shim.
+  log "Enabling flakes and nix-command for this session (user-level nix.conf)"
 
-  sudo mkdir -p /etc/nix
-  if [ ! -f /etc/nix/nix.conf ]; then
-    printf 'experimental-features = nix-command flakes\n' | sudo tee /etc/nix/nix.conf >/dev/null
-  elif ! grep -Eq '(^| )experimental-features( |)=.*flakes' /etc/nix/nix.conf; then
-    printf '\nexperimental-features = nix-command flakes\n' | sudo tee -a /etc/nix/nix.conf >/dev/null
+  local nix_user_conf_dir="$HOME/.config/nix"
+  local nix_user_conf="$nix_user_conf_dir/nix.conf"
+
+  mkdir -p "$nix_user_conf_dir"
+
+  if [ ! -f "$nix_user_conf" ]; then
+    printf 'experimental-features = nix-command flakes\n' > "$nix_user_conf"
+  elif ! grep -Eq '(^| )experimental-features( |)=.*flakes' "$nix_user_conf"; then
+    printf '\nexperimental-features = nix-command flakes\n' >> "$nix_user_conf"
+  else
+    log "experimental-features already set in $nix_user_conf — skipping"
   fi
 
-  sudo systemctl restart nix-daemon.service 2>/dev/null || true
+  # Export NIX_CONFIG as a belt-and-suspenders fallback so the current
+  # shell process picks up the setting immediately, even before nix-daemon
+  # re-reads the user config on disk.
+  export NIX_CONFIG="experimental-features = nix-command flakes"
 }
 
 clone_or_update_repo() {
@@ -150,7 +166,7 @@ EOF
 
 main() {
   require_nixos
-  enable_nix_features_for_system
+  enable_nix_features_for_session   # renamed + reworked: writes to ~/.config/nix/nix.conf
   clone_or_update_repo
   copy_hardware_configuration
   install_format_hook

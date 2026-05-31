@@ -1,10 +1,19 @@
-{ gitlabUrl, hostName, pkgs, ... }:
+{ config, gitlabUrl, hostName, pkgs, ... }:
 
 {
+  ###########################################################
+  # HOST IDENTITY
+  ###########################################################
+
   networking.hostName = hostName;
 
-  # Replace these placeholder labels with the real laptop disk labels after
-  # installation or hardware scan.
+  ###########################################################
+  # HARDWARE BOUNDARY
+  ###########################################################
+
+  # Keep hardware-specific disk and device state at the host edge. Replace
+  # these labels with the generated hardware-configuration.nix values after
+  # installation if the laptop uses different labels or filesystems.
   fileSystems."/" = {
     device = "/dev/disk/by-label/nixos";
     fsType = "ext4";
@@ -17,9 +26,43 @@
 
   swapDevices = [ ];
 
-  environment.systemPackages = import ../packages/system { inherit pkgs; };
+  ###########################################################
+  # LOCALE
+  ###########################################################
 
-  ivali.tailscale.enable = true;
+  i18n.defaultLocale = "en_US.UTF-8";
+
+  ###########################################################
+  # HOST PACKAGES
+  ###########################################################
+
+  environment.systemPackages = (import ../packages/system { inherit pkgs; }) ++ [
+    pkgs.btop
+    pkgs.fastfetch
+    pkgs.htop
+    pkgs.iproute2
+  ];
+
+  ###########################################################
+  # ZERO-TRUST NETWORKING
+  ###########################################################
+
+  ivali.tailscale = {
+    enable = true;
+    authKeyFile = config.sops.secrets.tailscale_authkey.path;
+  };
+
+  sops.secrets.tailscale_authkey = {
+    sopsFile = ../secrets/tailscale.yaml;
+    owner = "root";
+    mode = "0400";
+  };
+
+  ###########################################################
+  # NIX / GITOPS
+  ###########################################################
+
+  nix.settings.warn-dirty = false;
 
   system.autoUpgrade = {
     enable = true;
@@ -30,8 +73,15 @@
     allowReboot = false;
   };
 
+  ###########################################################
+  # SOPS
+  ###########################################################
+
   sops = {
-    age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-    defaultSopsFile = ../secrets/example.yaml;
+    age = {
+      keyFile = "/var/lib/sops-nix/key.txt";
+      generateKey = true;
+    };
+    defaultSopsFile = ../secrets/tailscale.yaml;
   };
 }

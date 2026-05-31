@@ -55,14 +55,7 @@
           sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
 
-          ./hosts/laptop.nix
-          ./boot
-          ./networking
-          ./security
-          ./developer
-          ./desktop/gnome-lean.nix
-          ./observability
-          ./ci/gitlab-runner.nix
+          ./configuration.nix
 
           {
             nixpkgs.config.allowUnfree = true;

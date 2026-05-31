@@ -6,6 +6,11 @@ in
 {
   options.ivali.tailscale = {
     enable = lib.mkEnableOption "Tailscale zero-trust networking";
+    authKeyFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "Optional file containing a reusable or ephemeral Tailscale auth key.";
+    };
     tailnetDomain = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
@@ -17,6 +22,7 @@ in
   config = lib.mkIf cfg.enable {
     services.tailscale = {
       enable = true;
+      authKeyFile = cfg.authKeyFile;
       useRoutingFeatures = "client";
       openFirewall = false;
       extraUpFlags = [

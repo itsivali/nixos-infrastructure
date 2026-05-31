@@ -1,0 +1,47 @@
+{ pkgs, ... }:
+
+{
+  boot = {
+    kernelPackages = pkgs.linuxPackages_zen;
+    kernelParams = [
+      "quiet"
+      "splash"
+      "threadirqs"
+      "nowatchdog"
+      "mitigations=auto"
+    ];
+
+    kernel.sysctl = {
+      "kernel.nmi_watchdog" = 0;
+      "kernel.sched_autogroup_enabled" = 1;
+      "vm.swappiness" = 180;
+      "vm.watermark_boost_factor" = 0;
+      "vm.watermark_scale_factor" = 125;
+      "vm.page-cluster" = 0;
+      "vm.vfs_cache_pressure" = 50;
+      "vm.dirty_background_ratio" = 5;
+      "vm.dirty_ratio" = 10;
+      "fs.inotify.max_user_watches" = 1048576;
+      "net.core.default_qdisc" = "fq";
+      "net.ipv4.tcp_congestion_control" = "bbr";
+    };
+
+    loader = {
+      systemd-boot = {
+        enable = true;
+        configurationLimit = 10;
+      };
+      efi.canTouchEfiVariables = true;
+      grub.enable = false;
+    };
+
+    tmp.cleanOnBoot = true;
+  };
+
+  zramSwap = {
+    enable = true;
+    algorithm = "zstd";
+    memoryPercent = 100;
+    priority = 100;
+  };
+}

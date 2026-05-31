@@ -1,16 +1,102 @@
-# You can override the included template(s) by including variable overrides
-# SAST customization: https://docs.gitlab.com/user/application_security/sast/#available-cicd-variables
-# Secret Detection customization: https://docs.gitlab.com/user/application_security/secret_detection/pipeline/configure/
-# Dependency Scanning customization: https://docs.gitlab.com/user/application_security/dependency_scanning/dependency_scanning_sbom/#customizing-analyzer-behavior
-# Container Scanning customization: https://docs.gitlab.com/user/application_security/container_scanning/#customizing-analyzer-behavior
-# Note that environment variables can be set in several places
-# See https://docs.gitlab.com/ci/variables/#cicd-variable-precedence
-stages:
-- test
-- secret-detection
-variables:
-  SECRET_DETECTION_ENABLED: 'true'
-secret_detection:
-  stage: secret-detection
 include:
-- template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+
+stages:
+  - validate
+  - build
+  - cache
+  - attest
+  - secret-detection
+  - deploy
+
+variables:
+  SECRET_DETECTION_ENABLED: "true"
+  NIX_CONFIG: |
+    experimental-features = nix-command flakes
+    accept-flake-config = true
+    extra-substituters = https://cache.nixos.org
+  NIX_HOST: laptop
+
+.nix-job:
+  image: nixos/nix:latest
+  id_tokens:
+    GITLAB_OIDC_TOKEN:
+      aud: https://gitlab.com
+  before_script:
+    - nix --version
+    - nix profile install nixpkgs#git nixpkgs#cachix nixpkgs#attic-client nixpkgs#syft
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-nix"
+    paths:
+      - .nix-cache/
+
+flake-check:
+  extends: .nix-job
+  stage: validate
+  script:
+    - nix flake metadata
+    - nix flake check --print-build-logs
+
+build-system:
+  extends: .nix-job
+  stage: build
+  needs: ["flake-check"]
+  script:
+    - nix build ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" --print-build-logs --json > build-result.json
+    - mkdir -p .nix-cache
+    - nix path-info --recursive ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" > .nix-cache/closure-paths.txt
+  artifacts:
+    expire_in: 14 days
+    paths:
+      - result
+      - build-result.json
+      - .nix-cache/closure-paths.txt
+
+push-binary-cache:
+  extends: .nix-job
+  stage: cache
+  needs: ["build-system"]
+  rules:
+    - if: '$CACHIX_AUTH_TOKEN'
+    - when: never
+  script:
+    - cachix authtoken "$CACHIX_AUTH_TOKEN"
+    - cachix push "${CACHIX_CACHE_NAME:-ivali-nixos}" result
+
+push-attic-cache:
+  extends: .nix-job
+  stage: cache
+  needs: ["build-system"]
+  rules:
+    - if: '$ATTIC_ENDPOINT && $ATTIC_CACHE && $ATTIC_TOKEN'
+    - when: never
+  script:
+    - attic login gitlab "$ATTIC_ENDPOINT" "$ATTIC_TOKEN"
+    - attic push "$ATTIC_CACHE" result
+
+sbom:
+  extends: .nix-job
+  stage: attest
+  needs: ["build-system"]
+  script:
+    - syft dir:result -o spdx-json=sbom.spdx.json
+  artifacts:
+    expire_in: 30 days
+    paths:
+      - sbom.spdx.json
+
+deploy-laptop:
+  extends: .nix-job
+  stage: deploy
+  needs: ["build-system"]
+  tags:
+    - nixos
+    - laptop
+    - flakes
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+    - when: never
+  resource_group: laptop
+  script:
+    - sudo nixos-rebuild switch --flake ".#${NIX_HOST}"

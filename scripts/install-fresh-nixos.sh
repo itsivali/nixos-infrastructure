@@ -122,8 +122,29 @@ Next steps:
 
 Notes:
   - This config uses linuxPackages_zen, zram, low-latency sysctl tuning, and a stripped GNOME module.
+  - Open this repository in VS Code with:
+       code "$REPO_DIR"
+    or:
+       edit-config
+  - Grafana will be available locally after rebuild:
+       http://localhost:3000
+    Default local bootstrap login: admin / admin
+  - Prometheus is bound locally:
+       http://localhost:9090
+  - Loki is bound locally:
+       http://localhost:3100
   - The Git hook formats staged .nix files automatically on every commit.
   - VS Code settings remain mutable; only extensions are declarative.
+
+Useful docs:
+  - Grafana getting started:
+      https://grafana.com/docs/grafana/latest/getting-started/
+  - Prometheus getting started:
+      https://prometheus.io/docs/tutorials/getting_started/
+  - Loki configuration:
+      https://grafana.com/docs/loki/latest/configuration/
+  - Promtail installation/configuration:
+      https://grafana.com/docs/loki/latest/send-data/promtail/installation/
 EOF
 }
 

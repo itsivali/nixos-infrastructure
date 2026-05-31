@@ -3,15 +3,30 @@
 let
   cfg = config.ivali.observability;
   otelCollector = pkgs.opentelemetry-collector-contrib or pkgs.otelcol-contrib or pkgs.opentelemetry-collector;
+  lokiListenAddress = "127.0.0.1";
+  lokiPort = 3100;
+  prometheusListenAddress = "127.0.0.1";
+  prometheusPort = 9090;
+  grafanaListenAddress = "127.0.0.1";
+  grafanaPort = 3000;
 in
 {
   options.ivali.observability = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable the local laptop monitoring stack.";
+    };
     falco.enable = lib.mkEnableOption "Falco runtime detection";
-    promtail.enable = lib.mkEnableOption "Promtail journal forwarding";
+    promtail.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Forward systemd journal logs into local Loki.";
+    };
     otel.enable = lib.mkEnableOption "OpenTelemetry collector";
     lokiUrl = lib.mkOption {
       type = lib.types.str;
-      default = "http://127.0.0.1:3100/loki/api/v1/push";
+      default = "http://${lokiListenAddress}:${toString lokiPort}/loki/api/v1/push";
       description = "Loki push endpoint for Promtail.";
     };
   };
@@ -24,6 +39,112 @@ in
     syft
     trivy
   ];
+
+  services.loki = lib.mkIf cfg.enable {
+    enable = true;
+    configuration = {
+      auth_enabled = false;
+      server = {
+        http_listen_address = lokiListenAddress;
+        http_listen_port = lokiPort;
+        grpc_listen_port = 0;
+      };
+      common = {
+        path_prefix = "/var/lib/loki";
+        storage.filesystem = {
+          chunks_directory = "/var/lib/loki/chunks";
+          rules_directory = "/var/lib/loki/rules";
+        };
+        replication_factor = 1;
+        ring.kvstore.store = "inmemory";
+      };
+      schema_config.configs = [
+        {
+          from = "2024-01-01";
+          store = "tsdb";
+          object_store = "filesystem";
+          schema = "v13";
+          index = {
+            prefix = "index_";
+            period = "24h";
+          };
+        }
+      ];
+      limits_config = {
+        allow_structured_metadata = false;
+        retention_period = "168h";
+      };
+      compactor = {
+        working_directory = "/var/lib/loki/compactor";
+        retention_enabled = true;
+        delete_request_store = "filesystem";
+      };
+      analytics.reporting_enabled = false;
+    };
+  };
+
+  services.prometheus = lib.mkIf cfg.enable {
+    enable = true;
+    listenAddress = prometheusListenAddress;
+    port = prometheusPort;
+    retentionTime = "15d";
+    globalConfig = {
+      scrape_interval = "15s";
+      evaluation_interval = "15s";
+    };
+    scrapeConfigs = [
+      {
+        job_name = "node";
+        static_configs = [
+          { targets = [ "127.0.0.1:${toString config.services.prometheus.exporters.node.port}" ]; }
+        ];
+      }
+      {
+        job_name = "prometheus";
+        static_configs = [
+          { targets = [ "${prometheusListenAddress}:${toString prometheusPort}" ]; }
+        ];
+      }
+    ];
+  };
+
+  services.grafana = lib.mkIf cfg.enable {
+    enable = true;
+    settings = {
+      server = {
+        http_addr = grafanaListenAddress;
+        http_port = grafanaPort;
+        domain = "localhost";
+      };
+      analytics.reporting_enabled = false;
+      security = {
+        admin_user = "admin";
+        admin_password = "admin";
+        disable_gravatar = true;
+      };
+    };
+    provision = {
+      enable = true;
+      datasources.settings = {
+        apiVersion = 1;
+        datasources = [
+          {
+            name = "Prometheus";
+            type = "prometheus";
+            access = "proxy";
+            url = "http://${prometheusListenAddress}:${toString prometheusPort}";
+            isDefault = true;
+          }
+          {
+            name = "Loki";
+            type = "loki";
+            access = "proxy";
+            url = "http://${lokiListenAddress}:${toString lokiPort}";
+          }
+        ];
+      };
+    };
+  };
 
   security.audit = {
     enable = true;
@@ -45,7 +166,7 @@ in
   security.auditd.enable = true;
 
   services.prometheus.exporters.node = {
-    enable = true;
+    enable = cfg.enable;
     enabledCollectors = [ "systemd" "processes" ];
     openFirewall = false;
   };
@@ -69,7 +190,7 @@ in
     };
   };
 
-  environment.etc."promtail/config.yml" = lib.mkIf cfg.promtail.enable {
+  environment.etc."promtail/config.yml" = lib.mkIf (cfg.enable && cfg.promtail.enable) {
     text = ''
       server:
         http_listen_port: 9080
@@ -91,11 +212,11 @@ in
     '';
   };
 
-  systemd.services.promtail = lib.mkIf cfg.promtail.enable {
+  systemd.services.promtail = lib.mkIf (cfg.enable && cfg.promtail.enable) {
     description = "Promtail journal shipper";
     wantedBy = [ "multi-user.target" ];
-    after = [ "network-online.target" ];
-    wants = [ "network-online.target" ];
+    after = [ "network-online.target" "loki.service" ];
+    wants = [ "network-online.target" "loki.service" ];
     serviceConfig = {
       ExecStart = "${pkgs.promtail}/bin/promtail -config.file=/etc/promtail/config.yml";
       Restart = "always";

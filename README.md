@@ -1,93 +1,295 @@
 # nixos-infrastructure
 
+Personal NixOS infrastructure for the `prague` laptop, managed with Nix flakes,
+Home Manager, GitLab CI/CD, SOPS-ready secrets, lean GNOME, Tailscale, LocalSend,
+and a local observability stack.
 
+This repository is designed for a fresh NixOS GNOME install that does not yet
+have Git or flakes enabled. The bootstrap script enables what it needs, clones
+the repo, imports the machine hardware configuration, validates the flake, and
+switches the system.
 
-## Getting started
+## What This Builds
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+- NixOS host: `prague`
+- Desktop: lean GNOME, stripped of heavier default GNOME applications
+- Kernel: `linuxPackages_zen` for desktop responsiveness
+- Memory: zram enabled with aggressive swappiness tuning
+- Networking: NetworkManager, systemd-resolved, hardened SSH
+- Firewall: inbound allow-list, outbound internet preserved, LocalSend open
+- Tailscale: enabled, SSH capable, no accepted DNS/routes by default
+- Developer stack: Docker, Docker Compose, Terraform/OpenTofu, Node, `tsx`, Python, Flutter, VS Code, Cursor
+- Home Manager: user config routed through `home/ivali.nix`
+- Monitoring: Grafana, Prometheus, node exporter, Loki, Promtail
+- Security: fail2ban, AppArmor, auditd, journald persistence
+- CI/CD: GitLab pipeline for flake checks, system builds, binary cache publishing, SBOM generation, and deployment hooks
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Fresh Install
 
-## Add your files
+Start from a normal NixOS GNOME installation. Log in as your normal user, not
+root, then run:
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+```bash
+nix --extra-experimental-features "nix-command flakes" shell nixpkgs#curl -c bash -c \
+  'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/willisivali/nixos-infrastructure.git
-git branch -M main
-git push -uf origin main
+
+The installer will:
+
+- enable `nix-command` and `flakes` in `/etc/nix/nix.conf`
+- fetch Git through a temporary Nix shell
+- clone this repository to `~/nixos-infrastructure`
+- copy `/etc/nixos/hardware-configuration.nix` to `hosts/hardware-configuration.nix`
+- install a Git pre-commit hook that formats staged `.nix` files
+- run `nix fmt`
+- run `nix flake check`
+- switch the machine to `.#prague`
+
+After the switch completes, reboot:
+
+```bash
+sudo reboot
 ```
 
-## Integrate with your tools
+## Daily Workflow
 
-* [Set up project integrations](https://gitlab.com/willisivali/nixos-infrastructure/-/settings/integrations)
+Open this repo in VS Code:
 
-## Collaborate with your team
+```bash
+code ~/nixos-infrastructure
+```
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Or use the shell alias:
 
-## Test and Deploy
+```bash
+edit-config
+```
 
-Use the built-in continuous integration in GitLab.
+Rebuild after making a change:
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+```bash
+rebuild
+```
 
-***
+Test without making the generation permanent:
 
-# Editing this README
+```bash
+test-rebuild
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Run checks manually:
 
-## Suggestions for a good README
+```bash
+nix flake check --print-build-logs
+```
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+Format manually:
 
-## Name
-Choose a self-explaining name for your project.
+```bash
+nix fmt
+```
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Nix files are also formatted automatically in two places:
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+- a Home Manager user service watches `~/nixos-infrastructure`
+- a Git pre-commit hook formats staged `.nix` files before commit
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+## Monitoring
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+The local monitoring stack is enabled by `observability/default.nix`.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Services are bound to localhost by default:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+- Grafana: <http://localhost:3000>
+- Prometheus: <http://localhost:9090>
+- Loki: <http://localhost:3100>
+- Promtail health endpoint: <http://localhost:9080>
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Initial Grafana login:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+```text
+username: admin
+password: admin
+```
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Change the password after first login.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+Grafana is provisioned with two data sources:
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+- `Prometheus` for metrics
+- `Loki` for logs
 
-## License
-For open source projects, say how it is licensed.
+Prometheus scrapes:
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+- Prometheus itself
+- local node exporter
+
+Promtail reads the systemd journal and forwards logs to Loki.
+
+Useful commands:
+
+```bash
+systemctl status grafana.service
+systemctl status prometheus.service
+systemctl status loki.service
+systemctl status promtail.service
+systemctl status prometheus-node-exporter.service || systemctl status prometheus-node.service
+```
+
+View logs:
+
+```bash
+journalctl -u grafana.service -f
+journalctl -u prometheus.service -f
+journalctl -u loki.service -f
+journalctl -u promtail.service -f
+```
+
+Quick checks:
+
+```bash
+curl http://localhost:3000/api/health
+curl http://localhost:9090/-/ready
+curl http://localhost:3100/ready
+```
+
+In Grafana:
+
+1. Open <http://localhost:3000>.
+2. Log in with `admin` / `admin`.
+3. Go to `Connections -> Data sources`.
+4. Confirm `Prometheus` and `Loki` are present.
+5. Go to `Explore`.
+6. Select `Prometheus` and query:
+
+```promql
+up
+```
+
+7. Select `Loki` and query:
+
+```logql
+{job="systemd-journal"}
+```
+
+Official docs:
+
+- Grafana getting started: <https://grafana.com/docs/grafana/latest/getting-started/>
+- Prometheus getting started: <https://prometheus.io/docs/tutorials/getting_started/>
+- Loki configuration: <https://grafana.com/docs/loki/latest/configuration/>
+- Promtail installation/configuration: <https://grafana.com/docs/loki/latest/send-data/promtail/installation/>
+
+## LocalSend
+
+LocalSend is installed as a system application. The firewall explicitly opens:
+
+- TCP `53317`
+- UDP `53317`
+
+That allows laptop-to-phone discovery and transfer on the local network.
+
+If discovery does not work:
+
+```bash
+systemctl status NetworkManager.service
+sudo nft list ruleset | grep 53317
+```
+
+Make sure the laptop and phone are on the same LAN/VLAN and that the Wi-Fi
+network does not block client-to-client traffic.
+
+## Tailscale
+
+Tailscale is enabled, but intentionally conservative so normal internet keeps
+working while the tailnet is being configured.
+
+Defaults:
+
+- `--accept-dns=false`
+- `--accept-routes=false`
+- no exit-node advertising
+- no blanket trust for `tailscale0`
+
+Authenticate manually:
+
+```bash
+sudo tailscale up --ssh
+```
+
+Check status:
+
+```bash
+tailscale status
+tailscale netcheck
+```
+
+Only enable accepted routes or exit-node behavior once you want that behavior:
+
+```nix
+ivali.tailscale = {
+  acceptRoutes = true;
+  advertiseExitNode = true;
+};
+```
+
+## Repository Layout
+
+```text
+.
+├── apps/                  # Desktop applications such as LocalSend and VS Code
+├── boot/                  # Kernel, bootloader, zram, sysctl tuning
+├── ci/                    # Native NixOS GitLab Runner module
+├── desktop/               # Lean GNOME module
+├── developer/             # DevOps and programming toolchains
+├── home/                  # Home Manager modules; entry point is ivali.nix
+├── hosts/                 # Host-specific config and generated hardware config
+├── networking/            # DNS, SSH, NetworkManager, timezone
+├── observability/         # Grafana, Prometheus, Loki, Promtail, auditd
+├── packages/              # System and user package sets
+├── security/              # Firewall, Tailscale, hardening, fail2ban
+├── scripts/               # Fresh install bootstrap
+└── tests/                 # NixOS smoke tests
+```
+
+## GitLab CI/CD
+
+The pipeline runs:
+
+- `nix flake check`
+- system derivation build
+- optional Cachix push
+- optional Attic push
+- SBOM generation with `syft`
+- GitLab Secret Detection
+- manual laptop deployment through a tagged self-hosted runner
+
+Required optional CI variables:
+
+```text
+CACHIX_AUTH_TOKEN
+CACHIX_CACHE_NAME
+ATTIC_ENDPOINT
+ATTIC_CACHE
+ATTIC_TOKEN
+```
+
+## Secrets
+
+SOPS is wired but secrets should be encrypted before production use.
+
+Expected Tailscale secret shape:
+
+```yaml
+tailscale_authkey: your-encrypted-tailscale-auth-key
+```
+
+The default host keeps `authKeyFile = null` so first install does not fail before
+SOPS enrollment.
+
+## Safety Notes
+
+- VS Code settings are intentionally mutable. Do not add `programs.vscode.userSettings`.
+- Node uses `tsx`; do not add the legacy `ts-node` package.
+- Tailscale DNS and routes default to off to avoid broken internet during setup.
+- Grafana, Prometheus, Loki, and Promtail are localhost-only unless you explicitly expose them.
+- Generated hardware config belongs in `hosts/hardware-configuration.nix`.

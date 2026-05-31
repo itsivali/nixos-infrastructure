@@ -56,6 +56,7 @@ in
     syntaxHighlighting.enable = true;
     shellAliases = {
       ll = "eza -la --git";
+      edit-config = "code /home/${username}/nixos-infrastructure";
       rebuild = "sudo nixos-rebuild switch --flake /home/${username}/nixos-infrastructure#prague";
       test-rebuild = "sudo nixos-rebuild test --flake /home/${username}/nixos-infrastructure#prague";
     };
@@ -90,6 +91,16 @@ in
       ms-python.vscode-pylance
       redhat.vscode-yaml
     ];
+  };
+
+  xdg.mimeApps = {
+    enable = true;
+    defaultApplications = {
+      "text/plain" = [ "code.desktop" ];
+      "text/x-nix" = [ "code.desktop" ];
+      "application/json" = [ "code.desktop" ];
+      "application/x-yaml" = [ "code.desktop" ];
+    };
   };
 
   xdg.configFile."Code/User/settings.json".enable = false;

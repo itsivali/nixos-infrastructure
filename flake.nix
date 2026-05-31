@@ -30,14 +30,13 @@
       };
     in
     {
-      # ── formatter ────────────────────────────────────────────────────────────
+      # ── formatter ─────────────────────────────────────────────────────────────
       formatter.${system} = pkgs.nixpkgs-fmt;
 
-      # ── package envs (for inspection / nix build .#system) ───────────────────
+      # ── package envs ──────────────────────────────────────────────────────────
       packages.${system} = {
         system = pkgs.buildEnv {
           name  = "ivali-system-packages";
-          # import returns a list; buildEnv.paths expects a list — correct.
           paths = import ./packages/system { inherit pkgs; };
         };
         user = pkgs.buildEnv {
@@ -56,9 +55,10 @@
         modules = [
           sops-nix.nixosModules.sops
           home-manager.nixosModules.home-manager
-          # Custom NixOS modules (defines ivali.tailscale and any other
-          # ivali.* options used in configuration.nix).
-          ./modules
+          # configuration.nix is the root module. It imports every
+          # subdirectory (boot, networking, security, developer, desktop,
+          # observability, ci) including security/tailscale.nix which is
+          # where ivali.tailscale options are defined.
           ./configuration.nix
           {
             nixpkgs.config.allowUnfree = true;
@@ -77,9 +77,9 @@
               };
             };
             users.users.${username} = {
-              isNormalUser  = true;
-              description   = "Willis Ivali";
-              extraGroups   = [ "wheel" "networkmanager" "docker" "video" "audio" ];
+              isNormalUser = true;
+              description  = "Willis Ivali";
+              extraGroups  = [ "wheel" "networkmanager" "docker" "video" "audio" ];
             };
             home-manager = {
               useGlobalPkgs       = true;
@@ -94,19 +94,13 @@
       };
 
       # ── CI checks ─────────────────────────────────────────────────────────────
-      # checks.* is what `nix flake check` evaluates and (optionally) builds.
-      # Pointing it at toplevel.drvPath gives us a lightweight eval-only check
-      # that works even without QEMU or a clean tree.
-      # The VM smoke test is gated behind an explicit `nix build .#checks...`
-      # rather than running on every `nix flake check`.
-      checks.${system} = {
-        # Evaluates the full NixOS config; fails fast on type errors.
-        # Does NOT build the system — it only derives the .drv path.
-        laptop-config = pkgs.runCommand "check-laptop-config" { } ''
-          echo ${
-            self.nixosConfigurations.${hostName}.config.system.build.toplevel.drvPath
-          } > $out
-        '';
-      };
+      # Evaluates the full NixOS config without building it.
+      # Safe to run on a dirty tree; used by `nix flake check` and the
+      # install script's validate step.
+      checks.${system}.laptop-config = pkgs.runCommand "check-laptop-config" { } ''
+        echo ${
+          self.nixosConfigurations.${hostName}.config.system.build.toplevel.drvPath
+        } > $out
+      '';
     };
 }

@@ -88,7 +88,7 @@
               users.${username}   = import ./home/ivali.nix;
               backupFileExtension = "hm-backup";
             };
-            system.stateVersion = "25.11";
+            system.stateVersion = "26.05";
           }
         ];
       };

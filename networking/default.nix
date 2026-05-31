@@ -11,18 +11,28 @@
 
   services.resolved = {
     enable = true;
-    fallbackDns = [ "1.1.1.1" "9.9.9.9" "8.8.8.8" ];
+
+    fallbackDns = [
+      "1.1.1.1"
+      "9.9.9.9"
+      "8.8.8.8"
+    ];
+
     dnssec = "allow-downgrade";
-    extraConfig = ''
-      DNSOverTLS=opportunistic
-      MulticastDNS=yes
-      LLMNR=no
-    '';
+
+    settings = {
+      Resolve = {
+        DNSOverTLS = "opportunistic";
+        MulticastDNS = true;
+        LLMNR = false;
+      };
+    };
   };
 
   services.openssh = {
     enable = true;
     openFirewall = false;
+
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
@@ -31,5 +41,6 @@
     };
   };
 
-  programs.ssh.startAgent = true;
+  # GNOME already provides gcr-ssh-agent
+  programs.ssh.startAgent = false;
 }

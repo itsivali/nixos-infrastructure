@@ -142,9 +142,12 @@ in
         };
         analytics.reporting_enabled = false;
         security = {
-          admin_user        = "admin";
-          admin_password    = "admin";
-          disable_gravatar  = true;
+        admin_user = "admin";
+        admin_password = "admin";
+        disable_gravatar = true;
+
+        # Required by NixOS 26.05+
+        secret_key = "SW2YcwTIb9zpOOhoPsMm";
         };
       };
       provision = {
@@ -209,6 +212,8 @@ in
         RestartSec = "10s";
       };
     };
+
+    
 
     # ── Promtail ──────────────────────────────────────────────────────────────
     environment.etc."promtail/config.yml" = lib.mkIf (cfg.enable && cfg.promtail.enable) {

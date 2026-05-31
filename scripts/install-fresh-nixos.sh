@@ -1,127 +1,150 @@
 #!/usr/bin/env bash
+# install-fresh-nixos.sh
+# Bootstrap a fresh NixOS machine from the willisivali/nixos-infrastructure flake.
+#
+# Run as your normal user (NOT root). sudo is called only when needed.
+#
+#   nix --extra-experimental-features "nix-command flakes" \
+#     shell nixpkgs#curl --command bash -c \
+#     'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
+#
+# Override defaults via environment variables before running:
+#   REPO_URL, REPO_DIR, HOST, BRANCH
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://gitlab.com/willisivali/nixos-infrastructure.git}"
 REPO_DIR="${REPO_DIR:-$HOME/nixos-infrastructure}"
 HOST="${HOST:-prague}"
 BRANCH="${BRANCH:-main}"
-TARGET_USER="${TARGET_USER:-ivali}"
 NIX_FEATURES="nix-command flakes"
 
-log() {
-  printf '\n\033[1;34m==>\033[0m %s\n' "$*"
+# ── logging ────────────────────────────────────────────────────────────────────
+log()  { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
+warn() { printf '\n\033[1;33mWARN:\033[0m %s\n' "$*" >&2; }
+die()  { printf '\n\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
+
+# ── nix wrappers ───────────────────────────────────────────────────────────────
+
+# Wrap every plain `nix` call so --extra-experimental-features is always
+# present — required when the script is piped through a fresh bash that
+# hasn't read any nix.conf yet.
+nix() {
+  command nix --extra-experimental-features "$NIX_FEATURES" "$@"
 }
 
-warn() {
-  printf '\n\033[1;33mWARN:\033[0m %s\n' "$*" >&2
-}
-
-die() {
-  printf '\n\033[1;31mERROR:\033[0m %s\n' "$*" >&2
-  exit 1
-}
-
-run_nix() {
-  nix --extra-experimental-features "$NIX_FEATURES" "$@"
-}
-
-# Run a nix subcommand inside a shell that has git on PATH.
-# nix fmt and nix flake check both shell out to git internally
-# (to resolve the repo root and honour .gitignore), so they
-# must run in an environment where git exists.
-run_nix_with_git() {
-  nix --extra-experimental-features "$NIX_FEATURES" \
-    shell nixpkgs#git -c \
+# nix fmt and nix flake check both exec `git` internally (to resolve the repo
+# root and respect .gitignore). On a fresh install git is not on PATH, so we
+# enter a temporary shell that provides it before calling nix.
+nix_with_git() {
+  command nix --extra-experimental-features "$NIX_FEATURES" \
+    shell nixpkgs#git --command \
     nix --extra-experimental-features "$NIX_FEATURES" "$@"
 }
 
+# ── steps ──────────────────────────────────────────────────────────────────────
+
 require_nixos() {
-  [ -f /etc/NIXOS ] || die "This installer must run on NixOS."
+  [[ -f /etc/NIXOS ]] || die "This script must run on NixOS."
   command -v sudo >/dev/null 2>&1 || die "sudo is required."
-  [ "$(id -u)" -ne 0 ] || die "Run this as your normal user, not with sudo. The script asks for sudo only when needed."
+  [[ "$(id -u)" -ne 0 ]] \
+    || die "Run as your normal user, not root. The script calls sudo only when needed."
 }
 
-enable_nix_features_for_session() {
-  # On a fresh NixOS install, /etc/nix is on a read-only path managed by
-  # the Nix module system — writing there with sudo tee fails.
-  #
-  # We write to the user-level config instead, which is always writable
-  # and is picked up by all subsequent nix invocations in this session.
-  # The system-level setting (nix.settings.experimental-features) should
-  # live in your flake's NixOS module; this is just a bootstrap shim.
-  log "Enabling flakes and nix-command for this session (user-level nix.conf)"
+enable_nix_features() {
+  # /etc/nix is read-only on a fresh NixOS install — it is managed by the
+  # Nix module system and cannot be written to with sudo tee.
+  # Write to the user-level config instead; it is always writable and is
+  # honoured by every subsequent nix invocation for this user.
+  # Permanent system-level config is already declared in the flake:
+  #   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  log "Enabling nix-command + flakes (user config)"
 
-  local nix_user_conf_dir="$HOME/.config/nix"
-  local nix_user_conf="$nix_user_conf_dir/nix.conf"
+  local conf_dir="$HOME/.config/nix"
+  local conf="$conf_dir/nix.conf"
+  mkdir -p "$conf_dir"
 
-  mkdir -p "$nix_user_conf_dir"
-
-  if [ ! -f "$nix_user_conf" ]; then
-    printf 'experimental-features = nix-command flakes\n' > "$nix_user_conf"
-  elif ! grep -Eq '(^| )experimental-features( |)=.*flakes' "$nix_user_conf"; then
-    printf '\nexperimental-features = nix-command flakes\n' >> "$nix_user_conf"
+  if [[ ! -f "$conf" ]]; then
+    printf 'experimental-features = nix-command flakes\n' > "$conf"
+  elif ! grep -Eq '(^|[[:space:]])experimental-features[[:space:]]*=.*flakes' "$conf"; then
+    printf '\nexperimental-features = nix-command flakes\n' >> "$conf"
   else
-    log "experimental-features already set in $nix_user_conf — skipping"
+    log "experimental-features already present — skipping"
   fi
 
-  # Export NIX_CONFIG as a belt-and-suspenders fallback so the current
-  # shell process picks up the setting immediately, even before nix-daemon
-  # re-reads the user config on disk.
+  # Also export NIX_CONFIG so the current piped-bash process picks it up
+  # immediately, before nix-daemon re-reads anything from disk.
   export NIX_CONFIG="experimental-features = nix-command flakes"
 }
 
 clone_or_update_repo() {
-  log "Installing Git through a temporary Nix shell and fetching ${REPO_URL}"
+  log "Fetching repo (via temporary git shell): ${REPO_URL}"
 
-  if [ -d "$REPO_DIR/.git" ]; then
-    run_nix shell nixpkgs#git -c git -C "$REPO_DIR" fetch origin "$BRANCH"
-    run_nix shell nixpkgs#git -c git -C "$REPO_DIR" checkout "$BRANCH"
-    run_nix shell nixpkgs#git -c git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
+  if [[ -d "$REPO_DIR/.git" ]]; then
+    nix shell nixpkgs#git --command git -C "$REPO_DIR" fetch --prune origin "$BRANCH"
+    nix shell nixpkgs#git --command git -C "$REPO_DIR" checkout "$BRANCH"
+    nix shell nixpkgs#git --command git -C "$REPO_DIR" merge --ff-only "origin/$BRANCH"
   else
     mkdir -p "$(dirname "$REPO_DIR")"
-    run_nix shell nixpkgs#git -c git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+    nix shell nixpkgs#git --command git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
   fi
 }
 
-copy_hardware_configuration() {
-  log "Capturing this machine's generated hardware configuration"
+copy_hardware_config() {
+  log "Capturing hardware configuration"
 
-  if [ ! -f /etc/nixos/hardware-configuration.nix ]; then
-    warn "/etc/nixos/hardware-configuration.nix was not found; generating one now"
+  local src="/etc/nixos/hardware-configuration.nix"
+  local dst="$REPO_DIR/hosts/hardware-configuration.nix"
+
+  if [[ ! -f "$src" ]]; then
+    warn "$src not found — generating with nixos-generate-config"
     sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix
-    install -m 0644 /tmp/hardware-configuration.nix "$REPO_DIR/hosts/hardware-configuration.nix"
-  else
-    install -m 0644 /etc/nixos/hardware-configuration.nix "$REPO_DIR/hosts/hardware-configuration.nix"
+    src="/tmp/hardware-configuration.nix"
   fi
+
+  install -Dm0644 "$src" "$dst"
+  log "Hardware config written to $dst"
 }
 
 install_format_hook() {
-  log "Installing automatic Nix formatter Git hook"
-
-  install -m 0755 "$REPO_DIR/hooks/pre-commit" "$REPO_DIR/.git/hooks/pre-commit"
+  log "Installing pre-commit formatter hook"
+  local hook_src="$REPO_DIR/hooks/pre-commit"
+  local hook_dst="$REPO_DIR/.git/hooks/pre-commit"
+  if [[ -f "$hook_src" ]]; then
+    install -m0755 "$hook_src" "$hook_dst"
+  else
+    warn "hooks/pre-commit not found in repo — skipping"
+  fi
 }
 
 format_repo() {
-  log "Formatting all Nix files"
-
-  (
-    cd "$REPO_DIR"
-    run_nix_with_git fmt
-  )
+  log "Formatting Nix files"
+  # Must run inside a shell that has git on PATH (nix fmt calls git internally).
+  ( cd "$REPO_DIR" && nix_with_git fmt )
 }
 
 validate_config() {
-  log "Validating the flake before switching"
-
-  (
+  # We do NOT run `nix flake check` here. On a fresh install it would:
+  #   - try to build every packages.* output
+  #   - require a clean git tree (dirty tree = instant failure)
+  #   - evaluate checks.* which forces a full system build
+  #   - evaluate nixosTests.* which requires QEMU
+  #
+  # Instead we evaluate only the target host's toplevel .drv path.
+  # This fully type-checks the NixOS config (catches missing modules,
+  # list-vs-string type errors, undefined options, etc.) without
+  # building anything or caring about a dirty tree.
+  log "Evaluating nixosConfigurations.${HOST} (dry-run, no build)"
+  local drv
+  drv=$(
     cd "$REPO_DIR"
-    run_nix_with_git flake check --print-build-logs
+    nix_with_git eval --raw \
+      ".#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath"
   )
+  log "Config evaluates cleanly → ${drv}"
 }
 
 switch_system() {
-  log "Switching to the lean, tuned NixOS configuration for host ${HOST}"
-
+  log "Running nixos-rebuild switch → ${HOST}"
   sudo nixos-rebuild switch \
     --option experimental-features "$NIX_FEATURES" \
     --flake "$REPO_DIR#$HOST"
@@ -130,55 +153,47 @@ switch_system() {
 post_install_notes() {
   cat <<EOF
 
-Install completed.
+════════════════════════════════════════
+  Install complete ✓
+════════════════════════════════════════
 
-Next steps:
-  1. Reboot to load the tuned zen kernel and lean GNOME profile:
-       sudo reboot
+Next steps
+──────────
+1. Reboot to load the zen kernel and lean GNOME profile:
+     sudo reboot
 
-  2. Enroll Tailscale after reboot if needed:
-       sudo tailscale up --ssh
+2. After reboot, bring up Tailscale:
+     sudo tailscale up --ssh
 
-  3. Commit the generated hardware file:
-       cd "$REPO_DIR"
-       git status
-       git add hosts/hardware-configuration.nix
-       git commit -m "Add hardware configuration for ${HOST}"
-       git push
+3. Commit the generated hardware file:
+     cd "$REPO_DIR"
+     git add hosts/hardware-configuration.nix
+     git commit -m "chore: add hardware configuration for ${HOST}"
+     git push
 
-Notes:
-  - This config uses linuxPackages_zen, zram, low-latency sysctl tuning, and a stripped GNOME module.
-  - Open this repository in VS Code with:
-       code "$REPO_DIR"
-    or:
-       edit-config
-  - Grafana will be available locally after rebuild:
-       http://localhost:3000
-    Default local bootstrap login: admin / admin
-  - Prometheus is bound locally:
-       http://localhost:9090
-  - Loki is bound locally:
-       http://localhost:3100
-  - The Git hook formats staged .nix files automatically on every commit.
-  - VS Code settings remain mutable; only extensions are declarative.
+Local services (after reboot)
+──────────────────────────────
+  Grafana    http://localhost:3000   (admin / admin on first boot)
+  Prometheus http://localhost:9090
+  Loki       http://localhost:3100
 
-Useful docs:
-  - Grafana getting started:
-      https://grafana.com/docs/grafana/latest/getting-started/
-  - Prometheus getting started:
-      https://prometheus.io/docs/tutorials/getting_started/
-  - Loki configuration:
-      https://grafana.com/docs/loki/latest/configuration/
-  - Promtail installation/configuration:
-      https://grafana.com/docs/loki/latest/send-data/promtail/installation/
+Open config in your editor:
+  code "$REPO_DIR"   or   edit-config
+
+Docs
+────
+  Grafana    https://grafana.com/docs/grafana/latest/getting-started/
+  Prometheus https://prometheus.io/docs/tutorials/getting_started/
+  Loki       https://grafana.com/docs/loki/latest/configuration/
+  Promtail   https://grafana.com/docs/loki/latest/send-data/promtail/installation/
 EOF
 }
 
 main() {
   require_nixos
-  enable_nix_features_for_session   # renamed + reworked: writes to ~/.config/nix/nix.conf
+  enable_nix_features
   clone_or_update_repo
-  copy_hardware_configuration
+  copy_hardware_config
   install_format_hook
   format_repo
   validate_config

@@ -15,7 +15,10 @@ variables:
     experimental-features = nix-command flakes
     accept-flake-config = true
     extra-substituters = https://cache.nixos.org
-  NIX_HOST: laptop
+  NIX_HOST: prague
+
+secret_detection:
+  stage: secret-detection
 
 .nix-job:
   image: nixos/nix:latest

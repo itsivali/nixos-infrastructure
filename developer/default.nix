@@ -1,7 +1,6 @@
 { pkgs, ... }:
 
 let
-  cursorPackage = pkgs.code-cursor or pkgs.cursor or pkgs.vscode;
   tsxPackage = pkgs.tsx;
 in
 {
@@ -14,24 +13,48 @@ in
   programs.bash.completion.enable = true;
   users.defaultUserShell = pkgs.zsh;
 
-  virtualisation = {
-    docker = {
+  virtualisation.docker = {
+    enable = true;
+    enableOnBoot = true;
+    autoPrune = {
       enable = true;
-      enableOnBoot = true;
-      autoPrune = {
-        enable = true;
-        dates = "weekly";
-      };
+      dates = "weekly";
     };
   };
 
   environment.systemPackages = with pkgs; [
+    # Nix
     alejandra
+
+    # Go
     go
+
+    # Node.js / TypeScript
     nodejs_22
-    terraform
-    tsxPackage
     yarn
+    typescript
+    typescript-language-server
+    tsxPackage
+
+    # Python
+    python313
+    python313Packages.pip
+    python313Packages.virtualenv
+    python313Packages.setuptools
+    python313Packages.wheel
+    python313Packages.ipython
+    python313Packages.pytest
+    uv
+    ruff
+    black
+    mypy
+
+    # Flutter / Dart
+    flutter
+    dart
+
+    # Infrastructure
+    terraform
   ];
 
   environment.variables = {

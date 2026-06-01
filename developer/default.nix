@@ -54,7 +54,7 @@ in
     dart
 
     # Infrastructure
-    terraform
+
   ];
 
   environment.variables = {

@@ -27,22 +27,9 @@ in
 
   environment.systemPackages = with pkgs; [
     alejandra
-    attic-client
-    cosign
-    cursorPackage
-    docker-buildx
-    docker-compose
-    flutter
-    gitlab-runner
     go
     nodejs_22
-    opentofu
-    python312
-    python312Packages.pip
-    python312Packages.virtualenv
-    syft
     terraform
-    # Modern TypeScript runner; the legacy runner is intentionally omitted.
     tsxPackage
     yarn
   ];

@@ -164,15 +164,13 @@ in
 
   services.upower.enable = true;
 
-  services.logind = {
-    lidSwitch = "suspend";
-    lidSwitchExternalPower = "lock";
+  services.logind.settings.Login = {
+    HandleLidSwitch = "suspend";
+    HandleLidSwitchExternalPower = "lock";
 
-    settings.Login = {
-      HandlePowerKey = "suspend";
-      IdleAction = "suspend";
-      IdleActionSec = "30min";
-    };
+    HandlePowerKey = "suspend";
+    IdleAction = "suspend";
+    IdleActionSec = "30min";
   };
 
   ##########################################################

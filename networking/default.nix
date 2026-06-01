@@ -18,10 +18,17 @@
       "8.8.8.8"
     ];
 
-    dnssec = "allow-downgrade";
+
 
     settings = {
       Resolve = {
+        FallbackDNS = [
+          "1.1.1.1"
+          "9.9.9.9"
+          "8.8.8.8"
+        ];
+
+        DNSSEC = "allow-downgrade";
         DNSOverTLS = "opportunistic";
         MulticastDNS = true;
         LLMNR = false;

@@ -2,17 +2,21 @@
 
 let
   repoDir = "${config.home.homeDirectory}/nixos-infrastructure";
+
   autoFormatNix = pkgs.writeShellApplication {
     name = "auto-format-nix-repo";
+
     runtimeInputs = [
       pkgs.bash
       pkgs.nix
       pkgs.watchexec
     ];
+
     text = ''
       set -euo pipefail
 
       repo="${repoDir}"
+
       if [ ! -d "$repo" ]; then
         echo "Repository not found at $repo; waiting for install checkout." >&2
         exec sleep infinity
@@ -23,7 +27,7 @@ let
         --ignore "$repo/.git" \
         --debounce 1000ms \
         --restart \
-        -- bash -lc 'cd "$0" && nix --extra-experimental-features "nix-command flakes" fmt' "$repo"
+        -- bash -lc "cd \"$repo\" && nix --extra-experimental-features 'nix-command flakes' fmt"
     '';
   };
 in
@@ -39,17 +43,18 @@ in
 
   programs.home-manager.enable = true;
 
+  # Suppress HM/Nixpkgs release mismatch warning
   home.enableNixpkgsReleaseCheck = false;
 
   programs.git = {
     enable = true;
 
-    userEmail = "itsivali@outlook.com";
     settings = {
       user = {
         name = "Willis Ivali";
         email = "itsivali@outlook.com";
       };
+
       init.defaultBranch = "main";
       pull.rebase = true;
       rerere.enabled = true;
@@ -60,17 +65,22 @@ in
     enable = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
+
     shellAliases = {
       ll = "eza -la --git";
-      edit-config = "code /home/${username}/nixos-infrastructure";
-      rebuild = "sudo nixos-rebuild switch --flake /home/${username}/nixos-infrastructure#prague";
-      test-rebuild = "sudo nixos-rebuild test --flake /home/${username}/nixos-infrastructure#prague";
+
+      edit-config =
+        "code /home/${username}/nixos-infrastructure";
+
+      rebuild =
+        "sudo nixos-rebuild switch --flake /home/${username}/nixos-infrastructure#prague";
+
+      test-rebuild =
+        "sudo nixos-rebuild test --flake /home/${username}/nixos-infrastructure#prague";
     };
   };
 
-  programs.bash = {
-    enable = true;
-  };
+  programs.bash.enable = true;
 
   programs.direnv = {
     enable = true;
@@ -85,6 +95,7 @@ in
     enable = true;
     package = pkgs.vscode;
     mutableExtensionsDir = true;
+
     profiles.default.extensions = with pkgs.vscode-extensions; [
       bbenoist.nix
       dbaeumer.vscode-eslint
@@ -101,6 +112,7 @@ in
 
   xdg.mimeApps = {
     enable = true;
+
     defaultApplications = {
       "text/plain" = [ "code.desktop" ];
       "text/x-nix" = [ "code.desktop" ];
@@ -116,11 +128,13 @@ in
       Description = "Automatically format Nix files in nixos-infrastructure";
       After = [ "graphical-session.target" ];
     };
+
     Service = {
       ExecStart = "${autoFormatNix}/bin/auto-format-nix-repo";
       Restart = "on-failure";
       RestartSec = "5s";
     };
+
     Install.WantedBy = [ "default.target" ];
   };
 }

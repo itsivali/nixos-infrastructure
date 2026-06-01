@@ -39,6 +39,8 @@ in
 
   programs.home-manager.enable = true;
 
+  home.enableNixpkgsReleaseCheck = false;
+
   programs.git = {
     enable = true;
 

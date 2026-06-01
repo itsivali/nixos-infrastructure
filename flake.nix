@@ -21,7 +21,7 @@
     , ...
     }:
     let
-      system   = "x86_64-linux";
+      system = "x86_64-linux";
       username = "ivali";
       hostName = "prague";
       pkgs = import nixpkgs {
@@ -36,11 +36,11 @@
       # ── package envs ──────────────────────────────────────────────────────────
       packages.${system} = {
         system = pkgs.buildEnv {
-          name  = "ivali-system-packages";
+          name = "ivali-system-packages";
           paths = import ./packages/system { inherit pkgs; };
         };
         user = pkgs.buildEnv {
-          name  = "ivali-user-packages";
+          name = "ivali-user-packages";
           paths = import ./packages/user { inherit pkgs; };
         };
       };
@@ -65,27 +65,27 @@
             nix = {
               settings = {
                 experimental-features = [ "nix-command" "flakes" ];
-                auto-optimise-store   = true;
-                trusted-users         = [ "root" username ];
-                substituters          = [ "https://cache.nixos.org" ];
-                warn-dirty            = false;
+                auto-optimise-store = true;
+                trusted-users = [ "root" username ];
+                substituters = [ "https://cache.nixos.org" ];
+                warn-dirty = false;
               };
               gc = {
                 automatic = true;
-                dates     = "weekly";
-                options   = "--delete-older-than 14d";
+                dates = "weekly";
+                options = "--delete-older-than 14d";
               };
             };
             users.users.${username} = {
               isNormalUser = true;
-              description  = "Willis Ivali";
-              extraGroups  = [ "wheel" "networkmanager" "docker" "video" "audio" ];
+              description = "Willis Ivali";
+              extraGroups = [ "wheel" "networkmanager" "docker" "video" "audio" ];
             };
             home-manager = {
-              useGlobalPkgs       = true;
-              useUserPackages     = true;
-              extraSpecialArgs    = { inherit inputs username hostName; };
-              users.${username}   = import ./home/ivali.nix;
+              useGlobalPkgs = true;
+              useUserPackages = true;
+              extraSpecialArgs = { inherit inputs username hostName; };
+              users.${username} = import ./home/ivali.nix;
               backupFileExtension = "hm-backup";
             };
             system.stateVersion = "26.05";

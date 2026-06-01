@@ -1,85 +1,50 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO="git@gitlab.com:willisivali/nixos-infrastructure.git"
+FILE="desktop/gnome-lean.nix"
 
-echo "==> Verifying git repository"
-git rev-parse --git-dir >/dev/null
+echo "==> Backing up ${FILE}"
+cp "$FILE" "${FILE}.bak.$(date +%s)"
 
-echo "==> Switching origin to SSH"
-git remote set-url origin "$REPO"
+echo "==> Removing deprecated GDM Wayland option"
 
-echo
-echo "Current remotes:"
-git remote -v
+sed -i '/^[[:space:]]*wayland = true;$/d' "$FILE"
 
-echo
-echo "==> Updating .gitignore"
+echo "==> Replacing services.logind.extraConfig"
 
-touch .gitignore
+python3 <<'PY'
+from pathlib import Path
+import re
 
-append_if_missing() {
-    local pattern="$1"
+f = Path("desktop/gnome-lean.nix")
+text = f.read_text()
 
-    if ! grep -qxF "$pattern" .gitignore 2>/dev/null; then
-        echo "$pattern" >> .gitignore
-    fi
-}
+pattern = r"""extraConfig\s*=\s*''
+\s*HandlePowerKey=suspend
+\s*IdleAction=suspend
+\s*IdleActionSec=30min
+\s*'';"""
 
-append_if_missing "*.bak.*"
-append_if_missing "*.pre-repair"
-append_if_missing "*.pre-grafana-fix"
-append_if_missing "secrets/grafana-secret-key"
-append_if_missing ".direnv/"
-append_if_missing "result"
+replacement = """settings.Login = {
+      HandlePowerKey = "suspend";
+      IdleAction = "suspend";
+      IdleActionSec = "30min";
+    };"""
 
-git add .gitignore
+text = re.sub(pattern, replacement, text, flags=re.MULTILINE)
 
-echo
-echo "==> Removing tracked backup files"
-
-git ls-files | grep -E '\.bak\.[0-9]+$' | while read -r f; do
-    git rm --cached "$f"
-done || true
+f.write_text(text)
+PY
 
 echo
-echo "==> Removing tracked repair artifacts"
+echo "==> Result"
 
-git ls-files | grep -E '\.pre-repair$|\.pre-grafana-fix$' | while read -r f; do
-    git rm --cached "$f"
-done || true
+grep -n -A12 -B4 "services.logind" "$FILE"
 
 echo
-echo "==> Removing Grafana secret from Git tracking"
+echo "==> Testing evaluation"
 
-git rm --cached secrets/grafana-secret-key 2>/dev/null || true
-
-echo
-echo "==> Staging cleanup"
-git add -A
+nix eval .#nixosConfigurations.prague.config.system.build.toplevel.drvPath
 
 echo
-echo "==> Amending previous commit"
-git commit --amend --no-edit
-
-echo
-echo "==> Testing SSH access"
-ssh -T git@gitlab.com || true
-
-echo
-echo "==> Files that will be pushed"
-git diff --name-only origin/main..HEAD 2>/dev/null || true
-
-echo
-echo "==> Latest commit"
-git log --oneline -1
-
-echo
-read -rp "Push to GitLab now? [y/N] " ANSWER
-
-if [[ "${ANSWER,,}" == "y" ]]; then
-    git push --force-with-lease origin main
-fi
-
-echo
-echo "Done."
+echo "Migration complete."

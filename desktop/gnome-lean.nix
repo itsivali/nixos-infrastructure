@@ -19,7 +19,6 @@ in
 
   services.displayManager.gdm = {
     enable = true;
-    wayland = true;
     # Auto-suspend after 20 min on the login screen (saves power on laptops).
     autoSuspend = true;
   };
@@ -167,12 +166,13 @@ in
 
   services.logind = {
     lidSwitch = "suspend";
-    lidSwitchExternalPower = "lock"; # just lock when on AC
-    extraConfig = ''
-      HandlePowerKey=suspend
-      IdleAction=suspend
-      IdleActionSec=30min
-    '';
+    lidSwitchExternalPower = "lock";
+
+    settings.Login = {
+      HandlePowerKey = "suspend";
+      IdleAction = "suspend";
+      IdleActionSec = "30min";
+    };
   };
 
   ##########################################################

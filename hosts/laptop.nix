@@ -1,11 +1,6 @@
 { config, gitlabUrl, hostName, pkgs, ... }:
 
 {
-  imports =
-    if builtins.pathExists ./hardware-configuration.nix then
-      [ ./hardware-configuration.nix ]
-    else
-      [ ];
 
   ###########################################################
   # HOST IDENTITY
@@ -76,3 +71,4 @@
     defaultSopsFile = ../secrets/tailscale.yaml;
   };
 }
+

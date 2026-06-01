@@ -2,7 +2,9 @@
 
 {
   imports = [
+    ./hosts/hardware-configuration.nix
     ./hosts/laptop.nix
+
     ./boot
     ./networking
     ./security

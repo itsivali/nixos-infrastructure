@@ -41,9 +41,13 @@ in
 
   programs.git = {
     enable = true;
-    userName = "Willis Ivali";
+
     userEmail = "willisivali@users.noreply.gitlab.com";
-    extraConfig = {
+    settings = {
+      user = {
+        name = "Willis Ivali";
+        email = "itsivali@outlook.com";
+      };
       init.defaultBranch = "main";
       pull.rebase = true;
       rerere.enabled = true;
@@ -79,7 +83,7 @@ in
     enable = true;
     package = pkgs.vscode;
     mutableExtensionsDir = true;
-    extensions = with pkgs.vscode-extensions; [
+    profiles.default.extensions = with pkgs.vscode-extensions; [
       bbenoist.nix
       dbaeumer.vscode-eslint
       esbenp.prettier-vscode

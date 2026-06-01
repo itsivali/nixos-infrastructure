@@ -2,7 +2,7 @@
 
 let
   cursorPackage = pkgs.code-cursor or pkgs.cursor or pkgs.vscode;
-  tsxPackage = pkgs.nodePackages_latest.tsx or pkgs.nodePackages.tsx;
+  tsxPackage = pkgs.tsx;
 in
 {
   programs.zsh = {

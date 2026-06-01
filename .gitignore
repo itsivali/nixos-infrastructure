@@ -1,0 +1,6 @@
+*.bak.*
+*.pre-repair
+*.pre-grafana-fix
+secrets/grafana-secret-key
+.direnv/
+result

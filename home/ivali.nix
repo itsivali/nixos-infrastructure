@@ -44,7 +44,7 @@ in
   programs.git = {
     enable = true;
 
-    userEmail = "willisivali@users.noreply.gitlab.com";
+    userEmail = "itsivali@outlook.com";
     settings = {
       user = {
         name = "Willis Ivali";

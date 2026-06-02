@@ -1,4 +1,5 @@
-{ pkgs, ... }:
+# security/default.nix
+{ config, lib, pkgs, ... }:
 
 {
   imports = [
@@ -10,6 +11,7 @@
     sudo.execWheelOnly = true;
     protectKernelImage = true;
     rtkit.enable = true;
+
     polkit = {
       enable = true;
       extraConfig = ''
@@ -21,11 +23,18 @@
         });
       '';
     };
+
     apparmor = {
       enable = true;
-      killUnconfinedConfinables = true;
+
+      # killUnconfinedConfinables = true would terminate Docker containers at
+      # boot because they run unconfined by default. Keep it false and load
+      # the docker-default profile explicitly instead.
+      killUnconfinedConfinables = false;
+
       packages = [ pkgs.apparmor-profiles ];
     };
+
     pam = {
       services.login.fprintAuth = false;
       loginLimits = [
@@ -36,6 +45,22 @@
           value = "10";
         }
       ];
+    };
+  };
+
+  # Load the docker-default AppArmor profile so Docker containers are
+  # confined rather than unconfined. This is the correct fix for the
+  # killUnconfinedConfinables issue — confine them, don't kill them.
+  systemd.services.apparmor-docker-default = lib.mkIf config.virtualisation.docker.enable {
+    description = "Load docker-default AppArmor profile";
+    wantedBy = [ "multi-user.target" ];
+    before = [ "docker.service" ];
+    after = [ "apparmor.service" ];
+    requires = [ "apparmor.service" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.apparmor}/bin/apparmor_parser -r -W ${pkgs.apparmor-profiles}/etc/apparmor.d/docker-default";
     };
   };
 

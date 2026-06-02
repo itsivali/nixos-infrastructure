@@ -1,3 +1,4 @@
+# home/ivali.nix
 { config, lib, pkgs, username, ... }:
 
 let
@@ -6,8 +7,11 @@ let
   autoFormatNix = pkgs.writeShellApplication {
     name = "auto-format-nix-repo";
 
+    # git is required by `nix fmt` to resolve the repo root and respect
+    # .gitignore. Without it the watcher exits immediately with an error.
     runtimeInputs = [
       pkgs.bash
+      pkgs.git
       pkgs.nix
       pkgs.watchexec
     ];
@@ -37,8 +41,18 @@ in
   home = {
     inherit username;
     homeDirectory = "/home/${username}";
-    stateVersion = "25.11";
+
+    # Keep in sync with system.stateVersion in flake.nix.
+    # Use the NixOS release that was current when this machine was first set up.
+    # Valid values: "24.05", "24.11", "25.05" — "25.11" does not exist.
+    stateVersion = "24.11";
+
     packages = import ../packages/user { inherit pkgs; };
+
+    # Set EDITOR here so it is user-scoped and does not conflict with root.
+    sessionVariables = {
+      EDITOR = "code --wait";
+    };
   };
 
   programs.home-manager.enable = true;
@@ -46,6 +60,7 @@ in
   # Suppress HM/Nixpkgs release mismatch warning
   home.enableNixpkgsReleaseCheck = false;
 
+  # ── git ────────────────────────────────────────────────────────────────────
   programs.git = {
     enable = true;
 
@@ -61,6 +76,9 @@ in
     };
   };
 
+  # ── shell ──────────────────────────────────────────────────────────────────
+  # HM owns the full zsh configuration. The system module (developer/default.nix)
+  # only sets programs.zsh.enable = true and users.defaultUserShell = pkgs.zsh.
   programs.zsh = {
     enable = true;
     autosuggestion.enable = true;
@@ -91,16 +109,26 @@ in
   programs.zoxide.enable = true;
   programs.fzf.enable = true;
 
+  # ── VSCode ─────────────────────────────────────────────────────────────────
   programs.vscode = {
     enable = true;
     package = pkgs.vscode;
+
+    # mutableExtensionsDir = true lets you install extensions imperatively
+    # (e.g. `code --install-extension github.copilot`) without them being
+    # wiped on the next Home Manager switch.
     mutableExtensionsDir = true;
 
-    profiles.default.extensions = with pkgs.vscode-extensions; [
+    # Use the flat `extensions` list, not `profiles.default.extensions`.
+    # The profiles API was added in a recent HM release; the flat list works
+    # across all supported versions and is equivalent for a single profile.
+    #
+    # github.copilot is intentionally omitted — it is not packaged in nixpkgs.
+    # Install it once with: code --install-extension github.copilot
+    extensions = with pkgs.vscode-extensions; [
       bbenoist.nix
       dbaeumer.vscode-eslint
       esbenp.prettier-vscode
-      github.copilot
       golang.go
       jnoortheen.nix-ide
       ms-azuretools.vscode-docker
@@ -110,6 +138,7 @@ in
     ];
   };
 
+  # ── XDG ───────────────────────────────────────────────────────────────────
   xdg.mimeApps = {
     enable = true;
 
@@ -121,8 +150,11 @@ in
     };
   };
 
+  # Prevent HM from writing a read-only settings.json that conflicts with
+  # VSCode's own settings sync / manual edits.
   xdg.configFile."Code/User/settings.json".enable = false;
 
+  # ── auto-format service ────────────────────────────────────────────────────
   systemd.user.services.nix-repo-auto-format = {
     Unit = {
       Description = "Automatically format Nix files in nixos-infrastructure";

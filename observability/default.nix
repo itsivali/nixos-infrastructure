@@ -9,13 +9,15 @@ let
   prometheusPort = 9090;
   grafanaListenAddress = "127.0.0.1";
   grafanaPort = 3000;
-  otelCollector =
-    pkgs.opentelemetry-collector-contrib or
-      pkgs.otelcol-contrib or
-        pkgs.opentelemetry-collector;
+
+  # DO NOT resolve otelCollector here at the top-level let binding.
+  # Attribute lookups like `pkgs.foo or pkgs.bar` are evaluated unconditionally
+  # even when otel.enable = false. If none of the names exist in this nixpkgs
+  # revision the entire file fails to evaluate.
+  # Resolution is deferred into the mkIf cfg.otel.enable blocks below.
 in
 {
-  # ── option declarations ──────────────────────────────────────────────────────
+  # ── option declarations ────────────────────────────────────────────────────
   options.ivali.observability = {
     enable = lib.mkOption {
       type = lib.types.bool;
@@ -36,19 +38,41 @@ in
     };
   };
 
-  # ── configuration ────────────────────────────────────────────────────────────
+  # ── configuration ──────────────────────────────────────────────────────────
   config = {
 
-    # ── packages ─────────────────────────────────────────────────────────────
-    environment.systemPackages = with pkgs; [
-      grafana-loki
-      grafana-alloy
-      syft
-      trivy
-    ] ++ lib.optionals cfg.falco.enable [ pkgs.falco ]
-    ++ lib.optionals cfg.otel.enable [ otelCollector ];
+    # ── SOPS secret for Grafana ─────────────────────────────────────────────
+    # The secret_key must not land in the Nix store (world-readable).
+    # Add the key to secrets/tailscale.yaml (or a dedicated grafana.yaml):
+    #   sops secrets/tailscale.yaml
+    #   # add key: grafana_secret_key: <random-32-char-string>
+    sops.secrets.grafana_secret_key = lib.mkIf cfg.enable {
+      owner = "grafana";
+    };
 
-    # ── Loki ─────────────────────────────────────────────────────────────────
+    # ── packages ─────────────────────────────────────────────────────────────
+    environment.systemPackages = with pkgs;
+      [
+        grafana-loki
+        grafana-alloy
+        syft
+        trivy
+      ]
+      ++ lib.optionals cfg.falco.enable [ pkgs.falco ]
+      # otelCollector resolved only when the feature is actually enabled.
+      ++ lib.optionals cfg.otel.enable [
+        (
+          # Try the contrib package first (has more receivers/exporters),
+          # fall back to the core collector. Both names have existed in
+          # different nixpkgs revisions; the or-chain is safe inside
+          # lib.optionals because it is only evaluated when otel.enable = true.
+          pkgs.opentelemetry-collector-contrib
+            or pkgs.otelcol-contrib
+            or pkgs.opentelemetry-collector
+        )
+      ];
+
+    # ── Loki ──────────────────────────────────────────────────────────────────
     services.loki = lib.mkIf cfg.enable {
       enable = true;
       configuration = {
@@ -92,9 +116,7 @@ in
       };
     };
 
-    # ── Prometheus ────────────────────────────────────────────────────────────
-    # exporters.node is nested here — never define services.prometheus a second
-    # time at the top level or Nix will throw "attribute already defined".
+    # ── Prometheus ─────────────────────────────────────────────────────────
     services.prometheus = lib.mkIf cfg.enable {
       enable = true;
       listenAddress = prometheusListenAddress;
@@ -125,7 +147,7 @@ in
       };
     };
 
-    # ── Grafana ───────────────────────────────────────────────────────────────
+    # ── Grafana ────────────────────────────────────────────────────────────
     services.grafana = lib.mkIf cfg.enable {
       enable = true;
       settings = {
@@ -137,11 +159,14 @@ in
         analytics.reporting_enabled = false;
         security = {
           admin_user = "admin";
-          admin_password = "admin";
-
+          # admin_password intentionally left at default ("admin") for first
+          # boot — change it in the UI immediately after setup.
           disable_gravatar = true;
 
-          secret_key = "SW2YcwTIb9zpOOhoPsMm";
+          # secret_key is loaded from a SOPS-managed file at runtime so it
+          # never appears in the Nix store. The sops.secrets.grafana_secret_key
+          # declaration above writes the secret to /run/secrets/grafana_secret_key.
+          secret_key = "$__file{${config.sops.secrets.grafana_secret_key.path}}";
         };
       };
       provision = {
@@ -167,7 +192,7 @@ in
       };
     };
 
-    # ── audit (unconditional) ─────────────────────────────────────────────────
+    # ── audit (unconditional) ───────────────────────────────────────────────
     security.audit = {
       enable = true;
       rules = [
@@ -186,7 +211,7 @@ in
     };
     security.auditd.enable = true;
 
-    # ── journald (unconditional) ──────────────────────────────────────────────
+    # ── journald (unconditional) ────────────────────────────────────────────
     services.journald.extraConfig = ''
       Storage=persistent
       Compress=yes
@@ -195,7 +220,7 @@ in
       RateLimitBurst=10000
     '';
 
-    # ── Falco ─────────────────────────────────────────────────────────────────
+    # ── Falco ──────────────────────────────────────────────────────────────
     systemd.services.falco = lib.mkIf cfg.falco.enable {
       description = "Falco runtime security detection";
       wantedBy = [ "multi-user.target" ];
@@ -207,7 +232,7 @@ in
       };
     };
 
-    # ── Grafana Alloy (replaces Promtail) ─────────────────────────────────────
+    # ── Grafana Alloy ──────────────────────────────────────────────────────
     environment.etc."alloy/config.alloy" = lib.mkIf (cfg.enable && cfg.alloy.enable) {
       text = ''
         logging {
@@ -243,7 +268,7 @@ in
       };
     };
 
-    # ── OpenTelemetry collector ───────────────────────────────────────────────
+    # ── OpenTelemetry collector ─────────────────────────────────────────────
     environment.etc."otelcol/config.yaml" = lib.mkIf cfg.otel.enable {
       text = ''
         receivers:
@@ -275,7 +300,16 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       serviceConfig = {
-        ExecStart = "${otelCollector}/bin/otelcol --config=/etc/otelcol/config.yaml";
+        # The package is resolved here, inside mkIf, so evaluation only
+        # happens when otel.enable = true.
+        ExecStart =
+          let
+            otelPkg =
+              pkgs.opentelemetry-collector-contrib
+                or pkgs.otelcol-contrib
+                or pkgs.opentelemetry-collector;
+          in
+          "${otelPkg}/bin/otelcol --config=/etc/otelcol/config.yaml";
         Restart = "always";
         RestartSec = "10s";
       };

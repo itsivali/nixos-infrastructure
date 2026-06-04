@@ -37,7 +37,7 @@
       # ports here only when a service should be reachable from that network.
       interfaces = {
         tailscale0 = {
-          allowedTCPPorts = [ ];
+          allowedTCPPorts = [22 ];
           allowedUDPPorts = [ ];
         };
       };

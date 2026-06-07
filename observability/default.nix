@@ -163,6 +163,11 @@ in
             # admin_password intentionally left at default ("admin") for first
             # boot — change it in the UI immediately after setup.
             disable_gravatar = true;
+            # Fallback key for fresh installs before SOPS is configured.
+            # This is the former nixpkgs default — safe to use when the
+            # Grafana DB has no encrypted secrets (i.e. a clean install).
+            # The optionalAttrs below overrides this once secrets.enable = true.
+            secret_key = "SW2YcwTIb9zpOOhoPsMm";
           }
           // lib.optionalAttrs config.ivali.secrets.enable {
             # secret_key is loaded from a SOPS-managed file at runtime so it

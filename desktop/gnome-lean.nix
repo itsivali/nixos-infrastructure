@@ -1,6 +1,9 @@
-# desktop/gnome-lean.nix
-
-{ lib, pkgs, ... }:
+# desktop/gnome.nix
+{ config
+, pkgs
+, lib
+, ...
+}:
 
 let
   # Flip to true only when you need GNOME Remote Desktop (RDP/VNC via pipewire).
@@ -19,6 +22,7 @@ in
 
   services.displayManager.gdm = {
     enable = true;
+    wayland = true;
     # Auto-suspend after 20 min on the login screen (saves power on laptops).
     autoSuspend = true;
   };
@@ -26,25 +30,25 @@ in
   services.desktopManager.gnome.enable = true;
 
   ##########################################################
-  # GNOME SERVICES — disable what you don't need
+  # CORE GNOME SERVICES
+  # core-apps.enable = true pulls in Nautilus, gnome-terminal,
+  # and other first-party essentials automatically.
   ##########################################################
 
   services.gnome = {
-    # core-apps pulls in a large set of first-party GNOME apps.
-    # Set true if you rely on any (Files, Calendar, Contacts …).
-    core-apps.enable = false;
+    core-apps.enable = true;
     core-developer-tools.enable = false;
 
-    # Online-accounts daemon is only needed if you use GNOME integration
-    # with Google/Microsoft/etc. accounts. Disable for a clean desktop.
+    # Online-accounts daemon — only needed for Google/Microsoft
+    # account integration. Disable for a clean desktop.
     gnome-online-accounts.enable = lib.mkForce false;
 
-    # Tinysparql (formerly Tracker) + LocalSearch index your files for
-    # search in Nautilus. Disable if you don't use that feature.
+    # Tinysparql (formerly Tracker) + LocalSearch index files
+    # for Nautilus search. Disable if unused — saves RAM/CPU.
     tinysparql.enable = lib.mkForce false;
     localsearch.enable = lib.mkForce false;
 
-    # Software centre is replaced by Nix — no need for PackageKit either.
+    # Software centre replaced by Nix.
     gnome-software.enable = lib.mkForce false;
     gnome-user-share.enable = lib.mkForce false;
 
@@ -72,7 +76,7 @@ in
 
   ##########################################################
   # STORAGE + VIRTUAL FILESYSTEMS
-  # gvfs  → Nautilus trash, MTP, SFTP, SMB mounts
+  # gvfs    → Nautilus trash, MTP, SFTP, SMB mounts
   # udisks2 → automounting USB drives / SD cards
   ##########################################################
 
@@ -116,23 +120,20 @@ in
   xdg.portal = {
     enable = true;
     xdgOpenUsePortal = true;
-
     extraPortals = with pkgs; [
       xdg-desktop-portal-gnome
       xdg-desktop-portal-gtk
     ];
-
-    # Let each DE claim its own portals; fall back to any available.
     config.common.default = "*";
     config.gnome.default = [ "gnome" "gtk" ];
   };
 
   ##########################################################
   # WAYLAND ENVIRONMENT VARIABLES
-  # NIXOS_OZONE_WL  → enables native Wayland in Electron/Chromium apps
+  # NIXOS_OZONE_WL     → native Wayland in Electron/Chromium
   # MOZ_ENABLE_WAYLAND → Firefox native Wayland
-  # GTK_USE_PORTAL  → route GTK file-chooser through xdg-portal
-  # CLUTTER_BACKEND → helps older GNOME shell with Wayland selection
+  # GTK_USE_PORTAL     → GTK file-chooser via xdg-portal
+  # CLUTTER_BACKEND    → helps GNOME shell with Wayland selection
   ##########################################################
 
   environment.sessionVariables = {
@@ -144,8 +145,6 @@ in
 
   ##########################################################
   # FONTS — hinting & anti-aliasing defaults
-  # These dconf keys are the GNOME-level fallback; per-user
-  # settings in Home Manager take precedence.
   ##########################################################
 
   fonts.fontconfig = {
@@ -159,7 +158,8 @@ in
 
   ##########################################################
   # POWER MANAGEMENT (laptop-friendly defaults)
-  # upower monitors battery; logind handles lid/power-button.
+  # upower  → battery monitoring
+  # logind  → lid / power-button / idle behaviour
   ##########################################################
 
   services.upower.enable = true;
@@ -167,33 +167,32 @@ in
   services.logind.settings.Login = {
     HandleLidSwitch = "suspend";
     HandleLidSwitchExternalPower = "lock";
-
     HandlePowerKey = "suspend";
     IdleAction = "suspend";
     IdleActionSec = "30min";
   };
 
   ##########################################################
-  # PRINTING (optional — comment out if you have no printer)
+  # PRINTING (disabled — enable + add driver if needed)
   ##########################################################
 
   services.printing.enable = false;
-  # services.printing.drivers = [ pkgs.gutenprint ];  # add your driver
+  # services.printing.drivers = [ pkgs.gutenprint ];
 
   ##########################################################
-  # BLUETOOTH (optional — comment out if unused)
+  # BLUETOOTH
   ##########################################################
 
   hardware.bluetooth = {
     enable = true;
-    powerOnBoot = false; # don't waste power if you don't use BT often
-    settings.General.Experimental = "true"; # enables battery % in GNOME
+    powerOnBoot = false; # don't waste power if BT is rarely used
+    settings.General.Experimental = "true"; # battery % in GNOME
   };
 
   services.blueman.enable = true;
 
   ##########################################################
-  # SYSTEM PACKAGES — minimal GNOME tooling
+  # SYSTEM PACKAGES — GNOME tooling on top of core-apps
   ##########################################################
 
   environment.systemPackages =
@@ -216,32 +215,33 @@ in
 
   ##########################################################
   # BLOAT REMOVAL
-  # gnome-tour and gnome-connections no longer exist in
-  # nixpkgs — do NOT reference them here.
   ##########################################################
 
   environment.gnome.excludePackages = with pkgs; [
-    # tracker-miners was renamed to localsearch in nixos-unstable
+    # Indexer — disabled above, exclude the package too
     localsearch
 
     # Software centre — Nix handles this
     gnome-software
     gnome-initial-setup
 
-    # First-party apps you likely don't want
+    # Browser + tour
+    epiphany
+    gnome-tour
+
+    # Media apps you likely don't want
     gnome-music
     gnome-photos
-    gnome-contacts
-    gnome-maps
     gnome-weather
-    gnome-calendar
-    gnome-characters
+    gnome-maps
+    gnome-contacts
+    totem
 
     # Misc
     simple-scan
     yelp
-    epiphany # GNOME Web / Epiphany browser
-    evolution # email + calendar suite
-    totem # GNOME Videos
+    gnome-calendar
+    gnome-characters
+    evolution
   ];
 }

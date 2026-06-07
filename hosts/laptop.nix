@@ -1,10 +1,9 @@
+# hosts/laptop.nix
 { config, gitlabUrl, hostName, lib, pkgs, ... }:
 
 {
   ###########################################################
-
   # INSTALL-TIME SECRETS
-
   ###########################################################
 
   options.ivali.secrets.enable = lib.mkOption {
@@ -18,25 +17,34 @@
 
   config = {
     ###########################################################
-
     # HOST IDENTITY
-
     ###########################################################
 
     networking.hostName = hostName;
 
     ###########################################################
-
     # LOCALE
-
     ###########################################################
 
     i18n.defaultLocale = "en_US.UTF-8";
 
     ###########################################################
+    # AMD GPU
+    # Load amdgpu early in initrd so the display is available
+    # as soon as the kernel hands off to systemd. Without this
+    # the screen goes black after early boot messages.
+    ###########################################################
 
+    boot.initrd.kernelModules = [ "amdgpu" ];
+    services.xserver.videoDrivers = [ "amdgpu" ];
+
+    hardware.graphics = {
+      enable = true;
+      enable32Bit = true;
+    };
+
+    ###########################################################
     # HOST PACKAGES
-
     ###########################################################
 
     environment.systemPackages =
@@ -50,9 +58,7 @@
       ];
 
     ###########################################################
-
     # SOPS
-
     ###########################################################
 
     sops = lib.mkIf config.ivali.secrets.enable {
@@ -71,63 +77,39 @@
     };
 
     ###########################################################
-
     # ZERO-TRUST NETWORKING
-
     ###########################################################
 
     ivali.tailscale = {
       enable = true;
 
-      # Automatically enroll into the tailnet using the
-      # SOPS-managed auth key once secrets are enabled.
       authKeyFile =
         lib.mkIf config.ivali.secrets.enable
           config.sops.secrets.tailscale_authkey.path;
 
-      # Matches your ACL model.
       tag = "tag:admin";
-
-      # Prague acts as an exit node.
       advertiseExitNode = true;
-
-      # Prevent Tailscale from taking over DNS.
       acceptDns = false;
-
-      # Prevent automatic route acceptance.
       acceptRoutes = false;
-
-      # Tailnet split-DNS domain.
       tailnetDomain = "codlet-trench.ts.net";
-
     };
 
     ###########################################################
-
     # NIX / GITOPS
-
     ###########################################################
 
     nix.settings.warn-dirty = false;
 
     system.autoUpgrade = {
-      # Enable after hosts/hardware-configuration.nix has been committed and
-      # pushed, so the remote flake matches the installed machine.
       enable = false;
-
       flake = "git+${gitlabUrl}#${hostName}";
-
       flags = [
         "--refresh"
         "--print-build-logs"
       ];
-
       dates = "04:30";
-
       randomizedDelaySec = "45min";
-
       allowReboot = false;
-
     };
   };
 }

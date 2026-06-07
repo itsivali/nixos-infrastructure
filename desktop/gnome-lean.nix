@@ -22,7 +22,6 @@ in
 
   services.displayManager.gdm = {
     enable = true;
-    wayland = true;
     # Auto-suspend after 20 min on the login screen (saves power on laptops).
     autoSuspend = true;
   };

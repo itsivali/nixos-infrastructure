@@ -24,6 +24,7 @@
       system = "x86_64-linux";
       username = "ivali";
       hostName = "prague";
+      gitlabSshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL6Yyxm9WHZEZ9COGXkkwlWsvgvN7RYX59SjdYGrucEt itsivali@outlook.com.com";
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
@@ -78,8 +79,11 @@
             };
             users.users.${username} = {
               isNormalUser = true;
-              description = "Willis Ivali";
+              description = "Wilis Ivali";
               extraGroups = [ "wheel" "networkmanager" "docker" "video" "audio" ];
+              openssh.authorizedKeys.keys = [
+                gitlabSshKey
+              ];
             };
             home-manager = {
               useGlobalPkgs = true;

@@ -9,13 +9,15 @@
 #     'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
 #
 # Override defaults via environment variables before running:
-#   REPO_URL, REPO_DIR, HOST, BRANCH
+#   REPO_URL, GIT_PUSH_URL, REPO_DIR, HOST, BRANCH
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://gitlab.com/willisivali/nixos-infrastructure.git}"
+GIT_PUSH_URL="${GIT_PUSH_URL:-git@gitlab.com:willisivali/nixos-infrastructure.git}"
 REPO_DIR="${REPO_DIR:-$HOME/nixos-infrastructure}"
 HOST="${HOST:-prague}"
 BRANCH="${BRANCH:-main}"
+EXPECTED_USER="${EXPECTED_USER:-ivali}"
 NIX_FEATURES="nix-command flakes"
 
 # ── logging ────────────────────────────────────────────────────────────────────
@@ -48,6 +50,8 @@ require_nixos() {
   command -v sudo >/dev/null 2>&1 || die "sudo is required."
   [[ "$(id -u)" -ne 0 ]] \
     || die "Run as your normal user, not root. The script calls sudo only when needed."
+  [[ "$(id -un)" == "$EXPECTED_USER" ]] \
+    || die "This flake configures the '$EXPECTED_USER' user. Log in as '$EXPECTED_USER' before running the installer."
 }
 
 enable_nix_features() {
@@ -87,6 +91,8 @@ clone_or_update_repo() {
     mkdir -p "$(dirname "$REPO_DIR")"
     nix shell nixpkgs#git --command git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
   fi
+
+  nix shell nixpkgs#git --command git -C "$REPO_DIR" remote set-url --push origin "$GIT_PUSH_URL"
 }
 
 copy_hardware_config() {
@@ -171,6 +177,12 @@ Next steps
      git commit -m "chore: add hardware configuration for ${HOST}"
      git push
 
+4. Test GitLab SSH:
+     ssh -T git@gitlab.com
+
+5. After the hardware file is pushed, enable system.autoUpgrade in:
+     hosts/laptop.nix
+
 Local services (after reboot)
 ──────────────────────────────
   Grafana    http://localhost:3000   (admin / admin on first boot)
@@ -185,7 +197,7 @@ Docs
   Grafana    https://grafana.com/docs/grafana/latest/getting-started/
   Prometheus https://prometheus.io/docs/tutorials/getting_started/
   Loki       https://grafana.com/docs/loki/latest/configuration/
-  Promtail   https://grafana.com/docs/loki/latest/send-data/promtail/installation/
+  Alloy      https://grafana.com/docs/alloy/latest/
 EOF
 }
 

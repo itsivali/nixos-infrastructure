@@ -46,7 +46,7 @@ in
     # Add the key to secrets/tailscale.yaml (or a dedicated grafana.yaml):
     #   sops secrets/tailscale.yaml
     #   # add key: grafana_secret_key: <random-32-char-string>
-    sops.secrets.grafana_secret_key = lib.mkIf cfg.enable {
+    sops.secrets.grafana_secret_key = lib.mkIf (cfg.enable && config.ivali.secrets.enable) {
       owner = "grafana";
     };
 
@@ -157,17 +157,19 @@ in
           domain = "localhost";
         };
         analytics.reporting_enabled = false;
-        security = {
-          admin_user = "admin";
-          # admin_password intentionally left at default ("admin") for first
-          # boot — change it in the UI immediately after setup.
-          disable_gravatar = true;
-
-          # secret_key is loaded from a SOPS-managed file at runtime so it
-          # never appears in the Nix store. The sops.secrets.grafana_secret_key
-          # declaration above writes the secret to /run/secrets/grafana_secret_key.
-          secret_key = "$__file{${config.sops.secrets.grafana_secret_key.path}}";
-        };
+        security =
+          {
+            admin_user = "admin";
+            # admin_password intentionally left at default ("admin") for first
+            # boot — change it in the UI immediately after setup.
+            disable_gravatar = true;
+          }
+          // lib.optionalAttrs config.ivali.secrets.enable {
+            # secret_key is loaded from a SOPS-managed file at runtime so it
+            # never appears in the Nix store. The sops.secrets.grafana_secret_key
+            # declaration above writes the secret to /run/secrets/grafana_secret_key.
+            secret_key = "$__file{${config.sops.secrets.grafana_secret_key.path}}";
+          };
       };
       provision = {
         enable = true;

@@ -42,10 +42,8 @@ in
     inherit username;
     homeDirectory = "/home/${username}";
 
-    # Keep in sync with system.stateVersion in flake.nix.
-    # Use the NixOS release that was current when this machine was first set up.
-    # Valid values: "24.05", "24.11", "25.05" — "25.11" does not exist.
-    stateVersion = "24.11";
+    # Keep in sync with system.stateVersion in flake.nix for a fresh install.
+    stateVersion = "26.05";
 
     packages = import ../packages/user { inherit pkgs; };
 
@@ -66,7 +64,7 @@ in
 
     settings = {
       user = {
-        name = "Willis Ivali";
+        name = "Wilis Ivali";
         email = "itsivali@outlook.com";
       };
 

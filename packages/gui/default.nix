@@ -7,5 +7,6 @@ with pkgs; [
   obsidian
   bitwarden-desktop
   vlc
+  firefox
 
 ]

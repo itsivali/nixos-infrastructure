@@ -1,9 +1,17 @@
+# boot/default.nix
 { pkgs, ... }:
-
 {
   boot = {
     kernelPackages = pkgs.linuxPackages_zen;
+
+    # Load amdgpu in initrd so the display is handed off cleanly
+    # from the kernel to the display manager. Without this the screen
+    # goes black with a cursor when GDM takes over.
+    initrd.kernelModules = [ "amdgpu" ];
+
     kernelParams = [
+      "amdgpu.dc=1" # enable Display Core — required for modern AMD APUs/GPUs
+      "amdgpu.audio=0" # disable HDMI audio via amdgpu (use snd_hda_intel instead)
       "quiet"
       "splash"
       "threadirqs"
@@ -45,3 +53,4 @@
     priority = 100;
   };
 }
+

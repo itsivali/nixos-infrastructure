@@ -25,16 +25,15 @@
 
     apparmor = {
       enable = true;
-      # killUnconfinedConfinables = true would terminate Docker containers at
-      # boot because they run unconfined by default. Keep false.
       killUnconfinedConfinables = false;
       packages = [ pkgs.apparmor-profiles ];
     };
 
-    # Minimal audit rules — the execve catch-all was removed because it
-    # generates thousands of audit_log_subj_ctx errors at boot when
-    # AppArmor labels haven't been assigned to early processes yet.
-    # File-watch rules are safe and don't trigger the spam.
+    # Audit rules — file-watch only, no execve catch-all.
+    # The execve rules + -e 2 (immutable mode) were causing two problems:
+    #   1. audit_log_subj_ctx spam because AppArmor labels aren't ready yet
+    #   2. rules file conflict when merged with any other audit config
+    # -e 1 (enabled, not immutable) lets auditd reload cleanly on rebuild.
     audit.enable = true;
     audit.rules = [
       "-w /etc/passwd -p wa -k identity"
@@ -61,27 +60,13 @@
     };
   };
 
-  # Ensure auditd starts after AppArmor so labels are present before
-  # rules load — this eliminates the audit_log_subj_ctx spam.
+  # auditd must start after AppArmor so labels exist before rules load.
   systemd.services.auditd = {
     after = [ "apparmor.service" "local-fs.target" ];
     wants = [ "apparmor.service" ];
   };
 
-  # Load the docker-default AppArmor profile only when Docker is enabled.
-  # Without the mkIf guard this service fails on machines without Docker.
-  systemd.services.apparmor-docker-default = lib.mkIf config.virtualisation.docker.enable {
-    description = "Load docker-default AppArmor profile";
-    wantedBy = [ "multi-user.target" ];
-    before = [ "docker.service" ];
-    after = [ "apparmor.service" ];
-    requires = [ "apparmor.service" ];
-    serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
-      ExecStart = "${pkgs.apparmor-parser}/bin/apparmor_parser -r -W ${pkgs.apparmor-profiles}/etc/apparmor.d/docker-default";
-    };
-  };
+
 
   services.fail2ban = {
     enable = true;
@@ -119,3 +104,4 @@
     lynis
   ];
 }
+

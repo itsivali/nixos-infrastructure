@@ -1,5 +1,4 @@
 { ... }:
-
 {
   imports = [
     ./hosts/hardware-configuration.nix
@@ -16,4 +15,6 @@
     ./observability
     ./ci/gitlab-runner.nix
   ];
+
+  sops.age.keyFile = "/home/ivali/.config/sops/age/keys.txt";
 }

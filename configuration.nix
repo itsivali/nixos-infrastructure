@@ -9,6 +9,7 @@
     ./recovery/rollback.nix
     ./boot
     ./networking
+    ./networking/msmtp
     ./security
     ./developer
     ./desktop/gnome-lean.nix

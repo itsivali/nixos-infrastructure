@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/run/current-system/sw/bin/bash
 # install-fresh-nixos.sh
 # Bootstrap a fresh NixOS machine from the willisivali/nixos-infrastructure flake.
 #

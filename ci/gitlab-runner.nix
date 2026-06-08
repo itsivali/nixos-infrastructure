@@ -91,7 +91,7 @@ in
     services.gitlab-runner = {
       enable = true;
 
-      concurrency = cfg.concurrent;
+      concurrent = cfg.concurrent;
 
       services.nix-shell = {
         executor = "shell";

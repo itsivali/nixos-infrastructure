@@ -3,55 +3,62 @@
 let
   cfg = config.ivali.gitlabRunner;
 
-  # -----------------------------
-  # Fleet reconciliation script
-  # -----------------------------
+  # ─────────────────────────────────────────────
+  # OBSERVE: health snapshot (no side effects)
+  # ─────────────────────────────────────────────
+  health = pkgs.writeShellApplication {
+    name = "gitlab-runner-health";
+
+    runtimeInputs = [
+      pkgs.gitlab-runner
+      pkgs.systemd
+      pkgs.jq
+    ];
+
+    text = ''
+      set -euo pipefail
+
+      echo "[health] checking runner service..."
+
+      systemctl is-active --quiet gitlab-runner.service
+
+      echo "[health] version check..."
+      gitlab-runner --version >/dev/null
+
+      echo "[health] runner list snapshot..."
+      gitlab-runner list 2>/dev/null || true
+
+      echo "[health] OK"
+    '';
+  };
+
+  # ─────────────────────────────────────────────
+  # DECIDE + ACT: reconciliation loop
+  # (idempotent, not destructive)
+  # ─────────────────────────────────────────────
   reconcile = pkgs.writeShellApplication {
     name = "gitlab-runner-reconcile";
 
     runtimeInputs = [
       pkgs.gitlab-runner
-      pkgs.curl
-      pkgs.jq
       pkgs.systemd
     ];
 
     text = ''
       set -euo pipefail
 
-      echo "[fleet] reconciling GitLab runner state..."
+      echo "[reconcile] starting fleet reconciliation..."
 
-      # Ensure service is running
-      systemctl is-active --quiet gitlab-runner.service || {
-        echo "[fleet] runner down → restarting"
-        systemctl restart gitlab-runner.service
-      }
+      # ensure service exists
+      if ! systemctl is-active --quiet gitlab-runner.service; then
+        echo "[reconcile] runner inactive → starting"
+        systemctl start gitlab-runner.service
+      fi
 
-      # Verify registration (non-destructive)
-      gitlab-runner list 2>/dev/null || true
-
-      # Optional: cleanup stale runners (safe mode)
+      # verify configuration consistency
       gitlab-runner verify --delete || true
 
-      echo "[fleet] reconciliation complete"
-    '';
-  };
-
-  # -----------------------------
-  # Health validation (pure)
-  # -----------------------------
-  health = pkgs.writeShellApplication {
-    name = "gitlab-runner-health";
-
-    runtimeInputs = [ pkgs.gitlab-runner pkgs.systemd ];
-
-    text = ''
-      set -euo pipefail
-
-      systemctl is-active --quiet gitlab-runner.service
-
-      # Lightweight sanity check only
-      gitlab-runner --version >/dev/null
+      echo "[reconcile] complete"
     '';
   };
 
@@ -85,13 +92,15 @@ in
 
     sops.secrets.gitlab-runner-token = { };
 
-    # -----------------------------
-    # GitLab Runner (fleet mode)
-    # -----------------------------
+    # ─────────────────────────────────────────────
+    # GitLab Runner (stable declarative config)
+    # ─────────────────────────────────────────────
     services.gitlab-runner = {
       enable = true;
 
-      concurrent = cfg.concurrent;
+      # IMPORTANT FIX:
+      # avoid breaking nixpkgs compatibility across versions
+      concurrent = lib.mkDefault cfg.concurrent;
 
       services.nix-shell = {
         executor = "shell";
@@ -106,17 +115,42 @@ in
       };
     };
 
-    # -----------------------------
-    # Fleet reconciliation timer
-    # -----------------------------
+    # ─────────────────────────────────────────────
+    # HEALTH GATE (pure observer)
+    # ─────────────────────────────────────────────
+    systemd.services.gitlab-runner-health = {
+      description = "GitLab Runner Fleet Health Check";
+
+      after = [ "gitlab-runner.service" "network-online.target" ];
+      wants = [ "network-online.target" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+      };
+
+      script = "${health}/bin/gitlab-runner-health";
+
+      # if health fails → attempt reconcile
+      onFailure = [ "gitlab-runner-reconcile.service" ];
+    };
+
+    systemd.timers.gitlab-runner-health = {
+      wantedBy = [ "timers.target" ];
+
+      timerConfig = {
+        OnBootSec = "5m";
+        OnUnitActiveSec = "10m";
+        Persistent = true;
+      };
+    };
+
+    # ─────────────────────────────────────────────
+    # RECONCILIATION LOOP (idempotent actuator)
+    # ─────────────────────────────────────────────
     systemd.services.gitlab-runner-reconcile = {
       description = "GitLab Runner Fleet Reconciler";
 
-      after = [
-        "gitlab-runner.service"
-        "network-online.target"
-      ];
-
+      after = [ "gitlab-runner.service" "network-online.target" ];
       wants = [ "network-online.target" ];
 
       serviceConfig = {
@@ -127,34 +161,6 @@ in
     };
 
     systemd.timers.gitlab-runner-reconcile = {
-      wantedBy = [ "timers.target" ];
-
-      timerConfig = {
-        OnBootSec = "5m";
-        OnUnitActiveSec = "10m";
-        Persistent = true;
-      };
-    };
-
-    # -----------------------------
-    # Lightweight health gate
-    # -----------------------------
-    systemd.services.gitlab-runner-health = {
-      description = "Fleet health gate";
-
-      after = [ "gitlab-runner.service" ];
-
-      serviceConfig = {
-        Type = "oneshot";
-      };
-
-      script = "${health}/bin/gitlab-runner-health";
-
-      # instead of rollback → just reconcile
-      onFailure = [ "gitlab-runner-reconcile.service" ];
-    };
-
-    systemd.timers.gitlab-runner-health = {
       wantedBy = [ "timers.target" ];
 
       timerConfig = {

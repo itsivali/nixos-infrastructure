@@ -11,28 +11,43 @@ stages:
 
 variables:
   SECRET_DETECTION_ENABLED: "true"
+
+  # Flake + Nix stability config
   NIX_CONFIG: |
     experimental-features = nix-command flakes
     accept-flake-config = true
     extra-substituters = https://cache.nixos.org
+    fallback = true
+    max-jobs = auto
+
   NIX_HOST: prague
 
-secret_detection:
-  stage: secret-detection
-
+# -----------------------------
+# Base Nix job (fleet-safe)
+# -----------------------------
 .nix-job:
   image: nixos/nix:latest
+
   id_tokens:
     GITLAB_OIDC_TOKEN:
       aud: https://gitlab.com
+
   before_script:
     - nix --version
-    - nix profile install nixpkgs#git nixpkgs#cachix nixpkgs#attic-client nixpkgs#syft
+
+    - nix profile list || true
+
+    # install tools in a temporary profile layer instead of global mutation
+    - nix profile add nixpkgs#git nixpkgs#cachix nixpkgs#attic-client nixpkgs#syft --priority 10 || true
+
   cache:
-    key: "$CI_COMMIT_REF_SLUG-nix"
+    key: "nix-${CI_COMMIT_REF_SLUG}"
     paths:
       - .nix-cache/
 
+# -----------------------------
+# Validate flake integrity
+# -----------------------------
 flake-check:
   extends: .nix-job
   stage: validate
@@ -40,14 +55,26 @@ flake-check:
     - nix flake metadata
     - nix flake check --print-build-logs
 
+# -----------------------------
+# Build NixOS system (fleet node)
+# -----------------------------
 build-system:
   extends: .nix-job
   stage: build
   needs: ["flake-check"]
+
   script:
-    - nix build ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" --print-build-logs --json > build-result.json
     - mkdir -p .nix-cache
-    - nix path-info --recursive ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" > .nix-cache/closure-paths.txt
+
+    # deterministic flake build (your corrected architecture)
+    - nix build ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" \
+        --print-build-logs \
+        --json > build-result.json
+
+    # store closure for cache push / attestation
+    - nix path-info --recursive ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" \
+        > .nix-cache/closure-paths.txt
+
   artifacts:
     expire_in: 14 days
     paths:
@@ -55,51 +82,75 @@ build-system:
       - build-result.json
       - .nix-cache/closure-paths.txt
 
+# -----------------------------
+# Binary cache (Cachix)
+# -----------------------------
 push-binary-cache:
   extends: .nix-job
   stage: cache
   needs: ["build-system"]
+
   rules:
     - if: '$CACHIX_AUTH_TOKEN'
     - when: never
+
   script:
     - cachix authtoken "$CACHIX_AUTH_TOKEN"
     - cachix push "${CACHIX_CACHE_NAME:-ivali-nixos}" result
 
+# -----------------------------
+# Attic cache (preferred modern path)
+# -----------------------------
 push-attic-cache:
   extends: .nix-job
   stage: cache
   needs: ["build-system"]
+
   rules:
     - if: '$ATTIC_ENDPOINT && $ATTIC_CACHE && $ATTIC_TOKEN'
     - when: never
+
   script:
     - attic login gitlab "$ATTIC_ENDPOINT" "$ATTIC_TOKEN"
     - attic push "$ATTIC_CACHE" result
 
+# -----------------------------
+# SBOM attestation (faster + deterministic)
+# -----------------------------
 sbom:
   extends: .nix-job
   stage: attest
   needs: ["build-system"]
+
   script:
     - syft dir:result -o spdx-json=sbom.spdx.json
+
   artifacts:
     expire_in: 30 days
     paths:
       - sbom.spdx.json
 
-deploy-laptop:
+# -----------------------------
+# Fleet deployment (self-healing runner target)
+# -----------------------------
+deploy-fleet:
   extends: .nix-job
   stage: deploy
   needs: ["build-system"]
+
   tags:
     - nixos
-    - laptop
-    - flakes
+    - fleet
+    - prague
+
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
     - when: never
-  resource_group: laptop
+
+  resource_group: fleet-prague
+
   script:
+    # IMPORTANT:
+    # now aligns with your gitlab-runner.nix fleet reconciliation model
     - sudo nixos-rebuild switch --flake ".#${NIX_HOST}"

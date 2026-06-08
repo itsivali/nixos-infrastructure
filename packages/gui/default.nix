@@ -8,5 +8,6 @@ with pkgs; [
   bitwarden-desktop
   vlc
   firefox
+  libreoffice-fresh
 
 ]

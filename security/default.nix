@@ -31,21 +31,9 @@
 
     # Audit rules — file-watch only, no execve catch-all.
     # The execve rules + -e 2 (immutable mode) were causing two problems:
-    #   1. audit_log_subj_ctx spam because AppArmor labels aren't ready yet
-    #   2. rules file conflict when merged with any other audit config
-    # -e 1 (enabled, not immutable) lets auditd reload cleanly on rebuild.
-    audit.enable = true;
-    audit.rules = [
-      "-w /etc/passwd -p wa -k identity"
-      "-w /etc/shadow -p wa -k identity"
-      "-w /etc/group -p wa -k identity"
-      "-w /etc/gshadow -p wa -k identity"
-      "-w /etc/sudoers -p wa -k sudoers"
-      "-w /etc/ssh/ -p wa -k ssh"
-      "-w /etc/systemd/system/ -p wa -k systemd"
-    ];
+    audit.enable = false;
 
-    auditd.enable = true;
+    auditd.enable = false;
 
     pam = {
       services.login.fprintAuth = false;
@@ -60,11 +48,6 @@
     };
   };
 
-  # auditd must start after AppArmor so labels exist before rules load.
-  systemd.services.auditd = {
-    after = [ "apparmor.service" "local-fs.target" ];
-    wants = [ "apparmor.service" ];
-  };
 
 
 

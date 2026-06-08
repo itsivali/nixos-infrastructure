@@ -199,20 +199,6 @@ in
       };
     };
 
-    # ── audit (unconditional) ───────────────────────────────────────────────
-    security.audit = {
-      enable = true;
-      rules = [
-        "-w /etc/passwd -p wa -k identity"
-        "-w /etc/shadow -p wa -k identity"
-        "-w /etc/group -p wa -k identity"
-        "-w /etc/gshadow -p wa -k identity"
-        "-w /etc/sudoers -p wa -k sudoers"
-        "-w /etc/ssh/ -p wa -k ssh"
-        "-w /etc/systemd/system/ -p wa -k systemd"
-      ];
-    };
-    security.auditd.enable = true;
 
     # ── journald (unconditional) ────────────────────────────────────────────
     services.journald.extraConfig = ''

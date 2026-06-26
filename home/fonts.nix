@@ -22,8 +22,8 @@
     # Microsoft Office Compatibility Fonts (LibreOffice & System)
     # ─────────────────────────────────────────────────────────────────────────
     coreutils # Standard fallback tools
-    msttcorefonts # TrueType core fonts (Arial, Times New Roman, Comic Sans, etc.)
-    vista-fonts # Calibri, Cambria, Consolas, Candara, etc.
+    corefonts # <--- Changed from msttcorefonts to corefonts
+    vista-fonts # Calibri, Cambria, Consolas, Candara, etc. 
 
     # Open-source metrically compatible alternatives to modern MS Fonts
     # (Crucial for flawless LibreOffice formatting when MS fonts aren't enough)

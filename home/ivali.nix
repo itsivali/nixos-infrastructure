@@ -16,23 +16,30 @@
 # • VSCode
 # • Direnv + nix-direnv
 #
+##############################################################################
+# Imports
+##############################################################################
+
+imports = [
+./fonts.nix
+];
 
 { config, lib, pkgs, username, ... }:
 
 let
-  repoDir = "${config.home.homeDirectory}/nixos-infrastructure";
+repoDir = "${config.home.homeDirectory}/nixos-infrastructure";
 
-  autoFormatNix = pkgs.writeShellApplication {
-    name = "auto-format-nix-repo";
+autoFormatNix = pkgs.writeShellApplication {
+name = "auto-format-nix-repo";
 
-    runtimeInputs = with pkgs; [
-      bash
-      git
-      nix
-      watchexec
-    ];
+runtimeInputs = with pkgs; [
+bash
+git
+nix
+watchexec
+];
 
-    text = ''
+text = ''
       set -euo pipefail
 
       repo="${repoDir}"
@@ -50,209 +57,209 @@ let
         -- bash -lc \
         "cd \"$repo\" && nix --extra-experimental-features 'nix-command flakes' fmt"
     '';
-  };
+};
 
 in
 {
 
-  ##############################################################################
-  # Imports
-  ##############################################################################
+##############################################################################
+# Imports
+##############################################################################
 
-  imports = [ ];
+imports = [ ];
 
-  ##############################################################################
-  # Home
-  ##############################################################################
+##############################################################################
+# Home
+##############################################################################
 
-  home = {
-    inherit username;
-    homeDirectory = "/home/${username}";
-    stateVersion = "26.11";
+home = {
+inherit username;
+homeDirectory = "/home/${username}";
+stateVersion = "26.11";
 
-    packages = (import ../packages/user { inherit pkgs; }) ++ (with pkgs; [
-      # Shell
-      zsh-powerlevel10k
-      zsh-completions
+packages = (import ../packages/user { inherit pkgs; }) ++ (with pkgs; [
+# Shell
+zsh-powerlevel10k
+zsh-completions
 
-      # Better CLI
-      eza
-      bat
-      fd
-      ripgrep
-      tree
-      fzf
-      delta
+# Better CLI
+eza
+bat
+fd
+ripgrep
+tree
+fzf
+delta
 
-      # Monitoring
-      btop
-      fastfetch
+# Monitoring
+btop
+fastfetch
 
-      # Git
-      lazygit
-    ]);
+# Git
+lazygit
+]);
 
-    sessionVariables = {
-      EDITOR = "code --wait";
-      VISUAL = "code --wait";
-      PAGER = "bat";
-      MANPAGER = "sh -c 'col -bx | bat -l man -p'";
-      LESS = "-R";
-    };
-  };
+sessionVariables = {
+EDITOR = "code --wait";
+VISUAL = "code --wait";
+PAGER = "bat";
+MANPAGER = "sh -c 'col -bx | bat -l man -p'";
+LESS = "-R";
+};
+};
 
-  ##############################################################################
-  # Home Manager
-  ##############################################################################
+##############################################################################
+# Home Manager
+##############################################################################
 
-  programs.home-manager.enable = true;
-  home.enableNixpkgsReleaseCheck = false;
+programs.home-manager.enable = true;
+home.enableNixpkgsReleaseCheck = false;
 
-  ##############################################################################
-  # Git
-  ##############################################################################
+##############################################################################
+# Git
+##############################################################################
 
-  programs.git = {
-    enable = true;
+programs.git = {
+enable = true;
 
-    delta = {
-      enable = true;
-    };
+delta = {
+enable = true;
+};
 
-    lfs.enable = true;
+lfs.enable = true;
 
-    ignores = [
-      ".DS_Store"
-      "*.swp"
-      "*.tmp"
-      "result"
-    ];
+ignores = [
+".DS_Store"
+"*.swp"
+"*.tmp"
+"result"
+];
 
-    settings = {
-      user = {
-        name = "Wilis Ivali";
-        email = "itsivali@outlook.com";
-      };
+settings = {
+user = {
+name = "Wilis Ivali";
+email = "itsivali@outlook.com";
+};
 
-      init.defaultBranch = "main";
-      pull.rebase = true;
-      rerere.enabled = true;
-      push.autoSetupRemote = true;
-      fetch.prune = true;
+init.defaultBranch = "main";
+pull.rebase = true;
+rerere.enabled = true;
+push.autoSetupRemote = true;
+fetch.prune = true;
 
-      core = {
-        editor = "code --wait";
-      };
+core = {
+editor = "code --wait";
+};
 
-      color.ui = true;
-      merge.conflictstyle = "zdiff3";
-    };
-  };
+color.ui = true;
+merge.conflictstyle = "zdiff3";
+};
+};
 
-  ##############################################################################
-  # ZSH
-  ##############################################################################
+##############################################################################
+# ZSH
+##############################################################################
 
-  programs.zsh = {
-    enable = true;
-    autocd = true;
-    enableCompletion = true;
-    autosuggestion.enable = true;
-    syntaxHighlighting.enable = true;
+programs.zsh = {
+enable = true;
+autocd = true;
+enableCompletion = true;
+autosuggestion.enable = true;
+syntaxHighlighting.enable = true;
 
-    history = {
-      size = 100000;
-      save = 100000;
-      path = "${config.xdg.dataHome}/zsh/history";
-      ignoreDups = true;
-      ignoreSpace = true;
-      share = true;
-      extended = true;
-    };
+history = {
+size = 100000;
+save = 100000;
+path = "${config.xdg.dataHome}/zsh/history";
+ignoreDups = true;
+ignoreSpace = true;
+share = true;
+extended = true;
+};
 
-    plugins = [
-      {
-        name = "powerlevel10k";
-        src = pkgs.zsh-powerlevel10k;
-        file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
-      }
-      {
-        name = "zsh-completions";
-        src = pkgs.zsh-completions;
-      }
-    ];
+plugins = [
+{
+name = "powerlevel10k";
+src = pkgs.zsh-powerlevel10k;
+file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
+}
+{
+name = "zsh-completions";
+src = pkgs.zsh-completions;
+}
+];
 
-    shellAliases = {
-      ###########################################################################
-      # Navigation
-      ###########################################################################
-      ".." = "cd ..";
-      "..." = "cd ../..";
-      "...." = "cd ../../..";
-      home = "cd ~";
-      cfg = "cd ${repoDir}";
-      edit = "code ${repoDir}";
+shellAliases = {
+###########################################################################
+# Navigation
+###########################################################################
+".." = "cd ..";
+"..." = "cd ../..";
+"...." = "cd ../../..";
+home = "cd ~";
+cfg = "cd ${repoDir}";
+edit = "code ${repoDir}";
 
-      ###########################################################################
-      # Listing
-      ###########################################################################
-      ls = "eza";
-      ll = "eza -lah --icons --git";
-      la = "eza -a";
-      lt = "eza --tree";
-      l = "eza -lh";
-      cat = "bat";
+###########################################################################
+# Listing
+###########################################################################
+ls = "eza";
+ll = "eza -lah --icons --git";
+la = "eza -a";
+lt = "eza --tree";
+l = "eza -lh";
+cat = "bat";
 
-      ###########################################################################
-      # Git
-      ###########################################################################
-      g = "git";
-      gs = "git status";
-      ga = "git add";
-      gaa = "git add .";
-      gc = "git commit";
-      gcm = "git commit -m";
-      gp = "git push";
-      gpl = "git pull";
-      gd = "git diff";
-      gl = "git log --graph --decorate --oneline";
-      gb = "git branch";
-      gco = "git checkout";
-      gst = "git stash";
-      gcap = "git add . && git commit && git push";
+###########################################################################
+# Git
+###########################################################################
+g = "git";
+gs = "git status";
+ga = "git add";
+gaa = "git add .";
+gc = "git commit";
+gcm = "git commit -m";
+gp = "git push";
+gpl = "git pull";
+gd = "git diff";
+gl = "git log --graph --decorate --oneline";
+gb = "git branch";
+gco = "git checkout";
+gst = "git stash";
+gcap = "git add . && git commit && git push";
 
-      ###########################################################################
-      # NixOS / Home Manager
-      ###########################################################################
-      rebuild = "sudo nixos-rebuild switch --flake ${repoDir}#prague";
-      test = "sudo nixos-rebuild test --flake ${repoDir}#prague";
-      boot = "sudo nixos-rebuild boot --flake ${repoDir}#prague";
-      build = "sudo nixos-rebuild build --flake ${repoDir}#prague";
-      dry = "sudo nixos-rebuild dry-run --flake ${repoDir}#prague";
-      update = "cd ${repoDir} && nix flake update";
-      check = "cd ${repoDir} && nix flake check";
-      fmt = "cd ${repoDir} && nix fmt";
-      hm = "home-manager switch --flake ${repoDir}";
-      optimise = "sudo nix store optimise";
-      clean = "sudo nix-collect-garbage -d";
+###########################################################################
+# NixOS / Home Manager
+###########################################################################
+rebuild = "sudo nixos-rebuild switch --flake ${repoDir}#prague";
+test = "sudo nixos-rebuild test --flake ${repoDir}#prague";
+boot = "sudo nixos-rebuild boot --flake ${repoDir}#prague";
+build = "sudo nixos-rebuild build --flake ${repoDir}#prague";
+dry = "sudo nixos-rebuild dry-run --flake ${repoDir}#prague";
+update = "cd ${repoDir} && nix flake update";
+check = "cd ${repoDir} && nix flake check";
+fmt = "cd ${repoDir} && nix fmt";
+hm = "home-manager switch --flake ${repoDir}";
+optimise = "sudo nix store optimise";
+clean = "sudo nix-collect-garbage -d";
 
-      ###########################################################################
-      # Development
-      ###########################################################################
-      ff = "fastfetch";
-      lg = "lazygit";
-      bt = "btop";
-      rg = "rg";
-      f = "fd";
-      reload = "exec zsh";
-      cls = "clear";
-      h = "history";
-    };
+###########################################################################
+# Development
+###########################################################################
+ff = "fastfetch";
+lg = "lazygit";
+bt = "btop";
+rg = "rg";
+f = "fd";
+reload = "exec zsh";
+cls = "clear";
+h = "history";
+};
 
-    ############################################################################
-    # ZSH Startup
-    ############################################################################
-    initContent = ''
+############################################################################
+# ZSH Startup
+############################################################################
+initContent = ''
       ######################################################################
       # Powerlevel10k Instant Prompt
       ######################################################################
@@ -315,114 +322,114 @@ in
       ######################################################################
       [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
     '';
-  };
+};
 
-  ##############################################################################
-  # Bash
-  ##############################################################################
+##############################################################################
+# Bash
+##############################################################################
 
-  programs.bash = {
-    enable = true;
-    enableCompletion = true;
-  };
+programs.bash = {
+enable = true;
+enableCompletion = true;
+};
 
-  ##############################################################################
-  # Direnv
-  ##############################################################################
+##############################################################################
+# Direnv
+##############################################################################
 
-  programs.direnv = {
-    enable = true;
-    nix-direnv.enable = true;
-  };
+programs.direnv = {
+enable = true;
+nix-direnv.enable = true;
+};
 
-  ##############################################################################
-  # FZF
-  ##############################################################################
+##############################################################################
+# FZF
+##############################################################################
 
-  programs.fzf = {
-    enable = true;
-    enableZshIntegration = true;
-  };
+programs.fzf = {
+enable = true;
+enableZshIntegration = true;
+};
 
-  ##############################################################################
-  # Zoxide
-  ##############################################################################
+##############################################################################
+# Zoxide
+##############################################################################
 
-  programs.zoxide = {
-    enable = true;
-    enableZshIntegration = true;
-  };
+programs.zoxide = {
+enable = true;
+enableZshIntegration = true;
+};
 
-  ##############################################################################
-  # Starship
-  ##############################################################################
+##############################################################################
+# Starship
+##############################################################################
 
-  # Powerlevel10k replaces Starship.
-  programs.starship.enable = false;
+# Powerlevel10k replaces Starship.
+programs.starship.enable = false;
 
-  ##############################################################################
-  # VS Code
-  ##############################################################################
+##############################################################################
+# VS Code
+##############################################################################
 
-  programs.vscode = {
-    enable = true;
-    package = pkgs.vscode;
-    mutableExtensionsDir = true;
+programs.vscode = {
+enable = true;
+package = pkgs.vscode;
+mutableExtensionsDir = true;
 
-    extensions = with pkgs.vscode-extensions; [
-      bbenoist.nix
-      dbaeumer.vscode-eslint
-      esbenp.prettier-vscode
-      golang.go
-      jnoortheen.nix-ide
-      ms-azuretools.vscode-docker
-      ms-python.python
-      ms-python.vscode-pylance
-      redhat.vscode-yaml
-    ];
-  };
+extensions = with pkgs.vscode-extensions; [
+bbenoist.nix
+dbaeumer.vscode-eslint
+esbenp.prettier-vscode
+golang.go
+jnoortheen.nix-ide
+ms-azuretools.vscode-docker
+ms-python.python
+ms-python.vscode-pylance
+redhat.vscode-yaml
+];
+};
 
-  ##############################################################################
-  # XDG
-  ##############################################################################
+##############################################################################
+# XDG
+##############################################################################
 
-  xdg.mimeApps = {
-    enable = true;
+xdg.mimeApps = {
+enable = true;
 
-    defaultApplications = {
-      "text/plain" = [ "code.desktop" ];
-      "text/x-nix" = [ "code.desktop" ];
-      "application/json" = [ "code.desktop" ];
-      "application/x-yaml" = [ "code.desktop" ];
-    };
-  };
+defaultApplications = {
+"text/plain" = [ "code.desktop" ];
+"text/x-nix" = [ "code.desktop" ];
+"application/json" = [ "code.desktop" ];
+"application/x-yaml" = [ "code.desktop" ];
+};
+};
 
-  xdg.configFile."Code/User/settings.json".enable = false;
+xdg.configFile."Code/User/settings.json".enable = false;
 
-  ##############################################################################
-  # Automatic Nix Repository Formatting
-  ##############################################################################
+##############################################################################
+# Automatic Nix Repository Formatting
+##############################################################################
 
-  systemd.user.services.nix-repo-auto-format = {
-    Unit = {
-      Description = "Automatically format Nix files in nixos-infrastructure";
-      After = [ "graphical-session.target" ];
-    };
+systemd.user.services.nix-repo-auto-format = {
+Unit = {
+Description = "Automatically format Nix files in nixos-infrastructure";
+After = [ "graphical-session.target" ];
+};
 
-    Service = {
-      ExecStart = "${autoFormatNix}/bin/auto-format-nix-repo";
-      Restart = "on-failure";
-      RestartSec = "5s";
+Service = {
+ExecStart = "${autoFormatNix}/bin/auto-format-nix-repo";
+Restart = "on-failure";
+RestartSec = "5s";
 
-      # Lower CPU priority so formatting never interferes with normal work.
-      Nice = 10;
-      IOSchedulingClass = "best-effort";
-      IOSchedulingPriority = 7;
-    };
+# Lower CPU priority so formatting never interferes with normal work.
+Nice = 10;
+IOSchedulingClass = "best-effort";
+IOSchedulingPriority = 7;
+};
 
-    Install = {
-      WantedBy = [ "default.target" ];
-    };
-  };
+Install = {
+WantedBy = [ "default.target" ];
+};
+};
 
 }

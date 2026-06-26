@@ -34,9 +34,9 @@
     # ─────────────────────────────────────────────────────────────────────────
     # General System Typography
     # ─────────────────────────────────────────────────────────────────────────
+    noto-fonts-color-emoji
     noto-fonts
     noto-fonts-cjk-sans
-    noto-fonts-emoji
     font-awesome # Additional global icon coverage
   ];
 

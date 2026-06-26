@@ -1,173 +1,528 @@
+#
+# ci/gitlab-runner.nix
+#
+# =============================================================================
+# Fleet GitLab Runner
+# =============================================================================
+#
+# Production GitLab Runner module for GitOps-managed NixOS.
+#
+# Responsibilities
+#
+#   • Configure GitLab Runner
+#   • Schedule health monitoring
+#   • Schedule reconciliation
+#   • Export GitOps configuration
+#   • Harden systemd services
+#
+# Git repository information is intentionally NOT configured here.
+#
+# Instead it is consumed from:
+#
+#   config.fleet.gitops.repo
+#   config.fleet.gitops.branch
+#
+# defined by:
+#
+#   automation/options.nix
+#   automation/common.nix
+#
+# =============================================================================
+
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.ivali.gitlabRunner;
 
-  # ─────────────────────────────────────────────
-  # OBSERVE: health snapshot (no side effects)
-  # ─────────────────────────────────────────────
-  health = pkgs.writeShellApplication {
-    name = "gitlab-runner-health";
+  cfg = config.fleet.gitlabRunner;
 
-    runtimeInputs = [
-      pkgs.gitlab-runner
-      pkgs.systemd
-      pkgs.jq
-    ];
+  gitops = config.fleet.gitops;
 
-    text = ''
-      set -euo pipefail
+  healthScript =
+    if builtins.pathExists ../scripts/gitlab-runner-health.sh then
+      ../scripts/gitlab-runner-health.sh
+    else
+      throw ''
+        Missing:
 
-      echo "[health] checking runner service..."
+          scripts/gitlab-runner-health.sh
+      '';
 
-      systemctl is-active --quiet gitlab-runner.service
+  reconcileScript =
+    if builtins.pathExists ../scripts/gitlab-runner-reconcile.sh then
+      ../scripts/gitlab-runner-reconcile.sh
+    else
+      throw ''
+        Missing:
 
-      echo "[health] version check..."
-      gitlab-runner --version >/dev/null
-
-      echo "[health] runner list snapshot..."
-      gitlab-runner list 2>/dev/null || true
-
-      echo "[health] OK"
-    '';
-  };
-
-  # ─────────────────────────────────────────────
-  # DECIDE + ACT: reconciliation loop
-  # (idempotent, not destructive)
-  # ─────────────────────────────────────────────
-  reconcile = pkgs.writeShellApplication {
-    name = "gitlab-runner-reconcile";
-
-    runtimeInputs = [
-      pkgs.gitlab-runner
-      pkgs.systemd
-    ];
-
-    text = ''
-      set -euo pipefail
-
-      echo "[reconcile] starting fleet reconciliation..."
-
-      # ensure service exists
-      if ! systemctl is-active --quiet gitlab-runner.service; then
-        echo "[reconcile] runner inactive → starting"
-        systemctl start gitlab-runner.service
-      fi
-
-      # verify configuration consistency
-      gitlab-runner verify --delete || true
-
-      echo "[reconcile] complete"
-    '';
-  };
+          scripts/gitlab-runner-reconcile.sh
+      '';
 
 in
+
 {
-  options.ivali.gitlabRunner = {
-    enable = lib.mkEnableOption "GitLab Runner Fleet (self-healing)";
+
+  ##############################################################################
+  ## Options
+  ##############################################################################
+
+  options.fleet.gitlabRunner = {
+
+    enable =
+      lib.mkEnableOption "Fleet GitLab Runner";
+
+    ##########################################################################
+    ## Runner
+    ##########################################################################
+
+    executor = lib.mkOption {
+
+      type = lib.types.enum [
+
+        "shell"
+
+        "docker"
+
+        "docker+machine"
+
+        "kubernetes"
+
+      ];
+
+      default = "shell";
+
+    };
 
     tokenFile = lib.mkOption {
+
       type = lib.types.path;
-      default = "/run/secrets/gitlab-runner-token";
-    };
 
-    tags = lib.mkOption {
-      type = lib.types.listOf lib.types.str;
-      default = [ "nixos" "fleet" "flakes" ];
-    };
+      default =
+        "/run/secrets/gitlab-runner-token";
 
-    fleetName = lib.mkOption {
-      type = lib.types.str;
-      default = "default-fleet";
     };
 
     concurrent = lib.mkOption {
+
       type = lib.types.int;
+
       default = 2;
+
     };
+
+    tags = lib.mkOption {
+
+      type = lib.types.listOf lib.types.str;
+
+      default = [
+
+        "nixos"
+
+        "gitops"
+
+        "fleet"
+
+        "flakes"
+
+      ];
+
+    };
+
+    ##########################################################################
+    ## Timers
+    ##########################################################################
+
+    healthInterval = lib.mkOption {
+
+      type = lib.types.str;
+
+      default = "10m";
+
+    };
+
+    reconcileInterval = lib.mkOption {
+
+      type = lib.types.str;
+
+      default = "15m";
+
+    };
+
+    randomizedDelay = lib.mkOption {
+
+      type = lib.types.str;
+
+      default = "30s";
+
+    };
+
   };
+
+  ##############################################################################
+  ## Configuration
+  ##############################################################################
 
   config = lib.mkIf cfg.enable {
 
+    ##############################################################################
+    ## Secrets
+    ##############################################################################
+
     sops.secrets.gitlab-runner-token = { };
 
-    # ─────────────────────────────────────────────
-    # GitLab Runner (stable declarative config)
-    # ─────────────────────────────────────────────
+    ##############################################################################
+    ## GitLab Runner
+    ##############################################################################
+
     services.gitlab-runner = {
+
       enable = true;
 
-      # IMPORTANT FIX:
-      # avoid breaking nixpkgs compatibility across versions
-      concurrent = lib.mkDefault cfg.concurrent;
+      concurrent = cfg.concurrent;
 
-      services.nix-shell = {
-        executor = "shell";
+      services.default = {
 
-        authenticationTokenConfigFile = cfg.tokenFile;
+        executor = cfg.executor;
+
+        authenticationTokenConfigFile =
+          cfg.tokenFile;
 
         tagList = cfg.tags;
 
         environmentVariables = {
-          NIX_CONFIG = "experimental-features = nix-command flakes";
+
+          NIX_CONFIG =
+            "experimental-features = nix-command flakes";
+
         };
+
       };
+
     };
 
-    # ─────────────────────────────────────────────
-    # HEALTH GATE (pure observer)
-    # ─────────────────────────────────────────────
-    systemd.services.gitlab-runner-health = {
-      description = "GitLab Runner Fleet Health Check";
+    ##############################################################################
+    ## Health Service
+    ##############################################################################
 
-      after = [ "gitlab-runner.service" "network-online.target" ];
-      wants = [ "network-online.target" ];
+    systemd.services.gitlab-runner-health = {
+
+      description =
+        "Fleet GitLab Runner Health";
+
+      wants = [
+
+        "network-online.target"
+
+      ];
+
+      after = [
+
+        "gitlab-runner.service"
+
+        "network-online.target"
+
+      ];
+
+      ##########################################################################
+      ## Runtime packages
+      ##########################################################################
+
+      path = with pkgs; [
+
+        bash
+
+        git
+
+        gitlab-runner
+
+        nix
+
+        curl
+
+        jq
+
+        coreutils
+
+        gnugrep
+
+        gnused
+
+        gawk
+
+        findutils
+
+        systemd
+
+      ];
+
+      ##########################################################################
+      ## Export GitOps configuration
+      ##########################################################################
+
+      environment = {
+
+        ########################################################################
+        ## GitOps
+        ########################################################################
+
+        GITOPS_REPO =
+          gitops.repo;
+
+        GITOPS_BRANCH =
+          gitops.branch;
+
+        ########################################################################
+        ## Host
+        ########################################################################
+
+        HOST_NAME =
+          config.networking.hostName;
+
+        ########################################################################
+        ## Repository location
+        ########################################################################
+
+        GITOPS_WORKTREE =
+          "/var/lib/gitops";
+
+      };
+
+      ##########################################################################
+      ## Service
+      ##########################################################################
 
       serviceConfig = {
+
         Type = "oneshot";
+
+        User = "root";
+
+        Group = "root";
+
+        ExecStart =
+          healthScript;
+
+        TimeoutStartSec = "120s";
+
+        StandardOutput = "journal";
+
+        StandardError = "journal";
+
+        SyslogIdentifier =
+          "gitlab-runner-health";
+
+        ########################################################################
+        ## Hardening
+        ########################################################################
+
+        NoNewPrivileges = true;
+
+        PrivateTmp = true;
+
+        PrivateDevices = true;
+
+        ProtectHome = true;
+
+        ProtectHostname = true;
+
+        ProtectControlGroups = true;
+
+        ProtectKernelLogs = true;
+
+        ProtectKernelModules = true;
+
+        ProtectKernelTunables = true;
+
+        ProtectSystem = "strict";
+
+        ProtectProc = "invisible";
+
+        ProcSubset = "pid";
+
+        LockPersonality = true;
+
+        MemoryDenyWriteExecute = true;
+
+        RestrictNamespaces = true;
+
+        RestrictRealtime = true;
+
+        RestrictSUIDSGID = true;
+
+        UMask = "0077";
+
       };
 
-      script = "${health}/bin/gitlab-runner-health";
+      ##########################################################################
+      ## Failed health → reconcile
+      ##########################################################################
 
-      # if health fails → attempt reconcile
-      onFailure = [ "gitlab-runner-reconcile.service" ];
+      onFailure = [
+
+        "gitlab-runner-reconcile.service"
+
+      ];
+
     };
+
+    ##############################################################################
+    ## Health Timer
+    ##############################################################################
 
     systemd.timers.gitlab-runner-health = {
-      wantedBy = [ "timers.target" ];
+
+      description =
+        "Periodic GitLab Runner Health";
+
+      wantedBy = [
+
+        "timers.target"
+
+      ];
 
       timerConfig = {
+
+        Unit =
+          "gitlab-runner-health.service";
+
         OnBootSec = "5m";
-        OnUnitActiveSec = "10m";
+
+        OnUnitActiveSec =
+          cfg.healthInterval;
+
+        RandomizedDelaySec =
+          cfg.randomizedDelay;
+
+        AccuracySec = "1min";
+
         Persistent = true;
+
       };
+
     };
 
-    # ─────────────────────────────────────────────
-    # RECONCILIATION LOOP (idempotent actuator)
-    # ─────────────────────────────────────────────
-    systemd.services.gitlab-runner-reconcile = {
-      description = "GitLab Runner Fleet Reconciler";
+    ##############################################################################
+    ## Reconciliation Service
+    ##############################################################################
 
-      after = [ "gitlab-runner.service" "network-online.target" ];
-      wants = [ "network-online.target" ];
+    systemd.services.gitlab-runner-reconcile = {
+
+      description =
+        "Fleet GitLab Runner Reconciliation";
+
+      wants = [
+
+        "network-online.target"
+
+      ];
+
+      after = [
+
+        "network-online.target"
+
+      ];
+
+      path = with pkgs; [
+
+        bash
+
+        git
+
+        gitlab-runner
+
+        nix
+
+        curl
+
+        jq
+
+        coreutils
+
+        gnugrep
+
+        gnused
+
+        gawk
+
+        systemd
+
+      ];
+
+      environment = {
+
+        GITOPS_REPO =
+          gitops.repo;
+
+        GITOPS_BRANCH =
+          gitops.branch;
+
+        HOST_NAME =
+          config.networking.hostName;
+
+        GITOPS_WORKTREE =
+          "/var/lib/gitops";
+
+      };
 
       serviceConfig = {
+
         Type = "oneshot";
+
+        User = "root";
+
+        Group = "root";
+
+        ExecStart =
+          reconcileScript;
+
+        TimeoutStartSec = "120s";
+
+        StandardOutput = "journal";
+
+        StandardError = "journal";
+
+        SyslogIdentifier =
+          "gitlab-runner-reconcile";
+
       };
 
-      script = "${reconcile}/bin/gitlab-runner-reconcile";
     };
+
+    ##############################################################################
+    ## Reconciliation Timer
+    ##############################################################################
 
     systemd.timers.gitlab-runner-reconcile = {
-      wantedBy = [ "timers.target" ];
+
+      description =
+        "Periodic GitLab Runner Reconciliation";
+
+      wantedBy = [
+
+        "timers.target"
+
+      ];
 
       timerConfig = {
+
+        Unit =
+          "gitlab-runner-reconcile.service";
+
         OnBootSec = "10m";
-        OnUnitActiveSec = "15m";
+
+        OnUnitActiveSec =
+          cfg.reconcileInterval;
+
+        RandomizedDelaySec =
+          cfg.randomizedDelay;
+
+        AccuracySec = "1min";
+
         Persistent = true;
+
       };
+
     };
+
   };
+
 }

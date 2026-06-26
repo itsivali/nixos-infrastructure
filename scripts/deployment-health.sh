@@ -1,98 +1,209 @@
-#!/run/current-system/sw/bin/bash
-# deployment-health.sh — system health gate
+#!/usr/bin/env bash
 #
-# Exits 0 (healthy) or 1 (unhealthy).
-# Called by gitops-reconcile.sh and rollback.sh.
-# Also runs on a 5-minute timer via deployment-health.service.
+# ==============================================================================
+# Fleet Deployment Health Check
+# ==============================================================================
 #
-# Checks are ordered from cheapest/most critical to most expensive:
-#   1. Internet connectivity
-#   2. DNS resolution
-#   3. GitLab reachability (needed for future pulls)
-#   4. Tailscale (core infra)
-#   5. Prometheus (optional — warn only, not fatal)
-#   6. Grafana (optional — warn only, not fatal)
+# Purpose:
+#   Validates that this machine is safe to participate in GitOps operations.
+#
+# This includes:
+#   - Network health
+#   - DNS resolution
+#   - GitLab availability
+#   - GitOps repository reachability
+#   - Local GitOps checkout validation
+#   - Nix flake evaluation safety
+#   - System health baseline
+#
+# This script NEVER modifies state.
+#
+# If it fails → gitops-reconciler.service is triggered by systemd.
+#
+# ==============================================================================
 
-set -euo pipefail
+set -Eeuo pipefail
 
+################################################################################
+# Environment (injected by Nix)
+################################################################################
+
+HOST_NAME="${HOST_NAME:-unknown}"
+GITOPS_REPO="${GITOPS_REPO:-}"
+GITOPS_BRANCH="${GITOPS_BRANCH:-main}"
+GITOPS_WORKTREE="${GITOPS_WORKTREE:-/var/lib/gitops}"
+
+################################################################################
+# Stats
+################################################################################
+
+TOTAL=0
 PASS=0
-FAIL=1
+WARN=0
+FAIL=0
 
-result=0
+################################################################################
+# Logging
+################################################################################
 
-log()  { echo "[$(date -Iseconds)] $*"; }
-ok()   { log "OK   : $1"; }
-fail() { log "FAIL : $1"; result=1; }
-warn() { log "WARN : $1"; }  # non-fatal
+ts() { date --iso-8601=seconds; }
 
-###########################################################################
-# 1. Internet
-###########################################################################
+log()  { echo "[$(ts)] $*"; }
+ok()   { TOTAL=$((TOTAL+1)); PASS=$((PASS+1)); log "✓ $1"; }
+warn() { TOTAL=$((TOTAL+1)); WARN=$((WARN+1)); log "⚠ $1"; }
+fail() { TOTAL=$((TOTAL+1)); FAIL=$((FAIL+1)); log "✗ $1"; }
 
-if ping -c 2 -W 3 1.1.1.1 > /dev/null 2>&1; then
-  ok "Internet (ping 1.1.1.1)"
+section() {
+  log ""
+  log "============================================================"
+  log "$1"
+  log "============================================================"
+}
+
+################################################################################
+# 1. Basic system sanity
+################################################################################
+
+section "System Health"
+
+if systemctl is-system-running --quiet 2>/dev/null; then
+  ok "systemd running normally"
 else
-  fail "Internet down (ping 1.1.1.1 failed)"
+  warn "systemd reports degraded state"
 fi
 
-###########################################################################
-# 2. DNS
-###########################################################################
-
-if dig gitlab.com +short +time=5 > /dev/null 2>&1; then
-  ok "DNS (gitlab.com resolves)"
+if systemctl is-active --quiet network-online.target; then
+  ok "network-online.target active"
 else
-  fail "DNS failure (gitlab.com)"
+  fail "network not fully online"
 fi
 
-###########################################################################
-# 3. GitLab reachability
-###########################################################################
+################################################################################
+# 2. DNS + Internet
+################################################################################
 
-if curl -fsSL --max-time 10 https://gitlab.com > /dev/null 2>&1; then
+section "Network Connectivity"
+
+if ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1; then
+  ok "Internet reachable (1.1.1.1)"
+else
+  fail "No internet connectivity"
+fi
+
+if command -v dig >/dev/null; then
+  if dig gitlab.com +short >/dev/null 2>&1; then
+    ok "DNS resolution working"
+  else
+    fail "DNS failure for gitlab.com"
+  fi
+else
+  warn "dig not available"
+fi
+
+################################################################################
+# 3. GitLab availability
+################################################################################
+
+section "GitLab Health"
+
+if curl -fsS --max-time 8 https://gitlab.com >/dev/null; then
   ok "GitLab reachable"
 else
   fail "GitLab unreachable"
 fi
 
-###########################################################################
-# 4. Tailscale (critical — needed for split DNS and VPN access)
-###########################################################################
+################################################################################
+# 4. GitOps repository validation
+################################################################################
 
-if systemctl is-active --quiet tailscaled; then
+section "GitOps Repository"
+
+if [[ -z "$GITOPS_REPO" ]]; then
+  fail "GITOPS_REPO not set"
+else
+  log "Repo    : $GITOPS_REPO"
+  log "Branch  : $GITOPS_BRANCH"
+
+  if git ls-remote --heads "$GITOPS_REPO" "$GITOPS_BRANCH" >/dev/null 2>&1; then
+    ok "Repository reachable + branch exists"
+  else
+    fail "Cannot reach GitOps repo or branch missing"
+  fi
+fi
+
+################################################################################
+# 5. Local GitOps worktree validation
+################################################################################
+
+section "Local GitOps State"
+
+if [[ -d "$GITOPS_WORKTREE" ]]; then
+
+  ok "Worktree exists"
+
+  cd "$GITOPS_WORKTREE" || true
+
+  if [[ -f flake.nix ]]; then
+    ok "flake.nix present"
+  else
+    fail "flake.nix missing"
+  fi
+
+  if [[ -f flake.lock ]]; then
+    ok "flake.lock present"
+  else
+    warn "flake.lock missing"
+  fi
+
+  if git rev-parse HEAD >/dev/null 2>&1; then
+    ok "git repository valid"
+  else
+    fail "git repository corrupted"
+  fi
+
+  if nix flake metadata >/dev/null 2>&1; then
+    ok "flake metadata evaluates"
+  else
+    fail "flake evaluation failed"
+  fi
+
+else
+  warn "No local GitOps checkout found"
+fi
+
+################################################################################
+# 6. System baseline checks
+################################################################################
+
+section "System Baseline"
+
+if systemctl is-active --quiet tailscaled 2>/dev/null; then
   ok "Tailscale running"
 else
-  fail "Tailscale (tailscaled) is not active"
+  warn "Tailscale not active"
 fi
 
-###########################################################################
-# 5. Prometheus (warn only — may not be running on all profiles)
-###########################################################################
+################################################################################
+# Summary
+################################################################################
 
-if curl -fsSL --max-time 5 http://localhost:9090/-/healthy > /dev/null 2>&1; then
-  ok "Prometheus healthy"
-else
-  warn "Prometheus not responding (localhost:9090) — non-fatal"
+section "Summary"
+
+log "Host     : $HOST_NAME"
+log "Repo     : $GITOPS_REPO"
+log "Branch   : $GITOPS_BRANCH"
+log ""
+log "Total    : $TOTAL"
+log "Passed   : $PASS"
+log "Warnings : $WARN"
+log "Failed   : $FAIL"
+
+if [[ "$FAIL" -gt 0 ]]; then
+  log ""
+  log "❌ Deployment health FAILED"
+  exit 1
 fi
 
-###########################################################################
-# 6. Grafana (warn only)
-###########################################################################
-
-if curl -fsSL --max-time 5 http://localhost:3000/api/health > /dev/null 2>&1; then
-  ok "Grafana healthy"
-else
-  warn "Grafana not responding (localhost:3000) — non-fatal"
-fi
-
-###########################################################################
-# Result
-###########################################################################
-
-if [[ "$result" -eq 0 ]]; then
-  log "Health check PASSED"
-else
-  log "Health check FAILED — see above"
-fi
-
-exit "$result"
+log ""
+log "✅ Deployment health PASSED"
+exit 0

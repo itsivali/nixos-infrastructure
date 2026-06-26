@@ -14,7 +14,7 @@ pkgs.nixosTest {
     networking.hostName = "laptop-smoke";
     services.xserver.enable = false;
     services.openssh.enable = false;
-    system.stateVersion = "26.05";
+    system.stateVersion = "26.11";
   };
 
   testScript = ''

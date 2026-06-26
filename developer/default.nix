@@ -1,15 +1,20 @@
 # developer/default.nix
 #
-# System-level developer tooling.
+# System-level developer tooling: shells, Docker, language runtimes.
 # Shell configuration is intentionally NOT set here — Home Manager owns
 # programs.zsh and programs.bash for the ivali user. This module only sets
 # the default login shell and installs system-wide packages.
+#
+# Drop additional *.nix files here to extend the dev environment:
+#   e.g. k8s.nix, terraform.nix, rust.nix, java.nix
 { pkgs, ... }:
 
 let
   tsxPackage = pkgs.tsx;
 in
 {
+  imports = import ../lib/auto-imports.nix ./.;
+
   # ── shell ──────────────────────────────────────────────────────────────────
   # Just set the default shell; HM handles zsh options, aliases, plugins.
   programs.bash.completion.enable = true;
@@ -45,9 +50,6 @@ in
     tsxPackage
 
     # Python
-    # pip, virtualenv, setuptools, wheel are no longer exposed as individual
-    # python3XPackages attributes in nixos-unstable. Use uv for all venv /
-    # package management instead — it is faster and already included.
     python313
     python313Packages.ipython
     python313Packages.pytest

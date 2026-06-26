@@ -1,16 +1,18 @@
 {
-  hostName = "prague";
+  networking.hostName = "prague";
 
-  gitops = {
-    repo = "https://gitlab.com/willisivali/nixos-infrastructure";
-    branch = "main";
-  };
+  fleet = {
+    gitops = {
+      repo = "https://gitlab.com/willisivali/nixos-infrastructure";
+      branch = "main";
+    };
 
-  notifications = {
-    email = "itsivali@outlook.com";
+    notifications = {
+      email = "itsivali@outlook.com";
 
-    telegram = {
-      chatId = "7724444807";
+      telegram = {
+        chatId = "7724444807";
+      };
     };
   };
 }

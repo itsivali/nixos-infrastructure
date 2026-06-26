@@ -1,10 +1,20 @@
 # security/default.nix
+#
+# System hardening: AppArmor, polkit, PAM, fail2ban, audit.
+# Auto-discovers sibling modules — no manual import list to maintain.
+#
+# Current auto-discovered modules:
+#   firewall.nix   ← nftables, port policy, Tailscale WireGuard port
+#   tailscale.nix  ← ivali.tailscale option + split-DNS timer
+#
+# Examples of what you can drop here:
+#   yubikey.nix    — PAM U2F / FIDO2 configuration
+#   hardening.nix  — kernel lockdown, sysctl hardening extras
+#   aide.nix       — AIDE file-integrity monitoring cron
 { config, lib, pkgs, ... }:
 {
-  imports = [
-    ./firewall.nix
-    ./tailscale.nix
-  ];
+  # firewall.nix and tailscale.nix are auto-discovered here.
+  imports = import ../lib/auto-imports.nix ./.;
 
   security = {
     sudo.execWheelOnly = true;
@@ -32,7 +42,6 @@
     # Audit rules — file-watch only, no execve catch-all.
     # The execve rules + -e 2 (immutable mode) were causing two problems:
     audit.enable = false;
-
     auditd.enable = false;
 
     pam = {
@@ -47,9 +56,6 @@
       ];
     };
   };
-
-
-
 
   services.fail2ban = {
     enable = true;
@@ -87,4 +93,3 @@
     lynis
   ];
 }
-

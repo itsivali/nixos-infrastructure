@@ -1,4 +1,8 @@
 # observability/default.nix
+#
+# Local monitoring stack: Loki + Prometheus + Grafana + Alloy.
+# Drop additional *.nix files here to extend observability:
+#   e.g. alertmanager.nix, blackbox-exporter.nix, uptime-kuma.nix
 { config, lib, pkgs, ... }:
 
 let
@@ -9,14 +13,10 @@ let
   prometheusPort = 9090;
   grafanaListenAddress = "127.0.0.1";
   grafanaPort = 3000;
-
-  # DO NOT resolve otelCollector here at the top-level let binding.
-  # Attribute lookups like `pkgs.foo or pkgs.bar` are evaluated unconditionally
-  # even when otel.enable = false. If none of the names exist in this nixpkgs
-  # revision the entire file fails to evaluate.
-  # Resolution is deferred into the mkIf cfg.otel.enable blocks below.
 in
 {
+  imports = import ../lib/auto-imports.nix ./.;
+
   # ── option declarations ────────────────────────────────────────────────────
   options.ivali.observability = {
     enable = lib.mkOption {
@@ -42,10 +42,6 @@ in
   config = {
 
     # ── SOPS secret for Grafana ─────────────────────────────────────────────
-    # The secret_key must not land in the Nix store (world-readable).
-    # Add the key to secrets/tailscale.yaml (or a dedicated grafana.yaml):
-    #   sops secrets/tailscale.yaml
-    #   # add key: grafana_secret_key: <random-32-char-string>
     sops.secrets.grafana_secret_key = lib.mkIf (cfg.enable && config.ivali.secrets.enable) {
       owner = "grafana";
     };
@@ -59,13 +55,8 @@ in
         trivy
       ]
       ++ lib.optionals cfg.falco.enable [ pkgs.falco ]
-      # otelCollector resolved only when the feature is actually enabled.
       ++ lib.optionals cfg.otel.enable [
         (
-          # Try the contrib package first (has more receivers/exporters),
-          # fall back to the core collector. Both names have existed in
-          # different nixpkgs revisions; the or-chain is safe inside
-          # lib.optionals because it is only evaluated when otel.enable = true.
           pkgs.opentelemetry-collector-contrib
             or pkgs.otelcol-contrib
             or pkgs.opentelemetry-collector
@@ -160,19 +151,10 @@ in
         security =
           {
             admin_user = "admin";
-            # admin_password intentionally left at default ("admin") for first
-            # boot — change it in the UI immediately after setup.
             disable_gravatar = true;
-            # Fallback key for fresh installs before SOPS is configured.
-            # This is the former nixpkgs default — safe to use when the
-            # Grafana DB has no encrypted secrets (i.e. a clean install).
-            # The optionalAttrs below overrides this once secrets.enable = true.
-            secret_key = "SW2YcwTIb9zpOOhoPsMm";
+            secret_key = "SW2YcwTIb9zpOOhoPsMm"; # fallback for fresh installs
           }
           // lib.optionalAttrs config.ivali.secrets.enable {
-            # secret_key is loaded from a SOPS-managed file at runtime so it
-            # never appears in the Nix store. The sops.secrets.grafana_secret_key
-            # declaration above writes the secret to /run/secrets/grafana_secret_key.
             secret_key = "$__file{${config.sops.secrets.grafana_secret_key.path}}";
           };
       };
@@ -199,8 +181,7 @@ in
       };
     };
 
-
-    # ── journald (unconditional) ────────────────────────────────────────────
+    # ── journald ────────────────────────────────────────────────────────────
     services.journald.extraConfig = ''
       Storage=persistent
       Compress=yes
@@ -289,8 +270,6 @@ in
       after = [ "network-online.target" ];
       wants = [ "network-online.target" ];
       serviceConfig = {
-        # The package is resolved here, inside mkIf, so evaluation only
-        # happens when otel.enable = true.
         ExecStart =
           let
             otelPkg =

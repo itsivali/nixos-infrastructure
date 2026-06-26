@@ -1,6 +1,21 @@
+# networking/default.nix
+#
+# Core networking: DNS, NetworkManager, SSH hardening.
+# Sub-modules are auto-discovered — drop a .nix file here or add a
+# sub-directory with a default.nix and it is picked up on next rebuild.
+#
+# Current auto-discovered modules & sub-directories:
+#   msmtp/   ← outbound SMTP via Office365 for GitOps notifications
+#
+# Examples of what you can drop here:
+#   vpn.nix       — WireGuard / OpenVPN peer config
+#   hosts.nix     — /etc/hosts overrides and split-horizon entries
+#   proxy.nix     — system-wide HTTP proxy settings
 { lib, ... }:
-
 {
+  # msmtp/ sub-directory is auto-discovered here — no explicit import needed.
+  imports = import ../lib/auto-imports.nix ./.;
+
   time.timeZone = "Africa/Nairobi";
 
   networking = {
@@ -11,9 +26,6 @@
 
   services.resolved = {
     enable = true;
-
-
-
 
     settings = {
       Resolve = {

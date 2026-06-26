@@ -1,6 +1,12 @@
 # boot/default.nix
+#
+# Kernel, bootloader, sysctl tuning, and zram configuration.
+# Drop additional *.nix files here to extend boot behaviour:
+#   e.g. secure-boot.nix, plymouth.nix, initrd-ssh.nix
 { pkgs, ... }:
 {
+  imports = import ../lib/auto-imports.nix ./.;
+
   boot = {
     kernelPackages = pkgs.linuxPackages_zen;
 
@@ -53,4 +59,3 @@
     priority = 100;
   };
 }
-

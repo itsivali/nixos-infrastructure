@@ -1,16 +1,17 @@
 # networking/msmtp/default.nix
 #
 # Outbound email for GitOps notifications via notify.sh.
-# Import in configuration.nix as: ./networking/msmtp
+# Auto-discovered by networking/default.nix — no manual import needed.
+#
+# Drop additional .nix files here to extend mail configuration:
+#   e.g. aliases.nix, logrotate-extra.nix
 #
 # Requires secrets/smtp.yaml SOPS-encrypted with keys:
-#   smtp_password
-#   smtp_host
-#   smtp_user
-
+#   smtp_password  smtp_host  smtp_user
 { config, pkgs, ... }:
-
 {
+  imports = import ../../lib/auto-imports.nix ./.;
+
   # ── SOPS secrets ────────────────────────────────────────────────────────────
   sops.secrets.smtp_password = {
     sopsFile = ../../secrets/smtp.yaml;

@@ -2,10 +2,9 @@
 
 with pkgs; [
   localsend
-  vscode
+  bitwarden-cli
   zoom-us
   obsidian
-  bitwarden-desktop
   vlc
   firefox
   libreoffice-fresh

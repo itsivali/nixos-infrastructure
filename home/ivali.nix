@@ -68,7 +68,7 @@ in
   home = {
     inherit username;
     homeDirectory = "/home/${username}";
-    stateVersion = "26.05";
+    stateVersion = "26.11";
 
     packages = (import ../packages/user { inherit pkgs; }) ++ (with pkgs; [
       # Shell

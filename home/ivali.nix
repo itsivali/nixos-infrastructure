@@ -1,4 +1,22 @@
 # home/ivali.nix
+#
+# Home Manager configuration for the primary development workstation.
+#
+# Features
+# ─────────────────────────────────────────────────────────────────────────────
+# • Powerlevel10k prompt
+# • Zsh autosuggestions
+# • Zsh syntax highlighting
+# • Interactive completion
+# • FZF integration
+# • Zoxide
+# • Git aliases
+# • NixOS management aliases
+# • Automatic Nix formatting service
+# • VSCode
+# • Direnv + nix-direnv
+#
+
 { config, lib, pkgs, username, ... }:
 
 let
@@ -7,13 +25,11 @@ let
   autoFormatNix = pkgs.writeShellApplication {
     name = "auto-format-nix-repo";
 
-    # git is required by `nix fmt` to resolve the repo root and respect
-    # .gitignore. Without it the watcher exits immediately with an error.
-    runtimeInputs = [
-      pkgs.bash
-      pkgs.git
-      pkgs.nix
-      pkgs.watchexec
+    runtimeInputs = with pkgs; [
+      bash
+      git
+      nix
+      watchexec
     ];
 
     text = ''
@@ -22,7 +38,7 @@ let
       repo="${repoDir}"
 
       if [ ! -d "$repo" ]; then
-        echo "Repository not found at $repo; waiting for install checkout." >&2
+        echo "Repository not found: $repo"
         exec sleep infinity
       fi
 
@@ -31,36 +47,86 @@ let
         --ignore "$repo/.git" \
         --debounce 1000ms \
         --restart \
-        -- bash -lc "cd \"$repo\" && nix --extra-experimental-features 'nix-command flakes' fmt"
+        -- bash -lc \
+        "cd \"$repo\" && nix --extra-experimental-features 'nix-command flakes' fmt"
     '';
   };
+
 in
 {
+
+  ##############################################################################
+  # Imports
+  ##############################################################################
+
   imports = [ ];
+
+  ##############################################################################
+  # Home
+  ##############################################################################
 
   home = {
     inherit username;
     homeDirectory = "/home/${username}";
-
-    # Keep in sync with system.stateVersion in flake.nix for a fresh install.
     stateVersion = "26.05";
 
-    packages = import ../packages/user { inherit pkgs; };
+    packages = (import ../packages/user { inherit pkgs; }) ++ (with pkgs; [
+      # Shell
+      zsh-powerlevel10k
+      zsh-completions
 
-    # Set EDITOR here so it is user-scoped and does not conflict with root.
+      # Better CLI
+      eza
+      bat
+      fd
+      ripgrep
+      tree
+      fzf
+      delta
+
+      # Monitoring
+      btop
+      fastfetch
+
+      # Git
+      lazygit
+    ]);
+
     sessionVariables = {
       EDITOR = "code --wait";
+      VISUAL = "code --wait";
+      PAGER = "bat";
+      MANPAGER = "sh -c 'col -bx | bat -l man -p'";
+      LESS = "-R";
     };
   };
 
-  programs.home-manager.enable = true;
+  ##############################################################################
+  # Home Manager
+  ##############################################################################
 
-  # Suppress HM/Nixpkgs release mismatch warning
+  programs.home-manager.enable = true;
   home.enableNixpkgsReleaseCheck = false;
 
-  # ── git ────────────────────────────────────────────────────────────────────
+  ##############################################################################
+  # Git
+  ##############################################################################
+
   programs.git = {
     enable = true;
+
+    delta = {
+      enable = true;
+    };
+
+    lfs.enable = true;
+
+    ignores = [
+      ".DS_Store"
+      "*.swp"
+      "*.tmp"
+      "result"
+    ];
 
     settings = {
       user = {
@@ -71,58 +137,238 @@ in
       init.defaultBranch = "main";
       pull.rebase = true;
       rerere.enabled = true;
+      push.autoSetupRemote = true;
+      fetch.prune = true;
+
+      core = {
+        editor = "code --wait";
+      };
+
+      color.ui = true;
+      merge.conflictstyle = "zdiff3";
     };
   };
 
-  # ── shell ──────────────────────────────────────────────────────────────────
-  # HM owns the full zsh configuration. The system module (developer/default.nix)
-  # only sets programs.zsh.enable = true and users.defaultUserShell = pkgs.zsh.
+  ##############################################################################
+  # ZSH
+  ##############################################################################
+
   programs.zsh = {
     enable = true;
+    autocd = true;
+    enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
 
-    shellAliases = {
-      ll = "eza -la --git";
-
-      edit-config =
-        "code /home/${username}/nixos-infrastructure";
-
-      rebuild =
-        "sudo nixos-rebuild switch --flake /home/${username}/nixos-infrastructure#prague";
-
-      test-rebuild =
-        "sudo nixos-rebuild test --flake /home/${username}/nixos-infrastructure#prague";
+    history = {
+      size = 100000;
+      save = 100000;
+      path = "${config.xdg.dataHome}/zsh/history";
+      ignoreDups = true;
+      ignoreSpace = true;
+      share = true;
+      extended = true;
     };
+
+    plugins = [
+      {
+        name = "powerlevel10k";
+        src = pkgs.zsh-powerlevel10k;
+        file = "share/zsh-powerlevel10k/powerlevel10k.zsh-theme";
+      }
+      {
+        name = "zsh-completions";
+        src = pkgs.zsh-completions;
+      }
+    ];
+
+    shellAliases = {
+      ###########################################################################
+      # Navigation
+      ###########################################################################
+      ".." = "cd ..";
+      "..." = "cd ../..";
+      "...." = "cd ../../..";
+      home = "cd ~";
+      cfg = "cd ${repoDir}";
+      edit = "code ${repoDir}";
+
+      ###########################################################################
+      # Listing
+      ###########################################################################
+      ls = "eza";
+      ll = "eza -lah --icons --git";
+      la = "eza -a";
+      lt = "eza --tree";
+      l = "eza -lh";
+      cat = "bat";
+
+      ###########################################################################
+      # Git
+      ###########################################################################
+      g = "git";
+      gs = "git status";
+      ga = "git add";
+      gaa = "git add .";
+      gc = "git commit";
+      gcm = "git commit -m";
+      gp = "git push";
+      gpl = "git pull";
+      gd = "git diff";
+      gl = "git log --graph --decorate --oneline";
+      gb = "git branch";
+      gco = "git checkout";
+      gst = "git stash";
+      gcap = "git add . && git commit && git push";
+
+      ###########################################################################
+      # NixOS / Home Manager
+      ###########################################################################
+      rebuild = "sudo nixos-rebuild switch --flake ${repoDir}#prague";
+      test = "sudo nixos-rebuild test --flake ${repoDir}#prague";
+      boot = "sudo nixos-rebuild boot --flake ${repoDir}#prague";
+      build = "sudo nixos-rebuild build --flake ${repoDir}#prague";
+      dry = "sudo nixos-rebuild dry-run --flake ${repoDir}#prague";
+      update = "cd ${repoDir} && nix flake update";
+      check = "cd ${repoDir} && nix flake check";
+      fmt = "cd ${repoDir} && nix fmt";
+      hm = "home-manager switch --flake ${repoDir}";
+      optimise = "sudo nix store optimise";
+      clean = "sudo nix-collect-garbage -d";
+
+      ###########################################################################
+      # Development
+      ###########################################################################
+      ff = "fastfetch";
+      lg = "lazygit";
+      bt = "btop";
+      rg = "rg";
+      f = "fd";
+      reload = "exec zsh";
+      cls = "clear";
+      h = "history";
+    };
+
+    ############################################################################
+    # ZSH Startup
+    ############################################################################
+    initContent = ''
+      ######################################################################
+      # Powerlevel10k Instant Prompt
+      ######################################################################
+      if [[ -r "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${USER}.zsh" ]]; then
+        source "''${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-''${USER}.zsh"
+      fi
+
+      ######################################################################
+      # Completion
+      ######################################################################
+      autoload -Uz compinit
+      compinit
+
+      zstyle ':completion:*' matcher-list \
+          'm:{a-z}={A-Za-z}' \
+          'r:|=*' \
+          'l:|=* r:|=*'
+
+      zstyle ':completion:*' menu select
+      zstyle ':completion:*' list-colors "''${(s.:.)LS_COLORS}"
+
+      ######################################################################
+      # Better key bindings
+      ######################################################################
+      bindkey '^I' menu-expand-or-complete
+      bindkey '^[[A' up-line-or-search
+      bindkey '^[[B' down-line-or-search
+
+      ######################################################################
+      # FZF
+      ######################################################################
+      source ${pkgs.fzf}/share/fzf/key-bindings.zsh
+      source ${pkgs.fzf}/share/fzf/completion.zsh
+
+      ######################################################################
+      # Zoxide
+      ######################################################################
+      eval "$(zoxide init zsh)"
+
+      ######################################################################
+      # Handy options
+      ######################################################################
+      setopt AUTO_CD
+      setopt AUTO_PUSHD
+      setopt PUSHD_IGNORE_DUPS
+      setopt HIST_IGNORE_DUPS
+      setopt HIST_IGNORE_SPACE
+      setopt HIST_VERIFY
+      setopt SHARE_HISTORY
+      setopt EXTENDED_HISTORY
+      setopt INC_APPEND_HISTORY
+
+      ######################################################################
+      # Useful completion colors
+      ######################################################################
+      export LS_COLORS=$(${pkgs.coreutils}/bin/dircolors -b)
+
+      ######################################################################
+      # Load user Powerlevel10k configuration
+      ######################################################################
+      [[ -f ~/.p10k.zsh ]] && source ~/.p10k.zsh
+    '';
   };
 
-  programs.bash.enable = true;
+  ##############################################################################
+  # Bash
+  ##############################################################################
+
+  programs.bash = {
+    enable = true;
+    completion.enable = true;
+  };
+
+  ##############################################################################
+  # Direnv
+  ##############################################################################
 
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
   };
 
-  programs.starship.enable = true;
-  programs.zoxide.enable = true;
-  programs.fzf.enable = true;
+  ##############################################################################
+  # FZF
+  ##############################################################################
 
-  # ── VSCode ─────────────────────────────────────────────────────────────────
+  programs.fzf = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  ##############################################################################
+  # Zoxide
+  ##############################################################################
+
+  programs.zoxide = {
+    enable = true;
+    enableZshIntegration = true;
+  };
+
+  ##############################################################################
+  # Starship
+  ##############################################################################
+
+  # Powerlevel10k replaces Starship.
+  programs.starship.enable = false;
+
+  ##############################################################################
+  # VS Code
+  ##############################################################################
+
   programs.vscode = {
     enable = true;
     package = pkgs.vscode;
-
-    # mutableExtensionsDir = true lets you install extensions imperatively
-    # (e.g. `code --install-extension github.copilot`) without them being
-    # wiped on the next Home Manager switch.
     mutableExtensionsDir = true;
 
-    # Use the flat `extensions` list, not `profiles.default.extensions`.
-    # The profiles API was added in a recent HM release; the flat list works
-    # across all supported versions and is equivalent for a single profile.
-    #
-    # github.copilot is intentionally omitted — it is not packaged in nixpkgs.
-    # Install it once with: code --install-extension github.copilot
     extensions = with pkgs.vscode-extensions; [
       bbenoist.nix
       dbaeumer.vscode-eslint
@@ -136,7 +382,10 @@ in
     ];
   };
 
-  # ── XDG ───────────────────────────────────────────────────────────────────
+  ##############################################################################
+  # XDG
+  ##############################################################################
+
   xdg.mimeApps = {
     enable = true;
 
@@ -148,11 +397,12 @@ in
     };
   };
 
-  # Prevent HM from writing a read-only settings.json that conflicts with
-  # VSCode's own settings sync / manual edits.
   xdg.configFile."Code/User/settings.json".enable = false;
 
-  # ── auto-format service ────────────────────────────────────────────────────
+  ##############################################################################
+  # Automatic Nix Repository Formatting
+  ##############################################################################
+
   systemd.user.services.nix-repo-auto-format = {
     Unit = {
       Description = "Automatically format Nix files in nixos-infrastructure";
@@ -163,8 +413,16 @@ in
       ExecStart = "${autoFormatNix}/bin/auto-format-nix-repo";
       Restart = "on-failure";
       RestartSec = "5s";
+
+      # Lower CPU priority so formatting never interferes with normal work.
+      Nice = 10;
+      IOSchedulingClass = "best-effort";
+      IOSchedulingPriority = 7;
     };
 
-    Install.WantedBy = [ "default.target" ];
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
   };
+
 }

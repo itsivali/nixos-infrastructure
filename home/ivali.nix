@@ -366,18 +366,49 @@ in
     enable = true;
     package = pkgs.zed-editor;
 
-    # Extensions are fetched from the Zed marketplace at first launch.
-    # Add extension IDs here to have them declaratively installed.
     extensions = [
-      "nix"           # Nix language support (replaces bbenoist.nix + jnoortheen.nix-ide)
-      "toml"          # TOML support
-      "dockerfile"    # Dockerfile syntax
-      "python"        # Python language support (replaces ms-python.python)
-      "go"            # Go language support (replaces golang.go)
-      "yaml"          # YAML support (replaces redhat.vscode-yaml)
+      "nix"
+      "toml"
+      "dockerfile"
+      "python"
+      "go"
+      "yaml"
+      "typescript"
+      "azure"
+      "terraform"
+      "gitlab"
+      "vite"
+      "next"
+      "node"
+      "react"
     ];
 
     userSettings = {
+      # ── Theme ──────────────────────────────────────────────────────────────
+      theme = {
+        mode = "system";
+        light = "Gruvbox Light";
+        dark = "Gruvbox Dark";
+      };
+
+      # ── Auto-install extensions ────────────────────────────────────────────
+      auto_install_extensions = {
+        dockerfile = true;
+        go = true;
+        nix = true;
+        python = true;
+        toml = true;
+        yaml = true;
+        typescript = true;
+        azure = true;
+        terraform = true;
+        gitlab = true;
+        vite = true;
+        next = true;
+        node = true;
+        react = true;
+      };
+
       # ── General ────────────────────────────────────────────────────────────
       vim_mode = false;
       ui_font_size = 16;

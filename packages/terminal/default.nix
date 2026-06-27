@@ -3,6 +3,7 @@
 with pkgs; [
   age
   bat
+  bitwarden-cli
   btop
   curl
   delta
@@ -13,6 +14,7 @@ with pkgs; [
   gh
   git
   gitui
+  gitlab
   gnupg
   htop
   jq

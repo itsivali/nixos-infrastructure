@@ -2,6 +2,15 @@
 
 let
   cfg = config.ivali.tailscale;
+
+  # Build the final tag list: always include the configured tags,
+  # and append tag:exit-node automatically when advertising as an exit node.
+  effectiveTags =
+    cfg.tags
+    ++ lib.optional (cfg.advertiseExitNode && !(builtins.elem "tag:exit-node" cfg.tags))
+      "tag:exit-node";
+
+  advertisedTags = lib.concatStringsSep "," effectiveTags;
 in
 {
   options.ivali.tailscale = {
@@ -16,12 +25,14 @@ in
       '';
     };
 
-    tag = lib.mkOption {
-      type = lib.types.str;
-      default = "tag:admin";
-      example = "tag:user";
+    tags = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ "tag:admin" ];
+      example = [ "tag:admin" "tag:infra" ];
       description = ''
-        Tailscale ACL tag to advertise.
+        Tailscale ACL tags to advertise on this node.
+        When advertiseExitNode is true, tag:exit-node is automatically
+        appended unless already present.
       '';
     };
 
@@ -44,9 +55,10 @@ in
 
     advertiseExitNode = lib.mkOption {
       type = lib.types.bool;
-      default = false;
+      default = true;
       description = ''
         Advertise this machine as an exit node.
+        Automatically adds tag:exit-node to the advertised tags.
       '';
     };
 
@@ -82,7 +94,7 @@ in
         extraUpFlags =
           [
             "--hostname=${config.networking.hostName}"
-            "--advertise-tags=${cfg.tag}"
+            "--advertise-tags=${advertisedTags}"
             "--accept-dns=${lib.boolToString cfg.acceptDns}"
             "--accept-routes=${lib.boolToString cfg.acceptRoutes}"
             "--ssh"

@@ -22,7 +22,7 @@
       username = "ivali";
       hostName = "prague";
 
-      gitlabSshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIA6mtBGaLpZ/bblf6M/bp9HQaPCkHVowEN52xt6WAGaa itsivali@outlook.com";
+      gitlabSshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFrfkLmTc690z2/Mk2SJbymqiJEjqOdU3RR8V+sOghq5 itsivali@outlook.com";
 
       pkgs = import nixpkgs {
         inherit system;

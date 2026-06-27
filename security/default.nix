@@ -1,13 +1,13 @@
 # security/default.nix
 #
-# System security, hardening and intrusion prevention.
+# System security, authentication and host hardening.
 #
 # Auto-discovers sibling modules:
 #   firewall.nix
 #   tailscale.nix
 #
 
-{ config, lib, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   imports = import ../lib/auto-imports.nix ./.;
@@ -18,27 +18,39 @@
 
   security = {
 
+    ############################################################
+    # sudo
+    ############################################################
+
     sudo = {
       enable = true;
+
       execWheelOnly = true;
 
       extraConfig = ''
         Defaults timestamp_timeout=5
         Defaults passwd_tries=3
-        Defaults logfile="/var/log/sudo.log"
         Defaults use_pty
-        Defaults insults
+        Defaults logfile="/var/log/sudo.log"
       '';
     };
+
+    ############################################################
+    # Kernel Protection
+    ############################################################
 
     protectKernelImage = true;
 
     lockKernelModules = true;
 
+    ############################################################
+    # Realtime
+    ############################################################
+
     rtkit.enable = true;
 
     ############################################################
-    # Polkit
+    # PolicyKit
     ############################################################
 
     polkit = {
@@ -62,7 +74,7 @@
     apparmor = {
       enable = true;
 
-      killUnconfinedConfinables = true;
+      killUnconfinedConfinables = false;
 
       packages = [
         pkgs.apparmor-profiles
@@ -73,13 +85,9 @@
     # Audit
     ############################################################
 
-    audit = {
-      enable = false;
-    };
+    audit.enable = false;
 
-    auditd = {
-      enable = false;
-    };
+    auditd.enable = false;
 
     ############################################################
     # PAM
@@ -89,16 +97,13 @@
 
       services = {
 
-        login = {
-          fprintAuth = false;
-        };
+        login.fprintAuth = false;
 
-        sudo = {
-          fprintAuth = false;
-        };
+        sudo.fprintAuth = false;
       };
 
       loginLimits = [
+
         {
           domain = "*";
           type = "hard";
@@ -124,47 +129,32 @@
 
     enable = true;
 
-    maxretry = 3;
-
-    findtime = "10m";
-
     bantime = "1h";
 
     ignoreIP = [
       "127.0.0.0/8"
       "::1"
-      "100.64.0.0/10"
     ];
 
     bantime-increment = {
       enable = true;
-
       overalljails = true;
-
       maxtime = "168h";
-
       multipliers = "2 4 8 16 32 64 128 256 512 1024";
     };
 
-    jails = {
+    jails.sshd.settings = {
+      enabled = true;
 
-      sshd.settings = {
-        enabled = true;
+      filter = "sshd";
+      backend = "%(sshd_backend)s";
 
-        filter = "sshd";
+      port = "ssh";
+      logpath = "%(sshd_log)s";
 
-        backend = "%(sshd_backend)s";
-
-        port = "ssh";
-
-        logpath = "%(sshd_log)s";
-
-        maxretry = 3;
-
-        findtime = "10m";
-
-        bantime = "1h";
-      };
+      maxretry = 3;
+      findtime = "10m";
+      bantime = "1h";
     };
   };
 
@@ -181,28 +171,24 @@
       "d /var/log/audit 0750 root root -"
 
       "f /var/log/sudo.log 0600 root root -"
-
-      "d /var/log/fail2ban 0750 root root -"
     ];
   };
 
   ##############################################################
-  # Packages
+  # Security Utilities
   ##############################################################
 
   environment.systemPackages = with pkgs; [
     aide
     audit
-    fail2ban
     lynis
     apparmor-utils
     apparmor-parser
-    usbutils
-    pciutils
+    nftables
+    tcpdump
     lsof
     strace
-    tcpdump
-    nmap
-    nftables
+    usbutils
+    pciutils
   ];
 }

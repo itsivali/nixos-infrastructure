@@ -16,7 +16,10 @@ in
 
       allowPing = false;
 
+      # Required for Tailscale exit nodes and subnet routing.
+      checkReversePath = "loose";
 
+      # Trust no interfaces by default.
       trustedInterfaces = [ ];
 
       ##########################################################
@@ -27,23 +30,24 @@ in
 
       allowedUDPPorts =
         [
-          # Tailscale
+          # Tailscale WireGuard
           41641
 
           # LocalSend
           53317
         ]
         ++ lib.optionals ts.advertiseExitNode [
+          # STUN
           3478
         ];
 
       ##########################################################
-      # Tailscale Only
+      # Tailscale
       ##########################################################
 
       interfaces.tailscale0 = {
-
         allowedTCPPorts = [
+          # SSH only over Tailscale
           22
         ];
 
@@ -56,12 +60,6 @@ in
 
       logRefusedConnections = true;
       logRefusedPackets = true;
-
-      ##########################################################
-      # Anti-Spoofing
-      ##########################################################
-
-      checkReversePath = "loose";
     };
   };
 
@@ -70,34 +68,7 @@ in
   ##############################################################
 
   boot.kernel.sysctl = lib.mkIf ts.advertiseExitNode {
-
     "net.ipv4.ip_forward" = 1;
     "net.ipv6.conf.all.forwarding" = 1;
-
-    # Ignore ICMP redirects
-    "net.ipv4.conf.all.accept_redirects" = 0;
-    "net.ipv6.conf.all.accept_redirects" = 0;
-
-    # Never send redirects
-    "net.ipv4.conf.all.send_redirects" = 0;
-
-    # Ignore source routing
-    "net.ipv4.conf.all.accept_source_route" = 0;
-    "net.ipv6.conf.all.accept_source_route" = 0;
-
-    # Log suspicious packets
-    "net.ipv4.conf.all.log_martians" = 1;
-
-    # SYN flood protection
-    "net.ipv4.tcp_syncookies" = 1;
-
-    # Ignore bogus ICMP broadcasts
-    "net.ipv4.icmp_echo_ignore_broadcasts" = 1;
-
-    # Ignore bogus ICMP responses
-    "net.ipv4.icmp_ignore_bogus_error_responses" = 1;
-
-    # RFC1337 protection
-    "net.ipv4.tcp_rfc1337" = 1;
   };
 }

@@ -54,7 +54,7 @@
     # SOPS
     ###########################################################
     sops = lib.mkIf config.ivali.secrets.enable {
-      age.keyFile = "/var/lib/sops-nix/key.txt";
+      age.keyFile = "/home/ivali/.config/sops/age/keys.txt";
       defaultSopsFile = ../secrets/tailscale.yaml;
       secrets = {
         tailscale_authkey = {

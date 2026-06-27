@@ -20,6 +20,7 @@ with pkgs; [
   jq
   just
   lazygit
+  nixd
   openssl
   pciutils
   ripgrep

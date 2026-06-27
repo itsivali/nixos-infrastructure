@@ -3,80 +3,91 @@
 let
   cfg = config.ivali.tailscale;
 
-  # Build the final tag list: always include the configured tags,
-  # and append tag:exit-node automatically when advertising as an exit node.
   effectiveTags =
     cfg.tags
-    ++ lib.optional (cfg.advertiseExitNode && !(builtins.elem "tag:exit-node" cfg.tags))
-      "tag:exit-node";
+    ++ lib.optional (
+      cfg.advertiseExitNode &&
+      !(builtins.elem "tag:exit-node" cfg.tags)
+    ) "tag:exit-node";
 
   advertisedTags = lib.concatStringsSep "," effectiveTags;
-in
-{
+
+in {
   options.ivali.tailscale = {
-    enable = lib.mkEnableOption "Tailscale zero-trust networking";
+    enable = lib.mkEnableOption "Tailscale";
 
     authKeyFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
+      type = lib.types.nullOr lib.types.path;
       default = null;
-      description = ''
-        File containing a reusable Tailscale auth key.
-        Typically provided through sops-nix.
-      '';
+      description = "Path to a reusable Tailscale auth key.";
     };
 
     tags = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [ "tag:admin" ];
-      example = [ "tag:admin" "tag:infra" ];
-      description = ''
-        Tailscale ACL tags to advertise on this node.
-        When advertiseExitNode is true, tag:exit-node is automatically
-        appended unless already present.
-      '';
+      default = [ "tag:user" ];
+      example = [
+        "tag:admin"
+        "tag:infra"
+      ];
+      description = "ACL tags assigned to this node.";
     };
 
     acceptDns = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = ''
-        Allow Tailscale to manage DNS.
-        Disabled by default to avoid accidental internet disruptions.
-      '';
+      default = true;
+      description = "Allow Tailscale to manage DNS.";
     };
 
     acceptRoutes = lib.mkOption {
       type = lib.types.bool;
-      default = false;
-      description = ''
-        Accept routes advertised by other nodes.
-      '';
+      default = true;
+      description = "Accept routes advertised by other Tailscale nodes.";
     };
 
     advertiseExitNode = lib.mkOption {
       type = lib.types.bool;
+      default = false;
+      description = "Advertise this machine as an exit node.";
+    };
+
+    exitNode = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "prague";
+      description = "Use another Tailscale device as an exit node.";
+    };
+
+    exitNodeAllowLanAccess = lib.mkOption {
+      type = lib.types.bool;
       default = true;
-      description = ''
-        Advertise this machine as an exit node.
-        Automatically adds tag:exit-node to the advertised tags.
-      '';
+      description = "Keep access to the local LAN while using an exit node.";
+    };
+
+    useRoutingFeatures = lib.mkOption {
+      type = lib.types.enum [
+        "none"
+        "client"
+        "server"
+        "both"
+      ];
+
+      default =
+        if config.ivali.tailscale.advertiseExitNode
+        then "both"
+        else "client";
+
+      description = "Routing features enabled by tailscaled.";
     };
 
     tailnetDomain = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      example = "codlet-trench.ts.net";
-      description = ''
-        Tailnet DNS suffix for split DNS.
-      '';
+      example = "example.ts.net";
+      description = "Tailnet split DNS domain.";
     };
   };
 
   config = lib.mkIf cfg.enable {
-
-    #########################################################
-    # Tailscale
-    #########################################################
 
     services.tailscale =
       {
@@ -84,12 +95,9 @@ in
 
         package = pkgs.tailscale;
 
-        useRoutingFeatures =
-          if cfg.advertiseExitNode
-          then "both"
-          else "client";
-
         openFirewall = false;
+
+        useRoutingFeatures = cfg.useRoutingFeatures;
 
         extraUpFlags =
           [
@@ -100,37 +108,30 @@ in
             "--ssh"
           ]
           ++ lib.optional cfg.advertiseExitNode
-            "--advertise-exit-node";
+            "--advertise-exit-node"
+          ++ lib.optional (cfg.exitNode != null)
+            "--exit-node=${cfg.exitNode}"
+          ++ lib.optional (
+            cfg.exitNode != null &&
+            cfg.exitNodeAllowLanAccess
+          )
+            "--exit-node-allow-lan-access";
       }
       // lib.optionalAttrs (cfg.authKeyFile != null) {
         authKeyFile = cfg.authKeyFile;
       };
 
-    #########################################################
-    # Exit Node Routing
-    #########################################################
-
-    boot.kernel.sysctl =
-      lib.mkIf cfg.advertiseExitNode {
-        "net.ipv4.ip_forward" = 1;
-        "net.ipv6.conf.all.forwarding" = 1;
-      };
-
-    #########################################################
-    # Packages
-    #########################################################
+    boot.kernel.sysctl = lib.mkIf cfg.advertiseExitNode {
+      "net.ipv4.ip_forward" = 1;
+      "net.ipv6.conf.all.forwarding" = 1;
+    };
 
     environment.systemPackages = [
       pkgs.tailscale
     ];
 
-    #########################################################
-    # tailscaled resilience
-    #########################################################
-
     systemd.services.tailscaled = {
       wants = [ "network-online.target" ];
-
       after = [ "network-online.target" ];
 
       unitConfig.StartLimitIntervalSec = 0;
@@ -138,16 +139,13 @@ in
       serviceConfig = {
         Restart = "always";
         RestartSec = "5s";
+
+        StateDirectory = "tailscale";
       };
     };
 
-    #########################################################
-    # Split DNS
-    #########################################################
-
     systemd.services.tailscale-split-dns =
       lib.mkIf (cfg.tailnetDomain != null) {
-
         description = "Configure Tailscale split DNS";
 
         after = [
@@ -174,10 +172,7 @@ in
 
           if ${pkgs.iproute2}/bin/ip link show tailscale0 >/dev/null 2>&1; then
             ${pkgs.systemd}/bin/resolvectl dns tailscale0 100.100.100.100
-
-            ${pkgs.systemd}/bin/resolvectl domain tailscale0 \
-              "~${cfg.tailnetDomain}"
-
+            ${pkgs.systemd}/bin/resolvectl domain tailscale0 "~${cfg.tailnetDomain}"
             ${pkgs.systemd}/bin/resolvectl default-route tailscale0 false
           fi
         '';
@@ -185,7 +180,6 @@ in
 
     systemd.timers.tailscale-split-dns =
       lib.mkIf (cfg.tailnetDomain != null) {
-
         wantedBy = [ "timers.target" ];
 
         timerConfig = {
@@ -194,6 +188,5 @@ in
           Unit = "tailscale-split-dns.service";
         };
       };
-
   };
 }

@@ -1,51 +1,103 @@
 # security/default.nix
 #
-# System hardening: AppArmor, polkit, PAM, fail2ban, audit.
-# Auto-discovers sibling modules — no manual import list to maintain.
+# System security, hardening and intrusion prevention.
 #
-# Current auto-discovered modules:
-#   firewall.nix   ← nftables, port policy, Tailscale WireGuard port
-#   tailscale.nix  ← ivali.tailscale option + split-DNS timer
+# Auto-discovers sibling modules:
+#   firewall.nix
+#   tailscale.nix
 #
-# Examples of what you can drop here:
-#   yubikey.nix    — PAM U2F / FIDO2 configuration
-#   hardening.nix  — kernel lockdown, sysctl hardening extras
-#   aide.nix       — AIDE file-integrity monitoring cron
+
 { config, lib, pkgs, ... }:
+
 {
-  # firewall.nix and tailscale.nix are auto-discovered here.
   imports = import ../lib/auto-imports.nix ./.;
 
+  ##############################################################
+  # Security
+  ##############################################################
+
   security = {
-    sudo.execWheelOnly = true;
+
+    sudo = {
+      enable = true;
+      execWheelOnly = true;
+
+      extraConfig = ''
+        Defaults timestamp_timeout=5
+        Defaults passwd_tries=3
+        Defaults logfile="/var/log/sudo.log"
+        Defaults use_pty
+        Defaults insults
+      '';
+    };
+
     protectKernelImage = true;
+
+    lockKernelModules = true;
+
     rtkit.enable = true;
+
+    ############################################################
+    # Polkit
+    ############################################################
 
     polkit = {
       enable = true;
+
       extraConfig = ''
         polkit.addRule(function(action, subject) {
           if (subject.isInGroup("wheel")) {
             return polkit.Result.YES;
           }
+
           return polkit.Result.AUTH_ADMIN;
         });
       '';
     };
 
+    ############################################################
+    # AppArmor
+    ############################################################
+
     apparmor = {
       enable = true;
-      killUnconfinedConfinables = false;
-      packages = [ pkgs.apparmor-profiles ];
+
+      killUnconfinedConfinables = true;
+
+      packages = [
+        pkgs.apparmor-profiles
+      ];
     };
 
-    # Audit rules — file-watch only, no execve catch-all.
-    # The execve rules + -e 2 (immutable mode) were causing two problems:
-    audit.enable = false;
-    auditd.enable = false;
+    ############################################################
+    # Audit
+    ############################################################
+
+    audit = {
+      enable = false;
+    };
+
+    auditd = {
+      enable = false;
+    };
+
+    ############################################################
+    # PAM
+    ############################################################
 
     pam = {
-      services.login.fprintAuth = false;
+
+      services = {
+
+        login = {
+          fprintAuth = false;
+        };
+
+        sudo = {
+          fprintAuth = false;
+        };
+      };
+
       loginLimits = [
         {
           domain = "*";
@@ -53,43 +105,104 @@
           item = "maxlogins";
           value = "10";
         }
+
+        {
+          domain = "*";
+          type = "hard";
+          item = "core";
+          value = "0";
+        }
       ];
     };
   };
 
+  ##############################################################
+  # Fail2Ban
+  ##############################################################
+
   services.fail2ban = {
+
     enable = true;
+
     maxretry = 3;
+
+    findtime = "10m";
+
     bantime = "1h";
+
     ignoreIP = [
       "127.0.0.0/8"
       "::1"
+      "100.64.0.0/10"
     ];
+
     bantime-increment = {
       enable = true;
-      multipliers = "2 4 8 16 32 64 128 256 512 1024";
-      maxtime = "168h";
+
       overalljails = true;
+
+      maxtime = "168h";
+
+      multipliers = "2 4 8 16 32 64 128 256 512 1024";
     };
-    jails.sshd.settings = {
-      enabled = true;
-      filter = "sshd";
-      port = "ssh";
-      maxretry = 3;
-      findtime = "10m";
-      bantime = "1h";
-      backend = "%(sshd_backend)s";
-      logpath = "%(sshd_log)s";
+
+    jails = {
+
+      sshd.settings = {
+        enabled = true;
+
+        filter = "sshd";
+
+        backend = "%(sshd_backend)s";
+
+        port = "ssh";
+
+        logpath = "%(sshd_log)s";
+
+        maxretry = 3;
+
+        findtime = "10m";
+
+        bantime = "1h";
+      };
     };
   };
 
-  systemd.tmpfiles.rules = [
-    "d /var/log/audit 0750 root root -"
-  ];
+  ##############################################################
+  # Systemd
+  ##############################################################
+
+  systemd = {
+
+    coredump.enable = false;
+
+    tmpfiles.rules = [
+
+      "d /var/log/audit 0750 root root -"
+
+      "f /var/log/sudo.log 0600 root root -"
+
+      "d /var/log/fail2ban 0750 root root -"
+    ];
+  };
+
+  ##############################################################
+  # Packages
+  ##############################################################
 
   environment.systemPackages = with pkgs; [
     aide
     audit
+    fail2ban
     lynis
+    apparmor-utils
+    apparmor-parser
+    usbutils
+    pciutils
+    lsof
+    strace
+    tcpdump
+    nmap
+    nftables
   ];
 }

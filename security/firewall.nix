@@ -1,45 +1,103 @@
-{ ... }:
+{ config, lib, ... }:
+
+let
+  ts = config.ivali.tailscale;
+in
 {
   networking = {
     nftables.enable = true;
+
     firewall = {
       enable = true;
-      # Laptop policy:
-      # - inbound is explicit allow-list only
-      # - outbound remains open so normal internet never depends on Tailscale
-      # - established/related replies are handled by the NixOS firewall
-      # - reverse path checks stay loose so VPN interfaces cannot break LAN/WAN
+
+      ##########################################################
+      # Default Policy
+      ##########################################################
+
       allowPing = false;
       checkReversePath = "loose";
+
       trustedInterfaces = [ ];
-      allowedTCPPorts = [
-        # LocalSend transfer.
-        53317
-        # SSH is NOT listed here — it is restricted to tailscale0 below.
-        # Opening it globally would defeat the tailscaleOnly setting in
-        # ivali.ssh and expose port 22 to the public internet.
-      ];
-      allowedUDPPorts = [
-        # Tailscale WireGuard transport. This only lets tailscaled establish
-        # the tunnel; it does not make tailscale0 a trusted interface.
-        41641
-        # LocalSend discovery/broadcast.
-        53317
-      ];
-      # Per-interface rules. SSH is declared here AND via ivali.ssh
-      # (NixOS merges the lists). Both are explicit for documentation clarity.
-      interfaces = {
-        tailscale0 = {
-          allowedTCPPorts = [
-            # SSH — reachable only through the Tailscale tunnel.
-            # Connect via prague.codlet-trench.ts.net:22
-            22
-          ];
-          allowedUDPPorts = [ ];
-        };
+
+      ##########################################################
+      # Public Internet
+      ##########################################################
+
+      allowedTCPPorts = [ ];
+
+      allowedUDPPorts =
+        [
+          # Tailscale
+          41641
+
+          # LocalSend
+          53317
+        ]
+        ++ lib.optionals ts.advertiseExitNode [
+          3478
+        ];
+
+      ##########################################################
+      # Tailscale Only
+      ##########################################################
+
+      interfaces.tailscale0 = {
+
+        allowedTCPPorts = [
+          22
+        ];
+
+        allowedUDPPorts = [ ];
       };
+
+      ##########################################################
+      # Logging
+      ##########################################################
+
       logRefusedConnections = true;
-      logRefusedPackets = false;
+      logRefusedPackets = true;
+
+      ##########################################################
+      # Anti-Spoofing
+      ##########################################################
+
+      checkReversePath = "loose";
     };
+  };
+
+  ##############################################################
+  # Exit Node
+  ##############################################################
+
+  boot.kernel.sysctl = lib.mkIf ts.advertiseExitNode {
+
+    "net.ipv4.ip_forward" = 1;
+    "net.ipv6.conf.all.forwarding" = 1;
+
+    # Ignore ICMP redirects
+    "net.ipv4.conf.all.accept_redirects" = 0;
+    "net.ipv6.conf.all.accept_redirects" = 0;
+
+    # Never send redirects
+    "net.ipv4.conf.all.send_redirects" = 0;
+
+    # Ignore source routing
+    "net.ipv4.conf.all.accept_source_route" = 0;
+    "net.ipv6.conf.all.accept_source_route" = 0;
+
+    # Log suspicious packets
+    "net.ipv4.conf.all.log_martians" = 1;
+
+    # SYN flood protection
+    "net.ipv4.tcp_syncookies" = 1;
+
+    # Ignore bogus ICMP broadcasts
+    "net.ipv4.icmp_echo_ignore_broadcasts" = 1;
+
+    # Ignore bogus ICMP responses
+    "net.ipv4.icmp_ignore_bogus_error_responses" = 1;
+
+    # RFC1337 protection
+    "net.ipv4.tcp_rfc1337" = 1;
   };
 }

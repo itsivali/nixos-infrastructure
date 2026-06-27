@@ -13,7 +13,7 @@
 # • Git aliases
 # • NixOS management aliases
 # • Automatic Nix formatting service
-# • VSCode
+# • Zed editor
 # • Direnv + nix-direnv
 #
 
@@ -94,8 +94,8 @@ in
     ]);
 
     sessionVariables = {
-      EDITOR = "code --wait";
-      VISUAL = "code --wait";
+      EDITOR = "zeditor --wait";
+      VISUAL = "zeditor --wait";
       PAGER = "bat";
       MANPAGER = "sh -c 'col -bx | bat -l man -p'";
       LESS = "-R";
@@ -142,7 +142,7 @@ in
       fetch.prune = true;
 
       core = {
-        editor = "code --wait";
+        editor = "zeditor --wait";
       };
 
       color.ui = true;
@@ -192,7 +192,7 @@ in
       "...." = "cd ../../..";
       home = "cd ~";
       cfg = "cd ${repoDir}";
-      edit = "code ${repoDir}";
+      edit = "zeditor ${repoDir}";
 
       ###########################################################################
       # Listing
@@ -362,25 +362,63 @@ in
   programs.starship.enable = false;
 
   ##############################################################################
-  # VS Code
+  # Zed Editor
   ##############################################################################
 
-  programs.vscode = {
+  programs.zed-editor = {
     enable = true;
-    package = pkgs.vscode;
-    mutableExtensionsDir = true;
+    package = pkgs.zed-editor;
 
-    extensions = with pkgs.vscode-extensions; [
-      bbenoist.nix
-      dbaeumer.vscode-eslint
-      esbenp.prettier-vscode
-      golang.go
-      jnoortheen.nix-ide
-      ms-azuretools.vscode-docker
-      ms-python.python
-      ms-python.vscode-pylance
-      redhat.vscode-yaml
+    # Extensions are fetched from the Zed marketplace at first launch.
+    # Add extension IDs here to have them declaratively installed.
+    extensions = [
+      "nix"           # Nix language support (replaces bbenoist.nix + jnoortheen.nix-ide)
+      "toml"          # TOML support
+      "dockerfile"    # Dockerfile syntax
+      "python"        # Python language support (replaces ms-python.python)
+      "go"            # Go language support (replaces golang.go)
+      "yaml"          # YAML support (replaces redhat.vscode-yaml)
     ];
+
+    userSettings = {
+      # ── General ────────────────────────────────────────────────────────────
+      vim_mode = false;
+      ui_font_size = 16;
+      buffer_font_size = 14;
+      autosave = "on_focus_change";
+
+      # ── Formatting ─────────────────────────────────────────────────────────
+      format_on_save = "on";
+      formatter = "auto";
+
+      # ── Editor behaviour ───────────────────────────────────────────────────
+      tab_size = 2;
+      soft_wrap = "editor_width";
+      show_whitespaces = "selection";
+      inlay_hints.enabled = true;
+
+      # ── Terminal ───────────────────────────────────────────────────────────
+      terminal = {
+        shell = { program = "zsh"; };
+        env = { EDITOR = "zeditor --wait"; };
+      };
+
+      # ── Git ────────────────────────────────────────────────────────────────
+      git = {
+        inline_blame.enabled = true;
+      };
+
+      # ── Language overrides ─────────────────────────────────────────────────
+      languages = {
+        Nix = {
+          formatter = { external = { command = "nixfmt"; }; };
+          format_on_save = "on";
+        };
+        Python = {
+          format_on_save = "on";
+        };
+      };
+    };
   };
 
   ##############################################################################
@@ -391,14 +429,12 @@ in
     enable = true;
 
     defaultApplications = {
-      "text/plain" = [ "code.desktop" ];
-      "text/x-nix" = [ "code.desktop" ];
-      "application/json" = [ "code.desktop" ];
-      "application/x-yaml" = [ "code.desktop" ];
+      "text/plain"        = [ "dev.zed.Zed.desktop" ];
+      "text/x-nix"        = [ "dev.zed.Zed.desktop" ];
+      "application/json"  = [ "dev.zed.Zed.desktop" ];
+      "application/x-yaml" = [ "dev.zed.Zed.desktop" ];
     };
   };
-
-  xdg.configFile."Code/User/settings.json".enable = false;
 
   ##############################################################################
   # Automatic Nix Repository Formatting

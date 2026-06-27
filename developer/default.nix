@@ -58,9 +58,7 @@ in
     black
     mypy
 
-    # Flutter / Dart
-    flutter
-    dart
+
   ];
 
   # EDITOR is set in Home Manager's sessionVariables so it is scoped to the

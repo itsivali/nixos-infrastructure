@@ -62,13 +62,4 @@ in
       logRefusedPackets = true;
     };
   };
-
-  ##############################################################
-  # Exit Node
-  ##############################################################
-
-  boot.kernel.sysctl = lib.mkIf ts.advertiseExitNode {
-    "net.ipv4.ip_forward" = 1;
-    "net.ipv6.conf.all.forwarding" = 1;
-  };
 }

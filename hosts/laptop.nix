@@ -12,15 +12,18 @@
       /var/lib/sops-nix/key.txt already contains the matching age private key.
     '';
   };
+
   config = {
     ###########################################################
     # HOST IDENTITY
     ###########################################################
     networking.hostName = hostName;
+
     ###########################################################
     # LOCALE
     ###########################################################
     i18n.defaultLocale = "en_US.UTF-8";
+
     ###########################################################
     # AMD GPU
     # Load amdgpu early in initrd so the display is available
@@ -33,6 +36,7 @@
       enable = true;
       enable32Bit = true;
     };
+
     ###########################################################
     # HOST PACKAGES
     ###########################################################
@@ -45,6 +49,7 @@
         pkgs.iproute2
         pkgs.tailscale
       ];
+
     ###########################################################
     # SOPS
     ###########################################################
@@ -60,6 +65,7 @@
         };
       };
     };
+
     ###########################################################
     # ZERO-TRUST NETWORKING
     ###########################################################
@@ -76,6 +82,7 @@
       acceptRoutes = false;
       tailnetDomain = "codlet-trench.ts.net";
     };
+
     ###########################################################
     # SSH — Shellfish access over Tailscale
     # Connect from Shellfish: prague.codlet-trench.ts.net:22
@@ -91,6 +98,7 @@
       # true = port 22 only reachable through Tailscale (tailscale0 interface)
       tailscaleOnly = true;
     };
+
     ###########################################################
     # NIX / GITOPS
     ###########################################################

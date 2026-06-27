@@ -109,10 +109,10 @@ in
   programs.home-manager.enable = true;
   home.enableNixpkgsReleaseCheck = false;
 
-  ##############################################################################
+   ##############################################################################
   # Git
   ##############################################################################
-{
+
   programs.git = {
     enable = true;
 
@@ -137,9 +137,7 @@ in
       push.autoSetupRemote = true;
       fetch.prune = true;
 
-      core = {
-        editor = "zeditor --wait";
-      };
+      core.editor = "zeditor --wait";
 
       color.ui = true;
       merge.conflictstyle = "zdiff3";
@@ -149,9 +147,7 @@ in
   programs.delta = {
     enable = true;
     enableGitIntegration = true;
-  };
-}
-  ##############################################################################
+  }; ##############################################################################
   # ZSH
   ##############################################################################
 

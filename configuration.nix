@@ -3,41 +3,60 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # TOP-LEVEL MODULE REGISTRY
 # ─────────────────────────────────────────────────────────────────────────────
-# This file is the single, stable entry point for all NixOS modules.
-# It imports folder-level modules only — never individual files.
+# Auto-discovers every top-level folder that contains a default.nix and treats
+# it as a NixOS domain module. No manual registration needed — just create a
+# folder with a default.nix and it will be imported on the next rebuild.
 #
-# Each folder listed here has a default.nix that:
-#   1. Holds configuration specific to that domain
-#   2. Auto-discovers every *.nix file dropped into its directory
-#   3. Auto-discovers sub-folders that contain a default.nix
+# Pinned (never auto-discovered):
+#   hosts/hardware-configuration.nix  — machine-specific hardware config
+#   hosts/laptop.nix                  — host identity and per-host options
 #
-# ┌──────────────────────────────────────────────────────────────────────┐
-# │  TO ADD A NEW MODULE                                                 │
-# │                                                                      │
-# │  Within an existing domain  →  drop a .nix file into that folder.   │
-# │    e.g. networking/vpn.nix   gets picked up automatically.          │
-# │                                                                      │
-# │  New top-level domain       →  create the folder + default.nix,     │
-# │    then add ONE line here:  ./my-new-domain                          │
-# └──────────────────────────────────────────────────────────────────────┘
+# Excluded from discovery:
+#   home      — Home Manager configs; wired up in flake.nix directly
+#   hosts     — pinned above; not a domain module
+#   lib       — Nix helper functions, not modules
+#   packages  — package sets, not modules
+#   scripts   — shell scripts
+#   secrets   — SOPS secret files
+#   tests     — NixOS tests; imported separately if needed
+#
 { ... }:
-{
-  imports = [
-    # ── Hardware & host identity (not auto-discovered — too critical) ──
-    ./hosts/hardware-configuration.nix
-    ./hosts/laptop.nix
+let
+  root = ./.;
 
-    # ── Top-level domains (each has its own auto-discovering default.nix) ──
-    ./automation
-    ./recovery
-    ./boot
-    ./networking
-    ./security
-    ./developer
-    ./desktop
-    ./observability
-    ./ci
+  # Folders that live at the repo root but are NOT NixOS domain modules.
+  excluded = [
+    "home"
+    "hosts"
+    "lib"
+    "packages"
+    "scripts"
+    "secrets"
+    "tests"
   ];
+
+  entries = builtins.readDir root;
+
+  # Every non-excluded subdirectory that has a default.nix is a domain module.
+  domainModules = map
+    (name: root + "/${name}")
+    (builtins.filter
+      (name:
+        entries.${name} == "directory"
+        && !(builtins.elem name excluded)
+        && builtins.pathExists (root + "/${name}/default.nix")
+      )
+      (builtins.attrNames entries));
+in
+{
+  imports =
+    # ── Pinned host files (order matters — hardware before identity) ────────
+    [
+      ./hosts/hardware-configuration.nix
+      ./hosts/laptop.nix
+    ]
+    # ── Auto-discovered domain modules ──────────────────────────────────────
+    ++ domainModules;
 
   sops.age.keyFile = "/home/ivali/.config/sops/age/keys.txt";
 }

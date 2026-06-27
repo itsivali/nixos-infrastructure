@@ -15,7 +15,7 @@ in
       ##########################################################
 
       allowPing = false;
-      checkReversePath = "loose";
+
 
       trustedInterfaces = [ ];
 

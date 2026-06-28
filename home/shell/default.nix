@@ -4,8 +4,19 @@
 #
 # Purpose
 # -------
-# Aggregates and loads all command line utilities, shell environments, 
-# and interactive tools.
+# Aggregates and loads all shell subsystem modules.
+#
+# Ownership
+# ---------
+# Imports only — no configuration.
+#
+# Responsibilities
+# ----------------
+# - core/        — Bash, Zsh, history, completion, keybindings, prompt, startup
+# - integrations/ — Direnv, FZF, Zoxide, Atuin
+# - tools/       — Bat, Btop, Eza, Fastfetch, shell packages
+# - aliases/     — Domain-grouped shell aliases
+# - bitwarden.nix — Bitwarden CLI integration
 #
 ##############################################################################
 
@@ -13,17 +24,10 @@
 
 {
   imports = [
-    ./aliases.nix
-    ./atuin.nix
-    ./bash.nix
-    ./bat.nix
+    ./core
+    ./integrations
+    ./tools
+    ./aliases
     ./bitwarden.nix
-    ./btop.nix
-    ./direnv.nix
-    ./eza.nix
-    ./fastfetch.nix
-    ./fzf.nix
-    ./zoxide.nix
-    ./zsh.nix
   ];
 }

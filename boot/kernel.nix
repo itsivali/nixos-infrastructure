@@ -1,0 +1,84 @@
+##############################################################################
+#
+# Kernel
+#
+# Purpose
+# -------
+# Linux kernel selection, modules, and parameters.
+#
+# Ownership
+# ---------
+# boot.kernelPackages, boot.initrd.kernelModules,
+# boot.kernelModules, boot.kernelParams
+#
+# Does NOT Own
+# ------------
+# - Sysctl tuning (boot/sysctl.nix)
+# - Bootloader (boot/loader.nix)
+# - zRAM (boot/zram.nix)
+# - TPM (boot/tpm.nix)
+#
+##############################################################################
+
+{ pkgs, ... }:
+
+{
+  boot = {
+    kernelPackages = pkgs.linuxPackages_latest;
+
+    initrd.kernelModules = [
+      "amdgpu"
+      "tpm_crb"
+      "tpm_tis"
+    ];
+
+    kernelModules = [
+      "kvm-amd"
+      "tun"
+      "vhost"
+      "vhost_net"
+      "vhost_vsock"
+    ];
+
+    kernelParams = [
+      ##########################################################
+      # AMD
+      ##########################################################
+      "amdgpu.dc=1"
+      "amdgpu.audio=0"
+      "acpi_backlight=native"
+      "acpi_osi=Linux"
+      "amd_iommu=on"
+      "iommu=pt"
+
+      ##########################################################
+      # Performance
+      ##########################################################
+      "quiet"
+      "splash"
+      "threadirqs"
+      "mitigations=auto"
+
+      ##########################################################
+      # Security
+      ##########################################################
+      "page_alloc.shuffle=1"
+      "slab_nomerge"
+      "randomize_kstack_offset=on"
+      "init_on_alloc=1"
+      "init_on_free=1"
+      "vsyscall=none"
+      "pti=on"
+
+      ##########################################################
+      # Networking
+      ##########################################################
+      "ipv6.autoconf=1"
+
+      ##########################################################
+      # Misc
+      ##########################################################
+      "nowatchdog"
+    ];
+  };
+}

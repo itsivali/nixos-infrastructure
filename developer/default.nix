@@ -1,66 +1,25 @@
-# developer/default.nix
+##############################################################################
 #
-# System-level developer tooling: shells, Docker, language runtimes.
-# Shell configuration is intentionally NOT set here — Home Manager owns
-# programs.zsh and programs.bash for the ivali user. This module only sets
-# the default login shell and installs system-wide packages.
+# Developer Module
 #
-# Drop additional *.nix files here to extend the dev environment:
-#   e.g. k8s.nix, terraform.nix, rust.nix, java.nix
-{ pkgs, ... }:
+# Purpose
+# -------
+# Compose developer tooling modules.
+#
+# Ownership
+# ---------
+# Imports only — no configuration.
+#
+# Responsibilities
+# ----------------
+# - shell.nix     — Default login shell
+# - docker.nix    — Docker container runtime
+# - languages.nix — Language runtimes and tooling
+#
+##############################################################################
 
-let
-  tsxPackage = pkgs.tsx;
-in
+{ ... }:
+
 {
   imports = import ../lib/auto-imports.nix ./.;
-
-  # ── shell ──────────────────────────────────────────────────────────────────
-  # Just set the default shell; HM handles zsh options, aliases, plugins.
-  programs.bash.completion.enable = true;
-  users.defaultUserShell = pkgs.zsh;
-
-  # zsh must still be enabled at the system level so /etc/shells is updated
-  # and login works before Home Manager activates. Options are left to HM.
-  programs.zsh.enable = true;
-
-  # ── virtualisation ─────────────────────────────────────────────────────────
-  virtualisation.docker = {
-    enable = true;
-    enableOnBoot = true;
-    autoPrune = {
-      enable = true;
-      dates = "weekly";
-    };
-  };
-
-  # ── packages ───────────────────────────────────────────────────────────────
-  environment.systemPackages = with pkgs; [
-    # Nix
-    alejandra
-
-    # Go
-    go
-
-    # Node.js / TypeScript
-    nodejs_22
-    yarn
-    typescript
-    typescript-language-server
-    tsxPackage
-
-    # Python
-    python313
-    python313Packages.ipython
-    python313Packages.pytest
-    uv
-    ruff
-    black
-    mypy
-
-
-  ];
-
-  # EDITOR is set in Home Manager's sessionVariables so it is scoped to the
-  # user session and does not conflict with root or other users.
 }

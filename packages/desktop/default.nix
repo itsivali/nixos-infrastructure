@@ -8,5 +8,4 @@ with pkgs; [
   vlc
   firefox
   libreoffice-fresh
-
 ]

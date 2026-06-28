@@ -1,22 +1,35 @@
 ##############################################################################
 #
-# Git Module
+# Git Delta
 #
 # Purpose
 # -------
-# Compose all Git-related Home Manager modules.
+# Configure Git Delta as the default diff and pager.
 #
-# This file should never contain configuration.
-# It exists solely to compose child modules.
+# Ownership
+# ---------
+# programs.delta
+#
+# Does NOT Own
+# ------------
+# - Git configuration (home/git/git.nix)
+# - Git packages (home/git/packages.nix)
 #
 ##############################################################################
 
 { ... }:
 
 {
-  imports = [
-    ./packages.nix
-    ./git.nix
-    ./delta.nix
-  ];
+  programs.delta = {
+    enable = true;
+
+    options = {
+      features = "side-by-side line-numbers decorations";
+      syntax-theme = "gruvbox-dark";
+      line-numbers = true;
+      side-by-side = true;
+      navigate = true;
+      light = false;
+    };
+  };
 }

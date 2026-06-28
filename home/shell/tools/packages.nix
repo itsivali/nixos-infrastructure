@@ -25,7 +25,7 @@
 # - Git packages (home/git/)
 # - Editor packages (home/editors/)
 # - Environment packages (home/environment/)
-# - GUI packages (packages/gui/)
+# - Desktop packages (packages/desktop/)
 # - Developer packages (home/developer/)
 #
 ##############################################################################

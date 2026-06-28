@@ -8,7 +8,6 @@ with pkgs; [
   bitwarden-cli
   btop
   curl
-  delta
   direnv
   eza
   fastfetch

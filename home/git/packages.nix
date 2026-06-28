@@ -15,7 +15,6 @@
 # - Git LFS
 # - GitUI
 # - LazyGit
-# - Delta (diff tool)
 #
 # Does NOT Own
 # ------------
@@ -29,7 +28,6 @@
 
 {
   home.packages = with pkgs; [
-    delta
     git-lfs
     gitui
     lazygit

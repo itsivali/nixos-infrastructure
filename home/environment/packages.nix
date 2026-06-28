@@ -34,7 +34,6 @@
     ripgrep
     tree
     fzf
-    delta
 
     # Monitoring
     btop

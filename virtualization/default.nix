@@ -1,10 +1,10 @@
 ##############################################################################
 #
-# Developer Module
+# Virtualization Module
 #
 # Purpose
 # -------
-# Compose developer tooling modules.
+# Compose virtualization-related configuration modules.
 #
 # Ownership
 # ---------
@@ -12,9 +12,9 @@
 #
 # Responsibilities
 # ----------------
-# - shell.nix     — Default login shell
-# - docker.nix  — (moved to virtualization/docker.nix)
-# - languages.nix — Language runtimes and tooling
+# - docker.nix  — Docker container runtime
+# - kvm.nix     — KVM/QEMU (future)
+# - podman.nix  — Podman (future)
 #
 ##############################################################################
 

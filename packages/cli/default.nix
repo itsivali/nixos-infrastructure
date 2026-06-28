@@ -1,3 +1,5 @@
+# packages/cli/default.nix
+# CLI tools — combined into system/user package sets by aggregators.
 { pkgs }:
 
 with pkgs; [
@@ -9,6 +11,7 @@ with pkgs; [
   delta
   direnv
   eza
+  fastfetch
   fd
   fzf
   gh
@@ -18,6 +21,7 @@ with pkgs; [
   gnupg
   home-manager
   htop
+  iproute2
   jq
   just
   lazygit

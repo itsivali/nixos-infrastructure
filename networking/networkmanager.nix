@@ -15,7 +15,7 @@
 # ------------
 # - Time zone (networking/time.nix)
 # - SSH server (networking/ssh-server.nix)
-# - Email relay (networking/msmtp/)
+# - Email relay (services/msmtp/)
 #
 ##############################################################################
 

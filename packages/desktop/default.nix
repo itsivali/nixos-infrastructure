@@ -1,3 +1,5 @@
+# packages/desktop/default.nix
+# Desktop applications — combined into system package set by aggregator.
 { pkgs }:
 
 with pkgs; [

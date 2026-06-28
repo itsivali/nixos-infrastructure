@@ -1,5 +1,4 @@
 # packages/user/default.nix
-# Returns a flat list of derivations for Home Manager or buildEnv.
+# User-facing packages — CLI tools only; desktop apps go in packages/system.
 { pkgs }:
-(import ../cli { inherit pkgs; })
-++ (import ../desktop { inherit pkgs; })
+import ../cli { inherit pkgs; }

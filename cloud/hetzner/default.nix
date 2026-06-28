@@ -1,19 +1,14 @@
 ##############################################################################
 #
-# Session Variables
+# Hetzner Cloud
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
-#
-# Ownership
-# ---------
-# (future) home.sessionVariables
+# Hetzner Cloud server configuration (placeholder for future use).
 #
 ##############################################################################
 
 { ... }:
 
 {
-
 }

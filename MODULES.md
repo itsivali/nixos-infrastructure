@@ -19,28 +19,77 @@ configuration.nix                 ← stable registry of top-level domains
 │   └── rollback.nix              ← auto-discovered ✓
 │
 ├── ./boot                        → boot/default.nix
-│   └── (drop files here)
+│   ├── kernel.nix                ← auto-discovered ✓
+│   ├── loader.nix                ← auto-discovered ✓
+│   ├── sysctl.nix                ← auto-discovered ✓
+│   ├── tpm.nix                   ← auto-discovered ✓
+│   └── zram.nix                  ← auto-discovered ✓
 │
 ├── ./networking                  → networking/default.nix
-│   ├── msmtp/                    ← auto-discovered sub-directory ✓
-│   │   └── default.nix
-│   └── (drop vpn.nix here)       ← auto-discovered ✓
+│   ├── networkmanager.nix        ← auto-discovered ✓
+│   └── time.nix                  ← auto-discovered ✓
 │
 ├── ./security                    → security/default.nix
+│   ├── apparmor.nix              ← auto-discovered ✓
+│   ├── fail2ban.nix              ← auto-discovered ✓
 │   ├── firewall.nix              ← auto-discovered ✓
+│   ├── hardening.nix             ← auto-discovered ✓
+│   ├── packages.nix              ← auto-discovered ✓
+│   ├── sops.nix                  ← auto-discovered ✓
+│   ├── sudo.nix                  ← auto-discovered ✓
 │   └── tailscale.nix             ← auto-discovered ✓
 │
 ├── ./developer                   → developer/default.nix
-│   └── (drop rust.nix here)
+│   ├── languages.nix             ← auto-discovered ✓
+│   └── shell.nix                 ← auto-discovered ✓
 │
 ├── ./desktop                     → desktop/default.nix
-│   └── gnome-lean.nix            ← auto-discovered ✓
+│   ├── gnome-lean.nix            ← auto-discovered ✓
+│   └── gpu.nix                   ← auto-discovered ✓
 │
 ├── ./observability               → observability/default.nix
-│   └── (drop alertmanager.nix)
+│   ├── alloy.nix                 ← auto-discovered ✓
+│   ├── falco.nix                 ← auto-discovered ✓
+│   ├── grafana.nix               ← auto-discovered ✓
+│   ├── journald.nix              ← auto-discovered ✓
+│   ├── loki.nix                  ← auto-discovered ✓
+│   ├── options.nix               ← auto-discovered ✓
+│   ├── otel.nix                  ← auto-discovered ✓
+│   ├── packages.nix              ← auto-discovered ✓
+│   └── prometheus.nix            ← auto-discovered ✓
 │
-└── ./ci                          → ci/default.nix
-    └── gitlab-runner.nix         ← auto-discovered ✓
+├── ./ci                          → ci/default.nix
+│   └── gitlab-runner.nix         ← auto-discovered ✓
+│
+├── ./ssh                         → ssh/default.nix
+│   ├── client.nix                ← auto-discovered ✓
+│   └── (daemon config inline)
+│
+├── ./services                    → services/default.nix
+│   ├── msmtp/                    ← auto-discovered ✓
+│   ├── nginx/                    ← placeholder
+│   ├── postgres/                 ← placeholder
+│   └── redis/                    ← placeholder
+│
+├── ./storage                     → storage/default.nix
+│   ├── btrfs.nix                 ← auto-discovered ✓
+│   └── encryption.nix            ← placeholder
+│
+├── ./system                      → system/default.nix
+│   ├── nix.nix                   ← auto-discovered ✓
+│   ├── state.nix                 ← auto-discovered ✓
+│   └── users.nix                 ← auto-discovered ✓
+│
+├── ./virtualization              → virtualization/default.nix
+│   └── docker.nix                ← auto-discovered ✓
+│
+├── ./cloud                       → cloud/default.nix
+│   ├── aws/                      ← placeholder
+│   ├── digitalocean/             ← placeholder
+│   └── hetzner/                  ← placeholder
+│
+└── ./i18n                        → i18n/default.nix
+    └── locale.nix                ← auto-discovered ✓
 ```
 
 The engine is `lib/auto-imports.nix` — a single Nix function used by every `default.nix`.
@@ -65,11 +114,11 @@ Edit it as a normal NixOS module. On the next `nixos-rebuild switch` it is impor
 Create the directory with its own `default.nix`:
 
 ```
-networking/
+services/
 ├── default.nix
 ├── msmtp/
-│   └── default.nix    ← already exists
-└── wireguard/
+│   └── default.nix    ← existing service
+└── nginx/
     └── default.nix    ← new sub-module, auto-discovered
 ```
 
@@ -148,5 +197,14 @@ For a sub-directory module:
 |-------------------------------|-----------------------------------|
 | `boot/default.nix`            | `../lib/auto-imports.nix`         |
 | `networking/default.nix`      | `../lib/auto-imports.nix`         |
-| `networking/msmtp/default.nix`| `../../lib/auto-imports.nix`      |
-| `networking/wireguard/default.nix` | `../../lib/auto-imports.nix` |
+| `services/msmtp/default.nix`  | `../../lib/auto-imports.nix`      |
+| `storage/default.nix`         | `../lib/auto-imports.nix`         |
+| `system/default.nix`          | `../lib/auto-imports.nix`         |
+| `cloud/default.nix`           | `../lib/auto-imports.nix`         |
+| `virtualization/default.nix`  | `../lib/auto-imports.nix`         |
+| `cloud/hetzner/default.nix`   | `../../lib/auto-imports.nix`      |
+| `cloud/digitalocean/default.nix` | `../../lib/auto-imports.nix`   |
+| `cloud/aws/default.nix`       | `../../lib/auto-imports.nix`      |
+| `i18n/default.nix`            | `../lib/auto-imports.nix`         |
+| `ssh/default.nix`             | `../lib/auto-imports.nix`         |
+| `ssh/client.nix`              | N/A (auto-discovered by ssh/)     |

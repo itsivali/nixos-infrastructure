@@ -1,19 +1,14 @@
 ##############################################################################
 #
-# Session Variables
+# DigitalOcean
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
-#
-# Ownership
-# ---------
-# (future) home.sessionVariables
+# DigitalOcean Droplet configuration (placeholder for future use).
 #
 ##############################################################################
 
 { ... }:
 
 {
-
 }

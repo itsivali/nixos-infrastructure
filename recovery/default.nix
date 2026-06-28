@@ -1,14 +1,24 @@
-# recovery/default.nix
+##############################################################################
 #
-# Domain entry-point for recovery and self-healing modules.
-# Automatically imports every *.nix file placed in this directory.
+# Recovery Module
 #
-# Current auto-discovered modules:
-#   deployment-health.nix  ← health-check service + 5-minute timer
-#   rollback.nix           ← self-heal service that triggers on failure
+# Purpose
+# -------
+# Compose recovery and self-healing modules.
 #
-# To add a new recovery module (e.g. snapshot.nix), just drop it here.
+# Ownership
+# ---------
+# Imports only — no configuration.
+#
+# Responsibilities
+# ----------------
+# - deployment-health.nix — Health-check service + 5-minute timer
+# - rollback.nix          — Self-heal service that triggers on failure
+#
+##############################################################################
+
 { ... }:
+
 {
   imports = import ../lib/auto-imports.nix ./.;
 }

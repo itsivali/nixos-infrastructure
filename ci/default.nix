@@ -1,13 +1,23 @@
-# ci/default.nix
+##############################################################################
 #
-# Domain entry-point for CI/CD modules.
-# Automatically imports every *.nix file placed in this directory.
+# CI / CD Module
 #
-# Current auto-discovered modules:
-#   gitlab-runner.nix  ← self-healing GitLab Runner fleet
+# Purpose
+# -------
+# Compose CI/CD runner and automation modules.
 #
-# To add a new CI module (e.g. cache-server.nix), just drop it here.
+# Ownership
+# ---------
+# Imports only — no configuration.
+#
+# Responsibilities
+# ----------------
+# - gitlab-runner.nix — Self-healing GitLab Runner fleet
+#
+##############################################################################
+
 { ... }:
+
 {
   imports = import ../lib/auto-imports.nix ./.;
 }

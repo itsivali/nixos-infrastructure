@@ -1,19 +1,18 @@
 ##############################################################################
 #
-# Session Variables
+# Redis
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
+# In-memory cache (placeholder for future use).
 #
 # Ownership
 # ---------
-# (future) home.sessionVariables
+# (future) services.redis
 #
 ##############################################################################
 
 { ... }:
 
 {
-
 }

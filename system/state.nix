@@ -1,19 +1,19 @@
 ##############################################################################
 #
-# Session Variables
+# System State
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
+# Declare the NixOS system state version.
 #
 # Ownership
 # ---------
-# (future) home.sessionVariables
+# system.stateVersion
 #
 ##############################################################################
 
 { ... }:
 
 {
-
+  system.stateVersion = "26.11";
 }

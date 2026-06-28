@@ -1,19 +1,18 @@
 ##############################################################################
 #
-# Session Variables
+# Disk Encryption
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
+# LUKS and disk encryption configuration (placeholder for future use).
 #
 # Ownership
 # ---------
-# (future) home.sessionVariables
+# (future) boot.initrd.luks, fileSystems encryption options
 #
 ##############################################################################
 
 { ... }:
 
 {
-
 }

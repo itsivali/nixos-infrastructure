@@ -1,27 +1,28 @@
 ##############################################################################
 #
-# Packages
+# User Packages
 #
 # Purpose
 # -------
-# TODO
+# Home Manager user packages — combines packages/user set with
+# shell-specific extras (zsh plugins, monitoring, git tools).
 #
-# Owns
-# ----
-# TODO
+# Ownership
+# ---------
+# home.packages
 #
-# Rules
-# -----
-# • One concern only.
-# • Keep this module focused.
-# • If this file exceeds ~150 lines, split it.
+# Does NOT Own
+# ------------
+# - System-wide packages (hosts/laptop.nix, packages/system)
+# - Shell tools (home/shell/tools/packages.nix)
+# - Git tools (home/git/packages.nix)
 #
 ##############################################################################
 
 { pkgs, ... }:
 
 {
-  packages = (import ../packages/user { inherit pkgs; }) ++ (with pkgs; [
+  home.packages = (import ../../packages/user { inherit pkgs; }) ++ (with pkgs; [
     # Shell
     zsh-powerlevel10k
     zsh-completions

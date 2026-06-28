@@ -1,10 +1,10 @@
 ##############################################################################
 #
-# Developer Module
+# Storage Module
 #
 # Purpose
 # -------
-# Compose developer tooling modules.
+# Compose storage-related configuration modules.
 #
 # Ownership
 # ---------
@@ -12,9 +12,9 @@
 #
 # Responsibilities
 # ----------------
-# - shell.nix     — Default login shell
-# - docker.nix  — (moved to virtualization/docker.nix)
-# - languages.nix — Language runtimes and tooling
+# - btrfs.nix     — BTRFS filesystem tuning
+# - tmpfs.nix     — tmpfs mounts (future)
+# - encryption.nix — Disk encryption (future)
 #
 ##############################################################################
 

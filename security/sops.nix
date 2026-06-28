@@ -1,0 +1,35 @@
+##############################################################################
+#
+# SOPS — Secrets
+#
+# Purpose
+# -------
+# SOPS secret management integration.
+#
+# Ownership
+# ---------
+# options.ivali.secrets, sops.age.keyFile
+#
+# Does NOT Own
+# ------------
+# - Host-specific sops.secrets (hosts/laptop.nix)
+# - Tailscale auth (security/tailscale.nix)
+#
+##############################################################################
+
+{ lib, ... }:
+
+{
+  options.ivali.secrets.enable = lib.mkOption {
+    type = lib.types.bool;
+    default = true;
+    description = ''
+      Enable SOPS-backed secrets. Leave disabled for a first install unless
+      /var/lib/sops-nix/key.txt already contains the matching age private key.
+    '';
+  };
+
+  config = {
+    sops.age.keyFile = "/home/ivali/.config/sops/age/keys.txt";
+  };
+}

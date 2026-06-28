@@ -1,10 +1,10 @@
 ##############################################################################
 #
-# Developer Module
+# i18n Module
 #
 # Purpose
 # -------
-# Compose developer tooling modules.
+# Compose internationalisation and locale configuration modules.
 #
 # Ownership
 # ---------
@@ -12,9 +12,7 @@
 #
 # Responsibilities
 # ----------------
-# - shell.nix     — Default login shell
-# - docker.nix  — (moved to virtualization/docker.nix)
-# - languages.nix — Language runtimes and tooling
+# - locale.nix  — Default system locale
 #
 ##############################################################################
 

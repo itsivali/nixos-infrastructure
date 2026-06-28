@@ -1,23 +1,24 @@
 ##############################################################################
 #
-# Editors Module
+# Locale
 #
 # Purpose
 # -------
-# Compose editor configuration modules.
+# System locale and language settings.
 #
 # Ownership
 # ---------
-# Imports only — no configuration.
+# i18n.defaultLocale
 #
-# Responsibilities
-# ----------------
-# - zed.nix  — Zed editor configuration
+# Does NOT Own
+# ------------
+# - Time zone (networking/time.nix)
+# - Keyboard layout (desktop/)
 #
 ##############################################################################
 
 { ... }:
 
 {
-  imports = import ../../lib/auto-imports.nix ./.;
+  i18n.defaultLocale = "en_US.UTF-8";
 }

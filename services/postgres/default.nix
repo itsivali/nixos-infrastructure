@@ -1,19 +1,18 @@
 ##############################################################################
 #
-# Session Variables
+# PostgreSQL
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
+# Database server (placeholder for future use).
 #
 # Ownership
 # ---------
-# (future) home.sessionVariables
+# (future) services.postgresql
 #
 ##############################################################################
 
 { ... }:
 
 {
-
 }

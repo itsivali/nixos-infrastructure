@@ -1,10 +1,10 @@
 ##############################################################################
 #
-# Developer Module
+# Services Module
 #
 # Purpose
 # -------
-# Compose developer tooling modules.
+# Compose service-related configuration modules.
 #
 # Ownership
 # ---------
@@ -12,9 +12,10 @@
 #
 # Responsibilities
 # ----------------
-# - shell.nix     — Default login shell
-# - docker.nix  — (moved to virtualization/docker.nix)
-# - languages.nix — Language runtimes and tooling
+# - msmtp/    — Outbound SMTP relay for notifications
+# - nginx/    — Web server (future)
+# - postgres/ — Database (future)
+# - redis/    — Cache (future)
 #
 ##############################################################################
 

@@ -1,14 +1,27 @@
-# ssh/default.nix
+##############################################################################
 #
-# SSH daemon module for the ivali fleet.
+# SSH Daemon
 #
-# Features
-# ─────────────────────────────────────────────────────────────────────────────
-# • Password authentication disabled (keys only)
-# • Root login disabled
-# • Optional Tailscale-only restriction (tailscale0 interface)
-# • Per-user authorised key injection
+# Purpose
+# -------
+# SSH daemon configuration with Tailscale-aware firewall controls.
 #
+# Ownership
+# ---------
+# options.ivali.ssh, services.openssh
+#
+# Responsibilities
+# ----------------
+# - Password authentication disabled (keys only)
+# - Root login disabled
+# - Optional Tailscale-only restriction (tailscale0 interface)
+# - Per-user authorised key injection
+#
+# Does NOT Own
+# ------------
+# - SSH client config (ssh/client.nix)
+#
+##############################################################################
 
 { config, lib, ... }:
 
@@ -16,6 +29,8 @@ let
   cfg = config.ivali.ssh;
 in
 {
+  imports = [ ./client.nix ];
+
   options.ivali.ssh = {
     enable = lib.mkEnableOption "SSH daemon";
 

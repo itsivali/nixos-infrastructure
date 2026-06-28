@@ -58,5 +58,4 @@ in
     # ── Auto-discovered domain modules ──────────────────────────────────────
     ++ domainModules;
 
-  sops.age.keyFile = "/home/ivali/.config/sops/age/keys.txt";
 }

@@ -22,8 +22,6 @@
       username = "ivali";
       hostName = "prague";
 
-      gitlabSshKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFrfkLmTc690z2/Mk2SJbymqiJEjqOdU3RR8V+sOghq5 itsivali@outlook.com";
-
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
@@ -74,34 +72,6 @@
           ./configuration.nix
 
           {
-            nixpkgs.config.allowUnfree = true;
-
-            nix = {
-              settings = {
-                experimental-features = [ "nix-command" "flakes" ];
-                auto-optimise-store = true;
-                trusted-users = [ "root" username ];
-                substituters = [ "https://cache.nixos.org" ];
-                warn-dirty = false;
-              };
-
-              gc = {
-                automatic = true;
-                dates = "weekly";
-                options = "--delete-older-than 5d";
-              };
-            };
-
-            users.users.${username} = {
-              isNormalUser = true;
-              description = "Wilis Ivali";
-              extraGroups = [ "wheel" "networkmanager" "docker" "video" "audio" ];
-
-              openssh.authorizedKeys.keys = [
-                gitlabSshKey
-              ];
-            };
-
             home-manager = {
               useGlobalPkgs = true;
               useUserPackages = true;
@@ -113,8 +83,6 @@
               users.${username} = import ./home/ivali.nix;
               backupFileExtension = "hm-backup";
             };
-
-            system.stateVersion = "26.11";
           }
         ];
       };

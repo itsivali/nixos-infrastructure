@@ -1,10 +1,10 @@
 ##############################################################################
 #
-# Developer Module
+# Cloud Module
 #
 # Purpose
 # -------
-# Compose developer tooling modules.
+# Compose cloud provider configuration modules.
 #
 # Ownership
 # ---------
@@ -12,9 +12,9 @@
 #
 # Responsibilities
 # ----------------
-# - shell.nix     — Default login shell
-# - docker.nix  — (moved to virtualization/docker.nix)
-# - languages.nix — Language runtimes and tooling
+# - hetzner/     — Hetzner Cloud (future)
+# - digitalocean/ — DigitalOcean (future)
+# - aws/         — Amazon Web Services (future)
 #
 ##############################################################################
 

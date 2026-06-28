@@ -1,33 +1,29 @@
+##############################################################################
 #
-# ci/gitlab-runner.nix
+# GitLab Runner
 #
-# =============================================================================
-# Fleet GitLab Runner
-# =============================================================================
-#
+# Purpose
+# -------
 # Production GitLab Runner module for GitOps-managed NixOS.
 #
+# Ownership
+# ---------
+# services.gitlab-runner, associated systemd services/timers
+#
 # Responsibilities
+# ----------------
+# - Configure GitLab Runner
+# - Schedule health monitoring
+# - Schedule reconciliation
+# - Export GitOps configuration
+# - Harden systemd services
 #
-#   • Configure GitLab Runner
-#   • Schedule health monitoring
-#   • Schedule reconciliation
-#   • Export GitOps configuration
-#   • Harden systemd services
+# Does NOT Own
+# ------------
+# - fleet.gitops options (automation/options.nix)
+# - GitOps reconciler (automation/gitops-reconciler.nix)
 #
-# Git repository information is intentionally NOT configured here.
-#
-# Instead it is consumed from:
-#
-#   config.fleet.gitops.repo
-#   config.fleet.gitops.branch
-#
-# defined by:
-#
-#   automation/options.nix
-#   automation/common.nix
-#
-# =============================================================================
+##############################################################################
 
 { config, lib, pkgs, ... }:
 

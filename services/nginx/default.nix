@@ -1,19 +1,18 @@
 ##############################################################################
 #
-# Session Variables
+# Nginx
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
+# Web server (placeholder for future use).
 #
 # Ownership
 # ---------
-# (future) home.sessionVariables
+# (future) services.nginx
 #
 ##############################################################################
 
 { ... }:
 
 {
-
 }

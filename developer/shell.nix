@@ -14,7 +14,7 @@
 # Does NOT Own
 # ------------
 # - Interactive shell config (home/shell/)
-# - Docker (developer/docker.nix)
+# - Docker (virtualization/docker.nix)
 # - Language toolchains (developer/languages.nix)
 #
 ##############################################################################

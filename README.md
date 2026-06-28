@@ -1,7 +1,7 @@
 # nixos-infrastructure
 
-Personal NixOS infrastructure for the `prague` laptop, managed with Nix flakes,
-Home Manager, GitLab CI/CD, SOPS-ready secrets, lean GNOME, Tailscale, LocalSend,
+Autonomous NixOS fleet infrastructure managed with Nix flakes, Home Manager,
+GitLab CI/CD, SOPS-ready secrets, lean GNOME, Tailscale, LocalSend,
 and a local observability stack.
 
 This repository is designed for a fresh NixOS GNOME install that does not yet
@@ -11,18 +11,21 @@ switches the system.
 
 ## What This Builds
 
-- NixOS host: `prague`
-- Desktop: lean GNOME, stripped of heavier default GNOME applications
+- NixOS host: `prague` (laptop)
+- Desktop: lean GNOME, stripped bloat, GPU-accelerated (AMD)
 - Kernel: `linuxPackages_zen` for desktop responsiveness
-- Memory: zram enabled with aggressive swappiness tuning
-- Networking: NetworkManager, systemd-resolved, hardened SSH
+- Memory: zram enabled with aggressive swappiness tuning, BTRFS
+- Networking: NetworkManager, systemd-resolved, Tailscale
 - Firewall: inbound allow-list, outbound internet preserved, LocalSend open
-- Tailscale: enabled, SSH capable, exit-node advertising on, no accepted DNS/routes by default
-- Developer stack: Docker, Node, `tsx`, Python, Flutter, Dart, VS Code
-- Home Manager: user config routed through `home/ivali.nix`
-- Monitoring: Grafana, Prometheus, node exporter, Loki, Grafana Alloy
-- Security: fail2ban, AppArmor, auditd, journald persistence
-- CI/CD: GitLab pipeline for flake checks, system builds, binary cache publishing, SBOM generation, and deployment hooks
+- Tailscale: enabled, exit-node advertising, no accepted DNS/routes by default
+- SSH: hardened, Tailscale-only auth, Shellfish-compatible
+- Developer stack: Node, `tsx`, Python, Flutter, Dart
+- Virtualisation: Docker with weekly auto-prune
+- Home Manager: modular user config (shell, git, editors, environment, services)
+- Monitoring: Grafana, Prometheus, node exporter, Loki, Grafana Alloy, Falco, OTEL
+- Security: fail2ban, AppArmor, SOPS secrets, auditd, journald persistence
+- CI/CD: GitLab pipeline, flake checks, system builds, binary cache, SBOM
+- GitOps: self-healing deployment health monitor and reconciler
 
 ## Fresh Install
 
@@ -253,65 +256,53 @@ ivali.tailscale = {
 
 ```text
 .
+├── automation/            # GitOps reconciler, fleet options
 ├── boot/                  # Kernel, bootloader, zram, sysctl tuning
 ├── ci/                    # Native NixOS GitLab Runner module
-├── desktop/               # Lean GNOME module
-├── developer/             # DevOps and programming toolchains
-├── home/                  # Home Manager modules; entry point is ivali.nix
+├── cloud/                 # Cloud provider stubs (AWS, Hetzner, DigitalOcean)
+├── desktop/               # GNOME, GPU, power management
+├── developer/             # Shell defaults and language toolchains
+├── home/                  # Home Manager modules (shell, git, editors, services)
 ├── hosts/                 # Host-specific config and generated hardware config
-├── networking/            # DNS, SSH, NetworkManager, timezone
-├── observability/         # Grafana, Prometheus, Loki, Alloy, auditd
-├── packages/              # GUI, terminal, system, and user package sets
-├── security/              # Firewall, Tailscale, hardening, fail2ban
-├── scripts/               # Fresh install bootstrap
-└── tests/                 # NixOS smoke tests
+├── i18n/                  # Locale and internationalisation
+├── networking/            # DNS, NetworkManager, timezone
+├── observability/         # Grafana, Prometheus, Loki, Alloy, Falco, OTEL
+├── packages/              # CLI, desktop, system, and user package sets
+├── recovery/              # Deployment health check, self-heal rollback
+├── scripts/               # Install bootstrap and admin scripts
+├── secrets/               # SOPS-encrypted secret files
+├── security/              # Firewall, Tailscale, hardening, fail2ban, SOPS
+├── services/              # Service modules (msmtp, nginx, postgres, redis)
+├── ssh/                   # SSH daemon and client configuration
+├── storage/               # Filesystem and encryption modules
+├── system/                # Nix daemon, system users, state version
+├── tests/                 # NixOS smoke tests
+└── virtualization/        # Docker and future VM runtimes
 ```
 
 ## Package Management
 
-GUI apps and terminal apps are intentionally separated under `packages/`.
+CLI tools and desktop applications are separated under `packages/`.
 
-Add GUI desktop applications here:
-
-```text
-packages/gui/default.nix
-```
-
-Examples:
-
-```nix
-with pkgs; [
-  localsend
-  vscode
-]
-```
-
-Add terminal applications here:
+Add CLI tools here:
 
 ```text
-packages/terminal/default.nix
+packages/cli/default.nix
 ```
 
-Examples:
+Add desktop applications here:
 
-```nix
-with pkgs; [
-  bat
-  btop
-  git
-  jq
-  ripgrep
-]
+```text
+packages/desktop/default.nix
 ```
 
-The aggregator files keep the install surfaces simple:
+The aggregator files split install surfaces:
 
-- `packages/system/default.nix` imports terminal and GUI packages for system-wide installation.
-- `packages/user/default.nix` imports terminal packages for Home Manager user packages.
+- `packages/system/default.nix` imports `cli` and `desktop` for system-wide installation.
+- `packages/user/default.nix` imports `cli` only for Home Manager user packages.
 
-Put language toolchains and service-like developer dependencies in `developer/default.nix`
-instead of `packages/terminal/default.nix`. For example: Docker, Node.js,
-Python, Flutter, and Dart belong in `developer/`.
+Language toolchains and service-like developer dependencies go in `developer/`
+separately. For example: Node.js, Python, Flutter, and Dart.
 
 ## GitLab CI/CD
 

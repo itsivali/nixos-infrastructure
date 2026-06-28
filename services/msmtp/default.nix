@@ -1,18 +1,27 @@
-# networking/msmtp/default.nix
+##############################################################################
 #
+# MSMTP — Outbound Email Relay
+#
+# Purpose
+# -------
 # Outbound email for GitOps notifications via notify.sh.
-# Auto-discovered by networking/default.nix — no manual import needed.
 #
-# Drop additional .nix files here to extend mail configuration:
-#   e.g. aliases.nix, logrotate-extra.nix
+# Ownership
+# ---------
+# programs.msmtp, sops.secrets.smtp_*, services.logrotate.settings.msmtp
 #
+# Dependencies
+# ------------
 # Requires secrets/smtp.yaml SOPS-encrypted with keys:
-#   smtp_password  smtp_host  smtp_user
-{ config, pkgs, ... }:
+#   smtp_password, smtp_host, smtp_user
+#
+##############################################################################
+
+{ ... }:
+
 {
   imports = import ../../lib/auto-imports.nix ./.;
 
-  # ── SOPS secrets ────────────────────────────────────────────────────────────
   sops.secrets.smtp_password = {
     sopsFile = ../../secrets/smtp.yaml;
     owner = "root";
@@ -31,7 +40,6 @@
     mode = "0400";
   };
 
-  # ── msmtp (provides the `sendmail` binary that notify.sh calls) ─────────────
   programs.msmtp = {
     enable = true;
 
@@ -51,7 +59,6 @@
     };
   };
 
-  # ── Log rotation ─────────────────────────────────────────────────────────────
   services.logrotate.settings.msmtp = {
     files = [ "/var/log/msmtp.log" ];
     frequency = "weekly";

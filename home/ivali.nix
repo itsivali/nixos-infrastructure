@@ -26,6 +26,6 @@
 
 {
   imports = [
-    ./identity
+    ./default.nix
   ];
 }

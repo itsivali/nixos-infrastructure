@@ -1,19 +1,14 @@
 ##############################################################################
 #
-# Session Variables
+# Amazon Web Services
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
-#
-# Ownership
-# ---------
-# (future) home.sessionVariables
+# AWS EC2 and infrastructure configuration (placeholder for future use).
 #
 ##############################################################################
 
 { ... }:
 
 {
-
 }

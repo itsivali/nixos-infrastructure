@@ -13,7 +13,7 @@
 # Does NOT Own
 # ------------
 # - Shell defaults (developer/shell.nix)
-# - Docker (developer/docker.nix)
+# - Docker (virtualization/docker.nix)
 # - Editor config (home/editors/)
 # - Shell tool packages (home/shell/tools/)
 # - Git packages (home/git/)

@@ -1,10 +1,10 @@
 ##############################################################################
 #
-# Developer Module
+# System Module
 #
 # Purpose
 # -------
-# Compose developer tooling modules.
+# Compose system-level configuration modules.
 #
 # Ownership
 # ---------
@@ -12,9 +12,9 @@
 #
 # Responsibilities
 # ----------------
-# - shell.nix     — Default login shell
-# - docker.nix  — (moved to virtualization/docker.nix)
-# - languages.nix — Language runtimes and tooling
+# - nix.nix  — Nix daemon settings and garbage collection
+# - users.nix — System user definitions
+# - state.nix — System state version
 #
 ##############################################################################
 

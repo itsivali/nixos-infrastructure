@@ -16,6 +16,7 @@ with pkgs; [
   gitui
   gitlab
   gnupg
+  home-manager
   htop
   jq
   just

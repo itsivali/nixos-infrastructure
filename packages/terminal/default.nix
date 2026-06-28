@@ -27,6 +27,7 @@ with pkgs; [
   rsync
   sops
   starship
+  tree
   unzip
   usbutils
   vim

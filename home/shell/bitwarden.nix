@@ -9,16 +9,14 @@ let
   # Fully integrated interactive password search & copy engine
   bwp = pkgs.writeShellScriptBin "bwp" ''
     set -e
-    
+
     # 1. Sync session variables
     if [ -z "$BW_SESSION" ] && [ -f "${sessionFile}" ]; then
       export BW_SESSION=$(cat "${sessionFile}")
     fi
 
     if [ -z "$BW_SESSION" ]; then
-      echo "❌ No active session found. Running automatic unlock..."
-      # Attempt a dynamic source inline if run from outside Zsh lifecycle
-      if [ -f "${sessionFile}" ]; then export BW_SESSION=$(cat "${sessionFile}"); fi
+      echo "❌ No active session found. Attempting automatic unlock..."
     fi
 
     # 2. Match OS clipboard environment
@@ -29,7 +27,7 @@ let
     fi
 
     echo "🔄 Fetching vault items..."
-    
+
     # 3. Stream filtered vault metadata to fzf, isolate ID, extract raw secret cleanly
     SELECTED_ID=$(${pkgs.bitwarden-cli}/bin/bw list items | ${pkgs.jq}/bin/jq -r '.[] | "\(.name) (u: \(.login.username // "none")) [\(.id)]"' | ${pkgs.fzf}/bin/fzf --height 40% --reverse --prompt="🔑 Select Account: " | grep -o '[a-f0-9-]\{36\}')
 
@@ -82,7 +80,8 @@ in
   # Core System Keyring Integration & Shell Hooks
   ###############################################################
 
-  programs.zsh.initExtra = lib.mkAfter ''
+  # Using initContent with lib.mkAfter so it appends to ivali.nix cleanly
+  programs.zsh.initContent = lib.mkAfter ''
     # --- Seamless System Keyring Automation Functions ---
 
     bwunlock() {
@@ -95,10 +94,10 @@ in
         echo -n "Please enter your client_secret: "
         read -s api_secret
         echo ""
-        
+
         echo -n "Please enter your client_id (e.g. user.xxxxxx): "
         read -r api_id
-        
+
         # Bind the client_secret string contextually inside system keyring
         echo "$api_secret" | secret-tool store --label="Bitwarden API Secret" service bitwarden account login
         echo "$api_id" | secret-tool store --label="Bitwarden API Client ID" service bitwarden account id
@@ -119,7 +118,7 @@ in
       local session
       echo "🔐 Unlocking local secure vault..."
       session=$(bw unlock --raw)
-      
+
       if [ -n "$session" ]; then
         export BW_SESSION="$session"
         mkdir -p "${cacheDir}"
@@ -155,12 +154,10 @@ in
     }
 
     # --- Runtime Initialization Hook ---
-    # Automatically tracks active configurations when you open fresh shell splits
     if [[ -f "${sessionFile}" ]]; then
       export BW_SESSION=$(<"${sessionFile}")
     else
-      # Prompt instantly on login if no session is running
-      # (Optional: Comment out the next line if you don't want it popping up automatically)
+      # Prompt on login if no active session file exists
       bwunlock
     fi
   '';

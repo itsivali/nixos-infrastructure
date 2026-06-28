@@ -1,12 +1,10 @@
 ##############################################################################
 #
-# Home Manager Composition Root
+# Services Module
 #
 # Purpose
 # -------
-# Compose all Home Manager modules.
-#
-# This file contains imports only.
+# Compose services related configuration.
 #
 ##############################################################################
 
@@ -14,14 +12,6 @@
 
 {
   imports = [
-    ./ivali.nix
-
-    ./fonts.nix
-
-    ./shell
-    ./git
-    ./environment
-    ./editors
-    ./services
+    ./auto-format.nix
   ];
 }

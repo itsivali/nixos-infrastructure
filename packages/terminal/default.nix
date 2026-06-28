@@ -21,6 +21,7 @@ with pkgs; [
   just
   lazygit
   nixd
+  opencode
   openssl
   pciutils
   ripgrep

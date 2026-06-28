@@ -18,8 +18,28 @@
 #
 ##############################################################################
 
-{ ... }:
+{ pkgs, ... }:
 
 {
+  packages = (import ../packages/user { inherit pkgs; }) ++ (with pkgs; [
+    # Shell
+    zsh-powerlevel10k
+    zsh-completions
 
+    # Better CLI
+    eza
+    bat
+    fd
+    ripgrep
+    tree
+    fzf
+    delta
+
+    # Monitoring
+    btop
+    fastfetch
+
+    # Git
+    lazygit
+  ]);
 }

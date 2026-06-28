@@ -1,25 +1,22 @@
 ##############################################################################
 #
-# Git Delta
+# Git Module
 #
 # Purpose
 # -------
-# TODO
+# Compose all Git-related Home Manager modules.
 #
-# Owns
-# ----
-# TODO
-#
-# Rules
-# -----
-# • One concern only.
-# • Keep this module focused.
-# • If this file exceeds ~150 lines, split it.
+# This file should never contain configuration.
+# It exists solely to compose child modules.
 #
 ##############################################################################
 
 { ... }:
 
 {
-
+  imports = [
+    ./packages.nix
+    ./git.nix
+    ./delta.nix
+  ];
 }

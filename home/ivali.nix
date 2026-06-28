@@ -109,45 +109,7 @@ in
   programs.home-manager.enable = true;
   home.enableNixpkgsReleaseCheck = false;
 
-   ##############################################################################
-  # Git
   ##############################################################################
-
-  programs.git = {
-    enable = true;
-
-    lfs.enable = true;
-
-    ignores = [
-      ".DS_Store"
-      "*.swp"
-      "*.tmp"
-      "result"
-    ];
-
-    settings = {
-      user = {
-        name = "Willis Ivali";
-        email = "itsivali@outlook.com";
-      };
-
-      init.defaultBranch = "main";
-      pull.rebase = true;
-      rerere.enabled = true;
-      push.autoSetupRemote = true;
-      fetch.prune = true;
-
-      core.editor = "zeditor --wait";
-
-      color.ui = true;
-      merge.conflictstyle = "zdiff3";
-    };
-  };
-
-  programs.delta = {
-    enable = true;
-    enableGitIntegration = true;
-  }; ##############################################################################
   # ZSH
   ##############################################################################
 

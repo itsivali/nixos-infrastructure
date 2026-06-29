@@ -1,3 +1,13 @@
+##############################################################################
+#
+# Flake
+#
+# Purpose
+# -------
+# Auto-generated module description.
+#
+##############################################################################
+
 {
   description = "Autonomous NixOS and Home Manager infrastructure for ivali";
 

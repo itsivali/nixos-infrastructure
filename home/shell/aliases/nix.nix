@@ -35,7 +35,7 @@ in
     update = "cd ${repoDir} && nix flake update";
     check = "cd ${repoDir} && nix flake check";
     fmt = "cd ${repoDir} && nix fmt";
-    hm = "home-manager switch --flake ${repoDir}";
+    hm = "nix build ${repoDir}#hm-activate && ./result/activate && rm result";
     optimise = "sudo nix store optimise";
     clean = "sudo nix-collect-garbage -d";
   };

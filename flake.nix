@@ -53,6 +53,10 @@
         # FIX: required for `nix build` / CI default behavior
         default =
           self.nixosConfigurations.${hostName}.config.system.build.toplevel;
+
+        # Standalone home-manager activation for user config only
+        hm-activate =
+          self.nixosConfigurations.${hostName}.config.home-manager.users.${username}.home.activationPackage;
       };
 
       # ─────────────────────────────────────────────

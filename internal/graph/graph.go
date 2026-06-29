@@ -125,6 +125,31 @@ func Build(scannerResult *scanner.ScanResult, parsed map[string]*parser.ModuleIn
 		}
 	}
 
+	// Add edges from ownership
+	for _, m := range scannerResult.AllModules {
+		if info, ok := parsed[m.Path]; ok {
+			for _, owned := range info.Owns {
+				owned = strings.TrimSpace(owned)
+				if owned == "" {
+					continue
+				}
+				// Resolve relative path against repo root
+				target := owned
+				if !strings.HasPrefix(target, "/") {
+					target = filepath.Join(filepath.Dir(m.RelPath), owned)
+					target = filepath.Clean(target)
+				}
+				if nodeSet[target] {
+					g.Edges = append(g.Edges, Edge{
+						From: m.RelPath,
+						To:   target,
+						Type: EdgeOwns,
+					})
+				}
+			}
+		}
+	}
+
 	// Compute node weights (number of dependents)
 	weightMap := make(map[string]int)
 	for _, e := range g.Edges {
@@ -252,6 +277,43 @@ func (g *Graph) RenderDeps(t Terminal) string {
 	return b.String()
 }
 
+func (g *Graph) RenderOwnership(t Terminal) string {
+	var b strings.Builder
+
+	// Group ownership edges by source
+	ownedBy := make(map[string][]string)
+	for _, e := range g.Edges {
+		if e.Type == EdgeOwns {
+			ownedBy[e.From] = append(ownedBy[e.From], e.To)
+		}
+	}
+
+	if len(ownedBy) == 0 {
+		b.WriteString(fmt.Sprintf("  %s\n", t.Dim("No ownership relationships defined.")))
+		return b.String()
+	}
+
+	var owners []string
+	for k := range ownedBy {
+		owners = append(owners, k)
+	}
+	sort.Strings(owners)
+
+	for _, owner := range owners {
+		items := ownedBy[owner]
+		b.WriteString(fmt.Sprintf("  %s\n", t.Bold(shortName(owner))))
+		b.WriteString(fmt.Sprintf("    %s %s\n", t.Dim("path:"), t.Code(owner)))
+
+		sort.Strings(items)
+		for _, item := range items {
+			b.WriteString(fmt.Sprintf("    %s %s\n", t.Dim("•"), t.Dim(item)))
+		}
+		b.WriteString("\n")
+	}
+
+	return b.String()
+}
+
 func (g *Graph) findNode(id string) *Node {
 	for i := range g.Nodes {
 		if g.Nodes[i].ID == id {
@@ -272,4 +334,5 @@ func shortName(path string) string {
 type Terminal interface {
 	Dim(s string) string
 	Bold(s string) string
+	Code(s string) string
 }

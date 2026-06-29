@@ -369,6 +369,21 @@ func (r *Repository) computeHash() string {
 	return hash
 }
 
+func (r *Repository) ClearCache() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	path := r.cachePath()
+	if path != "" {
+		os.Remove(path)
+	}
+	r.Result = nil
+	r.Parsed = nil
+	r.ScanTime = time.Time{}
+	r.FileHash = ""
+	r.cached = false
+}
+
 func (r *Repository) cachePath() string {
 	dir := cacheDir()
 	if dir == "" {

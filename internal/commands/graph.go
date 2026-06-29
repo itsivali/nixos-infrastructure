@@ -18,8 +18,9 @@ func CmdGraph(a *app.App) *cobra.Command {
 between modules in the repository.
 
 Subcommands:
-  tree    Show module import tree
-  deps    Show flat dependency list`,
+  tree        Show module import tree
+  deps        Show flat dependency list
+  ownership   Show module ownership relationships`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -80,7 +81,31 @@ source module.`,
 		},
 	}
 
-	cmd.AddCommand(treeCmd, depsCmd)
+	ownershipCmd := &cobra.Command{
+		Use:   "ownership",
+		Short: "Show module ownership relationships",
+		Long:  `Display which modules own which files, based on Ownership headers in module documentation.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if !a.RequireRepo() {
+				return nil
+			}
+			if err := a.EnsureScanned(); err != nil {
+				return err
+			}
+
+			r := a.Repo
+			g := graph.Build(r.Result, r.Parsed)
+			out := g.RenderOwnership(a.Term)
+			if out != "" {
+				fmt.Println()
+				fmt.Println(a.Term.InfoBox(out))
+				fmt.Println()
+			}
+			return nil
+		},
+	}
+
+	cmd.AddCommand(treeCmd, depsCmd, ownershipCmd)
 
 	return cmd
 }

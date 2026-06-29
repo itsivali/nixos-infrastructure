@@ -50,6 +50,7 @@ a beautiful interactive terminal experience.`,
 	root.AddCommand(
 		CmdDashboard(a),
 		CmdDoctor(a),
+		CmdExtract(a),
 		CmdExplain(a),
 		CmdGraph(a),
 		CmdStatus(a),

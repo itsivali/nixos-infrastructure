@@ -29,9 +29,11 @@
 #
 ##############################################################################
 
-{ ... }:
+{ config, ... }:
 
 {
+  home.sessionPath = [ "${config.home.homeDirectory}/.local/bin" ];
+
   programs.zsh = {
     enable = true;
     autocd = true;

@@ -40,7 +40,9 @@
       packages.${system} = {
         system = pkgs.buildEnv {
           name = "ivali-system-packages";
-          paths = import ./packages/system { inherit pkgs; };
+          paths =
+            (import ./packages/cli { inherit pkgs; })
+            ++ (import ./packages/desktop { inherit pkgs; });
         };
 
         user = pkgs.buildEnv {

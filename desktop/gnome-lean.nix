@@ -210,9 +210,8 @@ in
     ]
     ++ lib.optionals remoteDesktopEnabled [
       gnome-remote-desktop
-    ]
-    # Desktop applications
-    ++ (import ../packages/desktop { inherit pkgs; });
+    ];
+    # Desktop applications are now provided globally by packages/system.
 
   ##########################################################
   # BLOAT REMOVAL

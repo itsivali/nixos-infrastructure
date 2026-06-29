@@ -8,7 +8,8 @@
 #
 # Ownership
 # ---------
-# boot.kernelPackages, boot.initrd.kernelModules,
+# boot.kernelPackages, boot.blacklistedKernelModules,
+# boot.extraModulePackages, boot.initrd.kernelModules,
 # boot.kernelModules, boot.kernelParams
 #
 # Does NOT Own
@@ -20,11 +21,18 @@
 #
 ##############################################################################
 
-{ pkgs, ... }:
+{ pkgs, config, ... }:
 
 {
   boot = {
-    kernelPackages = pkgs.linuxPackages_latest;
+    # Pin to 6.18 — rtl8821ce out-of-tree driver does not build on 7.x.
+    kernelPackages = pkgs.linuxPackages_6_18;
+
+    # Blacklist the in-kernel rtw88_8821ce driver (broken for RTL8821CE chipsets)
+    # and use the out-of-tree rtl8821ce driver instead.
+    blacklistedKernelModules = [ "rtw88_8821ce" ];
+
+    extraModulePackages = with config.boot.kernelPackages; [ rtl8821ce ];
 
     initrd.kernelModules = [
       "amdgpu"
@@ -38,6 +46,7 @@
       "vhost"
       "vhost_net"
       "vhost_vsock"
+      "8821ce"
     ];
 
     kernelParams = [

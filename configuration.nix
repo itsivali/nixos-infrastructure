@@ -12,13 +12,14 @@
 #   hosts/laptop.nix                  — host identity and per-host options
 #
 # Explicitly imported (not auto-discovered):
-#   desktop   — desktop environment domain module
+#   desktop          — desktop environment domain module
+#   packages/system  — system-wide package set (CLI + desktop)
 #
 # Excluded from discovery:
 #   home      — Home Manager configs; wired up in flake.nix directly
 #   hosts     — pinned above; not a domain module
 #   lib       — Nix helper functions, not modules
-#   packages  — package sets, not modules
+#   packages  — package sets, not modules (except packages/system, imported above)
 #   scripts   — shell scripts
 #   secrets   — SOPS secret files
 #   tests     — NixOS tests; imported separately if needed
@@ -63,6 +64,7 @@ in
     # ── Explicit domain modules ────────────────────────────────────────────
     ++ [
       ./desktop
+      ./packages/system
     ]
     # ── Auto-discovered domain modules ──────────────────────────────────────
     ++ domainModules;

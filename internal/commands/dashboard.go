@@ -2,9 +2,12 @@ package commands
 
 import (
 	"fmt"
+	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
+	"github.com/willisivali/nixos-infrastructure/internal/dashboard"
 )
 
 func CmdDashboard(a *app.App) *cobra.Command {
@@ -12,8 +15,14 @@ func CmdDashboard(a *app.App) *cobra.Command {
 		Use:   "dashboard",
 		Short: "Launch interactive control center",
 		Long: `Launch an interactive terminal UI dashboard that provides a real-time
-view of repository health, git status, module overview, system status,
-suggestions, and quick actions — all in a keyboard-driven interface.
+view of repository health, module overview, and system status.
+
+Controls:
+  Tab/S-Tab  Switch panels
+  ↑/↓        Navigate lists
+  r          Refresh data
+  ?          Toggle help
+  q/Ctrl+C   Quit
 
 Requires an interactive terminal.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -21,9 +30,13 @@ Requires an interactive terminal.`,
 				return nil
 			}
 
-			fmt.Println(a.Term.Warn("Dashboard TUI not yet implemented"))
-			fmt.Println(a.Term.Dim("  Coming in Phase 5: an interactive Bubbletea dashboard."))
-			fmt.Println()
+			m := dashboard.New(a.Repo, a.Term)
+			p := tea.NewProgram(m, tea.WithAltScreen())
+
+			if _, err := p.Run(); err != nil {
+				fmt.Fprintln(os.Stderr, a.Term.Bad("Dashboard error: ")+err.Error())
+				return nil
+			}
 
 			return nil
 		},

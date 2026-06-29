@@ -32,13 +32,14 @@
 { config, ... }:
 
 {
-  home.sessionPath = [ "${config.home.homeDirectory}/.local/bin" ];
-
   programs.zsh = {
     enable = true;
     autocd = true;
     enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
+    profileExtra = ''
+      export PATH="$HOME/.local/bin:$PATH"
+    '';
   };
 }

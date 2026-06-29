@@ -6,7 +6,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/repository"
 )
 
 type category struct {
@@ -27,21 +26,17 @@ It understands the repository, monitors it, validates it, automates
 repetitive work, generates modules, assists development, and provides
 a beautiful interactive terminal experience.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			if verbose {
-				a.Log.Debug().Msg("verbose mode enabled")
-			}
-			_ = jsonOutput
+			a.SetVerbose(verbose)
+			a.SetJSON(jsonOutput)
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			repo, found := repository.Detect(".")
-			if !found {
-				fmt.Println(a.Term.RenderSplash())
-				return nil
+			if a.HasRepo() {
+				return cmd.Help()
 			}
 
-			_ = repo
-			return cmd.Help()
+			fmt.Println(a.Term.RenderSplash())
+			return nil
 		},
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -50,80 +45,113 @@ a beautiful interactive terminal experience.`,
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	root.PersistentFlags().BoolVarP(&jsonOutput, "json", "j", false, "JSON output")
 
-	root.SetHelpTemplate(helpTemplate(a))
+	root.SetHelpTemplate(rootHelp(a))
 
 	root.AddCommand(
 		CmdDashboard(a),
 		CmdDoctor(a),
 		CmdStatus(a),
+		CmdVerify(a),
 		CmdBootstrap(a),
+		CmdUpdate(a),
 	)
 
 	return root
 }
 
-func helpTemplate(a *app.App) string {
-	return func() string {
-		var b strings.Builder
+func splitCommandLine(line string) [2]string {
+	parts := strings.Fields(line)
+	if len(parts) == 0 {
+		return [2]string{"", ""}
+	}
+	if len(parts) == 1 {
+		return [2]string{parts[0], ""}
+	}
+	cmd := parts[0]
+	rest := ""
+	for i, p := range parts[1:] {
+		if i > 0 {
+			rest += " "
+		}
+		rest += p
+	}
+	return [2]string{cmd, rest}
+}
 
-		b.WriteString(a.Term.Splash("IVALI"))
-		b.WriteString(" — " + a.Term.Dim("NixOS Infrastructure Control Plane") + "\n\n")
+func rootHelp(a *app.App) string {
+	t := a.Term
 
-		categories := []category{
-			{Name: "Repository Commands", Commands: []string{
-				"dashboard    Launch interactive control center",
-				"status       Show repository state summary",
-				"doctor       Run all health checks",
-				"verify       Full verification (lint + health + architecture)",
-				"graph        Display module/import/ownership graphs",
-				"explain      Explain a module or option",
-				"suggest      Analyze and recommend improvements",
-			}},
-			{Name: "Operations", Commands: []string{
-				"update       Pull latest + update flake inputs",
-				"rebuild      nixos-rebuild switch",
-				"deploy       Deploy to host",
-				"reconcile    Trigger GitOps reconciliation",
-			}},
-			{Name: "Bootstrap", Commands: []string{
-				"bootstrap shell      Generate shell module",
-				"bootstrap editor     Generate editor module",
-				"bootstrap service    Generate service module",
-				"bootstrap package    Generate package set",
-				"bootstrap module     Generate NixOS domain module",
-			}},
-			{Name: "Extract", Commands: []string{
+	groups := []struct {
+		Title    string
+		Commands []string
+	}{
+		{
+			Title: "Repository Commands",
+			Commands: []string{
+				"dashboard       Launch interactive control center",
+				"status          Show repository state summary",
+				"doctor          Run all repository health checks",
+				"verify          Full verification (lint, health, architecture)",
+				"graph           Display module and dependency graphs",
+				"explain         Explain a module or option",
+				"suggest         Analyze repository and recommend improvements",
+			},
+		},
+		{
+			Title: "Operations",
+			Commands: []string{
+				"update          Pull latest changes and update flake inputs",
+				"rebuild         Run nixos-rebuild switch",
+				"deploy          Deploy to target host",
+				"reconcile       Trigger GitOps reconciliation loop",
+			},
+		},
+		{
+			Title: "Bootstrap Generators",
+			Commands: []string{
+				"bootstrap shell     Generate a shell module structure",
+				"bootstrap editor    Generate an editor module",
+				"bootstrap service   Generate a service module",
+				"bootstrap package   Generate a package set",
+				"bootstrap module    Generate a NixOS domain module",
+			},
+		},
+		{
+			Title: "Extract Commands",
+			Commands: []string{
 				"extract shell        Extract config into shell module",
 				"extract git          Extract config into git module",
 				"extract environment  Extract config into environment module",
-			}},
-			{Name: "Utilities", Commands: []string{
-				"docs         Generate documentation",
-				"help         Help about any command",
-			}},
-		}
+			},
+		},
+		{
+			Title: "Utilities",
+			Commands: []string{
+				"docs            Generate project documentation",
+				"help            Display help for any command",
+			},
+		},
+	}
 
-		for _, cat := range categories {
-			b.WriteString(a.Term.Section(cat.Name) + "\n")
-			for _, line := range cat.Commands {
-				parts := strings.SplitN(line, " ", 2)
-				cmd := parts[0]
-				desc := ""
-				if len(parts) > 1 {
-					desc = parts[1]
-				}
-				b.WriteString("  " + a.Term.HelpCommand(cmd, desc) + "\n")
-			}
-			b.WriteString("\n")
-		}
+	var b strings.Builder
 
-		b.WriteString(a.Term.Section("Flags") + "\n")
-		b.WriteString("  " + a.Term.HelpCommand("-h, --help", "Show help") + "\n")
-		b.WriteString("  " + a.Term.HelpCommand("-v, --verbose", "Verbose output") + "\n")
-		b.WriteString("  " + a.Term.HelpCommand("-j, --json", "JSON output") + "\n")
+	b.WriteString("  " + t.Header("IVALI") + t.Dim("  —  NixOS Infrastructure Control Plane") + "\n\n")
+
+	for _, g := range groups {
+		b.WriteString(t.Section(g.Title) + "\n")
+		for _, line := range g.Commands {
+			parts := splitCommandLine(line)
+			b.WriteString(t.HelpCommand(parts[0], parts[1]) + "\n")
+		}
 		b.WriteString("\n")
-		b.WriteString(a.Term.Dim("Run 'ivali <command> --help' for more detail.") + "\n")
+	}
 
-		return b.String()
-	}()
+	b.WriteString(t.Section("Global Flags") + "\n")
+	b.WriteString(t.HelpCommand("-h, --help", "Show help for any command") + "\n")
+	b.WriteString(t.HelpCommand("-v, --verbose", "Enable verbose output") + "\n")
+	b.WriteString(t.HelpCommand("-j, --json", "Output in JSON format") + "\n")
+	b.WriteString("\n")
+	b.WriteString(t.Dim("  Use ivali <command> --help  for detailed information.") + "\n")
+
+	return b.String()
 }

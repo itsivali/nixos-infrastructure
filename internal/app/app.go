@@ -1,49 +1,95 @@
 package app
 
 import (
+	"os"
+
 	"github.com/willisivali/nixos-infrastructure/internal/config"
 	"github.com/willisivali/nixos-infrastructure/internal/logger"
+	"github.com/willisivali/nixos-infrastructure/internal/repository"
 	"github.com/willisivali/nixos-infrastructure/internal/terminal"
 )
 
+type InitLevel int
+
+const (
+	InitMinimal  InitLevel = 0
+	InitStandard InitLevel = 1
+	InitFull     InitLevel = 2
+)
+
 type App struct {
-	RootDir string
-	Config  *config.Config
-	Log     *logger.Logger
-	Term    *terminal.Terminal
+	RootDir    string
+	Config     *config.Config
+	Log        *logger.Logger
+	Term       *terminal.Terminal
+	repo       *repository.Repository
+	InitLevel  InitLevel
+	JSONOutput bool
+	Verbose    bool
 }
 
-func levelFromString(s string) logger.Level {
-	switch s {
-	case "trace":
-		return logger.Trace
-	case "debug":
-		return logger.Debug
-	case "warn":
-		return logger.Warn
-	case "error":
-		return logger.Error
-	case "fatal":
-		return logger.Fatal
-	default:
-		return logger.Info
+func New(level InitLevel) (*App, error) {
+	a := &App{
+		InitLevel: level,
+		RootDir:   ".",
 	}
-}
 
-func New() (*App, error) {
 	cfg, err := config.Load()
 	if err != nil {
 		return nil, err
 	}
+	a.Config = cfg
 
-	log := logger.New(levelFromString(cfg.LogLevel))
+	logLevel := logger.ParseLevel(cfg.LogLevel)
+	caller := cfg.LogLevel == "trace"
+	a.Log = logger.New(logLevel, logger.WithCaller(caller))
 
-	term := terminal.New(terminal.WithTheme(cfg.Theme))
+	termTheme := cfg.Theme
+	if termTheme == "auto" {
+		if os.Getenv("IVALI_THEME") != "" {
+			termTheme = os.Getenv("IVALI_THEME")
+		}
+	}
+	a.Term = terminal.New(terminal.WithTheme(termTheme))
 
-	return &App{
-		RootDir: ".",
-		Config:  cfg,
-		Log:     log,
-		Term:    term,
-	}, nil
+	if level >= InitFull {
+		a.detectRepo()
+	}
+
+	return a, nil
+}
+
+func (a *App) detectRepo() {
+	if a.repo != nil {
+		return
+	}
+	if repo, found := repository.Detect("."); found {
+		a.repo = repo
+		a.RootDir = repo.Root
+	}
+}
+
+func (a *App) SetVerbose(v bool) {
+	a.Verbose = v
+	if v {
+		a.Log.SetLevel(logger.Verbose)
+	}
+}
+
+func (a *App) SetJSON(j bool) {
+	a.JSONOutput = j
+}
+
+func (a *App) HasRepo() bool {
+	a.detectRepo()
+	return a.repo != nil
+}
+
+func (a *App) RequireRepo() bool {
+	a.detectRepo()
+	if a.repo == nil {
+		a.Log.Debug().Msg("no repository detected")
+		return false
+	}
+	return true
 }

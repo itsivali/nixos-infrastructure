@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
+	"unicode/utf8"
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
@@ -20,25 +22,24 @@ const (
 )
 
 type Terminal struct {
-	Theme    Theme
-	Renderer *lipgloss.Renderer
-	Width    int
+	Theme  Theme
+	Width  int
+	DarkBg bool
+	Color  ColorPalette
+	lip    *lipgloss.Renderer
+}
 
-	styles struct {
-		header    lipgloss.Style
-		section   lipgloss.Style
-		ok        lipgloss.Style
-		warn      lipgloss.Style
-		fail      lipgloss.Style
-		info      lipgloss.Style
-		dim       lipgloss.Style
-		key       lipgloss.Style
-		value     lipgloss.Style
-		separator lipgloss.Style
-		helpCmd   lipgloss.Style
-		helpDesc  lipgloss.Style
-		splash    lipgloss.Style
-	}
+type ColorPalette struct {
+	Purple  lipgloss.TerminalColor
+	Blue    lipgloss.TerminalColor
+	Green   lipgloss.TerminalColor
+	Yellow  lipgloss.TerminalColor
+	Red     lipgloss.TerminalColor
+	Cyan    lipgloss.TerminalColor
+	Gray    lipgloss.TerminalColor
+	White   lipgloss.TerminalColor
+	Surface lipgloss.TerminalColor
+	Border  lipgloss.TerminalColor
 }
 
 type Option func(*Terminal)
@@ -62,125 +63,344 @@ func New(opts ...Option) *Terminal {
 		}
 	}
 
+	dark := termenv.HasDarkBackground()
+	t.DarkBg = dark
+
 	for _, opt := range opts {
 		opt(t)
 	}
 
-	lipgloss.SetColorProfile(termenv.TrueColor)
-
-	adapt := func(light, dark string) lipgloss.TerminalColor {
-		if t.Theme == ThemeLight {
-			return lipgloss.Color(light)
-		}
-		if t.Theme == ThemeDark {
-			return lipgloss.Color(dark)
-		}
-		return lipgloss.AdaptiveColor{Light: light, Dark: dark}
+	if t.Theme == ThemeLight {
+		t.DarkBg = false
+	} else if t.Theme == ThemeDark {
+		t.DarkBg = true
 	}
 
-	t.styles.header = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(adapt("#7C3AED", "#7C3AED")).
-		Padding(0, 1)
+	lipgloss.SetColorProfile(termenv.TrueColor)
 
-	t.styles.section = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(adapt("#2563EB", "#60A5FA")).
-		Padding(0, 1)
+	t.lip = lipgloss.DefaultRenderer()
 
-	t.styles.ok = lipgloss.NewStyle().
-		Foreground(adapt("#16A34A", "#4ADE80"))
-
-	t.styles.warn = lipgloss.NewStyle().
-		Foreground(adapt("#D97706", "#FBBF24"))
-
-	t.styles.fail = lipgloss.NewStyle().
-		Foreground(adapt("#DC2626", "#F87171"))
-
-	t.styles.info = lipgloss.NewStyle().
-		Foreground(adapt("#2563EB", "#60A5FA"))
-
-	t.styles.dim = lipgloss.NewStyle().
-		Foreground(adapt("#6B7280", "#9CA3AF"))
-
-	t.styles.key = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(adapt("#374151", "#E5E7EB"))
-
-	t.styles.value = lipgloss.NewStyle().
-		Foreground(adapt("#6B7280", "#9CA3AF"))
-
-	t.styles.separator = lipgloss.NewStyle().
-		Foreground(adapt("#D1D5DB", "#374151"))
-
-	t.styles.helpCmd = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(adapt("#7C3AED", "#A78BFA"))
-
-	t.styles.helpDesc = lipgloss.NewStyle().
-		Foreground(adapt("#6B7280", "#9CA3AF"))
-
-	t.styles.splash = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(adapt("#7C3AED", "#A78BFA"))
+	t.Color = ColorPalette{
+		Purple:  t.adapt("#7C3AED", "#A78BFA"),
+		Blue:    t.adapt("#2563EB", "#60A5FA"),
+		Green:   t.adapt("#16A34A", "#4ADE80"),
+		Yellow:  t.adapt("#D97706", "#FBBF24"),
+		Red:     t.adapt("#DC2626", "#F87171"),
+		Cyan:    t.adapt("#0891B2", "#22D3EE"),
+		Gray:    t.adapt("#6B7280", "#9CA3AF"),
+		White:   t.adapt("#1F2937", "#F3F4F6"),
+		Surface: t.adapt("#F3F4F6", "#1F2937"),
+		Border:  t.adapt("#D1D5DB", "#374151"),
+	}
 
 	return t
 }
 
+func (t *Terminal) adapt(light, dark string) lipgloss.TerminalColor {
+	if t.Theme == ThemeLight || !t.DarkBg {
+		return lipgloss.Color(light)
+	}
+	return lipgloss.Color(dark)
+}
+
+func (t *Terminal) adaptBg(light, dark string) lipgloss.TerminalColor {
+	if t.Theme == ThemeLight || !t.DarkBg {
+		return lipgloss.Color(light)
+	}
+	return lipgloss.Color(dark)
+}
+
+func (t *Terminal) styleFromPalette(c lipgloss.TerminalColor) lipgloss.Style {
+	return lipgloss.NewStyle().Foreground(c)
+}
+
 func (t *Terminal) Header(text string) string {
-	return t.styles.header.Render(text)
+	return lipgloss.NewStyle().
+		Bold(true).
+		Foreground(t.Color.Purple).
+		Padding(0, 1).
+		Render(text)
+}
+
+func (t *Terminal) H1(text string) string {
+	return lipgloss.NewStyle().
+		Bold(true).
+		Foreground(t.Color.White).
+		Padding(0, 1).
+		Render(text)
+}
+
+func (t *Terminal) H2(text string) string {
+	return lipgloss.NewStyle().
+		Bold(true).
+		Foreground(t.Color.Purple).
+		Padding(0, 1).
+		Render("  " + text)
 }
 
 func (t *Terminal) Section(text string) string {
-	sep := strings.Repeat("─", max(0, t.Width-lipgloss.Width(text)-4))
-	return fmt.Sprintf("%s %s", t.styles.section.Render(text), t.styles.separator.Render(sep))
+	sep := strings.Repeat("─", max(0, t.Width-utf8.RuneCountInString(text)-6))
+	return fmt.Sprintf("  %s %s",
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.Blue).Render(text),
+		lipgloss.NewStyle().Foreground(t.Color.Border).Render(sep))
 }
 
-func (t *Terminal) OK(text string) string {
-	return fmt.Sprintf("%s %s", t.styles.ok.Render("✓"), text)
+func (t *Terminal) Subsection(text string) string {
+	return fmt.Sprintf("  %s",
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.Cyan).Render("▸ "+text))
+}
+
+func (t *Terminal) Good(text string) string {
+	return fmt.Sprintf("  %s %s",
+		lipgloss.NewStyle().Foreground(t.Color.Green).Render("✓"),
+		text)
+}
+
+func (t *Terminal) Bad(text string) string {
+	return fmt.Sprintf("  %s %s",
+		lipgloss.NewStyle().Foreground(t.Color.Red).Render("✗"),
+		text)
 }
 
 func (t *Terminal) Warn(text string) string {
-	return fmt.Sprintf("%s %s", t.styles.warn.Render("⚠"), text)
-}
-
-func (t *Terminal) Fail(text string) string {
-	return fmt.Sprintf("%s %s", t.styles.fail.Render("✗"), text)
+	return fmt.Sprintf("  %s %s",
+		lipgloss.NewStyle().Foreground(t.Color.Yellow).Render("⚠"),
+		text)
 }
 
 func (t *Terminal) Info(text string) string {
-	return fmt.Sprintf("%s %s", t.styles.info.Render("ℹ"), text)
+	return fmt.Sprintf("  %s %s",
+		lipgloss.NewStyle().Foreground(t.Color.Blue).Render("ℹ"),
+		text)
 }
 
 func (t *Terminal) Dim(text string) string {
-	return t.styles.dim.Render(text)
+	return lipgloss.NewStyle().Foreground(t.Color.Gray).Render(text)
 }
 
-func (t *Terminal) KeyValue(key, value string) string {
-	return fmt.Sprintf("%-30s %s", t.styles.key.Render(key), t.styles.value.Render(value))
+func (t *Terminal) Bold(text string) string {
+	return lipgloss.NewStyle().Bold(true).Foreground(t.Color.White).Render(text)
 }
 
-func (t *Terminal) BulletList(items []string) string {
-	var b strings.Builder
-	for _, item := range items {
-		b.WriteString(fmt.Sprintf("  %s\n", item))
+func (t *Terminal) Code(text string) string {
+	return lipgloss.NewStyle().
+		Foreground(t.Color.Cyan).
+		Background(t.adaptBg("#E8E8E8", "#2D2D2D")).
+		Padding(0, 1).
+		Render(text)
+}
+
+func (t *Terminal) KeyValue(key, value string, extra ...string) string {
+	extraStr := ""
+	if len(extra) > 0 && extra[0] != "" {
+		extraStr = "  " + lipgloss.NewStyle().Foreground(t.Color.Gray).Render(extra[0])
 	}
-	return b.String()
-}
-
-func (t *Terminal) Separator() string {
-	return t.styles.separator.Render(strings.Repeat("─", t.Width))
+	return fmt.Sprintf("  %s %s%s",
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.White).Render(fmt.Sprintf("%-28s", key)),
+		lipgloss.NewStyle().Foreground(t.Color.Gray).Render(value),
+		extraStr,
+	)
 }
 
 func (t *Terminal) HelpCommand(name, description string) string {
 	return fmt.Sprintf("  %s  %s",
-		t.styles.helpCmd.Render(fmt.Sprintf("%-18s", name)),
-		t.styles.helpDesc.Render(description),
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.Purple).Render(fmt.Sprintf("%-20s", name)),
+		lipgloss.NewStyle().Foreground(t.Color.Gray).Render(description),
 	)
 }
 
-func (t *Terminal) Splash(text string) string {
-	return t.styles.splash.Render(text)
+func (t *Terminal) Box(title string, content string, style lipgloss.TerminalColor) string {
+	width := min(t.Width-4, 72)
+
+	border := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(style).
+		Width(width).
+		Padding(0, 1)
+
+	if title != "" {
+		header := lipgloss.NewStyle().Bold(true).Foreground(style).Render(title)
+		content = header + "\n" + content
+	}
+
+	return "  " + border.Render(content)
+}
+
+func (t *Terminal) SuccessBox(content string) string {
+	return t.Box("", content, t.Color.Green)
+}
+
+func (t *Terminal) ErrorBox(content string) string {
+	return t.Box("", content, t.Color.Red)
+}
+
+func (t *Terminal) InfoBox(content string) string {
+	return t.Box("", content, t.Color.Blue)
+}
+
+func (t *Terminal) Table(header []string, rows [][]string) string {
+	if len(rows) == 0 {
+		return t.Dim("  (none)")
+	}
+
+	cols := len(header)
+	widths := make([]int, cols)
+	for i, h := range header {
+		widths[i] = utf8.RuneCountInString(h)
+	}
+	for _, row := range rows {
+		for i, cell := range row {
+			if i < cols {
+				widths[i] = max(widths[i], utf8.RuneCountInString(cell))
+			}
+		}
+	}
+
+	totalWidth := 0
+	for _, w := range widths {
+		totalWidth += w + 3
+	}
+	totalWidth = min(totalWidth+1, t.Width-4)
+
+	var b strings.Builder
+
+	renderCell := func(cell string, width int, isHeader bool) string {
+		cell = fmt.Sprintf(" %-*s ", width, cell)
+		if isHeader {
+			return lipgloss.NewStyle().
+				Bold(true).
+				Foreground(t.Color.White).
+				Render(cell)
+		}
+		return lipgloss.NewStyle().
+			Foreground(t.Color.Gray).
+			Render(cell)
+	}
+
+	sepParts := make([]string, cols)
+	for i, w := range widths {
+		sepParts[i] = strings.Repeat("─", w+2)
+	}
+	sep := lipgloss.NewStyle().Foreground(t.Color.Border).Render(" " + strings.Join(sepParts, "─") + " ")
+	_ = sep
+
+	headerCells := make([]string, cols)
+	for i, h := range header {
+		headerCells[i] = renderCell(h, widths[i], true)
+	}
+	b.WriteString("  " + strings.Join(headerCells, " ") + "\n")
+
+	for _, row := range rows {
+		cells := make([]string, cols)
+		for i, cell := range row {
+			if i < cols {
+				cells[i] = renderCell(cell, widths[i], false)
+			}
+		}
+		b.WriteString("  " + strings.Join(cells, " ") + "\n")
+	}
+
+	return b.String()
+}
+
+func (t *Terminal) BulletList(items []string, indent int) string {
+	prefix := strings.Repeat("  ", indent)
+	var b strings.Builder
+	for _, item := range items {
+		b.WriteString(fmt.Sprintf("%s  %s %s\n", prefix,
+			lipgloss.NewStyle().Foreground(t.Color.Gray).Render("•"),
+			item))
+	}
+	return b.String()
+}
+
+func (t *Terminal) CheckList(items []CheckItem) string {
+	var b strings.Builder
+	for _, item := range items {
+		var icon, label string
+		switch item.Status {
+		case StatusPass:
+			icon = lipgloss.NewStyle().Foreground(t.Color.Green).Render("✓")
+			label = lipgloss.NewStyle().Foreground(t.Color.Gray).Render(item.Label)
+		case StatusFail:
+			icon = lipgloss.NewStyle().Foreground(t.Color.Red).Render("✗")
+			label = lipgloss.NewStyle().Foreground(t.Color.Red).Render(item.Label)
+		case StatusWarn:
+			icon = lipgloss.NewStyle().Foreground(t.Color.Yellow).Render("⚠")
+			label = lipgloss.NewStyle().Foreground(t.Color.Yellow).Render(item.Label)
+		default:
+			icon = lipgloss.NewStyle().Foreground(t.Color.Gray).Render("○")
+			label = lipgloss.NewStyle().Foreground(t.Color.Gray).Render(item.Label)
+		}
+
+		b.WriteString(fmt.Sprintf("  %s %s", icon, label))
+		if item.Detail != "" {
+			b.WriteString(fmt.Sprintf("  %s", lipgloss.NewStyle().Foreground(t.Color.Gray).Render(item.Detail)))
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+type CheckStatus int
+
+const (
+	StatusPending CheckStatus = iota
+	StatusPass
+	StatusWarn
+	StatusFail
+)
+
+type CheckItem struct {
+	Label  string
+	Status CheckStatus
+	Detail string
+}
+
+func (t *Terminal) Summary(label string, value string) string {
+	return fmt.Sprintf("  %s: %s",
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.White).Render(label),
+		value)
+}
+
+func (t *Terminal) Count(count int, total int) string {
+	ratio := float64(count) / float64(max(total, 1))
+	width := 20
+	filled := int(ratio * float64(width))
+
+	bar := "["
+	for i := 0; i < width; i++ {
+		if i < filled {
+			bar += "■"
+		} else {
+			bar += "·"
+		}
+	}
+	bar += "]"
+
+	color := t.Color.Green
+	if ratio < 0.5 {
+		color = t.Color.Yellow
+	}
+	if ratio < 0.25 {
+		color = t.Color.Red
+	}
+
+	return fmt.Sprintf("  %s %d/%d",
+		lipgloss.NewStyle().Foreground(color).Render(bar),
+		count, total)
+}
+
+func (t *Terminal) Timestamp() string {
+	return t.Dim(time.Now().Format("15:04:05"))
+}
+
+func (t *Terminal) Separator() string {
+	return "  " + lipgloss.NewStyle().Foreground(t.Color.Border).Render(strings.Repeat("─", min(t.Width-4, 68)))
+}
+
+func (t *Terminal) Blank() string {
+	return ""
 }
 
 func (t *Terminal) Markdown(text string) (string, error) {
@@ -192,36 +412,43 @@ func (t *Terminal) Markdown(text string) (string, error) {
 }
 
 func (t *Terminal) RenderSplash() string {
-	var b strings.Builder
+	purple := t.Color.Purple
+	gray := t.Color.Gray
+	border := t.Color.Border
 
-	title := t.Splash("◈  IVALI  ◈")
-	subtitle := t.Dim("NixOS Infrastructure Control Plane")
+	title := lipgloss.NewStyle().Bold(true).Foreground(purple).Render("◈  IVALI  ◈")
+	subtitle := lipgloss.NewStyle().Foreground(gray).Render("NixOS Infrastructure Control Plane")
 
-	boxWidth := min(60, t.Width-4)
-
+	boxWidth := min(56, t.Width-6)
 	line := strings.Repeat("─", boxWidth)
 
-	b.WriteString(t.Dim("┌"+line+"┐") + "\n")
-	b.WriteString(t.Dim("│ ") + title + t.Dim(" │") + "\n")
-	b.WriteString(t.Dim("│ ") + subtitle + t.Dim(" │") + "\n")
-	b.WriteString(t.Dim("├"+line+"┤") + "\n")
+	var b strings.Builder
+	bl := lipgloss.NewStyle().Foreground(border)
 
-	b.WriteString(t.Dim("│") + "  " + t.styles.warn.Render("Not inside an infrastructure repository.") + "   " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "\n")
+	b.WriteString(bl.Render("  ┌"+line+"┐") + "\n")
+	b.WriteString(bl.Render("  │ ") + title + bl.Render(" │") + "\n")
+	b.WriteString(bl.Render("  │ ") + subtitle + bl.Render(" │") + "\n")
+	b.WriteString(bl.Render("  ├"+line+"┤") + "\n")
 
-	b.WriteString(t.Dim("│") + "  " + t.Info("") + " Clone your repo:" + "                  " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "    ivali clone <url>" + "                    " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "  " + t.Info("") + " Explore commands:" + "                 " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "    ivali --help" + "                          " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "  " + t.Info("") + " Initialize a new project:" + "            " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "    ivali init" + "                            " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("│") + "\n")
-	b.WriteString(t.Dim("├"+line+"┤") + "\n")
+	warnText := lipgloss.NewStyle().Foreground(t.Color.Yellow).Render("Not inside an infrastructure repository.")
+	b.WriteString(bl.Render("  │ ") + warnText + bl.Render("    │") + "\n")
+	b.WriteString(bl.Render("  │") + "\n")
 
-	b.WriteString(t.Dim("│") + "  " + t.Dim("? help • q quit") + "                         " + t.Dim("│") + "\n")
-	b.WriteString(t.Dim("└"+line+"┘") + "\n")
+	infoStyle := lipgloss.NewStyle().Foreground(t.Color.Blue)
+	cmdStyle := lipgloss.NewStyle().Foreground(t.Color.Cyan)
+
+	b.WriteString(bl.Render("  │ ") + infoStyle.Render("ℹ") + " Clone your repo:" + strings.Repeat(" ", boxWidth-21) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │   ") + cmdStyle.Render("ivali clone <url>") + strings.Repeat(" ", boxWidth-22) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │") + "\n")
+	b.WriteString(bl.Render("  │ ") + infoStyle.Render("ℹ") + " Explore commands:" + strings.Repeat(" ", boxWidth-22) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │   ") + cmdStyle.Render("ivali --help") + strings.Repeat(" ", boxWidth-16) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │") + "\n")
+	b.WriteString(bl.Render("  │ ") + infoStyle.Render("ℹ") + " Quick start a new project:" + strings.Repeat(" ", boxWidth-28) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │   ") + cmdStyle.Render("ivali init") + strings.Repeat(" ", boxWidth-15) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │") + "\n")
+	b.WriteString(bl.Render("  ├"+line+"┤") + "\n")
+	b.WriteString(bl.Render("  │ ") + lipgloss.NewStyle().Foreground(gray).Render("? help  •  q quit") + strings.Repeat(" ", boxWidth-22) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  └"+line+"┘") + "\n")
 
 	return b.String()
 }

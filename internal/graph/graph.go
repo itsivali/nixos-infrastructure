@@ -2,6 +2,7 @@ package graph
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -93,10 +94,30 @@ func Build(scannerResult *scanner.ScanResult, parsed map[string]*parser.ModuleIn
 				if imp == "<auto-imports>" {
 					continue
 				}
-				if nodeSet[imp] {
+				// Resolve relative import against module directory
+				target := imp
+				if strings.HasPrefix(imp, "./") || strings.HasPrefix(imp, "../") {
+					resolved := filepath.Join(filepath.Dir(m.RelPath), imp)
+					resolved = filepath.Clean(resolved)
+					target = resolved
+
+					// If resolved to a directory, try with default.nix
+					if !strings.HasSuffix(target, ".nix") && nodeSet[target] {
+						// directory node exists
+					} else if nodeSet[target] {
+						// file node exists
+					} else if !strings.HasSuffix(target, ".nix") {
+						// Try appending default.nix
+						if nodeSet[target+"/default.nix"] {
+							target = target + "/default.nix"
+						}
+					}
+				}
+
+				if nodeSet[target] {
 					g.Edges = append(g.Edges, Edge{
 						From: m.RelPath,
-						To:   imp,
+						To:   target,
 						Type: EdgeImport,
 					})
 				}

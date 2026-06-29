@@ -297,6 +297,62 @@ func (r *Repository) HealthSummary() map[string]string {
 	return summary
 }
 
+func (r *Repository) CheckMissingDocHeaders() []string {
+	if r.Parsed == nil {
+		return nil
+	}
+	var missing []string
+	for _, info := range r.Parsed {
+		if info.DocHeader == "" && !info.IsAutoImport {
+			missing = append(missing, info.RelPath)
+		}
+	}
+	sort.Strings(missing)
+	return missing
+}
+
+func (r *Repository) CheckModulesWithOptions() []string {
+	if r.Result == nil {
+		return nil
+	}
+	var optMods []string
+	for _, m := range r.Result.AllModules {
+		if info, ok := r.Parsed[m.Path]; ok && info.HasOptions {
+			optMods = append(optMods, m.RelPath)
+		}
+	}
+	sort.Strings(optMods)
+	return optMods
+}
+
+func (r *Repository) FindModule(query string) (scanner.Module, *parser.ModuleInfo, bool) {
+	if r.Result == nil || r.Parsed == nil {
+		return scanner.Module{}, nil, false
+	}
+
+	// Exact match on RelPath
+	for _, m := range r.Result.AllModules {
+		if m.RelPath == query || m.Path == query {
+			if info, ok := r.Parsed[m.Path]; ok {
+				return m, info, true
+			}
+			return m, nil, true
+		}
+	}
+
+	// Partial match on RelPath (contains)
+	for _, m := range r.Result.AllModules {
+		if strings.Contains(m.RelPath, query) {
+			if info, ok := r.Parsed[m.Path]; ok {
+				return m, info, true
+			}
+			return m, nil, true
+		}
+	}
+
+	return scanner.Module{}, nil, false
+}
+
 func (r *Repository) computeHash() string {
 	files, _ := filepath.Glob(filepath.Join(r.Root, "**/*.nix"))
 	if len(files) > 50 {

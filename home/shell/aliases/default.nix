@@ -29,5 +29,6 @@
     ./nix.nix
     ./development.nix
     ./utilities.nix
+    ./ivali.nix
   ];
 }

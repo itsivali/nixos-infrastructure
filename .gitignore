@@ -4,3 +4,13 @@
 secrets/grafana-secret-key
 .direnv/
 result
+
+# Go
+/ivali
+/ivali.exe
+/result/bin/
+*.test
+*.out
+/vendor/
+/.cache/
+/cmd/ivali/ivali

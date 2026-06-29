@@ -48,17 +48,21 @@ a beautiful interactive terminal experience.`,
 	root.SetHelpTemplate(rootHelp(a))
 
 	root.AddCommand(
+		CmdBootstrap(a),
 		CmdDashboard(a),
+		CmdDeploy(a),
 		CmdDoctor(a),
-		CmdExtract(a),
-		CmdScan(a),
+		CmdDocs(a),
 		CmdExplain(a),
+		CmdExtract(a),
 		CmdGraph(a),
+		CmdRebuild(a),
+		CmdReconcile(a),
+		CmdScan(a),
 		CmdStatus(a),
 		CmdSuggest(a),
-		CmdVerify(a),
-		CmdBootstrap(a),
 		CmdUpdate(a),
+		CmdVerify(a),
 	)
 
 	return root

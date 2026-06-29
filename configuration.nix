@@ -11,6 +11,9 @@
 #   hosts/hardware-configuration.nix  — machine-specific hardware config
 #   hosts/laptop.nix                  — host identity and per-host options
 #
+# Explicitly imported (not auto-discovered):
+#   desktop   — desktop environment domain module
+#
 # Excluded from discovery:
 #   home      — Home Manager configs; wired up in flake.nix directly
 #   hosts     — pinned above; not a domain module
@@ -24,8 +27,10 @@
 let
   root = ./.;
 
-  # Folders that live at the repo root but are NOT NixOS domain modules.
+  # Folders that live at the repo root but are NOT NixOS domain modules
+  # (or are imported explicitly above).
   excluded = [
+    "desktop"
     "home"
     "hosts"
     "lib"
@@ -54,6 +59,10 @@ in
     [
       ./hosts/hardware-configuration.nix
       ./hosts/laptop.nix
+    ]
+    # ── Explicit domain modules ────────────────────────────────────────────
+    ++ [
+      ./desktop
     ]
     # ── Auto-discovered domain modules ──────────────────────────────────────
     ++ domainModules;

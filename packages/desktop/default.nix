@@ -9,4 +9,5 @@ with pkgs; [
   vlc
   firefox
   libreoffice-fresh
+  stremio-linux-shell
 ]

@@ -27,6 +27,8 @@ type model struct {
 	scrollOffset int
 	helpVisible  bool
 	lastRefresh  time.Time
+	loading      bool
+	showDetail   bool
 
 	modules []scanner.Module
 }
@@ -40,10 +42,17 @@ func New(repo *repository.Repository, term *terminal.Terminal) tea.Model {
 }
 
 func (m *model) Init() tea.Cmd {
-	return m.refreshCmd()
+	return tea.Batch(m.refreshCmd(), m.autoRefreshCmd())
+}
+
+func (m *model) autoRefreshCmd() tea.Cmd {
+	return tea.Tick(30*time.Second, func(t time.Time) tea.Msg {
+		return refreshTick(t)
+	})
 }
 
 func (m *model) refreshCmd() tea.Cmd {
+	m.loading = true
 	return func() tea.Msg {
 		if err := m.repo.EnsureScanned(); err != nil {
 			return errMsg(err)
@@ -72,11 +81,22 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.activeTab = (m.activeTab + 1) % len(m.tabs)
 			m.moduleCursor = 0
 			m.scrollOffset = 0
+			m.showDetail = false
 		case "shift+tab":
 			m.activeTab = (m.activeTab - 1 + len(m.tabs)) % len(m.tabs)
 			m.moduleCursor = 0
 			m.scrollOffset = 0
+			m.showDetail = false
+		case "enter":
+			if m.activeTab == 1 && len(m.modules) > 0 {
+				m.showDetail = !m.showDetail
+			}
+		case "esc":
+			m.showDetail = false
 		case "up", "k":
+			if m.showDetail {
+				break
+			}
 			if m.activeTab == 1 && m.moduleCursor > 0 {
 				m.moduleCursor--
 			}
@@ -84,6 +104,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.scrollOffset--
 			}
 		case "down", "j":
+			if m.showDetail {
+				break
+			}
 			if m.activeTab == 1 && m.moduleCursor < len(m.modules)-1 {
 				m.moduleCursor++
 			}
@@ -95,6 +118,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case refreshDone:
 		m.lastRefresh = time.Time(msg)
+		m.loading = false
+
+	case refreshTick:
+		return m, m.refreshCmd()
 	}
 
 	return m, nil
@@ -108,8 +135,8 @@ func (m *model) View() string {
 	var b strings.Builder
 
 	b.WriteString(m.renderHeader())
-	b.WriteString("\n")
 	b.WriteString(m.renderTabs())
+
 	b.WriteString("\n\n")
 
 	switch m.activeTab {
@@ -133,16 +160,50 @@ func (m *model) renderHeader() string {
 	return m.term.H1("IVALI Dashboard")
 }
 
+func (m *model) tabCounts() []int {
+	if m.repo.Result == nil {
+		return []int{0, 0, 0, 0}
+	}
+	dups := len(m.repo.CheckDuplicateImports())
+	orphans := len(m.repo.CheckOrphanModules())
+	missing := len(m.repo.CheckMissingDocHeaders())
+	healthBad := dups + orphans + missing
+	_, _, total := m.repo.ModuleCount()
+	return []int{
+		total,
+		len(m.modules),
+		healthBad,
+		len(m.repo.Result.Domains),
+	}
+}
+
 func (m *model) renderTabs() string {
 	var b strings.Builder
+	counts := m.tabCounts()
 	for i, tab := range m.tabs {
+		label := tab
+		if i < len(counts) && counts[i] > 0 {
+			label = fmt.Sprintf("%s [%d]", tab, counts[i])
+		}
 		if i == m.activeTab {
-			b.WriteString(m.term.Good(" ◆ " + tab + " "))
+			b.WriteString(m.term.Good(" ◆ " + label + " "))
 		} else {
-			b.WriteString(m.term.Dim("   " + tab + "  "))
+			b.WriteString(m.term.Dim("   " + label + "  "))
 		}
 	}
+	if m.loading {
+		b.WriteString("  " + spinner())
+	}
+	b.WriteString("\n")
 	return b.String()
+}
+
+var spinIdx int
+var spinFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
+
+func spinner() string {
+	spinIdx = (spinIdx + 1) % len(spinFrames)
+	return spinFrames[spinIdx]
 }
 
 func (m *model) renderOverview() string {
@@ -195,6 +256,11 @@ func (m *model) renderModules() string {
 
 	b.WriteString(m.term.Subsection(fmt.Sprintf("All Modules (%d)", len(m.modules))) + "\n\n")
 
+	if m.showDetail && m.moduleCursor < len(m.modules) {
+		b.WriteString(m.renderModuleDetail(m.modules[m.moduleCursor]))
+		return b.String()
+	}
+
 	contentHeight := m.height - 10
 	start := m.scrollOffset
 	end := start + contentHeight
@@ -214,6 +280,61 @@ func (m *model) renderModules() string {
 		b.WriteString(line + "\n")
 	}
 
+	return b.String()
+}
+
+func (m *model) renderModuleDetail(mod scanner.Module) string {
+	var b strings.Builder
+	b.WriteString(m.term.Subsection(mod.RelPath) + "\n\n")
+	b.WriteString(m.term.KeyValue("Category", string(mod.Category)) + "\n")
+	b.WriteString(m.term.KeyValue("Type", m.term.Bold(string(mod.Type))) + "\n")
+	b.WriteString(m.term.KeyValue("Domain", m.term.Dim(mod.Domain)) + "\n")
+	if mod.FileCount > 0 {
+		b.WriteString(m.term.KeyValue("Files", fmt.Sprintf("%d", mod.FileCount)) + "\n")
+	}
+	if mod.LineCount > 0 {
+		b.WriteString(m.term.KeyValue("Lines", fmt.Sprintf("%d", mod.LineCount)) + "\n")
+	}
+
+	if info, ok := m.repo.Parsed[mod.Path]; ok {
+		if info.Purpose != "" {
+			b.WriteString("\n" + m.term.Subsection("Purpose") + "\n")
+			words := strings.Fields(info.Purpose)
+			var wrapped string
+			for i, w := range words {
+				if i > 0 && i%12 == 0 {
+					wrapped += "\n  "
+				} else if i > 0 {
+					wrapped += " "
+				}
+				wrapped += w
+			}
+			b.WriteString("  " + wrapped + "\n")
+		}
+		if len(info.Owns) > 0 {
+			b.WriteString("\n" + m.term.Subsection("Ownership") + "\n")
+			for _, o := range info.Owns {
+				b.WriteString(m.term.Dim("  " + o) + "\n")
+			}
+		}
+		if len(info.Imports) > 0 {
+			b.WriteString("\n" + m.term.Subsection("Imports") + "\n")
+			maxShow := min(len(info.Imports), 10)
+			for _, imp := range info.Imports[:maxShow] {
+				b.WriteString(m.term.Dim("  " + imp) + "\n")
+			}
+			if len(info.Imports) > maxShow {
+				b.WriteString(m.term.Dim(fmt.Sprintf("  … +%d more\n", len(info.Imports)-maxShow)))
+			}
+		}
+		if info.HasOptions {
+			b.WriteString("\n" + m.term.Subsection("Options") + "\n")
+			b.WriteString("  " + m.term.Good("Declares options") + "\n")
+		}
+	} else {
+		b.WriteString("\n" + m.term.Dim("  No parsed metadata available.") + "\n")
+	}
+	b.WriteString("\n" + m.term.Dim("  [Esc] back  [Enter] toggle detail"))
 	return b.String()
 }
 
@@ -321,10 +442,11 @@ func (m *model) renderDomains() string {
 }
 
 func (m *model) renderHelpBar() string {
-	help := m.term.Dim("  ? help  ↑↓ scroll  tab switch  r refresh  q quit")
+	help := m.term.Dim("  ? help  ↑↓ scroll  enter detail  tab switch  r refresh  q quit")
 	if m.helpVisible {
 		help += "\n" + m.term.Dim("  IVALI Dashboard — Bubbletea TUI for repository management")
 		help += "\n" + m.term.Dim("  Tab/S-Tab: Switch panels  Up/Down: Navigate lists")
+		help += "\n" + m.term.Dim("  Enter: Toggle module detail  Esc: Back to list")
 		help += "\n" + m.term.Dim("  r: Refresh data  q/Ctrl+C: Quit")
 	}
 	return help
@@ -332,3 +454,4 @@ func (m *model) renderHelpBar() string {
 
 type errMsg error
 type refreshDone time.Time
+type refreshTick time.Time

@@ -22,7 +22,7 @@ type App struct {
 	Config     *config.Config
 	Log        *logger.Logger
 	Term       *terminal.Terminal
-	repo       *repository.Repository
+	Repo       *repository.Repository
 	InitLevel  InitLevel
 	JSONOutput bool
 	Verbose    bool
@@ -60,11 +60,11 @@ func New(level InitLevel) (*App, error) {
 }
 
 func (a *App) detectRepo() {
-	if a.repo != nil {
+	if a.Repo != nil {
 		return
 	}
 	if repo, found := repository.Detect("."); found {
-		a.repo = repo
+		a.Repo = repo
 		a.RootDir = repo.Root
 	}
 }
@@ -82,14 +82,21 @@ func (a *App) SetJSON(j bool) {
 
 func (a *App) HasRepo() bool {
 	a.detectRepo()
-	return a.repo != nil
+	return a.Repo != nil
 }
 
 func (a *App) RequireRepo() bool {
 	a.detectRepo()
-	if a.repo == nil {
+	if a.Repo == nil {
 		a.Log.Debug().Msg("no repository detected")
 		return false
 	}
 	return true
+}
+
+func (a *App) EnsureScanned() error {
+	if a.Repo == nil {
+		return nil
+	}
+	return a.Repo.EnsureScanned()
 }

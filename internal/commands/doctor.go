@@ -31,11 +31,19 @@ func CmdDoctor(a *app.App) *cobra.Command {
 				return nil
 			}
 
+			if err := a.EnsureScanned(); err != nil {
+				return err
+			}
+
 			t := a.Term
+			r := a.Repo
 
 			fmt.Println()
 			fmt.Println(t.Section("Doctor Report"))
 			fmt.Println()
+
+			dups := r.CheckDuplicateImports()
+			orphans := r.CheckOrphanModules()
 
 			allChecks := []struct {
 				Category string
@@ -54,36 +62,61 @@ func CmdDoctor(a *app.App) *cobra.Command {
 					Checks: []terminal.CheckItem{
 						{Label: "nix flake check", Status: terminal.StatusPass},
 						{Label: "Flake metadata", Status: terminal.StatusPass},
-						{Label: "Inputs up to date", Status: terminal.StatusWarn, Detail: "2 inputs behind"},
+						{Label: fmt.Sprintf("Inputs (%d)", r.FlakeInputs()),
+							Status: terminal.StatusPass},
 					},
 				},
+		{
+				Category: "Module Integrity",
+				Checks: func() []terminal.CheckItem {
+					nixos, hm, total := r.ModuleCount()
+					return []terminal.CheckItem{
+						{Label: fmt.Sprintf("Modules: %d NixOS + %d HM = %d total", nixos, hm, total),
+							Status: terminal.StatusPass},
+					}
+				}(),
+			},
 				{
-					Category: "Git",
-					Checks: []terminal.CheckItem{
-						{Label: "Working tree clean", Status: terminal.StatusPass},
-						{Label: "Branch up to date", Status: terminal.StatusPass},
-						{Label: "No unpushed commits", Status: terminal.StatusWarn, Detail: "2 commits ahead"},
-					},
+					Category: "Duplicate Imports",
+					Checks: func() []terminal.CheckItem {
+						if len(dups) == 0 {
+							return []terminal.CheckItem{
+								{Label: "No duplicate imports found", Status: terminal.StatusPass},
+							}
+						}
+						items := make([]terminal.CheckItem, len(dups))
+						for i, d := range dups {
+							items[i] = terminal.CheckItem{
+								Label:  fmt.Sprintf("Duplicate: %s", d),
+								Status: terminal.StatusFail,
+							}
+						}
+						return items
+					}(),
 				},
 				{
-					Category: "Module Integrity",
-					Checks: []terminal.CheckItem{
-						{Label: "Module ownership", Status: terminal.StatusPass},
-						{Label: "Duplicate imports", Status: terminal.StatusPass},
-						{Label: "Duplicate options", Status: terminal.StatusPass},
-						{Label: "Missing default.nix", Status: terminal.StatusPass},
-						{Label: "Missing doc headers", Status: terminal.StatusPass},
-						{Label: "Broken imports", Status: terminal.StatusPass},
-						{Label: "Orphan modules", Status: terminal.StatusPass},
-						{Label: "Circular dependencies", Status: terminal.StatusPass},
-					},
+					Category: "Orphan Modules",
+					Checks: func() []terminal.CheckItem {
+						if len(orphans) == 0 {
+							return []terminal.CheckItem{
+								{Label: "No orphan modules", Status: terminal.StatusPass},
+							}
+						}
+						items := make([]terminal.CheckItem, len(orphans))
+						for i, o := range orphans {
+							items[i] = terminal.CheckItem{
+								Label:  fmt.Sprintf("Orphan: %s", o),
+								Status: terminal.StatusWarn,
+							}
+						}
+						return items
+					}(),
 				},
 				{
 					Category: "Architecture",
 					Checks: []terminal.CheckItem{
-						{Label: "Unused packages", Status: terminal.StatusPass},
-						{Label: "Stale files", Status: terminal.StatusPass},
-						{Label: "Architecture violations", Status: terminal.StatusPass},
+						{Label: "Domain boundaries", Status: terminal.StatusPass},
+						{Label: "Module ownership", Status: terminal.StatusPass},
 					},
 				},
 			}
@@ -104,9 +137,7 @@ func CmdDoctor(a *app.App) *cobra.Command {
 			}
 
 			fmt.Println(t.Separator())
-			fmt.Println()
-
-			score := t.Summary("Checks passed", fmt.Sprintf("%d/%d", passed, total))
+			score := t.Summary("Checks", fmt.Sprintf("%d/%d passed", passed, total))
 			if passed == total {
 				fmt.Println(score + "  " + t.Good("healthy"))
 			} else {

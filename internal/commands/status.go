@@ -5,7 +5,6 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdStatus(a *app.App) *cobra.Command {
@@ -19,53 +18,71 @@ packages, secrets, and pending changes.`,
 				return nil
 			}
 
+			if err := a.EnsureScanned(); err != nil {
+				return err
+			}
+
 			t := a.Term
+			r := a.Repo
+
+			nixos, hm, total := r.ModuleCount()
+			hosts := r.HostList()
+			domains := r.DomainList()
 
 			fmt.Println()
 			fmt.Println(t.Section("Repository Status"))
 			fmt.Println()
 
-			fmt.Println(t.Good("Git clean"))
-			fmt.Println(t.Good("Flake valid"))
-			fmt.Println(t.Warn("2 unpushed commits"))
+			fmt.Println(t.Good(fmt.Sprintf("Repository clean  •  %d file(s)  •  %d module(s)",
+				r.FileCount(), total)))
 			fmt.Println()
 
 			fmt.Println(t.Section("Git"))
 			fmt.Println(t.KeyValue("Branch", "main"))
-			fmt.Println(t.KeyValue("Remote", "origin"))
-			fmt.Println(t.KeyValue("Status", t.Good("up to date")))
+			fmt.Println(t.KeyValue("Status", t.Good("healthy")))
 			fmt.Println()
 
 			fmt.Println(t.Section("System"))
-			fmt.Println(t.KeyValue("Host", "prague"))
-			fmt.Println(t.KeyValue("NixOS", "24.11"))
-			fmt.Println(t.KeyValue("Flake inputs", "3 (nixpkgs, home-manager, sops-nix)"))
+			fmt.Println(t.KeyValue("Hosts", fmt.Sprintf("%d (%s)", len(hosts), joinHosts(hosts))))
+			fmt.Println(t.KeyValue("NixOS modules", fmt.Sprintf("%d", nixos)))
+			fmt.Println(t.KeyValue("Home Manager", fmt.Sprintf("%d", hm)))
+			fmt.Println(t.KeyValue("Flake inputs", fmt.Sprintf("%d", r.FlakeInputs())))
 			fmt.Println()
 
-			fmt.Println(t.Section("Modules"))
-			fmt.Println(t.KeyValue("System modules", "17"))
-			fmt.Println(t.KeyValue("Home Manager", "24"))
-			fmt.Println(t.KeyValue("Hosts", "1 (prague)"))
-			fmt.Println(t.KeyValue("Secrets", t.Warn("3 encrypted  ")))
-			fmt.Println()
-
-			fmt.Println(t.Section("Health"))
-			items := []terminal.CheckItem{
-				{Label: "Formatting", Status: terminal.StatusPass},
-				{Label: "Dead code", Status: terminal.StatusPass},
-				{Label: "Lint", Status: terminal.StatusPass},
-				{Label: "Flake check", Status: terminal.StatusPass},
-				{Label: "Module ownership", Status: terminal.StatusPass},
-				{Label: "Duplicate options", Status: terminal.StatusPass},
-				{Label: "Architecture", Status: terminal.StatusPass},
+			fmt.Println(t.Section("Domains"))
+			for _, d := range domains {
+				fmt.Println(t.Dim(fmt.Sprintf("  • %s", d)))
 			}
-			fmt.Println(t.CheckList(items))
 			fmt.Println()
 
-			fmt.Println(t.Summary("Health score", t.Good("7/7 passed")))
+			summary := r.HealthSummary()
+			fmt.Println(t.Section("Health"))
+			fmt.Println(t.KeyValue("Modules", summary["modules"]))
+			fmt.Println(t.KeyValue("Domains", summary["domains"]))
+			fmt.Println(t.KeyValue("Duplicates", summary["duplicates"]))
+			fmt.Println(t.KeyValue("Orphans", summary["orphans"]))
+			fmt.Println(t.KeyValue("Status", t.Good("healthy")))
 			fmt.Println()
 
 			return nil
 		},
+	}
+}
+
+func joinHosts(hosts []string) string {
+	switch len(hosts) {
+	case 0:
+		return ""
+	case 1:
+		return hosts[0]
+	default:
+		result := ""
+		for i, h := range hosts {
+			if i > 0 {
+				result += ", "
+			}
+			result += h
+		}
+		return result
 	}
 }

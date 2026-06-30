@@ -81,15 +81,16 @@ else
   FAILURES=$((FAILURES + 1))
 
   if [[ -f "$TOKEN_FILE" ]]; then
-    TOKEN="$(cat "$TOKEN_FILE")"
+    TOKEN="$(grep -oP '(?<=REGISTRATION_TOKEN=)\S+' "$TOKEN_FILE" || true)"
+    URL="$(grep -oP '(?<=CI_SERVER_URL=)\S+' "$TOKEN_FILE" || echo "$SERVER")"
     if [[ -n "$TOKEN" ]]; then
       do "Removing stale config" rm -f "$CONFIG"
       do "Re-registering runner" gitlab-runner register \
         --non-interactive \
-        --url "$SERVER" \
+        --url "$URL" \
         --registration-token "$TOKEN" \
         --executor "shell" \
-        --tag-list "nixos,gitops,fleet,flakes" \
+        --tag-list "nixos,prague,self-hosted" \
         --run-untagged="true" \
         --locked="false"
       do "Restarting after registration" systemctl restart gitlab-runner.service

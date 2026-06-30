@@ -173,13 +173,13 @@ in
 
       enable = true;
 
-      concurrent = cfg.concurrent;
+      settings.concurrent = cfg.concurrent;
 
       services.default = {
 
         executor = cfg.executor;
 
-        authenticationTokenConfigFile =
+        registrationConfigFile =
           cfg.tokenFile;
 
         tagList = cfg.tags;

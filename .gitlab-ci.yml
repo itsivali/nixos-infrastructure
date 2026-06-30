@@ -40,16 +40,16 @@ validate-ci:
   image: alpine:latest@sha256:0a4eaa0eecf5f8c050e5bba433f58c052be7587ee8af1e8d0e8012a0fb8344eb
   script:
     - apk add --no-cache python3 py3-yaml
-    - python3 -c "
-import yaml, sys
-with open('.gitlab-ci.yml') as f:
-    try:
-        config = yaml.safe_load(f)
-        print(f'✓ .gitlab-ci.yml valid ({sum(1 for k,v in config.items() if isinstance(v, dict) and \"script\" in v)} job definitions)')
-    except yaml.YAMLError as e:
-        print(f'✗ YAML parse error: {e}')
-        sys.exit(1)
-    "
+    - python3 -c |
+        import yaml, sys
+        with open('.gitlab-ci.yml') as f:
+            try:
+                config = yaml.safe_load(f)
+                count = sum(1 for k,v in config.items() if isinstance(v, dict) and 'script' in v)
+                print(f'valid ({count} job definitions)')
+            except yaml.YAMLError as e:
+                print(f'parse error: {e}')
+                sys.exit(1)
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'

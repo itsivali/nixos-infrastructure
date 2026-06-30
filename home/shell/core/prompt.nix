@@ -81,12 +81,12 @@ in
       git_state = {
         style = "bold yellow";
         format = "[\($state( $progress_current of $progress_total)\)]($style) ";
-        cherry_pick = "�22 cherry-pick";
+        cherry_pick = " cherry-pick";
         revert = " revert";
         merge = " merge";
         bisect = " bisect";
         am = " am";
-        am_or_revert = " am/revert";
+        am_or_rebase = " am/rebase";
         rebase = " rebase";
       };
 
@@ -110,7 +110,7 @@ in
         format = "[\(+$added ($deleted)\)]($style) ";
         added_style = "bold green";
         deleted_style = "bold red";
-        only_nonzero = true;
+        only_nonzero_diffs = true;
       };
 
       # ── Nix ──────────────────────────────────────────────────────
@@ -148,7 +148,6 @@ in
         symbol = "";
         style = "bold #60A5FA";
         format = "via [$symbol]($style) ";
-        detect_extensions = [];
         detect_files = ["docker-compose.yml" "Dockerfile" ".dockerignore"];
       };
 
@@ -181,7 +180,7 @@ in
         style = "bold red";
         format = "[ $status]($style) ";
         disabled = false;
-        not_found = " not found";
+        not_found_symbol = "";
         signal_symbol = " ";
         pipestatus = true;
         pipestatus_separator = "  ";

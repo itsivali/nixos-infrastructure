@@ -85,13 +85,13 @@ nix-build:
   extends: .default_tags
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      when: manual
+      when: on_success
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      when: manual
+      when: on_success
     - if: '$CI_COMMIT_BRANCH'
       changes:
         - .gitlab-ci.yml
-      when: manual
+      when: on_success
 
 nixos-build:
   stage: build
@@ -101,11 +101,11 @@ nixos-build:
   extends: .default_tags
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      when: manual
+      when: on_success
     - if: '$CI_COMMIT_BRANCH'
       changes:
         - .gitlab-ci.yml
-      when: manual
+      when: on_success
 
 # ============================================
 # DEPLOY
@@ -115,8 +115,8 @@ deploy:
   stage: deploy
   needs: ["nixos-build"]
   script:
-    - echo "Deploy step — configure your target host here"
+    - sudo systemctl start ci-deploy.service
   extends: .default_tags
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-      when: manual
+      when: on_success

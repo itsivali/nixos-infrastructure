@@ -18,7 +18,7 @@ ROLLBACK="${SCRIPTS_DIR}/rollback.sh"
 
 HOST="prague"
 BRANCH="main"
-LOCK_FILE="/run/gitops-reconciler.lock"
+LOCK_FILE="/run/deploy.lock"
 
 ###########################################################################
 # Helpers

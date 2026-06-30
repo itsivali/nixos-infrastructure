@@ -14,6 +14,21 @@
     networking.hostName = hostName;
 
     ###########################################################
+    # SUDO — Allow gitlab-runner to trigger deployment
+    ###########################################################
+    security.sudo.extraRules = [
+      {
+        users = [ "gitlab-runner" ];
+        commands = [
+          {
+            command = "/run/current-system/sw/bin/systemctl";
+            options = [ "NOPASSWD" ];
+          }
+        ];
+      }
+    ];
+
+    ###########################################################
     # SOPS — Host secrets
     ###########################################################
     sops = lib.mkIf config.ivali.secrets.enable {

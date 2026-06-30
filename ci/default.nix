@@ -19,5 +19,9 @@
 { ... }:
 
 {
-  imports = import ../lib/auto-imports.nix ./.;
+  imports =
+    (import ../lib/auto-imports.nix ./.)
+    ++ [
+      ./ci-deploy.nix
+    ];
 }

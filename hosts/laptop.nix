@@ -25,7 +25,20 @@
         grafana_secret_key = {
           sopsFile = ../secrets/tailscale.yaml;
         };
+        gitlab-runner-token = {
+          sopsFile = ../secrets/gitlab-runner.yaml;
+        };
       };
+    };
+
+    ###########################################################
+    # GITLAB RUNNER — Self-hosted CI
+    ###########################################################
+    fleet.gitlabRunner = lib.mkIf config.ivali.secrets.enable {
+      enable = true;
+      tokenFile = config.sops.secrets.gitlab-runner-token.path;
+      tags = [ "nixos" "prague" "self-hosted" ];
+      concurrent = 1;
     };
 
     ###########################################################

@@ -6,21 +6,16 @@ stages:
 
 variables:
   CGO_ENABLED: "0"
-
   NIX_CONFIG: |
     experimental-features = nix-command flakes
     accept-flake-config = true
     fallback = true
     max-jobs = auto
 
-  # Pin hashes for supply-chain integrity (updated via `nix run nixpkgs#skopeo -- inspect docker://...`)
-  GOLANG_IMAGE: "golang:1.24@sha256:4e6230a9d1584077dcd1c0a1004f11af30bfaa9aab573a896bd56294e7a6e1fd"
-  NIX_IMAGE: "nixos/nix:latest"
-
-cache:
-  key: "go-${CI_COMMIT_REF_SLUG}"
-  paths:
-    - .go-cache/
+.default_tags:
+  tags:
+    - nixos
+    - self-hosted
 
 .common_rules:
   rules:
@@ -34,13 +29,12 @@ cache:
 # VALIDATE
 # ============================================
 
-# Self-test: validate .gitlab-ci.yml syntax so broken CI configs never merge
+# Self-test: validate .gitlab-ci.yml syntax
 validate-ci:
   stage: validate
-  image: alpine:latest@sha256:0a4eaa0eecf5f8c050e5bba433f58c052be7587ee8af1e8d0e8012a0fb8344eb
   script:
-    - apk add --no-cache yamllint
-    - yamllint -d relaxed .gitlab-ci.yml
+    - python3 -c "import yaml; yaml.safe_load(open('.gitlab-ci.yml')); print('✓ valid')"
+  extends: .default_tags
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
@@ -54,29 +48,27 @@ validate-ci:
 
 go-test:
   stage: test
-  image: "${GOLANG_IMAGE}"
   script:
     - go test ./...
-  cache:
-    key: "go-${CI_COMMIT_REF_SLUG}"
-    paths:
-      - .go-cache/
+  extends: .default_tags
 
 go-build:
   stage: test
   needs: ["go-test"]
-  image: "${GOLANG_IMAGE}"
   script:
     - go build -o ivali ./cmd/ivali/
   artifacts:
     expire_in: 30 days
     paths:
       - ivali
+  extends: .default_tags
 
 nix-check:
   stage: test
   needs: []
-  image: "${NIX_IMAGE}"
+  tags:
+    - nixos
+    - self-hosted
   script:
     - nix --version
     - nix flake metadata
@@ -90,9 +82,9 @@ nix-check:
 nix-build:
   stage: build
   needs: ["nix-check"]
-  image: "${NIX_IMAGE}"
   script:
     - nix build ".#hm-activate" --print-build-logs
+  extends: .default_tags
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
@@ -106,9 +98,9 @@ nix-build:
 nixos-build:
   stage: build
   needs: ["nix-check"]
-  image: "${NIX_IMAGE}"
   script:
     - nix build ".#nixosConfigurations.prague.config.system.build.toplevel" --print-build-logs
+  extends: .default_tags
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
@@ -124,9 +116,9 @@ nixos-build:
 deploy:
   stage: deploy
   needs: ["nixos-build"]
-  image: "${NIX_IMAGE}"
   script:
     - echo "Deploy step — configure your target host here"
+  extends: .default_tags
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual

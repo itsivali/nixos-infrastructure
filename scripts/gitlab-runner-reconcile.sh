@@ -1,0 +1,171 @@
+#!/run/current-system/sw/bin/bash
+# gitlab-runner-reconcile.sh — recover GitLab Runner service
+#
+# Triggered by gitlab-runner-health.service on failure.
+# Attempts to restore the runner to a healthy state.
+#
+# NEVER modifies the Nix store or runs nixos-rebuild.
+# All recovery is limited to service management and re-registration.
+
+set -Eeuo pipefail
+
+REPO_DIR="/home/ivali/nixos-infrastructure"
+SCRIPTS_DIR="${REPO_DIR}/scripts"
+NOTIFY="${SCRIPTS_DIR}/notify.sh"
+CONFIG="/etc/gitlab-runner/config.toml"
+TOKEN_FILE="${TOKEN_FILE:-/run/secrets/gitlab-runner-token}"
+SERVER="https://gitlab.com"
+
+HOST="prague"
+LOCK_FILE="/run/gitlab-runner-reconcile.lock"
+
+log() { echo "[$(date -Iseconds)] $*"; }
+
+notify() {
+  if [[ -x "$NOTIFY" ]]; then
+    "$NOTIFY" "$1" || true
+  fi
+}
+
+notify_failure() {
+  notify "GitLab Runner reconciliation failed on ${HOST}: $1"
+}
+
+exec 9>"$LOCK_FILE"
+if ! flock -n 9; then
+  log "Another reconciliation already running — skipping."
+  exit 0
+fi
+
+FAILURES=0
+
+do() {
+  local desc="$1"
+  shift
+  log "  → ${desc}..."
+  if "$@"; then
+    log "  ✓ ${desc}"
+  else
+    log "  ✗ ${desc} — failed"
+    FAILURES=$((FAILURES + 1))
+  fi
+}
+
+##############################################################################
+# 1. Token availability
+##############################################################################
+
+log "[1/5] Token check"
+
+if [[ -f "$TOKEN_FILE" ]]; then
+  log "  ✓ Token file present at ${TOKEN_FILE}"
+else
+  log "  ⚠ Token file missing — sops may not have mounted it"
+fi
+
+##############################################################################
+# 2. GitLab Runner service
+##############################################################################
+
+log "[2/5] Service recovery"
+
+do "Enabling gitlab-runner" systemctl enable gitlab-runner.service
+do "Restarting gitlab-runner" systemctl restart gitlab-runner.service
+
+sleep 2
+
+if systemctl is-active --quiet gitlab-runner.service; then
+  log "  ✓ gitlab-runner active"
+else
+  log "  ✗ gitlab-runner still inactive — attempting re-registration"
+  FAILURES=$((FAILURES + 1))
+
+  if [[ -f "$TOKEN_FILE" ]]; then
+    TOKEN="$(cat "$TOKEN_FILE")"
+    if [[ -n "$TOKEN" ]]; then
+      do "Removing stale config" rm -f "$CONFIG"
+      do "Re-registering runner" gitlab-runner register \
+        --non-interactive \
+        --url "$SERVER" \
+        --registration-token "$TOKEN" \
+        --executor "shell" \
+        --tag-list "nixos,gitops,fleet,flakes" \
+        --run-untagged="true" \
+        --locked="false"
+      do "Restarting after registration" systemctl restart gitlab-runner.service
+    else
+      log "  ✗ Token file is empty — cannot register"
+      FAILURES=$((FAILURES + 1))
+    fi
+  fi
+fi
+
+##############################################################################
+# 3. Configuration integrity
+##############################################################################
+
+log "[3/5] Configuration check"
+
+if [[ -f "$CONFIG" ]]; then
+  log "  ✓ config.toml present"
+else
+  log "  ✗ config.toml missing — runner registration may have failed"
+  FAILURES=$((FAILURES + 1))
+fi
+
+##############################################################################
+# 4. GitLab reachable
+##############################################################################
+
+log "[4/5] Connectivity check"
+
+if curl --silent --fail --connect-timeout 10 --max-time 15 "$SERVER" >/dev/null; then
+  log "  ✓ GitLab reachable"
+else
+  log "  ✗ Cannot reach GitLab — network issue (not recovered)"
+  FAILURES=$((FAILURES + 1))
+fi
+
+if git ls-remote --heads "$SERVER/willisivali/nixos-infrastructure.git" main >/dev/null 2>&1; then
+  log "  ✓ Repository reachable"
+else
+  log "  ✗ Cannot access repository"
+  FAILURES=$((FAILURES + 1))
+fi
+
+##############################################################################
+# 5. GitOps worktree
+##############################################################################
+
+log "[5/5] Worktree check"
+
+WORKTREE="${GITOPS_WORKTREE:-/var/lib/gitops}"
+
+if [[ -d "$WORKTREE" ]]; then
+  log "  ✓ Worktree exists"
+  if [[ ! -f "$WORKTREE/flake.nix" ]]; then
+    log "  ⚠ Worktree has no flake.nix — may need initial clone"
+  fi
+else
+  log "  ⚠ Worktree missing — creating"
+  mkdir -p "$WORKTREE"
+  do "Cloning repository" git clone \
+    "$SERVER/willisivali/nixos-infrastructure.git" \
+    "$WORKTREE"
+fi
+
+##############################################################################
+# Summary
+##############################################################################
+
+log "=== Summary: ${FAILURES} failure(s)"
+
+if (( FAILURES == 0 )); then
+  log "GitLab Runner reconciliation succeeded"
+  notify "GitLab Runner recovered on ${HOST}"
+  exit 0
+else
+  log "GitLab Runner reconciliation incomplete"
+  notify_failure "${FAILURES} issue(s) could not be recovered"
+  exit 1
+fi

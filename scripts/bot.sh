@@ -58,36 +58,48 @@ handle_command() {
 
   log "Command: /${cmd} ${args}"
 
+  local sep="━━━━━━━━━━━━━━━━━━━━━━"
+
   case "$cmd" in
     start|help)
-      send_msg "$chat" "*${HOST} — Bot Control Plane*"
-      send_msg "$chat" "\
-\`/deploy\`  — nixos-rebuild switch
-\`/status\` — system status summary
-\`/health\` — full deployment health check
-\`/update\` — git pull + flake update + push
+      send_msg "$chat" "*${HOST} — Bot Control Plane*
+${sep}
+\`/deploy\`   — nixos-rebuild switch
+\`/status\`   — system status summary
+\`/health\`   — full deployment health check
+\`/update\`   — git pull + flake update + push
 \`/rollback\` — revert to previous generation
-\`/gc\`     — nix store garbage collect
-\`/reboot\` — reboot the system
-\`/log\`    — last 50 journal lines
-\`/git\`    — run a git command
-\`/nix\`    — run a nix command
-\`/help\`   — this message"
+\`/gc\`       — nix store garbage collect
+\`/reboot\`   — reboot the system
+\`/log\`      — last 50 journal lines
+\`/git\`      — run a git command
+\`/nix\`      — run a nix command
+\`/help\`     — show this message
+${sep}"
       ;;
 
     status)
-      local out
-      out="*${HOST} — Status*"
-      out+="\`\`\`"
-      out+="$(run_cmd "uname -a 2>&1; echo '---'; df -h / --output=size,used,avail,pcent 2>&1 | tail -1; echo '---'; nixos-rebuild list-generations 2>&1 | tail -3; echo '---'; uptime -p 2>&1")"
-      out+="\`\`\`"
-      send_long "$chat" "$out"
+      send_msg "$chat" "Gathering system info..."
+      local kernel disk gen upt
+      kernel="$(uname -srm 2>/dev/null || echo 'unknown')"
+      disk="$(df -h / --output=size,used,avail,pcent 2>/dev/null | tail -1 | awk '{print $2" total, "$3" used, "$4" free ("$5")"}')"
+      gen="$(nixos-rebuild list-generations 2>/dev/null | tail -1 | awk '{$1=""; print $0}' | xargs || echo 'unknown')"
+      upt="$(uptime 2>/dev/null | sed 's/.*up //; s/,.*//' || echo 'unknown')"
+      send_long "$chat" "*${HOST} — System Status*
+${sep}
+*Kernel:*    \`${kernel}\`
+*Uptime:*    \`${upt}\`
+*Disk (/):*  \`${disk}\`
+*NixGen:*    \`${gen}\`
+${sep}"
       ;;
 
     health)
       send_msg "$chat" "Running health checks..."
       local out
-      out="*${HOST} — Health*\`\`\`"
+      out="*${HOST} — Health Report*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && scripts/deployment-health.sh 2>&1" 60)"
       out+="\`\`\`"
       send_long "$chat" "$out"
@@ -96,7 +108,9 @@ handle_command() {
     deploy|rebuild)
       send_msg "$chat" "Deploying ${HOST}..."
       local out
-      out="*${HOST} — Deploy*\`\`\`"
+      out="*${HOST} — Deploy Output*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && nixos-rebuild switch --flake .#${HOST} --show-trace 2>&1" 600)"
       out+="\`\`\`"
       send_long "$chat" "$out"
@@ -105,7 +119,9 @@ handle_command() {
     update)
       send_msg "$chat" "Updating flake inputs..."
       local out
-      out="*${HOST} — Update*\`\`\`"
+      out="*${HOST} — Flake Update*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && git pull --ff-only origin main 2>&1 && nix flake update 2>&1 && git add flake.lock && git commit -m 'flake update: $(date -Iseconds)' 2>&1 && git push origin main 2>&1" 600)"
       out+="\`\`\`"
       send_long "$chat" "$out"
@@ -114,7 +130,9 @@ handle_command() {
     rollback)
       send_msg "$chat" "Rolling back..."
       local out
-      out="*${HOST} — Rollback*\`\`\`"
+      out="*${HOST} — Rollback*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && scripts/rollback.sh 2>&1" 120)"
       out+="\`\`\`"
       send_long "$chat" "$out"
@@ -123,14 +141,19 @@ handle_command() {
     gc)
       send_msg "$chat" "Running garbage collector..."
       local out
-      out="*${HOST} — GC*\`\`\`"
+      out="*${HOST} — GC Results*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "nix store gc 2>&1" 600)"
       out+="\`\`\`"
       send_long "$chat" "$out"
       ;;
 
     reboot)
-      send_msg "$chat" "Rebooting ${HOST} in 10 seconds... Use /cancel to abort."
+      send_msg "$chat" "*${HOST} — Reboot*
+${sep}
+Rebooting in 10 seconds... Use \`/cancel\` to abort.
+${sep}"
       sleep 10
       systemctl reboot 2>&1 || send_msg "$chat" "Reboot failed."
       ;;
@@ -138,7 +161,9 @@ handle_command() {
     log)
       local lines="${args:-50}"
       local out
-      out="*${HOST} — Last ${lines} lines*\`\`\`"
+      out="*${HOST} — Last ${lines} journal lines*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "journalctl -n ${lines} --no-pager 2>&1" 30)"
       out+="\`\`\`"
       send_long "$chat" "$out"
@@ -146,7 +171,8 @@ handle_command() {
 
     git)
       if [[ -z "$args" ]]; then
-        send_msg "$chat" "Usage: /git <command>"
+        send_msg "$chat" "*Usage:* \`/git <command>\`
+Run a git command in \`${REPO_DIR}\`"
         return
       fi
       local out
@@ -158,7 +184,7 @@ handle_command() {
 
     nix)
       if [[ -z "$args" ]]; then
-        send_msg "$chat" "Usage: /nix <command>"
+        send_msg "$chat" "*Usage:* \`/nix <command>\`"
         return
       fi
       local out
@@ -173,7 +199,8 @@ handle_command() {
       ;;
 
     *)
-      send_msg "$chat" "Unknown command: /${cmd}. Try /help"
+      send_msg "$chat" "*Unknown command:* \`/${cmd}\`
+Try \`/help\` for available commands."
       ;;
   esac
 }

@@ -182,7 +182,7 @@ log "Bot starting — host=${HOST} chat=${CHAT_ID}"
 register_commands() {
   curl -fsSL --max-time 10 -X POST "${API}/setMyCommands" \
     -H "Content-Type: application/json" \
-    -d '[
+    -d '{"commands":[
       {"command":"deploy","description":"nixos-rebuild switch"},
       {"command":"status","description":"system status summary"},
       {"command":"health","description":"full deployment health check"},
@@ -194,7 +194,7 @@ register_commands() {
       {"command":"git","description":"run a git command"},
       {"command":"nix","description":"run a nix command"},
       {"command":"help","description":"show available commands"}
-    ]' > /dev/null 2>&1 || true
+    ]}' > /dev/null 2>&1 || true
 }
 register_commands
 

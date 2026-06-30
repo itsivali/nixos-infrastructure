@@ -1,4 +1,5 @@
 stages:
+  - validate
   - test
   - build
   - deploy
@@ -6,24 +7,63 @@ stages:
 variables:
   CGO_ENABLED: "0"
 
-  # Nix config for nix jobs
   NIX_CONFIG: |
     experimental-features = nix-command flakes
     accept-flake-config = true
     fallback = true
     max-jobs = auto
 
+  # Pin hashes for supply-chain integrity (updated via `nix run nixpkgs#skopeo -- inspect docker://...`)
+  GOLANG_IMAGE: "golang:1.24@sha256:4e6230a9d1584077dcd1c0a1004f11af30bfaa9aab573a896bd56294e7a6e1fd"
+  NIX_IMAGE: "nixos/nix:latest"
+
 cache:
   key: "go-${CI_COMMIT_REF_SLUG}"
   paths:
     - .go-cache/
 
-# -----------------------------
-# Go Unit Tests
-# -----------------------------
+.common_rules: &common_rules
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+      changes:
+        - .gitlab-ci.yml
+
+# ============================================
+# VALIDATE
+# ============================================
+
+# Self-test: validate .gitlab-ci.yml syntax so broken CI configs never merge
+validate-ci:
+  stage: validate
+  image: alpine:latest@sha256:0a4eaa0eecf5f8c050e5bba433f58c052be7587ee8af1e8d0e8012a0fb8344eb
+  script:
+    - apk add --no-cache python3 py3-yaml
+    - python3 -c "
+import yaml, sys
+with open('.gitlab-ci.yml') as f:
+    try:
+        config = yaml.safe_load(f)
+        print(f'✓ .gitlab-ci.yml valid ({sum(1 for k,v in config.items() if isinstance(v, dict) and \"script\" in v)} job definitions)')
+    except yaml.YAMLError as e:
+        print(f'✗ YAML parse error: {e}')
+        sys.exit(1)
+    "
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH'
+      changes:
+        - .gitlab-ci.yml
+
+# ============================================
+# TEST
+# ============================================
+
 go-test:
-  image: golang:1.24
   stage: test
+  image: "${GOLANG_IMAGE}"
   script:
     - go test ./...
   cache:
@@ -31,13 +71,10 @@ go-test:
     paths:
       - .go-cache/
 
-# -----------------------------
-# Go Build (verify compilation)
-# -----------------------------
 go-build:
-  image: golang:1.24
-  stage: build
+  stage: test
   needs: ["go-test"]
+  image: "${GOLANG_IMAGE}"
   script:
     - go build -o ivali ./cmd/ivali/
   artifacts:
@@ -45,28 +82,24 @@ go-build:
     paths:
       - ivali
 
-# -----------------------------
-# Nix Flake Validation
-# -----------------------------
 nix-check:
-  image: nixos/nix:latest
   stage: test
   needs: []
+  image: "${NIX_IMAGE}"
   script:
     - nix --version
     - nix flake metadata
     - nix flake check --no-build
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  <<: *common_rules
 
-# -----------------------------
-# Nix Build (hm-activate)
-# -----------------------------
+# ============================================
+# BUILD
+# ============================================
+
 nix-build:
-  image: nixos/nix:latest
   stage: build
   needs: ["nix-check"]
+  image: "${NIX_IMAGE}"
   script:
     - nix build ".#hm-activate" --print-build-logs
   rules:
@@ -74,27 +107,33 @@ nix-build:
       when: manual
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: manual
+    - if: '$CI_COMMIT_BRANCH'
+      changes:
+        - .gitlab-ci.yml
+      when: manual
 
-# -----------------------------
-# NixOS system build (manual, main only)
-# -----------------------------
 nixos-build:
-  image: nixos/nix:latest
   stage: build
   needs: ["nix-check"]
+  image: "${NIX_IMAGE}"
   script:
     - nix build ".#nixosConfigurations.prague.config.system.build.toplevel" --print-build-logs
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
+    - if: '$CI_COMMIT_BRANCH'
+      changes:
+        - .gitlab-ci.yml
+      when: manual
 
-# -----------------------------
-# Deploy to fleet (manual)
-# -----------------------------
+# ============================================
+# DEPLOY
+# ============================================
+
 deploy:
-  image: nixos/nix:latest
   stage: deploy
   needs: ["nixos-build"]
+  image: "${NIX_IMAGE}"
   script:
     - echo "Deploy step — configure your target host here"
   rules:

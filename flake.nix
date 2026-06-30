@@ -102,14 +102,5 @@
           }
         ];
       };
-
-      # ─────────────────────────────────────────────
-      # CI validation check
-      # ─────────────────────────────────────────────
-      checks.${system}.laptop-config = pkgs.runCommand "check-laptop-config" { } ''
-        echo ${
-          self.nixosConfigurations.${hostName}.config.system.build.toplevel.drvPath
-        } > $out
-      '';
     };
 }

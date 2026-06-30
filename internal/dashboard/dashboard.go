@@ -30,6 +30,9 @@ type model struct {
 	loading      bool
 	showDetail   bool
 
+	filter    string
+	filtering bool
+
 	modules []scanner.Module
 }
 
@@ -70,6 +73,34 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ready = true
 
 	case tea.KeyMsg:
+		if m.filtering {
+			switch msg.String() {
+			case "esc":
+				m.filter = ""
+				m.filtering = false
+				m.moduleCursor = 0
+				m.scrollOffset = 0
+			case "enter":
+				m.filtering = false
+			case "backspace":
+				if len(m.filter) > 0 {
+					m.filter = m.filter[:len(m.filter)-1]
+				}
+				m.moduleCursor = 0
+				m.scrollOffset = 0
+			case "space":
+				m.filter += " "
+				m.moduleCursor = 0
+				m.scrollOffset = 0
+			default:
+				if len(msg.String()) == 1 {
+					m.filter += msg.String()
+					m.moduleCursor = 0
+					m.scrollOffset = 0
+				}
+			}
+			break
+		}
 		switch msg.String() {
 		case "q", "ctrl+c":
 			return m, tea.Quit
@@ -77,40 +108,68 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.refreshCmd()
 		case "?":
 			m.helpVisible = !m.helpVisible
+		case "/":
+			if m.activeTab == 1 && !m.showDetail {
+				m.filtering = true
+				m.filter = ""
+			}
 		case "tab":
 			m.activeTab = (m.activeTab + 1) % len(m.tabs)
 			m.moduleCursor = 0
 			m.scrollOffset = 0
 			m.showDetail = false
+			m.filter = ""
+			m.filtering = false
 		case "shift+tab":
 			m.activeTab = (m.activeTab - 1 + len(m.tabs)) % len(m.tabs)
 			m.moduleCursor = 0
 			m.scrollOffset = 0
 			m.showDetail = false
+			m.filter = ""
+			m.filtering = false
 		case "enter":
-			if m.activeTab == 1 && len(m.modules) > 0 {
+			if m.activeTab == 1 && len(m.filteredModules()) > 0 {
 				m.showDetail = !m.showDetail
 			}
 		case "esc":
 			m.showDetail = false
+			if m.filter != "" {
+				m.filter = ""
+				m.moduleCursor = 0
+				m.scrollOffset = 0
+			}
 		case "up", "k":
 			if m.showDetail {
 				break
 			}
-			if m.activeTab == 1 && m.moduleCursor > 0 {
-				m.moduleCursor--
-			}
-			if m.scrollOffset > 0 {
-				m.scrollOffset--
+			if m.activeTab == 1 {
+				flen := len(m.filteredModules())
+				if m.moduleCursor > 0 {
+					m.moduleCursor--
+				}
+				if m.scrollOffset > 0 {
+					m.scrollOffset--
+				}
+				// Clamp cursor to filtered list
+				if m.moduleCursor >= flen && flen > 0 {
+					m.moduleCursor = flen - 1
+				}
 			}
 		case "down", "j":
 			if m.showDetail {
 				break
 			}
-			if m.activeTab == 1 && m.moduleCursor < len(m.modules)-1 {
-				m.moduleCursor++
+			if m.activeTab == 1 {
+				flen := len(m.filteredModules())
+				if m.moduleCursor < flen-1 {
+					m.moduleCursor++
+				}
+				m.scrollOffset++
+				// Clamp cursor to filtered list
+				if m.moduleCursor >= flen && flen > 0 {
+					m.moduleCursor = flen - 1
+				}
 			}
-			m.scrollOffset++
 		}
 
 	case errMsg:
@@ -247,28 +306,56 @@ func (m *model) renderOverview() string {
 	return b.String()
 }
 
+func (m *model) filteredModules() []scanner.Module {
+	if m.filter == "" {
+		return m.modules
+	}
+	lower := strings.ToLower(m.filter)
+	var result []scanner.Module
+	for _, mod := range m.modules {
+		if strings.Contains(strings.ToLower(mod.RelPath), lower) {
+			result = append(result, mod)
+		}
+	}
+	return result
+}
+
 func (m *model) renderModules() string {
+	filtered := m.filteredModules()
 	if len(m.modules) == 0 {
 		return "  " + m.term.Dim("No modules found.")
 	}
 
 	var b strings.Builder
 
-	b.WriteString(m.term.Subsection(fmt.Sprintf("All Modules (%d)", len(m.modules))) + "\n\n")
+	subtitle := fmt.Sprintf("All Modules (%d)", len(m.modules))
+	if m.filter != "" {
+		subtitle = fmt.Sprintf("All Modules (%d/%d filtered)", len(filtered), len(m.modules))
+	}
+	b.WriteString(m.term.Subsection(subtitle) + "\n\n")
 
-	if m.showDetail && m.moduleCursor < len(m.modules) {
-		b.WriteString(m.renderModuleDetail(m.modules[m.moduleCursor]))
+	if m.filtering {
+		b.WriteString(m.term.Dim("  Filter: ") + m.term.Bold(m.filter+"▎") + "\n\n")
+	}
+
+	if len(filtered) == 0 {
+		b.WriteString("  " + m.term.Warn("No modules match filter: "+m.filter) + "\n")
+		return b.String()
+	}
+
+	if m.showDetail && m.moduleCursor < len(filtered) {
+		b.WriteString(m.renderModuleDetail(filtered[m.moduleCursor]))
 		return b.String()
 	}
 
 	contentHeight := m.height - 10
 	start := m.scrollOffset
 	end := start + contentHeight
-	if end > len(m.modules) {
-		end = len(m.modules)
+	if end > len(filtered) {
+		end = len(filtered)
 	}
 
-	for i, mod := range m.modules[start:end] {
+	for i, mod := range filtered[start:end] {
 		idx := start + i
 		cursor := "  "
 		if idx == m.moduleCursor {
@@ -442,10 +529,11 @@ func (m *model) renderDomains() string {
 }
 
 func (m *model) renderHelpBar() string {
-	help := m.term.Dim("  ? help  ↑↓ scroll  enter detail  tab switch  r refresh  q quit")
+	help := m.term.Dim("  ? help  ↑↓ scroll  / filter  enter detail  tab switch  r refresh  q quit")
 	if m.helpVisible {
 		help += "\n" + m.term.Dim("  IVALI Dashboard — Bubbletea TUI for repository management")
 		help += "\n" + m.term.Dim("  Tab/S-Tab: Switch panels  Up/Down: Navigate lists")
+		help += "\n" + m.term.Dim("  /: Filter modules  Esc: Clear filter  Backspace: Delete char")
 		help += "\n" + m.term.Dim("  Enter: Toggle module detail  Esc: Back to list")
 		help += "\n" + m.term.Dim("  r: Refresh data  q/Ctrl+C: Quit")
 	}

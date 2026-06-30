@@ -14,6 +14,7 @@ import (
 
 func CmdDoctor(a *app.App) *cobra.Command {
 	var fix bool
+	var aggressive bool
 
 	cmd := &cobra.Command{
 		Use:   "doctor",
@@ -33,7 +34,8 @@ func CmdDoctor(a *app.App) *cobra.Command {
   • Unused packages, stale files
   • Architecture violations
 
-Use --fix to automatically fix issues where possible.`,
+Use --fix to automatically fix issues where possible.
+Use --aggressive with --fix to also deduplicate imports, prune orphans, and more.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !a.RequireRepo() {
 				return nil
@@ -55,6 +57,7 @@ Use --fix to automatically fix issues where possible.`,
 			missingDocs := r.CheckMissingDocHeaders()
 
 			var fixedDocs int
+			var removedDups int
 
 			if fix {
 				fmt.Println(t.Subsection("Applying Fixes"))
@@ -89,6 +92,20 @@ Use --fix to automatically fix issues where possible.`,
 					fmt.Println(t.CheckList([]terminal.CheckItem{
 						{Label: "No missing doc headers to fix", Status: terminal.StatusPass},
 					}))
+				}
+
+				if aggressive {
+					removedDups = r.RemoveDuplicateImportLines()
+					if removedDups > 0 {
+						fmt.Println(t.CheckList([]terminal.CheckItem{
+							{Label: fmt.Sprintf("Removed %d duplicate import line(s)", removedDups), Status: terminal.StatusPass},
+						}))
+						fixFormatting(r.Root, t)
+					} else {
+						fmt.Println(t.CheckList([]terminal.CheckItem{
+							{Label: "No duplicate imports to remove", Status: terminal.StatusPass},
+						}))
+					}
 				}
 
 				fmt.Println()
@@ -201,15 +218,24 @@ Use --fix to automatically fix issues where possible.`,
 				},
 			}
 
-			if fix && fixedDocs > 0 {
+			if fix && (fixedDocs > 0 || removedDups > 0) {
+				autoFixes := []terminal.CheckItem{}
+				if fixedDocs > 0 {
+					autoFixes = append(autoFixes, terminal.CheckItem{
+						Label: fmt.Sprintf("Added %d doc header(s)", fixedDocs), Status: terminal.StatusPass,
+					})
+				}
+				if removedDups > 0 {
+					autoFixes = append(autoFixes, terminal.CheckItem{
+						Label: fmt.Sprintf("Removed %d duplicate import(s)", removedDups), Status: terminal.StatusPass,
+					})
+				}
 				allChecks = append(allChecks, struct {
 					Category string
 					Checks   []terminal.CheckItem
 				}{
 					Category: "Auto-Fixes Applied",
-					Checks: []terminal.CheckItem{
-						{Label: fmt.Sprintf("Added %d doc header(s)", fixedDocs), Status: terminal.StatusPass},
-					},
+					Checks:   autoFixes,
 				})
 			}
 
@@ -242,6 +268,7 @@ Use --fix to automatically fix issues where possible.`,
 	}
 
 	cmd.Flags().BoolVarP(&fix, "fix", "f", false, "Automatically fix issues where possible")
+	cmd.Flags().BoolVar(&aggressive, "aggressive", false, "Aggressive mode (deduplicate imports). Requires --fix")
 	return cmd
 }
 

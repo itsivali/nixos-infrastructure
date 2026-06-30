@@ -201,14 +201,73 @@ func (r *Repository) CheckDuplicateImports() []string {
 	var duplicates []string
 	for _, info := range r.Parsed {
 		for _, imp := range info.Imports {
-			if prev, ok := seen[imp]; ok {
+			resolved := resolveImportRel(info.RelPath, imp)
+			if prev, ok := seen[resolved]; ok {
 				duplicates = append(duplicates, fmt.Sprintf("%s (in %s and %s)", imp, prev, info.RelPath))
 			} else {
-				seen[imp] = info.RelPath
+				seen[resolved] = info.RelPath
 			}
 		}
 	}
 	return duplicates
+}
+
+func (r *Repository) RemoveDuplicateImportLines() int {
+	if r.Parsed == nil {
+		return 0
+	}
+	var removed int
+	for _, info := range r.Parsed {
+		seen := make(map[string]bool)
+		path := info.Path
+		data, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		lines := strings.Split(string(data), "\n")
+		var newLines []string
+		inImports := false
+		for _, line := range lines {
+			trimmed := strings.TrimSpace(line)
+
+			if strings.Contains(trimmed, "imports = [") {
+				inImports = true
+			}
+
+			if inImports {
+				// Check for closing bracket on same line (single-line imports)
+				if strings.Contains(trimmed, "]") && strings.Contains(trimmed, "imports") {
+					inImports = false
+					newLines = append(newLines, line)
+					continue
+				}
+				if strings.Contains(trimmed, "]") && !strings.Contains(trimmed, "imports") {
+					inImports = false
+					newLines = append(newLines, line)
+					continue
+				}
+				// Skip non-import lines (comments, blank lines, non-path strings)
+				imp := strings.TrimSpace(trimmed)
+				imp = strings.TrimSuffix(imp, ";")
+				if !strings.HasPrefix(imp, "./") && !strings.HasPrefix(imp, "../") {
+					newLines = append(newLines, line)
+					continue
+				}
+				resolved := resolveImportRel(info.RelPath, imp)
+				if seen[resolved] {
+					removed++
+					continue
+				}
+				seen[resolved] = true
+			}
+			newLines = append(newLines, line)
+		}
+		newContent := strings.Join(newLines, "\n")
+		if newContent != string(data) {
+			os.WriteFile(path, []byte(newContent), 0644)
+		}
+	}
+	return removed
 }
 
 func (r *Repository) CheckOrphanModules() []string {
@@ -460,4 +519,16 @@ func (r *Repository) saveCache() error {
 	}
 
 	return os.WriteFile(path, data, 0o644)
+}
+
+func resolveImportRel(moduleRel, imp string) string {
+	if strings.HasPrefix(imp, "./") || strings.HasPrefix(imp, "../") {
+		resolved := filepath.Join(filepath.Dir(moduleRel), imp)
+		resolved = filepath.Clean(resolved)
+		if !strings.HasSuffix(resolved, ".nix") {
+			resolved += "/default.nix"
+		}
+		return resolved
+	}
+	return imp
 }

@@ -81,7 +81,7 @@ else
   FAILURES=$((FAILURES + 1))
 
   if [[ -f "$TOKEN_FILE" ]]; then
-    TOKEN="$(grep -oP '(?<=REGISTRATION_TOKEN=)\S+' "$TOKEN_FILE" || true)"
+    TOKEN="$(grep -oP '(?<=CI_SERVER_TOKEN=)\S+' "$TOKEN_FILE" || echo)"
     URL="$(grep -oP '(?<=CI_SERVER_URL=)\S+' "$TOKEN_FILE" || echo "$SERVER")"
     if [[ -n "$TOKEN" ]]; then
       do "Removing stale config" rm -f "$CONFIG"

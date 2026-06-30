@@ -179,10 +179,8 @@ in
 
         executor = cfg.executor;
 
-        registrationConfigFile =
+        authenticationTokenConfigFile =
           cfg.tokenFile;
-
-        tagList = cfg.tags;
 
         environmentVariables = {
 

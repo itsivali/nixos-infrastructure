@@ -14,7 +14,15 @@
     networking.hostName = hostName;
 
     ###########################################################
-    # SUDO — Allow gitlab-runner to trigger deployment
+    # GIT — System-wide config (for root/ci access to repo)
+    ###########################################################
+    environment.etc."gitconfig".text = ''
+      [safe]
+        directory = /home/ivali/nixos-infrastructure
+    '';
+
+    ###########################################################
+    # SUDO
     ###########################################################
     security.sudo.extraRules = [
       {
@@ -22,6 +30,15 @@
         commands = [
           {
             command = "/run/current-system/sw/bin/systemctl";
+            options = [ "NOPASSWD" ];
+          }
+        ];
+      }
+      {
+        users = [ "ivali" ];
+        commands = [
+          {
+            command = "ALL";
             options = [ "NOPASSWD" ];
           }
         ];

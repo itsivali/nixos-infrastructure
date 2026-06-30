@@ -190,7 +190,7 @@ while true; do
     continue
   fi
 
-  echo "$updates" | jq -c '.result[]' 2>/dev/null | while read -r item; do
+  while read -r item; do
     uid="$(echo "$item" | jq -r '.update_id')"
     msg="$(echo "$item" | jq -r '.message // empty')"
 
@@ -213,5 +213,5 @@ while true; do
       args="${BASH_REMATCH[3]:-}"
       handle_command "$chat" "$cmd" "$args"
     fi
-  done
+  done < <(echo "$updates" | jq -c '.result[]' 2>/dev/null)
 done

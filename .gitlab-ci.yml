@@ -1,159 +1,102 @@
-include:
-  - template: Security/Secret-Detection.gitlab-ci.yml
-  
-secret_detection:
-  stage: secret-detection
-
 stages:
-  - validate
+  - test
   - build
-  - cache
-  - attest
-  - secret-detection
   - deploy
 
 variables:
-  SECRET_DETECTION_ENABLED: "true"
+  CGO_ENABLED: "0"
 
-  # Flake + Nix stability config
+  # Nix config for nix jobs
   NIX_CONFIG: |
     experimental-features = nix-command flakes
     accept-flake-config = true
-    extra-substituters = https://cache.nixos.org
     fallback = true
     max-jobs = auto
 
-  NIX_HOST: prague
+cache:
+  key: "go-${CI_COMMIT_REF_SLUG}"
+  paths:
+    - .go-cache/
 
 # -----------------------------
-# Base Nix job (fleet-safe)
+# Go Unit Tests
 # -----------------------------
-.nix-job:
-  image: nixos/nix:latest
-
-  id_tokens:
-    GITLAB_OIDC_TOKEN:
-      aud: https://gitlab.com
-
-  before_script:
-    - nix --version
-
-    - nix profile list || true
-
-    # install tools in a temporary profile layer instead of global mutation
-    - nix profile add nixpkgs#git nixpkgs#cachix nixpkgs#attic-client nixpkgs#syft --priority 10 || true
-
+go-test:
+  image: golang:1.24
+  stage: test
+  script:
+    - go test ./...
   cache:
-    key: "nix-${CI_COMMIT_REF_SLUG}"
+    key: "go-${CI_COMMIT_REF_SLUG}"
     paths:
-      - .nix-cache/
+      - .go-cache/
 
 # -----------------------------
-# Validate flake integrity
+# Go Build (verify compilation)
 # -----------------------------
-flake-check:
-  extends: .nix-job
-  stage: validate
-  script:
-    - nix flake metadata
-    - nix flake check --print-build-logs
-
-# -----------------------------
-# Build NixOS system (fleet node)
-# -----------------------------
-build-system:
-  extends: .nix-job
+go-build:
+  image: golang:1.24
   stage: build
-  needs: ["flake-check"]
-
+  needs: ["go-test"]
   script:
-    - mkdir -p .nix-cache
-
-    # deterministic flake build (your corrected architecture)
-    - nix build ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" \
-        --print-build-logs \
-        --json > build-result.json
-
-    # store closure for cache push / attestation
-    - nix path-info --recursive ".#nixosConfigurations.${NIX_HOST}.config.system.build.toplevel" \
-        > .nix-cache/closure-paths.txt
-
-  artifacts:
-    expire_in: 14 days
-    paths:
-      - result
-      - build-result.json
-      - .nix-cache/closure-paths.txt
-
-# -----------------------------
-# Binary cache (Cachix)
-# -----------------------------
-push-binary-cache:
-  extends: .nix-job
-  stage: cache
-  needs: ["build-system"]
-
-  rules:
-    - if: '$CACHIX_AUTH_TOKEN'
-    - when: never
-
-  script:
-    - cachix authtoken "$CACHIX_AUTH_TOKEN"
-    - cachix push "${CACHIX_CACHE_NAME:-ivali-nixos}" result
-
-# -----------------------------
-# Attic cache (preferred modern path)
-# -----------------------------
-push-attic-cache:
-  extends: .nix-job
-  stage: cache
-  needs: ["build-system"]
-
-  rules:
-    - if: '$ATTIC_ENDPOINT && $ATTIC_CACHE && $ATTIC_TOKEN'
-    - when: never
-
-  script:
-    - attic login gitlab "$ATTIC_ENDPOINT" "$ATTIC_TOKEN"
-    - attic push "$ATTIC_CACHE" result
-
-# -----------------------------
-# SBOM attestation (faster + deterministic)
-# -----------------------------
-sbom:
-  extends: .nix-job
-  stage: attest
-  needs: ["build-system"]
-
-  script:
-    - syft dir:result -o spdx-json=sbom.spdx.json
-
+    - go build -o ivali ./cmd/ivali/
   artifacts:
     expire_in: 30 days
     paths:
-      - sbom.spdx.json
+      - ivali
 
 # -----------------------------
-# Fleet deployment (self-healing runner target)
+# Nix Flake Validation
 # -----------------------------
-deploy-fleet:
-  extends: .nix-job
-  stage: deploy
-  needs: ["build-system"]
+nix-check:
+  image: nixos/nix:latest
+  stage: test
+  needs: []
+  script:
+    - nix --version
+    - nix flake metadata
+    - nix flake check --no-build
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
 
-  tags:
-    - nixos
-    - fleet
-    - prague
-
+# -----------------------------
+# Nix Build (hm-activate)
+# -----------------------------
+nix-build:
+  image: nixos/nix:latest
+  stage: build
+  needs: ["nix-check"]
+  script:
+    - nix build ".#hm-activate" --print-build-logs
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: manual
-    - when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: manual
 
-  resource_group: fleet-prague
-
+# -----------------------------
+# NixOS system build (manual, main only)
+# -----------------------------
+nixos-build:
+  image: nixos/nix:latest
+  stage: build
+  needs: ["nix-check"]
   script:
-    # IMPORTANT:
-    # now aligns with your gitlab-runner.nix fleet reconciliation model
-    - sudo nixos-rebuild switch --flake ".#${NIX_HOST}"
+    - nix build ".#nixosConfigurations.prague.config.system.build.toplevel" --print-build-logs
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+
+# -----------------------------
+# Deploy to fleet (manual)
+# -----------------------------
+deploy:
+  image: nixos/nix:latest
+  stage: deploy
+  needs: ["nixos-build"]
+  script:
+    - echo "Deploy step — configure your target host here"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual

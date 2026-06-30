@@ -36,13 +36,14 @@ run_cmd() {
   echo "$out"
 }
 
-send_reply() {
+send_long() {
   local chat="$1" msg="$2"
   local max_len=4000
-  if [[ ${#msg} -gt $max_len ]]; then
-    send_msg "$chat" "${msg:0:$max_len}..."
-    send_msg "$chat" "(truncated — full output in journalctl)"
-  else
+  while [[ ${#msg} -gt $max_len ]]; do
+    send_msg "$chat" "${msg:0:$max_len}"
+    msg="${msg:$max_len}"
+  done
+  if [[ -n "$msg" ]]; then
     send_msg "$chat" "$msg"
   fi
 }
@@ -80,7 +81,7 @@ handle_command() {
       out+="\`\`\`"
       out+="$(run_cmd "uname -a 2>&1; echo '---'; df -h / --output=size,used,avail,pcent 2>&1 | tail -1; echo '---'; nixos-rebuild list-generations 2>&1 | tail -3; echo '---'; uptime -p 2>&1")"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     health)
@@ -89,7 +90,7 @@ handle_command() {
       out="*${HOST} — Health*\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && scripts/deployment-health.sh 2>&1" 60)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     deploy|rebuild)
@@ -98,7 +99,7 @@ handle_command() {
       out="*${HOST} — Deploy*\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && nixos-rebuild switch --flake .#${HOST} --show-trace 2>&1" 600)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     update)
@@ -107,7 +108,7 @@ handle_command() {
       out="*${HOST} — Update*\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && git pull --ff-only origin main 2>&1 && nix flake update 2>&1 && git add flake.lock && git commit -m 'flake update: $(date -Iseconds)' 2>&1 && git push origin main 2>&1" 600)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     rollback)
@@ -116,7 +117,7 @@ handle_command() {
       out="*${HOST} — Rollback*\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && scripts/rollback.sh 2>&1" 120)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     gc)
@@ -125,7 +126,7 @@ handle_command() {
       out="*${HOST} — GC*\`\`\`"
       out+="$(run_cmd "nix store gc 2>&1" 600)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     reboot)
@@ -140,7 +141,7 @@ handle_command() {
       out="*${HOST} — Last ${lines} lines*\`\`\`"
       out+="$(run_cmd "journalctl -n ${lines} --no-pager 2>&1" 30)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     git)
@@ -152,7 +153,7 @@ handle_command() {
       out="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && git ${args} 2>&1" 30)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     nix)
@@ -164,7 +165,7 @@ handle_command() {
       out="\`\`\`"
       out+="$(run_cmd "nix ${args} 2>&1" 300)"
       out+="\`\`\`"
-      send_reply "$chat" "$out"
+      send_long "$chat" "$out"
       ;;
 
     cancel)

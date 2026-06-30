@@ -26,6 +26,7 @@
 {
   imports = [
     ./10-instant-prompt.nix
+    ./15-cd-dashboard.nix
     ./20-completion.nix
     ./30-keybindings.nix
     ./40-integrations.nix

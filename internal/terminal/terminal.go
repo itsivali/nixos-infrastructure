@@ -96,6 +96,10 @@ func New(opts ...Option) *Terminal {
 	return t
 }
 
+func (t *Terminal) WithTheme(theme string) *Terminal {
+	return New(WithTheme(theme))
+}
+
 func (t *Terminal) adapt(light, dark string) lipgloss.TerminalColor {
 	if t.Theme == ThemeLight || !t.DarkBg {
 		return lipgloss.Color(light)
@@ -138,6 +142,18 @@ func (t *Terminal) H2(text string) string {
 		Render("  " + text)
 }
 
+func (t *Terminal) IconH1(icon string, text string) string {
+	return fmt.Sprintf("  %s %s",
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.Purple).Render(icon),
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.White).Render(text))
+}
+
+func (t *Terminal) IconH2(icon string, text string) string {
+	return fmt.Sprintf("  %s %s",
+		lipgloss.NewStyle().Foreground(t.Color.Purple).Render(icon),
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.Cyan).Render(text))
+}
+
 func (t *Terminal) Section(text string) string {
 	sep := strings.Repeat("─", max(0, t.Width-utf8.RuneCountInString(text)-6))
 	return fmt.Sprintf("  %s %s",
@@ -147,30 +163,30 @@ func (t *Terminal) Section(text string) string {
 
 func (t *Terminal) Subsection(text string) string {
 	return fmt.Sprintf("  %s",
-		lipgloss.NewStyle().Bold(true).Foreground(t.Color.Cyan).Render("▸ "+text))
+		lipgloss.NewStyle().Bold(true).Foreground(t.Color.Cyan).Render(" "+text))
 }
 
 func (t *Terminal) Good(text string) string {
 	return fmt.Sprintf("  %s %s",
-		lipgloss.NewStyle().Foreground(t.Color.Green).Render("✓"),
+		lipgloss.NewStyle().Foreground(t.Color.Green).Render(""),
 		text)
 }
 
 func (t *Terminal) Bad(text string) string {
 	return fmt.Sprintf("  %s %s",
-		lipgloss.NewStyle().Foreground(t.Color.Red).Render("✗"),
+		lipgloss.NewStyle().Foreground(t.Color.Red).Render(""),
 		text)
 }
 
 func (t *Terminal) Warn(text string) string {
 	return fmt.Sprintf("  %s %s",
-		lipgloss.NewStyle().Foreground(t.Color.Yellow).Render("⚠"),
+		lipgloss.NewStyle().Foreground(t.Color.Yellow).Render(""),
 		text)
 }
 
 func (t *Terminal) Info(text string) string {
 	return fmt.Sprintf("  %s %s",
-		lipgloss.NewStyle().Foreground(t.Color.Blue).Render("ℹ"),
+		lipgloss.NewStyle().Foreground(t.Color.Blue).Render(""),
 		text)
 }
 
@@ -320,16 +336,16 @@ func (t *Terminal) CheckList(items []CheckItem) string {
 		var icon, label string
 		switch item.Status {
 		case StatusPass:
-			icon = lipgloss.NewStyle().Foreground(t.Color.Green).Render("✓")
+			icon = lipgloss.NewStyle().Foreground(t.Color.Green).Render("")
 			label = lipgloss.NewStyle().Foreground(t.Color.Gray).Render(item.Label)
 		case StatusFail:
-			icon = lipgloss.NewStyle().Foreground(t.Color.Red).Render("✗")
+			icon = lipgloss.NewStyle().Foreground(t.Color.Red).Render("")
 			label = lipgloss.NewStyle().Foreground(t.Color.Red).Render(item.Label)
 		case StatusWarn:
-			icon = lipgloss.NewStyle().Foreground(t.Color.Yellow).Render("⚠")
+			icon = lipgloss.NewStyle().Foreground(t.Color.Yellow).Render("")
 			label = lipgloss.NewStyle().Foreground(t.Color.Yellow).Render(item.Label)
 		default:
-			icon = lipgloss.NewStyle().Foreground(t.Color.Gray).Render("○")
+			icon = lipgloss.NewStyle().Foreground(t.Color.Gray).Render("")
 			label = lipgloss.NewStyle().Foreground(t.Color.Gray).Render(item.Label)
 		}
 
@@ -403,6 +419,160 @@ func (t *Terminal) Blank() string {
 	return ""
 }
 
+// ── Nerd Font Icons ────────────────────────────────────────────────────
+
+type CategoryIcon string
+
+const (
+	IconNixOS       CategoryIcon = ""
+	IconHomeManager CategoryIcon = ""
+	IconHost        CategoryIcon = ""
+	IconPackage     CategoryIcon = ""
+	IconLibrary     CategoryIcon = ""
+	IconConfig      CategoryIcon = ""
+	IconScript      CategoryIcon = ""
+	IconSecret      CategoryIcon = ""
+	IconTest        CategoryIcon = ""
+	IconDefault     CategoryIcon = ""
+	IconModule      CategoryIcon = ""
+	IconDomain      CategoryIcon = ""
+	IconHealth      CategoryIcon = ""
+	IconGraph       CategoryIcon = ""
+	IconSearch      CategoryIcon = ""
+	IconRefresh     CategoryIcon = ""
+	IconHelp        CategoryIcon = ""
+	IconQuit        CategoryIcon = ""
+	IconFilter      CategoryIcon = ""
+	IconSort        CategoryIcon = ""
+	IconDetail      CategoryIcon = ""
+	IconFolder      CategoryIcon = ""
+	IconFile        CategoryIcon = ""
+	IconGit         CategoryIcon = ""
+	IconNix         CategoryIcon = ""
+)
+
+func (t *Terminal) ModuleCategoryIcon(cat string) string {
+	m := map[string]string{
+		"nixos":        string(IconNixOS),
+		"home-manager": string(IconHomeManager),
+		"host":         string(IconHost),
+		"package":      string(IconPackage),
+		"library":      string(IconLibrary),
+		"config":       string(IconConfig),
+		"script":       string(IconScript),
+		"secret":       string(IconSecret),
+		"test":         string(IconTest),
+	}
+	icon, ok := m[cat]
+	if !ok {
+		return string(IconDefault)
+	}
+	return icon
+}
+
+func (t *Terminal) ModuleCategoryColor(cat string) lipgloss.TerminalColor {
+	m := map[string]lipgloss.TerminalColor{
+		"nixos":        t.Color.Purple,
+		"home-manager": t.Color.Cyan,
+		"host":         t.Color.Blue,
+		"package":      t.Color.Yellow,
+		"library":      t.Color.Green,
+		"config":       t.Color.Gray,
+		"script":       t.Color.Yellow,
+		"secret":       t.Color.Red,
+		"test":         t.Color.Cyan,
+	}
+	c, ok := m[cat]
+	if !ok {
+		return t.Color.Gray
+	}
+	return c
+}
+
+func (t *Terminal) ModuleTypeIcon(typ string) string {
+	m := map[string]string{
+		"entry":   "",
+		"options": "",
+		"regular": "",
+		"private": "",
+		"subdir":  "",
+	}
+	icon, ok := m[typ]
+	if !ok {
+		return ""
+	}
+	return icon
+}
+
+func (t *Terminal) ColoredIcon(icon string, color lipgloss.TerminalColor) string {
+	return lipgloss.NewStyle().Foreground(color).Render(icon)
+}
+
+// HealthBar renders a colored progress bar with Nerd Font block chars.
+func (t *Terminal) HealthBar(good, warn, bad int) string {
+	total := good + warn + bad
+	if total == 0 {
+		total = 1
+	}
+	width := min(30, t.Width-12)
+	goodW := int(float64(good) / float64(total) * float64(width))
+	warnW := int(float64(warn) / float64(total) * float64(width))
+	badW := width - goodW - warnW
+	if badW < 0 {
+		badW = 0
+	}
+
+	var b strings.Builder
+	g := strings.Repeat("█", goodW)
+	w := strings.Repeat("█", warnW)
+	ba := strings.Repeat("█", badW)
+
+	if goodW > 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(t.Color.Green).Render(g))
+	}
+	if warnW > 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(t.Color.Yellow).Render(w))
+	}
+	if badW > 0 {
+		b.WriteString(lipgloss.NewStyle().Foreground(t.Color.Red).Render(ba))
+	}
+
+	return fmt.Sprintf("  %s  %d✓ %d⚠ %d✗",
+		b.String(), good, warn, bad)
+}
+
+// Tag renders a colored badge/tag.
+func (t *Terminal) Tag(text string, color lipgloss.TerminalColor) string {
+	return lipgloss.NewStyle().
+		Foreground(color).
+		Padding(0, 1).
+		Render(text)
+}
+
+// TagBg renders a badge with a background fill.
+func (t *Terminal) TagBg(text string, fg, bg lipgloss.TerminalColor) string {
+	return lipgloss.NewStyle().
+		Foreground(fg).
+		Background(bg).
+		Padding(0, 1).
+		Render(text)
+}
+
+// IconText returns text with a colored icon prefix.
+func (t *Terminal) IconText(icon string, text string, color lipgloss.TerminalColor) string {
+	return fmt.Sprintf("%s %s",
+		lipgloss.NewStyle().Foreground(color).Render(icon),
+		lipgloss.NewStyle().Foreground(t.Color.White).Render(text),
+	)
+}
+
+// AnimatedSpinner returns a spinner frame based on elapsed time.
+func AnimatedSpinner(t time.Time) string {
+	frames := []string{"", "", "", ""}
+	idx := int(time.Since(t).Milliseconds() / 150 % int64(len(frames)))
+	return frames[idx]
+}
+
 func (t *Terminal) Markdown(text string) (string, error) {
 	out, err := glamour.RenderWithEnvironmentConfig(text)
 	if err != nil {
@@ -416,7 +586,7 @@ func (t *Terminal) RenderSplash() string {
 	gray := t.Color.Gray
 	border := t.Color.Border
 
-	title := lipgloss.NewStyle().Bold(true).Foreground(purple).Render("◈  IVALI  ◈")
+	title := lipgloss.NewStyle().Bold(true).Foreground(purple).Render("  IVALI  ")
 	subtitle := lipgloss.NewStyle().Foreground(gray).Render("NixOS Infrastructure Control Plane")
 
 	boxWidth := min(56, t.Width-6)
@@ -437,17 +607,17 @@ func (t *Terminal) RenderSplash() string {
 	infoStyle := lipgloss.NewStyle().Foreground(t.Color.Blue)
 	cmdStyle := lipgloss.NewStyle().Foreground(t.Color.Cyan)
 
-	b.WriteString(bl.Render("  │ ") + infoStyle.Render("ℹ") + " Clone your repo:" + strings.Repeat(" ", boxWidth-21) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │ ") + infoStyle.Render("") + " Clone your repo:" + strings.Repeat(" ", boxWidth-20) + bl.Render("│") + "\n")
 	b.WriteString(bl.Render("  │   ") + cmdStyle.Render("ivali clone <url>") + strings.Repeat(" ", boxWidth-22) + bl.Render("│") + "\n")
 	b.WriteString(bl.Render("  │") + "\n")
-	b.WriteString(bl.Render("  │ ") + infoStyle.Render("ℹ") + " Explore commands:" + strings.Repeat(" ", boxWidth-22) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │ ") + infoStyle.Render("") + " Explore commands:" + strings.Repeat(" ", boxWidth-21) + bl.Render("│") + "\n")
 	b.WriteString(bl.Render("  │   ") + cmdStyle.Render("ivali --help") + strings.Repeat(" ", boxWidth-16) + bl.Render("│") + "\n")
 	b.WriteString(bl.Render("  │") + "\n")
-	b.WriteString(bl.Render("  │ ") + infoStyle.Render("ℹ") + " Quick start a new project:" + strings.Repeat(" ", boxWidth-28) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │ ") + infoStyle.Render("") + " Quick start a new project:" + strings.Repeat(" ", boxWidth-27) + bl.Render("│") + "\n")
 	b.WriteString(bl.Render("  │   ") + cmdStyle.Render("ivali init") + strings.Repeat(" ", boxWidth-15) + bl.Render("│") + "\n")
 	b.WriteString(bl.Render("  │") + "\n")
 	b.WriteString(bl.Render("  ├"+line+"┤") + "\n")
-	b.WriteString(bl.Render("  │ ") + lipgloss.NewStyle().Foreground(gray).Render("? help  •  q quit") + strings.Repeat(" ", boxWidth-22) + bl.Render("│") + "\n")
+	b.WriteString(bl.Render("  │ ") + lipgloss.NewStyle().Foreground(gray).Render(" help    q quit") + strings.Repeat(" ", boxWidth-23) + bl.Render("│") + "\n")
 	b.WriteString(bl.Render("  └"+line+"┘") + "\n")
 
 	return b.String()

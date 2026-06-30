@@ -11,23 +11,32 @@ import (
 )
 
 func CmdDashboard(a *app.App) *cobra.Command {
-	return &cobra.Command{
+	var theme string
+
+	cmd := &cobra.Command{
 		Use:   "dashboard",
 		Short: "Launch interactive control center",
 		Long: `Launch an interactive terminal UI dashboard that provides a real-time
 view of repository health, module overview, and system status.
 
 Controls:
-  Tab/S-Tab  Switch panels
-  ↑/↓        Navigate lists
-  r          Refresh data
-  ?          Toggle help
-  q/Ctrl+C   Quit
+  Tab/S-Tab    Switch panels
+  ↑/↓  j/k     Navigate lists
+  s            Cycle sort order
+  /            Filter modules
+  Enter        Toggle module detail
+  r            Refresh data
+  ?            Toggle help
+  q/Ctrl+C     Quit
 
 Requires an interactive terminal.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !a.RequireRepo() {
 				return nil
+			}
+
+			if theme != "" {
+				a.Term = a.Term.WithTheme(theme)
 			}
 
 			m := dashboard.New(a.Repo, a.Term)
@@ -41,4 +50,7 @@ Requires an interactive terminal.`,
 			return nil
 		},
 	}
+
+	cmd.Flags().StringVarP(&theme, "theme", "t", "", "Theme: auto, light, or dark")
+	return cmd
 }

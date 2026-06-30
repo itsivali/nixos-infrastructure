@@ -179,6 +179,25 @@ handle_command() {
 
 log "Bot starting — host=${HOST} chat=${CHAT_ID}"
 
+register_commands() {
+  curl -fsSL --max-time 10 -X POST "${API}/setMyCommands" \
+    -H "Content-Type: application/json" \
+    -d '[
+      {"command":"deploy","description":"nixos-rebuild switch"},
+      {"command":"status","description":"system status summary"},
+      {"command":"health","description":"full deployment health check"},
+      {"command":"update","description":"git pull + flake update + push"},
+      {"command":"rollback","description":"revert to previous generation"},
+      {"command":"gc","description":"nix store garbage collect"},
+      {"command":"reboot","description":"reboot the system"},
+      {"command":"log","description":"last 50 journal lines"},
+      {"command":"git","description":"run a git command"},
+      {"command":"nix","description":"run a nix command"},
+      {"command":"help","description":"show available commands"}
+    ]' > /dev/null 2>&1 || true
+}
+register_commands
+
 while true; do
   updates="$(curl -fsSL --max-time 65 "${API}/getUpdates" \
     -d "offset=${OFFSET}" \

@@ -46,7 +46,7 @@
     ];
 
     ###########################################################
-    # SOPS — Host secrets
+    # SOPS — Host and bot secrets
     ###########################################################
     sops = lib.mkIf config.ivali.secrets.enable {
       defaultSopsFile = ../secrets/tailscale.yaml;
@@ -59,6 +59,15 @@
         };
         gitlab-runner-token = {
           sopsFile = ../secrets/gitlab-runner.yaml;
+        };
+        telegram_bot_token = {
+          sopsFile = ../secrets/telegram.yaml;
+        };
+        telegram_chat_id = {
+          sopsFile = ../secrets/telegram.yaml;
+        };
+        notify_email = {
+          sopsFile = ../secrets/telegram.yaml;
         };
       };
     };

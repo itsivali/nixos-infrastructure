@@ -23,8 +23,7 @@
 
 {
   home.packages = (import ../../packages/user { inherit pkgs; }) ++ (with pkgs; [
-    # Shell
-    zsh-powerlevel10k
+    # Zsh plugins
     zsh-completions
 
     # Better CLI

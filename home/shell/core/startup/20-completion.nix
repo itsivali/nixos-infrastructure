@@ -4,11 +4,12 @@
 #
 # Purpose
 # -------
-# Initialise Zsh completion system early in the startup sequence.
+# Configure Zsh completion styles early in the startup sequence.
+# compinit is automatically invoked by Home Manager (enableCompletion).
 #
 # Order
 # -----
-# After instant prompt, before key bindings.
+# After dashboard, before key bindings.
 #
 ##############################################################################
 
@@ -17,11 +18,8 @@
 {
   programs.zsh.initContent = ''
     ######################################################################
-    # Completion
+    # Completion styles
     ######################################################################
-    autoload -Uz compinit
-    compinit
-
     zstyle ':completion:*' matcher-list \
         'm:{a-z}={A-Za-z}' \
         'r:|=*' \
@@ -31,7 +29,7 @@
     zstyle ':completion:*' list-colors "''${(s.:.)LS_COLORS}"
 
     ######################################################################
-    # Useful completion colours
+    # LS colours
     ######################################################################
     export LS_COLORS=$(${pkgs.coreutils}/bin/dircolors -b)
   '';

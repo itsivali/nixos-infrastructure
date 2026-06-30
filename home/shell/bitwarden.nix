@@ -154,11 +154,9 @@ in
     }
 
     # --- Runtime Initialization Hook ---
-    if [[ -f "${sessionFile}" ]]; then
+    # Silently restore session if available; never block shell startup
+    if [[ -f "${sessionFile}" ]] && [[ -z "$BW_SESSION" ]]; then
       export BW_SESSION=$(<"${sessionFile}")
-    else
-      # Prompt on login if no active session file exists
-      bwunlock
     fi
   '';
 }

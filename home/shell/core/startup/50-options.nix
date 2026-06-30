@@ -8,7 +8,7 @@
 #
 # Order
 # -----
-# After integrations, before p10k config.
+# After key bindings, before completion.
 #
 # Does NOT Own
 # ------------

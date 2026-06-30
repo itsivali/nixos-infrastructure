@@ -12,12 +12,11 @@
 #
 # Responsibilities
 # ----------------
-# - 10-instant-prompt  — Powerlevel10k instant prompt
-# - 20-completion      — compinit and zstyle
+# - 10-dashboard       — Fastfetch system info on terminal open
+# - 15-cd-dashboard    — ivali status on cd into repo
+# - 20-completion      — Completion styles (compinit handled by HM)
 # - 30-keybindings     — bindkey
-# - 40-integrations    — FZF, Zoxide shell hooks
 # - 50-options         — setopt flags
-# - 90-p10k            — .p10k.zsh loading (must be last)
 #
 ##############################################################################
 
@@ -25,12 +24,10 @@
 
 {
   imports = [
-    ./10-instant-prompt.nix
+    ./10-dashboard.nix
     ./15-cd-dashboard.nix
     ./20-completion.nix
     ./30-keybindings.nix
-    ./40-integrations.nix
     ./50-options.nix
-    ./90-p10k.nix
   ];
 }

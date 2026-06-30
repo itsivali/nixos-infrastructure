@@ -36,15 +36,66 @@ run_cmd() {
   echo "$out"
 }
 
+# Flushes the in-progress chunk buffer for send_long, closing a fenced code
+# block first if one is still open so each Telegram message is self-contained.
+# Relies on bash dynamic scoping to see _sl_* locals from the send_long call
+# that invokes it — do not call this directly outside send_long.
+_send_long_flush() {
+  if [[ -n "$_sl_chunk" ]]; then
+    local out="$_sl_chunk"
+    if [[ "$_sl_in_code" -eq 1 ]]; then
+      out+=$'\n```'
+    fi
+    send_msg "$_sl_chat" "$out"
+  fi
+  if [[ "$_sl_in_code" -eq 1 ]]; then
+    _sl_chunk='```'
+  else
+    _sl_chunk=""
+  fi
+}
+
+# Splits a long message into Telegram-sized chunks on line boundaries instead
+# of blind character offsets, and re-opens/re-closes ``` fences across chunk
+# boundaries so a split mid-codeblock never leaves a message half-formatted.
 send_long() {
-  local chat="$1" msg="$2"
-  local max_len=4000
-  while [[ ${#msg} -gt $max_len ]]; do
-    send_msg "$chat" "${msg:0:$max_len}"
-    msg="${msg:$max_len}"
-  done
-  if [[ -n "$msg" ]]; then
-    send_msg "$chat" "$msg"
+  local _sl_chat="$1" msg="$2"
+  local _sl_max="${3:-3500}"
+  local _sl_chunk="" _sl_in_code=0
+  local line piece candidate toggled
+
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    # Hard-split any single line that alone exceeds the chunk size (e.g. a
+    # very long nix --show-trace line with no newlines in it).
+    while [[ ${#line} -gt $_sl_max ]]; do
+      piece="${line:0:$_sl_max}"
+      line="${line:$_sl_max}"
+      if [[ -z "$_sl_chunk" ]]; then candidate="$piece"; else candidate="${_sl_chunk}"$'\n'"${piece}"; fi
+      if [[ ${#candidate} -gt $_sl_max && -n "$_sl_chunk" ]]; then
+        _send_long_flush
+        if [[ -z "$_sl_chunk" ]]; then candidate="$piece"; else candidate="${_sl_chunk}"$'\n'"${piece}"; fi
+      fi
+      _sl_chunk="$candidate"
+    done
+
+    toggled=0
+    [[ "$line" == '```'* ]] && toggled=1
+
+    if [[ -z "$_sl_chunk" ]]; then candidate="$line"; else candidate="${_sl_chunk}"$'\n'"${line}"; fi
+
+    if [[ ${#candidate} -gt $_sl_max && -n "$_sl_chunk" ]]; then
+      _send_long_flush
+      if [[ -z "$_sl_chunk" ]]; then candidate="$line"; else candidate="${_sl_chunk}"$'\n'"${line}"; fi
+    fi
+    _sl_chunk="$candidate"
+
+    if [[ $toggled -eq 1 ]]; then
+      _sl_in_code=$((1 - _sl_in_code))
+    fi
+  done <<< "$msg"
+
+  if [[ -n "$_sl_chunk" ]]; then
+    send_msg "$_sl_chat" "$_sl_chunk"
   fi
 }
 
@@ -62,106 +113,139 @@ handle_command() {
 
   case "$cmd" in
     start|help)
-      send_msg "$chat" "*${HOST} — Bot Control Plane*
+      send_msg "$chat" "🛰 *${HOST}* — Control Plane
 ${sep}
-\`/deploy\`   — nixos-rebuild switch
-\`/status\`   — system status summary
-\`/health\`   — full deployment health check
-\`/update\`   — git pull + flake update + push
-\`/rollback\` — revert to previous generation
-\`/gc\`       — nix store garbage collect
-\`/reboot\`   — reboot the system
-\`/log\`      — last 50 journal lines
-\`/git\`      — run a git command
-\`/nix\`      — run a nix command
-\`/help\`     — show this message
-${sep}"
+_NixOS GitOps bot · long-poll session active_
+${sep}
+
+🚀 *Deployment*
+\`/deploy\`     Apply config — \`nixos-rebuild switch\`
+\`/update\`     Pull → flake update → push
+\`/rollback\`   Revert to previous generation
+
+📊 *Monitoring*
+\`/status\`     Quick system snapshot
+\`/health\`     Full deployment health check
+\`/log [n]\`    Last n journal lines _(default 50)_
+
+🧹 *Maintenance*
+\`/gc\`         Garbage‑collect the nix store
+\`/reboot\`     Reboot the host _(10s grace period)_
+\`/cancel\`     Abort a pending reboot
+
+🔧 *Raw Access*
+\`/git <cmd>\`  Run git in the infra repo
+\`/nix <cmd>\`  Run an arbitrary nix command
+
+ℹ️ \`/help\`     Show this menu
+${sep}
+🔒 Authorized chat only · replies may be split across messages"
       ;;
 
     status)
-      send_msg "$chat" "Gathering system info..."
-      local kernel disk gen upt
+      send_msg "$chat" "📊 Gathering system info…"
+      local kernel disk gen upt load mem
       kernel="$(uname -srm 2>/dev/null || echo 'unknown')"
       disk="$(df -h / --output=size,used,avail,pcent 2>/dev/null | tail -1 | awk '{print $2" total, "$3" used, "$4" free ("$5")"}')"
       gen="$(nixos-rebuild list-generations 2>/dev/null | tail -1 | awk '{$1=""; print $0}' | xargs || echo 'unknown')"
       upt="$(uptime 2>/dev/null | sed 's/.*up //; s/,.*//' || echo 'unknown')"
-      send_long "$chat" "*${HOST} — System Status*
+      load="$(uptime 2>/dev/null | awk -F'load average: ' '{print $2}' || echo 'unknown')"
+      mem="$(free -h 2>/dev/null | awk '/^Mem:/{print $3" used / "$2" total"}' || echo 'unknown')"
+      send_long "$chat" "🛰 *${HOST}* — System Status
 ${sep}
-*Kernel:*    \`${kernel}\`
-*Uptime:*    \`${upt}\`
-*Disk (/):*  \`${disk}\`
-*NixGen:*    \`${gen}\`
-${sep}"
+🧬 *Kernel:*    \`${kernel}\`
+⏱ *Uptime:*    \`${upt}\`
+📈 *Load avg:*  \`${load}\`
+🧠 *Memory:*    \`${mem}\`
+💾 *Disk (/):*  \`${disk}\`
+🧊 *NixGen:*    \`${gen}\`
+${sep}
+Run \`/health\` for a full diagnostic."
       ;;
 
     health)
-      send_msg "$chat" "Running health checks..."
+      send_msg "$chat" "🩺 Running health checks…"
       local out
-      out="*${HOST} — Health Report*
+      out="🩺 *${HOST}* — Health Report
 ${sep}"
       out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && scripts/deployment-health.sh 2>&1" 60)"
       out+="\`\`\`"
+      out+="
+${sep}
+✅ Check complete."
       send_long "$chat" "$out"
       ;;
 
     deploy|rebuild)
-      send_msg "$chat" "Deploying ${HOST}..."
+      send_msg "$chat" "🚀 Deploying *${HOST}*…"
       local out
-      out="*${HOST} — Deploy Output*
+      out="🚀 *${HOST}* — Deploy Output
 ${sep}"
       out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && nixos-rebuild switch --flake .#${HOST} --show-trace 2>&1" 600)"
       out+="\`\`\`"
+      out+="
+${sep}
+🏁 Deploy finished."
       send_long "$chat" "$out"
       ;;
 
     update)
-      send_msg "$chat" "Updating flake inputs..."
+      send_msg "$chat" "🔄 Updating flake inputs…"
       local out
-      out="*${HOST} — Flake Update*
+      out="🔄 *${HOST}* — Flake Update
 ${sep}"
       out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && git pull --ff-only origin main 2>&1 && nix flake update 2>&1 && git add flake.lock && git commit -m 'flake update: $(date -Iseconds)' 2>&1 && git push origin main 2>&1" 600)"
       out+="\`\`\`"
+      out+="
+${sep}
+📦 Inputs refreshed & pushed."
       send_long "$chat" "$out"
       ;;
 
     rollback)
-      send_msg "$chat" "Rolling back..."
+      send_msg "$chat" "⏪ Rolling back…"
       local out
-      out="*${HOST} — Rollback*
+      out="⏪ *${HOST}* — Rollback
 ${sep}"
       out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && scripts/rollback.sh 2>&1" 120)"
       out+="\`\`\`"
+      out+="
+${sep}
+↩️ Rollback complete."
       send_long "$chat" "$out"
       ;;
 
     gc)
-      send_msg "$chat" "Running garbage collector..."
+      send_msg "$chat" "🧹 Running garbage collector…"
       local out
-      out="*${HOST} — GC Results*
+      out="🧹 *${HOST}* — GC Results
 ${sep}"
       out+="\`\`\`"
       out+="$(run_cmd "nix store gc 2>&1" 600)"
       out+="\`\`\`"
+      out+="
+${sep}
+✨ Store cleaned."
       send_long "$chat" "$out"
       ;;
 
     reboot)
-      send_msg "$chat" "*${HOST} — Reboot*
+      send_msg "$chat" "♻️ *${HOST}* — Reboot
 ${sep}
-Rebooting in 10 seconds... Use \`/cancel\` to abort.
+Rebooting in 10 seconds… send \`/cancel\` to abort.
 ${sep}"
       sleep 10
-      systemctl reboot 2>&1 || send_msg "$chat" "Reboot failed."
+      systemctl reboot 2>&1 || send_msg "$chat" "❌ Reboot failed."
       ;;
 
     log)
       local lines="${args:-50}"
       local out
-      out="*${HOST} — Last ${lines} journal lines*
+      out="📜 *${HOST}* — Last ${lines} journal lines
 ${sep}"
       out+="\`\`\`"
       out+="$(run_cmd "journalctl -n ${lines} --no-pager 2>&1" 30)"
@@ -171,12 +255,15 @@ ${sep}"
 
     git)
       if [[ -z "$args" ]]; then
-        send_msg "$chat" "*Usage:* \`/git <command>\`
-Run a git command in \`${REPO_DIR}\`"
+        send_msg "$chat" "🔧 *Usage:* \`/git <command>\`
+Runs a git command inside \`${REPO_DIR}\`
+_Example:_ \`/git log --oneline -5\`"
         return
       fi
       local out
-      out="\`\`\`"
+      out="🔧 *git ${args}*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "cd ${REPO_DIR} && git ${args} 2>&1" 30)"
       out+="\`\`\`"
       send_long "$chat" "$out"
@@ -184,23 +271,26 @@ Run a git command in \`${REPO_DIR}\`"
 
     nix)
       if [[ -z "$args" ]]; then
-        send_msg "$chat" "*Usage:* \`/nix <command>\`"
+        send_msg "$chat" "🔧 *Usage:* \`/nix <command>\`
+_Example:_ \`/nix flake check\`"
         return
       fi
       local out
-      out="\`\`\`"
+      out="🔧 *nix ${args}*
+${sep}"
+      out+="\`\`\`"
       out+="$(run_cmd "nix ${args} 2>&1" 300)"
       out+="\`\`\`"
       send_long "$chat" "$out"
       ;;
 
     cancel)
-      send_msg "$chat" "Cancelled."
+      send_msg "$chat" "🛑 Cancelled."
       ;;
 
     *)
-      send_msg "$chat" "*Unknown command:* \`/${cmd}\`
-Try \`/help\` for available commands."
+      send_msg "$chat" "❓ *Unknown command:* \`/${cmd}\`
+Send \`/help\` to see what's available."
       ;;
   esac
 }
@@ -211,17 +301,17 @@ register_commands() {
   curl -fsSL --max-time 10 -X POST "${API}/setMyCommands" \
     -H "Content-Type: application/json" \
     -d '{"commands":[
-      {"command":"deploy","description":"nixos-rebuild switch"},
-      {"command":"status","description":"system status summary"},
-      {"command":"health","description":"full deployment health check"},
-      {"command":"update","description":"git pull + flake update + push"},
-      {"command":"rollback","description":"revert to previous generation"},
-      {"command":"gc","description":"nix store garbage collect"},
-      {"command":"reboot","description":"reboot the system"},
-      {"command":"log","description":"last 50 journal lines"},
-      {"command":"git","description":"run a git command"},
-      {"command":"nix","description":"run a nix command"},
-      {"command":"help","description":"show available commands"}
+      {"command":"deploy","description":"🚀 nixos-rebuild switch"},
+      {"command":"status","description":"📊 Quick system snapshot"},
+      {"command":"health","description":"🩺 Full deployment health check"},
+      {"command":"update","description":"🔄 git pull + flake update + push"},
+      {"command":"rollback","description":"⏪ Revert to previous generation"},
+      {"command":"gc","description":"🧹 Nix store garbage collect"},
+      {"command":"reboot","description":"♻️ Reboot the system"},
+      {"command":"log","description":"📜 Last N journal lines"},
+      {"command":"git","description":"🔧 Run a git command"},
+      {"command":"nix","description":"🔧 Run a nix command"},
+      {"command":"help","description":"ℹ️ Show this menu"}
     ]}' > /dev/null 2>&1 || true
 }
 register_commands

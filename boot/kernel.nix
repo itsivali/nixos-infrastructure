@@ -47,6 +47,7 @@
       "vhost_net"
       "vhost_vsock"
       "8821ce"
+      "overlay" #needed for docker
     ];
 
     kernelParams = [

@@ -2,13 +2,15 @@
 
 let
   botScript =
-    if builtins.pathExists ../../scripts/bot.sh then
+    if builtins.pathExists ../../scripts/bot/bot.sh then
+      ../../scripts/bot/bot.sh
+    else if builtins.pathExists ../../scripts/bot.sh then
       ../../scripts/bot.sh
     else
       throw ''
         Missing:
 
-          scripts/bot.sh
+          scripts/bot/bot.sh
       '';
 
   botCfg = config.fleet.bot;
@@ -32,6 +34,7 @@ in
         wantedBy = [ "multi-user.target" ];
 
         path = with pkgs; [
+          # Core
           bash
           coreutils
           curl
@@ -44,8 +47,23 @@ in
           gnugrep
           gnused
           gawk
-          firefox
+          findutils
           procps
+          python3
+
+          # Desktop applications
+          firefox
+          gnome-terminal
+          nautilus
+          zed-editor
+
+          # Desktop control
+          wmctrl
+          grim
+          brightnessctl
+          libnotify
+          wireplumber
+          xset
         ];
 
         environment = {

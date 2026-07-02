@@ -48,7 +48,8 @@ trap _shutdown SIGTERM SIGINT
 mkdir -p "$STATE_DIR"
 
 # ── Register commands with Telegram API ────────────────────────────────────
-log "Bot starting — host=${HOST} chat=${CHAT_ID} commands=${#_CMD_ORDER[@]}"
+log "Bot starting — host=${HOST} chat=${CHAT_ID}"
+log "Registered commands: ${_CMD_ORDER[*]}"
 register_commands_api
 
 # ── Main event loop ───────────────────────────────────────────────────────

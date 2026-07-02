@@ -105,23 +105,50 @@ ${sep}
 
 # Generate the Telegram Bot API setMyCommands JSON from registered commands.
 # Registers all commands that have a short description (3rd argument).
+# This populates the "/" menu button next to the chat input.
 # Usage: register_commands_api
 register_commands_api() {
-  local json='{"commands":['
-  local first=true
+  # Build JSON array of commands
+  local cmd_json=""
+  local count=0
   for name in "${_CMD_ORDER[@]}"; do
     # Skip commands without a description
     [[ -z "${_CMD_DESC[$name]:-}" ]] && continue
-    if [[ "$first" == true ]]; then
-      first=false
-    else
-      json+=','
+    local desc="${_CMD_DESC[$name]}"
+    # Escape any double quotes or backslashes in description for safe JSON
+    desc="${desc//\\/\\\\}"
+    desc="${desc//\"/\\\"}"
+    if [[ -n "$cmd_json" ]]; then
+      cmd_json+=','
     fi
-    json+="{\"command\":\"${name}\",\"description\":\"${_CMD_DESC[$name]}\"}"
+    cmd_json+="{\"command\":\"${name}\",\"description\":\"${desc}\"}"
+    (( count++ ))
   done
-  json+=']}'
 
-  curl -fsSL --max-time 10 -X POST "${API}/setMyCommands" \
+  # Wrap in the full API payload with explicit scope
+  local json="{\"commands\":[${cmd_json}],\"scope\":{\"type\":\"default\"}}"
+
+  log "register_commands_api: registering ${count} commands"
+
+  # Call the Telegram API
+  local resp
+  resp="$(curl -sS --max-time 10 -X POST "${API}/setMyCommands" \
     -H "Content-Type: application/json" \
-    -d "$json" > /dev/null 2>&1 || true
+    -d "$json" 2>&1)" || true
+
+  if [[ "$resp" == *'"ok":true'* ]]; then
+    log "register_commands_api: success — ${count} commands registered for / menu"
+  else
+    log "register_commands_api: FAILED — response: ${resp}"
+    # Retry once after a short delay in case of transient failure
+    sleep 2
+    resp="$(curl -sS --max-time 10 -X POST "${API}/setMyCommands" \
+      -H "Content-Type: application/json" \
+      -d "$json" 2>&1)" || true
+    if [[ "$resp" == *'"ok":true'* ]]; then
+      log "register_commands_api: retry success — ${count} commands registered"
+    else
+      log "register_commands_api: retry FAILED — response: ${resp}"
+    fi
+  fi
 }

@@ -104,3 +104,74 @@ send_photo() {
   fi
   curl "${curl_args[@]}" > /dev/null 2>&1 || log "send_photo: failed for chat=${chat}"
 }
+
+# Send a message with a persistent reply keyboard.
+# Usage: send_keyboard "$chat_id" "message text" "button1" "button2" ...
+send_keyboard() {
+  local chat="$1" text="$2"
+  shift 2
+  local buttons=("$@")
+
+  # Build the keyboard JSON: array of rows, each row is an array of buttons
+  local keyboard='{"keyboard":['
+  local first_row=true
+  local i=0
+  local row_size=3  # 3 buttons per row
+
+  while (( i < ${#buttons[@]} )); do
+    if [[ "$first_row" == true ]]; then
+      first_row=false
+    else
+      keyboard+=','
+    fi
+    keyboard+='['
+    local first_btn=true
+    local row_end=$(( i + row_size ))
+    (( row_end > ${#buttons[@]} )) && row_end=${#buttons[@]}
+
+    for (( j=i; j<row_end; j++ )); do
+      if [[ "$first_btn" == true ]]; then
+        first_btn=false
+      else
+        keyboard+=','
+      fi
+      # Escape quotes in button text
+      local btn="${buttons[$j]}"
+      btn="${btn//\"/\\\"}"
+      keyboard+="{\"text\":\"${btn}\"}"
+    done
+    keyboard+=']'
+    i=$row_end
+  done
+  keyboard+='],\"resize_keyboard\":true,\"one_time_keyboard\":false}'
+
+  local resp
+  resp="$(curl -fsSL --max-time 10 -X POST "${API}/sendMessage" \
+    -d "chat_id=${chat}" \
+    --data-urlencode "text=${text}" \
+    -d "parse_mode=Markdown" \
+    -d "reply_markup=${keyboard}" 2>&1)"
+
+  if [[ $? -eq 0 && "$resp" == *'"ok":true'* ]]; then
+    return 0
+  fi
+
+  # Retry as plain text
+  log "send_keyboard: Markdown failed for chat=${chat}, retrying plain text"
+  curl -fsSL --max-time 10 -X POST "${API}/sendMessage" \
+    -d "chat_id=${chat}" \
+    --data-urlencode "text=${text}" \
+    -d "reply_markup=${keyboard}" \
+    > /dev/null 2>&1 || log "send_keyboard: plain text retry also failed for chat=${chat}"
+}
+
+# Hide the reply keyboard (send empty keyboard).
+# Usage: hide_keyboard "$chat_id"
+hide_keyboard() {
+  local chat="$1"
+  curl -fsSL --max-time 10 -X POST "${API}/sendMessage" \
+    -d "chat_id=${chat}" \
+    -d "text=Keyboard hidden." \
+    -d 'reply_markup={"remove_keyboard":true}' \
+    > /dev/null 2>&1 || true
+}

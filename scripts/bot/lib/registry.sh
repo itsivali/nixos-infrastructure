@@ -96,7 +96,7 @@ ${sep}
 \`/gitlab trigger\`    Trigger a pipeline
 \`/gitlab mr\`         List merge requests
 
-ℹ️ \`/help\`       Show this menu
+ℹ️ \`/help\`  \`/menu\`  Show this menu
 ${sep}
 🔒 Authorized chat only · replies may be split across messages"
 

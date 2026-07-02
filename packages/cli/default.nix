@@ -13,6 +13,7 @@ with pkgs; [
   fastfetch
   fd
   fzf
+  grim
   gh
   git
   gitui
@@ -37,6 +38,7 @@ with pkgs; [
   usbutils
   vim
   watchexec
+  wmctrl
   wget
   zoxide
 ]

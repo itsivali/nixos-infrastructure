@@ -25,7 +25,7 @@ in
 {
   users.users.${username} = {
     isNormalUser = true;
-    description = "Wilis Ivali";
+    description = "Willis Ivali";
     extraGroups = [ "wheel" "networkmanager" "docker" "video" "audio" ];
 
     openssh.authorizedKeys.keys = [

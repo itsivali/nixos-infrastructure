@@ -67,6 +67,8 @@ in
           StandardError = "journal";
           SyslogIdentifier = "ivali-bot";
 
+          StateDirectory = "ivali-bot";
+
           NoNewPrivileges = true;
           PrivateTmp = true;
         };

@@ -12,7 +12,9 @@ HOST="${HOST_NAME:-$(hostname)}"
 REPO_DIR="${REPO_DIR:-/home/ivali/nixos-infrastructure}"
 GITLAB_URL="${GITLAB_URL:-https://gitlab.com/willisivali/nixos-infrastructure}"
 DEFAULT_USER="${DEFAULT_USER:-ivali}"
-OFFSET=0
+OFFSET_FILE="/var/lib/ivali-bot/offset"
+MAX_AGE_SECONDS="${MAX_AGE_SECONDS:-300}"
+OFFSET="$(cat "$OFFSET_FILE" 2>/dev/null || echo 0)"
 API="https://api.telegram.org/bot${BOT_TOKEN}"
 GITLAB_API="${GITLAB_URL}/api/v4"
 GITLAB_PROJECT="willisivali%2Fnixos-infrastructure"
@@ -23,6 +25,26 @@ if [[ -z "$BOT_TOKEN" || -z "$CHAT_ID" ]]; then
 fi
 
 log() { echo "[$(date -Iseconds)] $*"; }
+
+# Graceful shutdown on SIGTERM/SIGINT
+_shutdown() {
+  log "Bot shutting down (signal caught)"
+  exit 0
+}
+trap _shutdown SIGTERM SIGINT
+
+# Persist offset to disk so it survives restarts
+save_offset() {
+  echo "$1" > "${OFFSET_FILE}.tmp" && mv "${OFFSET_FILE}.tmp" "$OFFSET_FILE"
+}
+
+# Returns 0 if the given unix timestamp is within MAX_AGE_SECONDS of now
+is_recent() {
+  local msg_time="$1"
+  local now
+  now="$(date +%s)"
+  (( now - msg_time <= MAX_AGE_SECONDS ))
+}
 
 send_msg() {
   local chat="$1" text="$2"
@@ -465,15 +487,24 @@ while true; do
 
     if [[ -z "$msg" || "$msg" == "null" ]]; then
       OFFSET=$((uid + 1))
+      save_offset "$OFFSET"
       continue
     fi
 
     text="$(echo "$msg" | jq -r '.text // empty')"
     chat="$(echo "$msg" | jq -r '.chat.id // empty')"
+    msg_date="$(echo "$msg" | jq -r '.date // 0')"
 
     OFFSET=$((uid + 1))
+    save_offset "$OFFSET"
 
     if [[ -z "$text" || "$text" == "null" ]]; then
+      continue
+    fi
+
+    # Skip stale messages to prevent re-executing old commands after restart
+    if ! is_recent "$msg_date"; then
+      log "Skipping stale message (age: $(( $(date +%s) - msg_date ))s): ${text:0:40}"
       continue
     fi
 

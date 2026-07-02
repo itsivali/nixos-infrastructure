@@ -74,5 +74,32 @@ with lib;
 
     };
 
+    ############################################################
+    # Telegram Bot Control Plane
+    ############################################################
+
+    bot = {
+
+      enable = lib.mkEnableOption "Telegram bot control plane";
+
+      gitlabUrl = lib.mkOption {
+        type = lib.types.str;
+        default = "";
+        example = "https://gitlab.com/willisivali/nixos-infrastructure";
+        description = ''
+          GitLab instance URL for bot API access (pipelines, MRs, etc.).
+        '';
+      };
+
+      defaultUser = lib.mkOption {
+        type = lib.types.str;
+        default = "ivali";
+        description = ''
+          System user to run GUI commands as (for DISPLAY/WAYLAND access).
+        '';
+      };
+
+    };
+
   };
 }

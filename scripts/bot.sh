@@ -7,10 +7,15 @@ set -Euo pipefail
 
 BOT_TOKEN="$(cat /run/secrets/telegram_bot_token 2>/dev/null || true)"
 CHAT_ID="$(cat /run/secrets/telegram_chat_id 2>/dev/null || true)"
+GITLAB_TOKEN="$(cat /run/secrets/gitlab_token 2>/dev/null || true)"
 HOST="${HOST_NAME:-$(hostname)}"
 REPO_DIR="${REPO_DIR:-/home/ivali/nixos-infrastructure}"
+GITLAB_URL="${GITLAB_URL:-https://gitlab.com/willisivali/nixos-infrastructure}"
+DEFAULT_USER="${DEFAULT_USER:-ivali}"
 OFFSET=0
 API="https://api.telegram.org/bot${BOT_TOKEN}"
+GITLAB_API="${GITLAB_URL}/api/v4"
+GITLAB_PROJECT="willisivali%2Fnixos-infrastructure"
 
 if [[ -z "$BOT_TOKEN" || -z "$CHAT_ID" ]]; then
   echo "bot.sh: missing telegram secrets" >&2
@@ -34,6 +39,16 @@ run_cmd() {
   local out
   out="$(timeout "$timeout" bash -c "$1" 2>&1)" || true
   echo "$out"
+}
+
+gitlab_api() {
+  local endpoint="$1"
+  local method="${2:-GET}"
+  curl -fsSL --max-time 30 \
+    -X "$method" \
+    -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+    -H "Content-Type: application/json" \
+    "${GITLAB_API}${endpoint}" 2>&1 || echo '{"error":"GitLab API request failed"}'
 }
 
 # Flushes the in-progress chunk buffer for send_long, closing a fenced code
@@ -131,11 +146,22 @@ ${sep}
 🧹 *Maintenance*
 \`/gc\`         Garbage‑collect the nix store
 \`/reboot\`     Reboot the host _(10s grace period)_
-\`/cancel\`     Abort a pending reboot
+\`/shutdown\`   Power off the host _(10s grace period)_
+\`/cancel\`     Abort a pending reboot/shutdown
+
+🖥 *Applications*
+\`/firefox\`    Open Firefox on this host
+\`/open <app>\` Launch any application
 
 🔧 *Raw Access*
 \`/git <cmd>\`  Run git in the infra repo
 \`/nix <cmd>\`  Run an arbitrary nix command
+
+📦 *GitLab*
+\`/gitlab status\`     Project + latest pipeline
+\`/gitlab pipelines\`  Recent pipelines
+\`/gitlab trigger\`    Trigger a pipeline
+\`/gitlab mr\`         List merge requests
 
 ℹ️ \`/help\`     Show this menu
 ${sep}
@@ -242,6 +268,15 @@ ${sep}"
       systemctl reboot 2>&1 || send_msg "$chat" "❌ Reboot failed."
       ;;
 
+    shutdown)
+      send_msg "$chat" "⏻ *${HOST}* — Shutdown
+${sep}
+Shutting down in 10 seconds… send \`/cancel\` to abort.
+${sep}"
+      sleep 10
+      systemctl poweroff 2>&1 || send_msg "$chat" "❌ Shutdown failed."
+      ;;
+
     log)
       local lines="${args:-50}"
       local out
@@ -284,6 +319,99 @@ ${sep}"
       send_long "$chat" "$out"
       ;;
 
+    firefox)
+      send_msg "$chat" "🦊 Opening Firefox on *${HOST}*…"
+      local uid
+      uid="$(id -u "${DEFAULT_USER}" 2>/dev/null || echo '1000')"
+      run_cmd "sudo -u ${DEFAULT_USER} bash -c 'DISPLAY=:0 WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/${uid} nohup firefox >/dev/null 2>&1 &'" 10
+      send_msg "$chat" "✅ Firefox launched."
+      ;;
+
+    open)
+      if [[ -z "$args" ]]; then
+        send_msg "$chat" "🖥 *Usage:* \`/open <application>\`
+_Launches any application as ${DEFAULT_USER}._
+_Example:_ \`/open code\`"
+        return
+      fi
+      local app="$args"
+      send_msg "$chat" "🖥 Opening *${app}* on *${HOST}*…"
+      local uid
+      uid="$(id -u "${DEFAULT_USER}" 2>/dev/null || echo '1000')"
+      run_cmd "sudo -u ${DEFAULT_USER} bash -c 'DISPLAY=:0 WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/${uid} nohup ${app} >/dev/null 2>&1 &'" 10
+      send_msg "$chat" "✅ ${app} launched."
+      ;;
+
+    gitlab)
+      if [[ -z "$GITLAB_TOKEN" ]]; then
+        send_msg "$chat" "❌ GitLab token not configured."
+        return
+      fi
+      local subcmd="${args%% *}"
+      local subargs="${args#* }"
+      case "$subcmd" in
+        status)
+          send_msg "$chat" "📦 Fetching GitLab project info…"
+          local proj out
+          proj="$(gitlab_api "/projects/${GITLAB_PROJECT}")"
+          local name default_branch
+          name="$(echo "$proj" | jq -r '.name // "unknown"')"
+          default_branch="$(echo "$proj" | jq -r '.default_branch // "unknown"')"
+          out="📦 *GitLab — ${name}*
+${sep}
+📋 *Default branch:* \`${default_branch}\`
+🔗 *URL:* ${GITLAB_URL}
+${sep}
+*Latest pipeline:*
+\`\`\`"
+          local pipe
+          pipe="$(gitlab_api "/projects/${GITLAB_PROJECT}/pipelines?per_page=1")"
+          out+="$(echo "$pipe" | jq -r '.[0] | "  #\(.id) [\(.status)] \(.ref) \(.commit.title // "")"' 2>/dev/null || echo '  no pipelines found')"
+          out+="\`\`\`"
+          send_long "$chat" "$out"
+          ;;
+        pipelines)
+          send_msg "$chat" "📦 Fetching recent pipelines…"
+          local pipes out
+          pipes="$(gitlab_api "/projects/${GITLAB_PROJECT}/pipelines?per_page=10")"
+          out="📦 *Recent Pipelines*
+${sep}
+\`\`\`"
+          out+="$(echo "$pipes" | jq -r '.[] | "#\(.id)  \(.status | ascii_upcase | .[0:12])  \(.ref)  \(.created_at | split("T")[0])"' 2>/dev/null || echo '  no pipelines found')"
+          out+="\`\`\`"
+          send_long "$chat" "$out"
+          ;;
+        trigger)
+          send_msg "$chat" "🚀 Triggering pipeline on *main*…"
+          local result
+          result="$(gitlab_api "/projects/${GITLAB_PROJECT}/pipeline" "POST" | jq -r '.id // empty' 2>/dev/null)"
+          if [[ -n "$result" ]]; then
+            send_msg "$chat" "✅ Pipeline *#${result}* triggered."
+          else
+            send_msg "$chat" "❌ Failed to trigger pipeline."
+          fi
+          ;;
+        mr)
+          send_msg "$chat" "📋 Fetching merge requests…"
+          local mrs out
+          mrs="$(gitlab_api "/projects/${GITLAB_PROJECT}/merge_requests?state=opened&per_page=10")"
+          out="📋 *Open Merge Requests*
+${sep}
+\`\`\`"
+          out+="$(echo "$mrs" | jq -r '.[] | "  !\(.iid)  \(.title[0:50])  ← \(.source_branch)"' 2>/dev/null || echo '  no open MRs')"
+          out+="\`\`\`"
+          send_long "$chat" "$out"
+          ;;
+        *)
+          send_msg "$chat" "📦 *GitLab Usage:*
+\`/gitlab status\`     Project + latest pipeline
+\`/gitlab pipelines\`  Recent pipelines
+\`/gitlab trigger\`    Trigger a pipeline
+\`/gitlab mr\`         List merge requests"
+          ;;
+      esac
+      ;;
+
     cancel)
       send_msg "$chat" "🛑 Cancelled."
       ;;
@@ -308,9 +436,13 @@ register_commands() {
       {"command":"rollback","description":"⏪ Revert to previous generation"},
       {"command":"gc","description":"🧹 Nix store garbage collect"},
       {"command":"reboot","description":"♻️ Reboot the system"},
+      {"command":"shutdown","description":"⏻ Power off the system"},
       {"command":"log","description":"📜 Last N journal lines"},
+      {"command":"firefox","description":"🦊 Open Firefox"},
+      {"command":"open","description":"🖥 Launch any application"},
       {"command":"git","description":"🔧 Run a git command"},
       {"command":"nix","description":"🔧 Run a nix command"},
+      {"command":"gitlab","description":"📦 GitLab pipelines & MRs"},
       {"command":"help","description":"ℹ️ Show this menu"}
     ]}' > /dev/null 2>&1 || true
 }

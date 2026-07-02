@@ -69,6 +69,9 @@
         notify_email = {
           sopsFile = ../secrets/telegram.yaml;
         };
+        gitlab_token = {
+          sopsFile = ../secrets/gitlab.yaml;
+        };
       };
     };
 
@@ -80,6 +83,15 @@
       tokenFile = config.sops.secrets.gitlab-runner-token.path;
       tags = [ "nixos" "prague" "self-hosted" ];
       concurrent = 1;
+    };
+
+    ###########################################################
+    # TELEGRAM BOT — Control Plane
+    ###########################################################
+    fleet.bot = {
+      enable = true;
+      gitlabUrl = gitlabUrl;
+      defaultUser = "ivali";
     };
 
     ###########################################################

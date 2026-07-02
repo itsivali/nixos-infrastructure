@@ -46,6 +46,13 @@ is_recent() {
   (( now - msg_time <= MAX_AGE_SECONDS ))
 }
 
+# Track a background action (reboot/shutdown) so /cancel can kill it
+_PENDING_PID=""
+
+_pending_action() {
+  "$@" 2>/dev/null || true
+}
+
 send_msg() {
   local chat="$1" text="$2"
   curl -fsSL --max-time 10 -X POST "${API}/sendMessage" \
@@ -66,11 +73,17 @@ run_cmd() {
 gitlab_api() {
   local endpoint="$1"
   local method="${2:-GET}"
-  curl -fsSL --max-time 30 \
-    -X "$method" \
-    -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
-    -H "Content-Type: application/json" \
-    "${GITLAB_API}${endpoint}" 2>&1 || echo '{"error":"GitLab API request failed"}'
+  local body="${3:-}"
+  local curl_args=(
+    -fsSL --max-time 30
+    -X "$method"
+    -H "PRIVATE-TOKEN: ${GITLAB_TOKEN}"
+    -H "Content-Type: application/json"
+  )
+  if [[ -n "$body" ]]; then
+    curl_args+=(-d "$body")
+  fi
+  curl "${curl_args[@]}" "${GITLAB_API}${endpoint}" 2>&1 || echo '{"error":"GitLab API request failed"}'
 }
 
 # Flushes the in-progress chunk buffer for send_long, closing a fenced code
@@ -167,8 +180,8 @@ ${sep}
 
 🧹 *Maintenance*
 \`/gc\`         Garbage‑collect the nix store
-\`/reboot\`     Reboot the host _(10s grace period)_
-\`/shutdown\`   Power off the host _(10s grace period)_
+\`/reboot\`     Reboot the host _(20s grace period)_
+\`/shutdown\`   Power off the host _(20s grace period)_
 \`/cancel\`     Abort a pending reboot/shutdown
 
 🖥 *Applications*
@@ -284,19 +297,19 @@ ${sep}
     reboot)
       send_msg "$chat" "♻️ *${HOST}* — Reboot
 ${sep}
-Rebooting in 10 seconds… send \`/cancel\` to abort.
+Rebooting in 20 seconds… send \`/cancel\` to abort.
 ${sep}"
-      sleep 10
-      systemctl reboot 2>&1 || send_msg "$chat" "❌ Reboot failed."
+      _pending_action bash -c 'sleep 20 && systemctl reboot' &
+      _PENDING_PID=$!
       ;;
 
     shutdown)
       send_msg "$chat" "⏻ *${HOST}* — Shutdown
 ${sep}
-Shutting down in 10 seconds… send \`/cancel\` to abort.
+Shutting down in 20 seconds… send \`/cancel\` to abort.
 ${sep}"
-      sleep 10
-      systemctl poweroff 2>&1 || send_msg "$chat" "❌ Shutdown failed."
+      _pending_action bash -c 'sleep 20 && systemctl poweroff' &
+      _PENDING_PID=$!
       ;;
 
     log)
@@ -360,7 +373,7 @@ _Example:_ \`/open code\`"
       send_msg "$chat" "🖥 Opening *${app}* on *${HOST}*…"
       local uid
       uid="$(id -u "${DEFAULT_USER}" 2>/dev/null || echo '1000')"
-      run_cmd "sudo -u ${DEFAULT_USER} bash -c 'DISPLAY=:0 WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/${uid} nohup ${app} >/dev/null 2>&1 &'" 10
+      run_cmd "sudo -u ${DEFAULT_USER} bash -c 'DISPLAY=:0 WAYLAND_DISPLAY=wayland-0 XDG_RUNTIME_DIR=/run/user/${uid} nohup \"${app}\" >/dev/null 2>&1 &'" 10
       send_msg "$chat" "✅ ${app} launched."
       ;;
 
@@ -406,7 +419,7 @@ ${sep}
         trigger)
           send_msg "$chat" "🚀 Triggering pipeline on *main*…"
           local result
-          result="$(gitlab_api "/projects/${GITLAB_PROJECT}/pipeline" "POST" | jq -r '.id // empty' 2>/dev/null)"
+          result="$(gitlab_api "/projects/${GITLAB_PROJECT}/pipeline" "POST" '{"ref":"main"}' | jq -r '.id // empty' 2>/dev/null)"
           if [[ -n "$result" ]]; then
             send_msg "$chat" "✅ Pipeline *#${result}* triggered."
           else
@@ -435,7 +448,13 @@ ${sep}
       ;;
 
     cancel)
-      send_msg "$chat" "🛑 Cancelled."
+      if [[ -n "$_PENDING_PID" ]] && kill -0 "$_PENDING_PID" 2>/dev/null; then
+        kill "$_PENDING_PID" 2>/dev/null || true
+        _PENDING_PID=""
+        send_msg "$chat" "🛑 Cancelled."
+      else
+        send_msg "$chat" "ℹ️ No pending reboot/shutdown to cancel."
+      fi
       ;;
 
     *)

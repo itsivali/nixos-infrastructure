@@ -1,23 +1,467 @@
 #!/usr/bin/env bash
-# commands/metrics.sh — /metrics — repository metrics report
+# commands/metrics.sh — /metrics — View system metrics from Prometheus
 ##############################################################################
 
 _cmd_metrics() {
   local chat="$1" args="$2"
-  local sep="━━━━━━━━━━━━━━━━━━━━━━"
+  send_typing "$chat"
 
-  send_msg "$chat" "📈 Generating metrics report…"
+  local subcmd="${args%% *}"
+  local rest="${args#* }"
 
-  local out="📈 *${HOST}* — Repository Metrics
-${sep}
-\`\`\`"
-  out+="$(cd ${REPO_DIR} && ./ivali metrics 2>&1 | sed 's/\x1b\[[0-9;]*m//g')"
-  out+="
-\`\`\`
-${sep}
-📊 Metrics complete."
+  case "$subcmd" in
+    cpu|cpuUsage)
+      _metrics_cpu "$chat"
+      ;;
+    memory|mem|ram)
+      _metrics_memory "$chat"
+      ;;
+    disk|storage)
+      _metrics_disk "$chat"
+      ;;
+    network|net)
+      _metrics_network "$chat"
+      ;;
+    services|svc)
+      _metrics_services "$chat"
+      ;;
+    tailscale|ts)
+      _metrics_tailscale "$chat"
+      ;;
+    prometheus|prom)
+      _metrics_prometheus "$chat"
+      ;;
+    overview|summary|"")
+      _metrics_overview "$chat"
+      ;;
+    *)
+      send_msg "$chat" "📊 *Metrics Viewer*
 
-  send_long "$chat" "$out"
+Usage: \`/metrics [category]\`
+
+*Categories:*
+• \`cpu\` — CPU usage over time
+• \`memory\` — Memory utilization
+• \`disk\` — Disk I/O and usage
+• \`network\` — Network traffic
+• \`services\` — Service health
+• \`tailscale\` — Tailscale status
+• \`prometheus\` — Prometheus health
+• \`overview\` — Full system overview
+
+*Examples:*
+• \`/metrics\` — Show overview
+• \`/metrics cpu\` — CPU details
+• \`/metrics memory\` — Memory details"
+      ;;
+  esac
 }
 
-register_command "metrics" "_cmd_metrics" "📈 Repository metrics report"
+_metrics_overview() {
+  local chat="$1"
+  local out="📊 *System Metrics Overview*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # CPU
+  local cpu_idle
+  cpu_idle=$(top -bn1 2>/dev/null | awk '/^%Cpu/{print $8}' || echo "0")
+  local cpu_used=$(awk "BEGIN{printf \"%.1f\", 100 - ${cpu_idle:-0}}" 2>/dev/null || echo "0")
+  local cpu_cores=$(nproc 2>/dev/null || echo "?")
+  out+="*CPU:* ${cpu_used}% (${cpu_cores} cores)
+"
+
+  # Memory
+  local mem_info
+  mem_info=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%d%% used (%dMB/%dMB)", $3/$2*100, $3, $2}')
+  out+="*Memory:* ${mem_info:-unknown}
+"
+
+  # Disk
+  local disk_info
+  disk_info=$(df -h / 2>/dev/null | awk 'NR==2{printf "%s used / %s total (%s)", $3, $2, $5}')
+  out+="*Disk:* ${disk_info:-unknown}
+"
+
+  # Load
+  local load_info
+  load_info=$(uptime 2>/dev/null | awk -F'load average: ' '{print $2}')
+  out+="*Load:* ${load_info:-unknown}
+"
+
+  # Uptime
+  local uptime_info
+  uptime_info=$(uptime 2>/dev/null | sed 's/.*up //; s/,.*//')
+  out+="*Uptime:* ${uptime_info:-unknown}
+"
+
+  # Network
+  local net_info
+  net_info=$(ip -4 addr show 2>/dev/null | awk '/inet /{print $2 " on " $NF}' | head -2 | tr '\n' ', ' | sed 's/, $//')
+  out+="*Network:* ${net_info:-unknown}
+"
+
+  # Tailscale
+  if command -v tailscale >/dev/null 2>&1; then
+    local ts_ip
+    ts_ip=$(tailscale ip -4 2>/dev/null || echo "disconnected")
+    out+="*Tailscale:* ${ts_ip}
+"
+
+    # Tailscale status
+    local ts_status
+    ts_status=$(tailscale status --json 2>/dev/null | jq -r '.Self.Online // false' 2>/dev/null || echo "false")
+    if [[ "$ts_status" == "true" ]]; then
+      out+="*Tailscale Status:* 🟢 Online
+"
+    else
+      out+="*Tailscale Status:* 🔴 Offline
+"
+    fi
+  fi
+
+  out+="
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+Run \`/metrics cpu\` for detailed CPU info"
+
+  send_msg "$chat" "$out"
+}
+
+_metrics_cpu() {
+  local chat="$1"
+  local out="💻 *CPU Metrics*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # CPU usage
+  local cpu_info
+  cpu_info=$(top -bn1 2>/dev/null | head -5)
+  out+="\`\`\`
+${cpu_info:-CPU info unavailable}
+\`\`\`
+"
+
+  # CPU cores
+  local cores=$(nproc 2>/dev/null || echo "?")
+  out+="*Cores:* ${cores}
+"
+
+  # CPU frequency
+  local freq_file="/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"
+  if [[ -f "$freq_file" ]]; then
+    local freq=$(cat "$freq_file" 2>/dev/null)
+    local freq_mhz=$(( freq / 1000 ))
+    local freq_ghz=$(awk "BEGIN{printf \"%.2f\", $freq_mhz/1000}")
+    out+="*Frequency:* ${freq_ghz} GHz
+"
+  fi
+
+  # CPU temperature
+  local temp_file="/sys/class/thermal/thermal_zone0/temp"
+  if [[ -f "$temp_file" ]]; then
+    local temp=$(cat "$temp_file" 2>/dev/null)
+    local temp_c=$(( temp / 1000 ))
+    out+="*Temperature:* ${temp_c}°C
+"
+  fi
+
+  out+="
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+*Top processes by CPU:*
+\`\`\`
+$(ps aux --sort=-%cpu 2>/dev/null | head -6 | awk '{printf "%-5s %-6s %s\n", $3"%", $2, $11}')
+\`\`\`"
+
+  send_msg "$chat" "$out"
+}
+
+_metrics_memory() {
+  local chat="$1"
+  local out="🧠 *Memory Metrics*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # Memory usage
+  local mem_info
+  mem_info=$(free -h 2>/dev/null)
+  out+="\`\`\`
+${mem_info:-Memory info unavailable}
+\`\`\`
+"
+
+  # Detailed breakdown
+  local mem_used=$(free -m 2>/dev/null | awk '/^Mem:/{print $3}')
+  local mem_total=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
+  local mem_available=$(free -m 2>/dev/null | awk '/^Mem:/{print $7}')
+  local mem_percent=$((100 - (mem_available * 100 / mem_total)))
+
+  out+="*Used:* ${mem_used}MB / ${mem_total}MB (${mem_percent}%)
+*Available:* ${mem_available}MB
+"
+
+  # Swap
+  local swap_used=$(free -m 2>/dev/null | awk '/^Swap:/{print $3}')
+  local swap_total=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
+  if [[ "$swap_total" -gt 0 ]]; then
+    out+="
+*Swap:* ${swap_used}MB / ${swap_total}MB
+"
+  fi
+
+  out+="
+*Top processes by memory:*
+\`\`\`
+$(ps aux --sort=-%mem 2>/dev/null | head -6 | awk '{printf "%-5s %-6s %s\n", $4"%", $2, $11}')
+\`\`\`"
+
+  send_msg "$chat" "$out"
+}
+
+_metrics_disk() {
+  local chat="$1"
+  local out="💾 *Disk Metrics*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # Disk usage
+  local disk_info
+  disk_info=$(df -h / 2>/dev/null | tail -1)
+  out+="*Root filesystem:*
+\`\`\`
+${disk_info:-Disk info unavailable}
+\`\`\`
+"
+
+  # Disk I/O
+  local io_info
+  io_info=$(iostat -d 2>/dev/null | head -10 || echo "iostat not available")
+  if [[ "$io_info" != "iostat not available" ]]; then
+    out+="*Disk I/O:*
+\`\`\`
+${io_info}
+\`\`\`
+"
+  fi
+
+  # Nix store size
+  local nix_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "unknown")
+  out+="*Nix Store:* ${nix_size}
+"
+
+  # Inodes
+  local inode_info
+  inode_info=$(df -i / 2>/dev/null | tail -1 | awk '{print $5 " used"}')
+  out+="*Inodes:* ${inode_info:-unknown}
+"
+
+  send_msg "$chat" "$out"
+}
+
+_metrics_network() {
+  local chat="$1"
+  local out="🌐 *Network Metrics*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # Network interfaces
+  local net_info
+  net_info=$(ip -4 addr show 2>/dev/null | awk '/inet /{print $2 " on " $NF}' | tr '\n' '\n')
+  out+="*Interfaces:*
+\`\`\`
+${net_info:-Network info unavailable}
+\`\`\`
+"
+
+  # Network stats
+  local net_stats
+  net_stats=$(cat /proc/net/dev 2>/dev/null | tail -n +3 | awk '{print $1, "RX:"$2, "TX:"$10}' | head -5)
+  if [[ -n "$net_stats" ]]; then
+    out+="*Traffic:*
+\`\`\`
+${net_stats}
+\`\`\`
+"
+  fi
+
+  # DNS
+  local dns_info
+  dns_info=$(cat /etc/resolv.conf 2>/dev/null | grep nameserver | head -3 | awk '{print $2}' | tr '\n' '\n')
+  if [[ -n "$dns_info" ]]; then
+    out+="*DNS Servers:*
+\`\`\`
+${dns_info}
+\`\`\`
+"
+  fi
+
+  # Tailscale
+  if command -v tailscale >/dev/null 2>&1; then
+    local ts_status
+    ts_status=$(tailscale status 2>/dev/null | head -5)
+    if [[ -n "$ts_status" ]]; then
+      out+="*Tailscale:*
+\`\`\`
+${ts_status}
+\`\`\`
+"
+    fi
+  fi
+
+  send_msg "$chat" "$out"
+}
+
+_metrics_services() {
+  local chat="$1"
+  local out="🔧 *Service Metrics*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # Critical services
+  local services=("tailscaled" "nginx" "prometheus" "grafana" "loki" "sshd" "network-manager")
+  for svc in "${services[@]}"; do
+    local status
+    if systemctl is-active --quiet "$svc" 2>/dev/null; then
+      status="🟢 active"
+    elif systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+      status="🟡 enabled"
+    else
+      status="⚪ inactive"
+    fi
+    out+="*${svc}:* ${status}
+"
+  done
+
+  # Failed units
+  local failed_count
+  failed_count=$(systemctl list-units --failed --no-legend --no-pager 2>/dev/null | wc -l)
+  if [[ "$failed_count" -gt 0 ]]; then
+    out+="
+⚠️ *${failed_count} failed units:*
+\`\`\`
+$(systemctl list-units --failed --no-legend --no-pager 2>/dev/null | head -5)
+\`\`\`
+"
+  fi
+
+  send_msg "$chat" "$out"
+}
+
+_metrics_tailscale() {
+  local chat="$1"
+
+  if ! command -v tailscale >/dev/null 2>&1; then
+    send_msg "$chat" "❌ Tailscale is not installed"
+    return
+  fi
+
+  local out="📡 *Tailscale Metrics*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # Tailscale status
+  local ts_json
+  ts_json=$(tailscale status --json 2>/dev/null || echo "{}")
+
+  local ts_ip=$(echo "$ts_json" | jq -r '.Self.TailscaleIPs[0] // "unknown"' 2>/dev/null)
+  local ts_online=$(echo "$ts_json" | jq -r '.Self.Online // false' 2>/dev/null)
+  local ts_host=$(echo "$ts_json" | jq -r '.Self.HostName // "unknown"' 2>/dev/null)
+  local ts_dns=$(echo "$ts_json" | jq -r '.Self.DNSName // "unknown"' 2>/dev/null)
+
+  out+="*IP:* ${ts_ip}
+*Host:* ${ts_host}
+*DNS:* ${ts_dns}
+*Online:* $(if [[ "$ts_online" == "true" ]]; then echo "🟢 Yes"; else echo "🔴 No"; fi)
+"
+
+  # Key expiry
+  local ts_expiry=$(echo "$ts_json" | jq -r '.Self.KeyExpiry // "none"' 2>/dev/null)
+  if [[ "$ts_expiry" != "none" && "$ts_expiry" != "null" ]]; then
+    local expiry_epoch=$(date -d "$ts_expiry" +%s 2>/dev/null || echo "0")
+    local now_epoch=$(date +%s)
+    local days_left=$(( (expiry_epoch - now_epoch) / 86400 ))
+    out+="*Key Expiry:* ${ts_expiry} (${days_left} days)
+"
+  else
+    out+="*Key Expiry:* No expiry
+"
+  fi
+
+  # Peers
+  local peer_count=$(echo "$ts_json" | jq -r '.Peer | length' 2>/dev/null || echo "0")
+  out+="
+*Peers:* ${peer_count} connected
+"
+
+  # Connected peers
+  local peers=$(echo "$ts_json" | jq -r '.Peer | to_entries[] | select(.value.Online == true) | .value.HostName' 2>/dev/null | head -5)
+  if [[ -n "$peers" ]]; then
+    out+="*Connected:*
+\`\`\`
+${peers}
+\`\`\`
+"
+  fi
+
+  send_msg "$chat" "$out"
+}
+
+_metrics_prometheus() {
+  local chat="$1"
+  local out="📈 *Prometheus Metrics*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"
+
+  # Check if Prometheus is running
+  if ! systemctl is-active --quiet prometheus 2>/dev/null; then
+    out+="❌ *Prometheus is not running*
+
+Enable with: \`ivali.observability.enable = true\`
+"
+    send_msg "$chat" "$out"
+    return
+  fi
+
+  # Prometheus health
+  local health=$(curl -s http://127.0.0.1:9090/-/healthy 2>/dev/null || echo "unreachable")
+  out+="*Health:* ${health}
+"
+
+  # Prometheus config
+  local config=$(curl -s http://127.0.0.1:9090/api/v1/status/config 2>/dev/null | jq -r '.data.yaml // "unavailable"' 2>/dev/null || echo "unavailable")
+  if [[ "$config" != "unavailable" ]]; then
+    out+="
+*Configuration:*
+\`\`\`
+${config:0:500}
+\`\`\`
+"
+  fi
+
+  # Active targets
+  local targets=$(curl -s http://127.0.0.1:9090/api/v1/targets 2>/dev/null | jq -r '.data.activeTargets | length' 2>/dev/null || echo "0")
+  out+="*Active Targets:* ${targets}
+"
+
+  # Alert rules
+  local rules=$(curl -s http://127.0.0.1:9090/api/v1/rules 2>/dev/null | jq -r '.data.groups | length' 2>/dev/null || echo "0")
+  out+="*Rule Groups:* ${rules}
+"
+
+  # Storage
+  local storage=$(curl -s http://127.0.0.1:9090/api/v1/status/tsdb 2>/dev/null | jq -r '.data.storageStats.numSeries // "unknown"' 2>/dev/null || echo "unknown")
+  out+="*Active Series:* ${storage}
+"
+
+  send_msg "$chat" "$out"
+}
+
+register_command "metrics" "_cmd_metrics" "📈 View system metrics (cpu/memory/disk/network/services/tailscale/prometheus)"
+register_command "m" "_cmd_metrics" "📈 View system metrics (shortcut)"

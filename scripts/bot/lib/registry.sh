@@ -30,6 +30,20 @@ dispatch() {
   local cmd="$1" chat="$2" args="$3"
 
   if [[ -v "_CMD_HANDLER[$cmd]" ]]; then
+    # Check permissions
+    local required_role=$(get_command_role "$cmd")
+    if ! check_permission "$chat" "$required_role"; then
+      local user_role=$(get_user_role "$chat")
+      send_msg "$chat" "🔒 *Access Denied*
+
+Command: \`/${cmd}\`
+Required role: *${required_role}*
+Your role: *${user_role}*
+
+Contact the system owner to request access."
+      return
+    fi
+    
     "${_CMD_HANDLER[$cmd]}" "$chat" "$args"
   else
     send_msg "$chat" "❓ *Unknown command:* \`/${cmd}\`

@@ -1,17 +1,49 @@
 #!/usr/bin/env bash
-# commands/reboot.sh — /reboot — reboot with 20s grace period
+# commands/reboot.sh — /reboot — Reboot with confirmation
 ##############################################################################
 
 _cmd_reboot() {
   local chat="$1" args="$2"
-  local sep="━━━━━━━━━━━━━━━━━━━━━━"
 
-  send_msg "$chat" "♻️ *${HOST}* — Reboot
-${sep}
-Rebooting in 20 seconds… send \`/cancel\` to abort.
-${sep}"
+  # Check for confirmation token
+  if [[ "$args" == *"confirm"* ]]; then
+    send_msg "$chat" "🔄 Rebooting system in 5 seconds..."
+    sleep 5
+    sudo reboot
+    return
+  fi
 
-  pending_set bash -c 'sleep 20 && systemctl reboot'
+  # Show confirmation with inline keyboard
+  local msg="⚠️ *Confirm Reboot*
+
+Are you sure you want to reboot the system?
+
+*Current uptime:* $(uptime | sed 's/.*up //; s/,.*//')
+
+This action will:
+• Stop all running services
+• Reboot the system
+• Take approximately 1-2 minutes"
+
+  send_inline_keyboard "$chat" "$msg" "✅ Yes, reboot:reboot_confirm" "❌ Cancel:reboot_cancel"
 }
 
-register_command "reboot" "_cmd_reboot" "♻️ Reboot the system"
+# Handle callback queries
+_cmd_reboot_callback() {
+  local chat="$1" callback_id="$2" data="$3"
+
+  case "$data" in
+    reboot_confirm)
+      answer_callback "$callback_id" "Rebooting..."
+      send_msg "$chat" "🔄 Rebooting system in 5 seconds..."
+      sleep 5
+      sudo reboot
+      ;;
+    reboot_cancel)
+      answer_callback "$callback_id" "Reboot cancelled"
+      send_msg "$chat" "✅ Reboot cancelled"
+      ;;
+  esac
+}
+
+register_command "reboot" "_cmd_reboot" "🔄 Reboot the system (with confirmation)"

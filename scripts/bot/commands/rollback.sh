@@ -1,23 +1,61 @@
 #!/usr/bin/env bash
-# commands/rollback.sh — /rollback — revert to previous generation
+# commands/rollback.sh — /rollback — Rollback to previous generation
 ##############################################################################
 
 _cmd_rollback() {
   local chat="$1" args="$2"
-  local sep="━━━━━━━━━━━━━━━━━━━━━━"
+  send_typing "$chat"
 
-  send_msg "$chat" "⏪ Rolling back…"
+  # Get current generation
+  local current_gen
+  current_gen=$(nix_current_generation 2>/dev/null || echo "unknown")
 
-  local out="⏪ *${HOST}* — Rollback
-${sep}
-\`\`\`"
-  out+="$(run_cmd "cd ${REPO_DIR} && scripts/rollback.sh 2>&1" 120)"
-  out+="
-\`\`\`
-${sep}
-↩️ Rollback complete."
+  # Get previous generation
+  local prev_gen=$((current_gen - 1))
 
-  send_long "$chat" "$out"
+  # Check for confirmation token
+  if [[ "$args" == *"confirm"* ]]; then
+    send_msg "$chat" "⏪ Rolling back to generation ${prev_gen}..."
+    sudo nixos-rebuild switch --profile /nix/var/nix/profiles/system 2>/dev/null
+    local result=$?
+    if [[ $result -eq 0 ]]; then
+      send_msg "$chat" "✅ Rollback successful! Now running generation ${prev_gen}"
+    else
+      send_msg "$chat" "❌ Rollback failed. Check logs with \`/log nixos-rebuild-switch\`"
+    fi
+    return
+  fi
+
+  # Show confirmation with inline keyboard
+  local msg="⚠️ *Confirm Rollback*
+
+Are you sure you want to rollback?
+
+*Current generation:* ${current_gen}
+*Target generation:* ${prev_gen}
+
+This action will:
+• Switch to the previous NixOS generation
+• May take a few minutes to complete
+• Can be undone with \`/deploy\`"
+
+  send_inline_keyboard "$chat" "$msg" "✅ Yes, rollback:rollback_confirm" "❌ Cancel:rollback_cancel"
 }
 
-register_command "rollback" "_cmd_rollback" "⏪ Revert to previous generation"
+# Handle callback queries
+_cmd_rollback_callback() {
+  local chat="$1" callback_id="$2" data="$3"
+
+  case "$data" in
+    rollback_confirm)
+      answer_callback "$callback_id" "Rolling back..."
+      _cmd_rollback "$chat" "confirm"
+      ;;
+    rollback_cancel)
+      answer_callback "$callback_id" "Rollback cancelled"
+      send_msg "$chat" "✅ Rollback cancelled"
+      ;;
+  esac
+}
+
+register_command "rollback" "_cmd_rollback" "⏪ Rollback to previous NixOS generation"

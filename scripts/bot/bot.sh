@@ -17,6 +17,7 @@ source "${BOT_DIR}/lib/core.sh"
 source "${BOT_DIR}/lib/telegram.sh"
 source "${BOT_DIR}/lib/registry.sh"
 source "${BOT_DIR}/lib/pending.sh"
+source "${BOT_DIR}/lib/auth.sh"
 
 # ── Domain libraries ───────────────────────────────────────────────────────
 source "${BOT_DIR}/lib/desktop.sh"

@@ -90,19 +90,19 @@ in
 
     # Loki retention
     services.loki = {
-      # Configure retention through limits
-      extraConfig = {
+      configuration = {
         limits_config = {
           retention_period = cfg.retention.logsRetention;
           retention_deletes_enabled = true;
         };
 
         compactor = {
-          compaction_interval = "10m";
+          working_directory = "/var/lib/loki/compactor";
           retention_enabled = cfg.retention.enableCompaction;
           retention_delete_delay = "2h";
           retention_delete_worker_count = 150;
           delete_fetch_batch_size = 1000;
+          delete_request_store = "filesystem";
         };
       };
     };

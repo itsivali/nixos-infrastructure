@@ -61,6 +61,24 @@ in
 
     otel.enable = lib.mkEnableOption "OpenTelemetry collector";
 
+    otel.enablePrometheusForwarding = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Forward metrics to Prometheus remote write";
+    };
+
+    otel.enableLoggingExporter = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable logging exporter for debugging";
+    };
+
+    otel.samplingRate = lib.mkOption {
+      type = lib.types.float;
+      default = 0.1;
+      description = "Trace sampling rate (0.0 to 1.0)";
+    };
+
     lokiUrl = lib.mkOption {
       type = lib.types.str;
       default = "http://${lokiListenAddress}:${toString lokiPort}/loki/api/v1/push";

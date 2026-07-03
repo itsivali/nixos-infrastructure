@@ -17,6 +17,7 @@
 # - Generation drift alerts
 # - High CPU/memory usage
 # - Security scan failures
+# - Tailscale connectivity and key expiry
 #
 ##############################################################################
 
@@ -151,6 +152,48 @@ in
                 annotations:
                   summary: "Home Manager activation failed"
                   description: "Home Manager activation has failed"
+
+          - name: tailscale
+            rules:
+              # Tailscale service down
+              - alert: TailscaleServiceDown
+                expr: node_systemd_unit_state{name="tailscaled.service", state="active"} == 0
+                for: 1m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Tailscale service down on {{ $labels.instance }}"
+                  description: "Tailscaled service is not running"
+
+              # Tailscale key expiry warning
+              - alert: TailscaleKeyExpiryWarning
+                expr: tailscale_key_expiry_days < 14
+                for: 0m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Tailscale key expiring soon on {{ $labels.host }}"
+                  description: "Tailscale key expires in {{ $value }} days"
+
+              # Tailscale key expired
+              - alert: TailscaleKeyExpired
+                expr: tailscale_key_expiry_days <= 0
+                for: 0m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Tailscale key expired on {{ $labels.host }}"
+                  description: "Tailscale key has expired and needs renewal"
+
+              # MagicDNS resolution failure
+              - alert: TailscaleMagicDNSFailed
+                expr: tailscale_magicdns_status == 0
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "MagicDNS resolution failed on {{ $labels.host }}"
+                  description: "MagicDNS is not resolving correctly"
 
       '')
     ];

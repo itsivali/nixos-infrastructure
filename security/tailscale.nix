@@ -341,6 +341,107 @@ in
       };
     };
 
+    #########################################################
+    # Prometheus Metrics
+    #########################################################
+
+    systemd.services.tailscale-metrics = {
+      description = "Tailscale Prometheus Metrics";
+
+      after = [ "tailscaled.service" ];
+      wants = [ "tailscaled.service" ];
+
+      serviceConfig = {
+        Type = "simple";
+        Restart = "always";
+        RestartSec = 30;
+      };
+
+      script = ''
+        set -euo pipefail
+
+        METRICS_FILE="/var/lib/tailscale-metrics/metrics.prom"
+        mkdir -p /var/lib/tailscale-metrics
+
+        while true; do
+          TIMESTAMP=$(date +%s)
+
+          # Get key expiry info
+          EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
+          EXPIRY_DATE=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
+          HOSTNAME=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.HostName // empty' 2>/dev/null || echo "unknown")
+         Connected=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.BackendState // empty' 2>/dev/null || echo "unknown")
+
+          # Calculate days until expiry
+          KEY_EXPIRY_DAYS=999
+          if [ -n "$EXPIRY_DATE" ] && [ "$EXPIRY_DATE" != "none" ]; then
+            EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
+            NOW_EPOCH=$(date +%s)
+            KEY_EXPIRY_DAYS=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+          fi
+
+          # MagicDNS check status
+          MAGICDNS_STATUS=1
+          if [ -n "${toString cfg.tailnetDomain}" ]; then
+            if ! ${pkgs.host}/bin/host "${toString cfg.tailnetDomain}" >/dev/null 2>&1; then
+              MAGICDNS_STATUS=0
+            fi
+          fi
+
+          # Write metrics
+          cat > "$METRICS_FILE" <<EOF
+          # HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)
+          # TYPE tailscale_connected gauge
+          tailscale_connected{host="$HOSTNAME"} $(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
+
+          # HELP tailscale_key_expiry_days Days until Tailscale key expires
+          # TYPE tailscale_key_expiry_days gauge
+          tailscale_key_expiry_days{host="$HOSTNAME"} $KEY_EXPIRY_DAYS
+
+          # HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)
+          # TYPE tailscale_magicdns_status gauge
+          tailscale_magicdns_status{host="$HOSTNAME"} $MAGICDNS_STATUS
+
+          # HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection
+          # TYPE tailscale_metrics_timestamp gauge
+          tailscale_metrics_timestamp{host="$HOSTNAME"} $TIMESTAMP
+          EOF
+
+          sleep 60
+        done
+      '';
+    };
+
+    systemd.timers.tailscale-metrics = {
+      description = "Start Tailscale metrics collection";
+      wantedBy = [ "timers.target" ];
+
+      timerConfig = {
+        OnBootSec = "1m";
+        OnUnitActiveSec = "1m";
+        Persistent = true;
+      };
+    };
+
+    # Expose metrics port
+    networking.firewall.allowedTCPPorts = [ 9121 ];
+
+    # Add to Prometheus scrape targets
+    services.prometheus.scrapeConfigs = [
+      {
+        job_name = "tailscale";
+        static_configs = [
+          {
+            targets = [ "127.0.0.1:9121" ];
+            labels = {
+              host = config.networking.hostName;
+            };
+          }
+        ];
+        scrape_interval = "30s";
+      }
+    ];
+
   };
 }
 

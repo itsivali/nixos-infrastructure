@@ -11,6 +11,18 @@ let
       "tag:exit-node";
 
   advertisedTags = lib.concatStringsSep "," effectiveTags;
+
+  # Validate tag format: must start with "tag:" and contain only alphanumeric, hyphens, underscores
+  validateTag = tag:
+    let
+      prefix = builtins.substring 0 4 tag;
+      rest = builtins.substring 4 (builtins.stringLength tag - 4) tag;
+      validChars = lib.all (c: builtins.match "[a-zA-Z0-9_-]" c != null) (lib.stringToCharacters rest);
+    in
+    prefix == "tag:" && builtins.stringLength rest > 0 && validChars;
+
+  invalidTags = lib.filter (tag: !validateTag tag) cfg.tags;
+
 in
 {
   options.ivali.tailscale = {
@@ -28,9 +40,12 @@ in
     tags = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ "tag:admin" ];
-      example = [ "tag:admin" "tag:infra" ];
+      example = [ "tag:admin" "tag:infra" "tag:personal" ];
       description = ''
         Tailscale ACL tags to advertise on this node.
+        Tags must start with "tag:" and contain only alphanumeric
+        characters, hyphens, and underscores.
+
         When advertiseExitNode is true, tag:exit-node is automatically
         appended unless already present.
       '';
@@ -85,9 +100,25 @@ in
         Tailnet DNS suffix for split DNS.
       '';
     };
+
+    keyExpiryWarningDays = lib.mkOption {
+      type = lib.types.int;
+      default = 14;
+      description = ''
+        Number of days before key expiry to start warning.
+      '';
+    };
   };
 
   config = lib.mkIf cfg.enable {
+
+    # Validate tags at build time
+    assertions = [
+      {
+        assertion = invalidTags == [];
+        message = "Invalid Tailscale tags: ${lib.concatStringsSep ", " invalidTags}. Tags must start with 'tag:' and contain only alphanumeric characters, hyphens, and underscores.";
+      }
+    ];
 
     #########################################################
     # Tailscale
@@ -210,6 +241,105 @@ in
           Unit = "tailscale-split-dns.service";
         };
       };
+
+    #########################################################
+    # Key Expiry Monitoring
+    #########################################################
+
+    systemd.services.tailscale-key-check = {
+      description = "Check Tailscale key expiry";
+
+      after = [ "tailscaled.service" ];
+      wants = [ "tailscaled.service" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+      };
+
+      script = ''
+        set -euo pipefail
+
+        # Get key expiry info
+        EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
+        EXPIRY_DATE=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
+
+        if [ -z "$EXPIRY_DATE" ] || [ "$EXPIRY_DATE" = "none" ]; then
+          echo "Key does not expire"
+          exit 0
+        fi
+
+        # Convert expiry date to epoch
+        EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
+        NOW_EPOCH=$(date +%s)
+        DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+
+        echo "Key expires: $EXPIRY_DATE ($DAYS_LEFT days remaining)"
+
+        if [ "$DAYS_LEFT" -le 0 ]; then
+          echo "CRITICAL: Key has expired!"
+          exit 1
+        elif [ "$DAYS_LEFT" -le ${toString cfg.keyExpiryWarningDays} ]; then
+          echo "WARNING: Key expires in $DAYS_LEFT days"
+          exit 0
+        fi
+      '';
+    };
+
+    systemd.timers.tailscale-key-check = {
+      description = "Check Tailscale key expiry daily";
+      wantedBy = [ "timers.target" ];
+
+      timerConfig = {
+        OnCalendar = "daily";
+        Persistent = true;
+      };
+    };
+
+    #########################################################
+    # MagicDNS Health Check
+    #########################################################
+
+    systemd.services.tailscale-magicdns-check = lib.mkIf (cfg.tailnetDomain != null) {
+      description = "Check MagicDNS resolution";
+
+      after = [ "tailscaled.service" "tailscale-split-dns.service" ];
+      wants = [ "tailscaled.service" ];
+
+      serviceConfig = {
+        Type = "oneshot";
+      };
+
+      script = ''
+        set -euo pipefail
+
+        # Test MagicDNS resolution
+        HOSTNAME=$(tailscale status --json 2>/dev/null | ${pkgs.jq}/bin/jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
+
+        if [ -z "$HOSTNAME" ]; then
+          echo "WARNING: Cannot determine MagicDNS hostname"
+          exit 1
+        fi
+
+        # Try to resolve own MagicDNS name
+        if ${pkgs.host}/bin/host "$HOSTNAME" >/dev/null 2>&1; then
+          echo "MagicDNS OK: $HOSTNAME resolves correctly"
+        else
+          echo "WARNING: MagicDNS resolution failed for $HOSTNAME"
+          exit 1
+        fi
+      '';
+    };
+
+    systemd.timers.tailscale-magicdns-check = lib.mkIf (cfg.tailnetDomain != null) {
+      description = "Check MagicDNS resolution hourly";
+      wantedBy = [ "timers.target" ];
+
+      timerConfig = {
+        OnBootSec = "5m";
+        OnUnitActiveSec = "1h";
+        Persistent = true;
+      };
+    };
 
   };
 }

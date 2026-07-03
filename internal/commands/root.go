@@ -49,7 +49,6 @@ a beautiful interactive terminal experience.`,
 
 	root.AddCommand(
 		CmdBootstrap(a),
-		CmdBootstrapHost(a),
 		CmdDashboard(a),
 		CmdDeploy(a),
 		CmdDoctor(a),

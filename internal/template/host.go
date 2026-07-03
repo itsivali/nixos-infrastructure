@@ -111,7 +111,6 @@ func (g *Generator) hostConfigNix(spec HostSpec) string {
 	b.WriteString("  ############################################################################\n")
 	b.WriteString("  imports = [\n")
 	b.WriteString("    ./hardware-configuration.nix\n")
-	b.WriteString("    ./" + spec.HostName + ".nix\n")
 	b.WriteString("  ];\n")
 	b.WriteString("\n")
 	b.WriteString("  ############################################################################\n")

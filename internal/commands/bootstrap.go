@@ -19,6 +19,7 @@ func CmdBootstrap(a *app.App) *cobra.Command {
 	}
 
 	cmd.AddCommand(
+		CmdBootstrapHost(a),
 		&cobra.Command{
 			Use:   "module [name]",
 			Short: "Generate a NixOS domain module",

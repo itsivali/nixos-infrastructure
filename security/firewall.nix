@@ -98,7 +98,10 @@ in
         # Public Internet — Inbound
         ##########################################################
 
-        allowedTCPPorts = [ ];
+        allowedTCPPorts = [
+          # LocalSend
+          53317
+        ];
 
         allowedUDPPorts =
           [

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -52,6 +53,12 @@ Provide a full or partial path to the module.`,
 			if mod.LineCount > 0 {
 				fmt.Println(t.KeyValue("Lines", fmt.Sprintf("%d", mod.LineCount)))
 			}
+
+			// File info
+			if stat, err := os.Stat(mod.Path); err == nil {
+				fmt.Println(t.KeyValue("Size", fmt.Sprintf("%.1f KB", float64(stat.Size())/1024)))
+				fmt.Println(t.KeyValue("Modified", stat.ModTime().Format("2006-01-02 15:04")))
+			}
 			fmt.Println()
 
 			if info == nil {
@@ -84,6 +91,34 @@ Provide a full or partial path to the module.`,
 				fmt.Println()
 			}
 
+			// Show what imports this module
+			parents := findImporters(r.Result.AllModules, r.Parsed, mod.RelPath)
+			if len(parents) > 0 {
+				fmt.Println(t.Subsection("Imported By"))
+				for _, p := range parents {
+					fmt.Printf("  %s %s\n", t.Dim("←"), p)
+				}
+				fmt.Println()
+			}
+
+			// Show related modules in same domain
+			domain := filepath.Dir(mod.RelPath)
+			if domain != "." {
+				var related []string
+				for _, m := range r.Result.AllModules {
+					if filepath.Dir(m.RelPath) == domain && m.RelPath != mod.RelPath {
+						related = append(related, m.RelPath)
+					}
+				}
+				if len(related) > 0 {
+					fmt.Println(t.Subsection("Related Modules"))
+					for _, rel := range related {
+						fmt.Printf("  %s %s\n", t.Dim("•"), rel)
+					}
+					fmt.Println()
+				}
+			}
+
 			if info.IsAutoImport {
 				fmt.Println(t.Subsection("Auto-Import"))
 				fmt.Printf("  %s Uses auto-import pattern\n\n", t.Info("i"))
@@ -92,22 +127,13 @@ Provide a full or partial path to the module.`,
 			if info.DocHeader != "" {
 				fmt.Println(t.Subsection("Documentation"))
 				headerLines := strings.Split(info.DocHeader, "\n")
-				maxLines := 8
+				maxLines := 12
 				for i, line := range headerLines {
 					if i >= maxLines {
 						fmt.Printf("  %s  (+ %d more lines)\n", t.Dim("⋯"), len(headerLines)-maxLines)
 						break
 					}
 					fmt.Printf("  %s\n", t.Code(line))
-				}
-				fmt.Println()
-			}
-
-			parents := findImporters(r.Result.AllModules, r.Parsed, mod.RelPath)
-			if len(parents) > 0 {
-				fmt.Println(t.Subsection("Imported By"))
-				for _, p := range parents {
-					fmt.Printf("  %s %s\n", t.Dim("←"), p)
 				}
 				fmt.Println()
 			}

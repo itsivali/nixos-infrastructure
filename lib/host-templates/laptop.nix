@@ -133,4 +133,13 @@ in
     authorizedKeys = sshAuthorizedKeys;
     tailscaleOnly = true;
   };
+
+  ############################################################################
+  # OBSERVABILITY
+  ############################################################################
+  ivali.observability = {
+    enable = true;
+    healthEndpoint.enable = true;
+    exporters.enable = true;
+  };
 }

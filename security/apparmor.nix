@@ -239,15 +239,15 @@ in
   # Install custom AppArmor profiles via policies
   security.apparmor.policies = {
     "ivali-bot" = {
-      profile = builtins.readFile ivali-bot-profile;
+      path = ivali-bot-profile;
       state = "complain";
     };
     "ivali-cli" = {
-      profile = builtins.readFile ivali-cli-profile;
+      path = ivali-cli-profile;
       state = "complain";
     };
     "gitops-reconciler" = {
-      profile = builtins.readFile gitops-reconciler-profile;
+      path = gitops-reconciler-profile;
       state = "complain";
     };
   };

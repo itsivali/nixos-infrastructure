@@ -74,6 +74,33 @@ nix-check:
     - nix flake check --no-build
   extends: .common_rules
 
+nixos-dry-run:
+  stage: test
+  needs: ["nix-check"]
+  tags:
+    - nixos
+    - self-hosted
+  script:
+    - nixos-rebuild dry-run --flake .#prague
+  extends: .common_rules
+  allow_failure: true
+
+security-scan:
+  stage: test
+  needs: []
+  tags:
+    - nixos
+    - self-hosted
+  script:
+    - nix build .#packages.x86_64-linux.ivali --out-link ./ivali-bin
+    - ./ivali-bin/bin/ivali doctor 2>&1 | tee security-report.txt
+  artifacts:
+    when: always
+    paths:
+      - security-report.txt
+    expire_in: 30 days
+  extends: .common_rules
+
 # ============================================
 # BUILD
 # ============================================
@@ -100,6 +127,21 @@ nixos-build:
   script:
     - nix build ".#nixosConfigurations.prague.config.system.build.toplevel" --print-build-logs
   extends: .default_tags
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: on_success
+    - if: '$CI_COMMIT_BRANCH'
+      changes:
+        - .gitlab-ci.yml
+      when: on_success
+
+nixos-build-testvm:
+  stage: build
+  needs: ["nix-check"]
+  script:
+    - nix build ".#nixosConfigurations.testvm.config.system.build.toplevel" --print-build-logs
+  extends: .default_tags
+  allow_failure: true
   rules:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
       when: on_success

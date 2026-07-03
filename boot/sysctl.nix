@@ -63,20 +63,9 @@
     # that could be used for unauthorized reboots or memory dumps
     "kernel.sysrq" = 0;
 
-    # Disable module loading after boot — prevents runtime kernel
-    # module insertion that could introduce vulnerabilities
-    "kernel.modules_disabled" = 0;
-
     ##########################################################
     # Kernel — Additional Hardening
     ##########################################################
-
-    # Restrict unprivileged user namespaces — prevents namespace-based
-    # container escapes and privilege escalation
-    "kernel.unprivileged_userns_clone" = 0;
-
-    # Protect audit system configuration from unprivileged modification
-    "kernel.unprivileged_audit_access" = 0;
 
     # Disable user fault injection — prevents fault-based side-channel attacks
     "vm.unprivileged_userfaultfd" = 0;

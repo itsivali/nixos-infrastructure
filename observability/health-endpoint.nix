@@ -83,8 +83,8 @@ let
     fi
 
     # 4. Memory check
-    MEM_AVAIL=$(free -m | awk '/^Mem: {print $7}')
-    MEM_TOTAL=$(free -m | awk '/^Mem: {print $2}')
+    MEM_AVAIL=$(free -m | awk '/^Mem:/ {print $7}')
+    MEM_TOTAL=$(free -m | awk '/^Mem:/ {print $2}')
     MEM_PERCENT=$((100 - (MEM_AVAIL * 100 / MEM_TOTAL)))
     if [ "$MEM_PERCENT" -lt 80 ]; then
       add_check "memory" "pass" "''${MEM_PERCENT}% used (''${MEM_AVAIL}MB available)"

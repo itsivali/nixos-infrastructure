@@ -21,6 +21,8 @@
 # - journald.nix   — Persistent journald logging
 # - falco.nix      — Runtime security detection
 # - otel.nix       — OpenTelemetry collector
+# - alerting.nix   — Prometheus alerting rules
+# - dashboards.nix — Grafana dashboard provisioning
 #
 ##############################################################################
 

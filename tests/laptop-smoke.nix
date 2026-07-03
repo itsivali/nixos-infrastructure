@@ -10,7 +10,7 @@
 
 { pkgs }:
 
-pkgs.nixosTest {
+pkgs.testers.nixosTest {
   name = "laptop-smoke";
 
   nodes.machine = { ... }: {

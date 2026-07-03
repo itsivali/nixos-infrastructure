@@ -1,6 +1,6 @@
 { pkgs }:
 
-pkgs.nixosTest {
+pkgs.testers.nixosTest {
   name = "home-manager-smoke";
 
   nodes.machine = { pkgs, ... }: {

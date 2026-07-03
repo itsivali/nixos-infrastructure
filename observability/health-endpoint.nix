@@ -1,24 +1,155 @@
+##############################################################################
+#
+# Health Endpoint
+#
+# Purpose
+# -------
+# Lightweight HTTP health endpoint for deployment health checks.
+# Provides deep health checks for critical services.
+#
+# Ownership
+# ---------
+# systemd.services.health-endpoint
+#
+# Responsibilities
+# ----------------
+# - HTTP health check endpoint
+# - Deep service health checks
+# - Prometheus metrics exposure
+# - JSON health response
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let
   cfg = config.ivali.observability.healthEndpoint;
+  hostName = config.networking.hostName;
 
-  # Simple HTTP health endpoint
+  # Enhanced health check script with deep checks
   healthScript = pkgs.writeShellScript "health-endpoint" ''
     #!/bin/sh
     set -euo pipefail
 
     PORT="''${HEALTH_PORT:-9100}"
 
-    # Run health check
-    HEALTH_OUTPUT=$(${../scripts/deployment-health.sh} 2>&1) || true
+    # Initialize counters
+    PASS_COUNT=0
+    WARN_COUNT=0
+    FAIL_COUNT=0
+    CHECKS=""
 
-    # Count results
-    PASS_COUNT=$(echo "$HEALTH_OUTPUT" | grep -c '\[PASS\]' || echo 0)
-    WARN_COUNT=$(echo "$HEALTH_OUTPUT" | grep -c '\[WARN\]' || echo 0)
-    FAIL_COUNT=$(echo "$HEALTH_OUTPUT" | grep -c '\[FAIL\]' || echo 0)
+    # Helper function to add check result
+    add_check() {
+      local name="$1"
+      local status="$2"
+      local message="$3"
 
-    # Determine status
+      CHECKS="$CHECKS{\"name\":\"$name\",\"status\":\"$status\",\"message\":\"$message\"},"
+
+      case "$status" in
+        pass) PASS_COUNT=$((PASS_COUNT + 1)) ;;
+        warn) WARN_COUNT=$((WARN_COUNT + 1)) ;;
+        fail) FAIL_COUNT=$((FAIL_COUNT + 1)) ;;
+      esac
+    }
+
+    # 1. NixOS generation check
+    GEN=$(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}' || echo "0")
+    if [ "$GEN" -gt 0 ]; then
+      add_check "nixos_generation" "pass" "Generation $GEN"
+    else
+      add_check "nixos_generation" "warn" "Cannot determine generation"
+    fi
+
+    # 2. Systemd services check
+    FAILED_UNITS=$(systemctl list-units --failed --no-legend --no-pager 2>/dev/null | wc -l)
+    if [ "$FAILED_UNITS" -eq 0 ]; then
+      add_check "systemd_services" "pass" "No failed units"
+    elif [ "$FAILED_UNITS" -le 2 ]; then
+      add_check "systemd_services" "warn" "$FAILED_UNITS failed units"
+    else
+      add_check "systemd_services" "fail" "$FAILED_UNITS failed units"
+    fi
+
+    # 3. Disk space check
+    DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')
+    if [ "$DISK_USAGE" -lt 80 ]; then
+      add_check "disk_space" "pass" "''${DISK_USAGE}% used"
+    elif [ "$DISK_USAGE" -lt 90 ]; then
+      add_check "disk_space" "warn" "''${DISK_USAGE}% used"
+    else
+      add_check "disk_space" "fail" "''${DISK_USAGE}% used"
+    fi
+
+    # 4. Memory check
+    MEM_AVAIL=$(free -m | awk '/^Mem: {print $7}')
+    MEM_TOTAL=$(free -m | awk '/^Mem: {print $2}')
+    MEM_PERCENT=$((100 - (MEM_AVAIL * 100 / MEM_TOTAL)))
+    if [ "$MEM_PERCENT" -lt 80 ]; then
+      add_check "memory" "pass" "''${MEM_PERCENT}% used (''${MEM_AVAIL}MB available)"
+    elif [ "$MEM_PERCENT" -lt 90 ]; then
+      add_check "memory" "warn" "''${MEM_PERCENT}% used (''${MEM_AVAIL}MB available)"
+    else
+      add_check "memory" "fail" "''${MEM_PERCENT}% used (''${MEM_AVAIL}MB available)"
+    fi
+
+    # 5. Network connectivity check
+    if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+      add_check "network" "pass" "Internet reachable"
+    else
+      add_check "network" "fail" "Internet unreachable"
+    fi
+
+    # 6. Tailscale check
+    if systemctl is-active --quiet tailscaled 2>/dev/null; then
+      TS_IP=$(tailscale ip -4 2>/dev/null || echo "unknown")
+      add_check "tailscale" "pass" "Connected ($TS_IP)"
+    else
+      add_check "tailscale" "warn" "Tailscaled not running"
+    fi
+
+    # 7. Nginx check (if enabled)
+    if systemctl is-active --quiet nginx 2>/dev/null; then
+      add_check "nginx" "pass" "Running"
+    elif systemctl is-enabled --quiet nginx 2>/dev/null; then
+      add_check "nginx" "fail" "Enabled but not running"
+    else
+      add_check "nginx" "pass" "Not enabled"
+    fi
+
+    # 8. SSH check
+    if systemctl is-active --quiet sshd 2>/dev/null; then
+      add_check "ssh" "pass" "Running"
+    else
+      add_check "ssh" "warn" "SSHD not running"
+    fi
+
+    # 9. Prometheus check
+    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9090/-/healthy | grep -q "200"; then
+      add_check "prometheus" "pass" "Healthy"
+    else
+      add_check "prometheus" "warn" "Not responding"
+    fi
+
+    # 10. Grafana check
+    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/health | grep -q "200"; then
+      add_check "grafana" "pass" "Healthy"
+    else
+      add_check "grafana" "warn" "Not responding"
+    fi
+
+    # 11. Loki check
+    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3100/ready | grep -q "200"; then
+      add_check "loki" "pass" "Ready"
+    else
+      add_check "loki" "warn" "Not responding"
+    fi
+
+    # Remove trailing comma from checks
+    CHECKS="''${CHECKS%,}"
+
+    # Determine overall status
     if [ "$FAIL_COUNT" -gt 0 ]; then
       STATUS="degraded"
       HTTP_CODE="503"
@@ -34,21 +165,23 @@ let
     RESPONSE=$(cat <<EOF
     {
       "status": "$STATUS",
-      "host": "${config.networking.hostName}",
+      "host": "${hostName}",
       "checks": {
         "pass": $PASS_COUNT,
         "warn": $WARN_COUNT,
         "fail": $FAIL_COUNT
       },
+      "details": [$CHECKS],
       "uptime": $(awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0),
-      "generation": $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}' || echo 0),
+      "generation": $GEN,
       "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
     }
     EOF
     )
 
     # Write last check timestamp
-    touch /tmp/deployment-health-last-ok 2>/dev/null || true
+    mkdir -p /var/lib/health-endpoint
+    date +%s > /var/lib/health-endpoint/last-check
 
     # Simple HTTP response
     echo "HTTP/1.1 $HTTP_CODE OK"
@@ -67,6 +200,12 @@ in
       type = lib.types.port;
       default = 9100;
       description = "Port for the health endpoint";
+    };
+
+    enableDeepChecks = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Enable deep health checks for all services";
     };
   };
 

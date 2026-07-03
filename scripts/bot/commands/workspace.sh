@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # commands/workspace.sh — /workspace next|prev|N — workspace switching
+# Uses GNOME Shell DBus API (works natively on Wayland)
 ##############################################################################
 
 _cmd_workspace() {
@@ -12,20 +13,34 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
     return
   fi
 
+  # Get current workspace index via GNOME Shell DBus
   local current
-  current="$(wmctrl -d 2>/dev/null | awk '/\* /{print $1}')" || true
+  current="$(gdbus call --session \
+    --dest org.gnome.Shell \
+    --object-path /org/gnome/Shell \
+    --method org.gnome.Shell.Eval \
+    'global.workspace_manager.get_active_workspace_index()' 2>/dev/null)" || true
+  current="$(echo "$current" | grep -oP '\d+')"
 
   case "$args" in
     next)
       if [[ -n "$current" ]]; then
         local next_ws=$(( current + 1 ))
-        # Wrap around
         local total
-        total="$(wmctrl -d 2>/dev/null | wc -l)" || true
-        if (( next_ws >= total )); then
+        total="$(gdbus call --session \
+          --dest org.gnome.Shell \
+          --object-path /org/gnome/Shell \
+          --method org.gnome.Shell.Eval \
+          'global.workspace_manager.get_n_workspaces()' 2>/dev/null)" || true
+        total="$(echo "$total" | grep -oP '\d+')"
+        if [[ -n "$total" ]] && (( next_ws >= total )); then
           next_ws=0
         fi
-        wmctrl -s "$next_ws" 2>/dev/null
+        gdbus call --session \
+          --dest org.gnome.Shell \
+          --object-path /org/gnome/Shell \
+          --method org.gnome.Shell.Eval \
+          "global.workspace_manager.get_workspace_by_index(${next_ws}).activate(global.get_current_time())" 2>/dev/null
         send_msg "$chat" "🖥 Workspace → ${next_ws}"
       else
         send_msg "$chat" "❌ Could not detect current workspace."
@@ -36,10 +51,19 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
         local prev_ws=$(( current - 1 ))
         if (( prev_ws < 0 )); then
           local total
-          total="$(wmctrl -d 2>/dev/null | wc -l)" || true
-          prev_ws=$(( total - 1 ))
+          total="$(gdbus call --session \
+            --dest org.gnome.Shell \
+            --object-path /org/gnome/Shell \
+            --method org.gnome.Shell.Eval \
+            'global.workspace_manager.get_n_workspaces()' 2>/dev/null)" || true
+          total="$(echo "$total" | grep -oP '\d+')"
+          prev_ws=$(( ${total:-1} - 1 ))
         fi
-        wmctrl -s "$prev_ws" 2>/dev/null
+        gdbus call --session \
+          --dest org.gnome.Shell \
+          --object-path /org/gnome/Shell \
+          --method org.gnome.Shell.Eval \
+          "global.workspace_manager.get_workspace_by_index(${prev_ws}).activate(global.get_current_time())" 2>/dev/null
         send_msg "$chat" "🖥 Workspace → ${prev_ws}"
       else
         send_msg "$chat" "❌ Could not detect current workspace."
@@ -47,7 +71,11 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
       ;;
     [0-9]*)
       local target="$args"
-      wmctrl -s "$target" 2>/dev/null
+      gdbus call --session \
+        --dest org.gnome.Shell \
+        --object-path /org/gnome/Shell \
+        --method org.gnome.Shell.Eval \
+        "global.workspace_manager.get_workspace_by_index(${target}).activate(global.get_current_time())" 2>/dev/null
       send_msg "$chat" "🖥 Workspace → ${target}"
       ;;
     *)

@@ -23,6 +23,9 @@ _cmd_help() {
     gitlab|gl)
       _help_gitlab "$chat"
       ;;
+    github|gh)
+      _help_github "$chat"
+      ;;
     *)
       _help_main "$chat"
       ;;
@@ -87,6 +90,12 @@ _NixOS GitOps bot · long-poll session active_
 \`/gitlab trigger\`    Trigger a pipeline
 \`/gitlab mr\`         List merge requests
 
+🐙 *GitHub*
+\`/github status\`     Repository + latest action
+\`/github actions\`    Recent workflow runs
+\`/github issues\`     Open issues
+\`/github prs\`        Open pull requests
+
 ℹ️ \`/help\`  \`/menu\`  Show this menu
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 _Run \`/help <category>\` for detailed help_
@@ -94,7 +103,7 @@ _Example: \`/help deployment\` or \`/help desktop\`_
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔒 Authorized chat only · replies may be split across messages"
 
-  send_keyboard "$chat" "$out" "/status" "/health" "/metrics" "/deploy" "/rollback" "/help"
+  send_keyboard "$chat" "$out" "/status" "/health" "/metrics" "/deploy" "/rollback" "/help" "/github"
 }
 
 _help_deployment() {
@@ -294,6 +303,28 @@ Trigger a new pipeline on main branch.
 
 \`/gitlab mr\`
 List open merge requests.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+_Run \`/help\` to see all categories_"
+
+  send_msg "$chat" "$out"
+}
+
+_help_github() {
+  local out="🐙 *GitHub Commands*
+━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+\`/github status\`
+Show repository info and latest workflow run.
+
+\`/github actions\`
+List recent workflow runs with status.
+
+\`/github issues\`
+List open issues.
+
+\`/github prs\`
+List open pull requests.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 _Run \`/help\` to see all categories_"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# commands/desktop_power.sh — /lock, /logout, /suspend, /hibernate, /monitor-off, /monitor-on
+# commands/desktop_power.sh — /lock, /logout, /suspend, /hibernate, /monitoroff, /monitoron
+# Uses GNOME Shell DBus API for display power management (Wayland-native)
 ##############################################################################
 
 _cmd_lock() {
@@ -22,33 +23,28 @@ _cmd_suspend() {
 
 _cmd_hibernate() {
   local chat="$1" args="$2"
-  send_msg "$chat" "ibernating…"
+  send_msg "$chat" "❄️ Hibernating…"
   systemctl hibernate 2>/dev/null
 }
 
 _cmd_monitor_off() {
   local chat="$1" args="$2"
-  # Try GNOME DPMS via xset (works through XWayland)
-  local -a env_args
-  if session_env_args "$chat" env_args; then
-    sudo -u "${DEFAULT_USER}" env "${env_args[@]}" \
-      xset dpms force off 2>/dev/null
-    send_msg "$chat" "🖥 Display off."
-  else
-    send_msg "$chat" "❌ No session available."
-  fi
+  # Use GNOME Shell DBus to activate screen blank (Wayland-native)
+  gdbus call --session \
+    --dest org.gnome.ScreenSaver \
+    --object-path /org/gnome/ScreenSaver \
+    --method org.gnome.ScreenSaver.SetActive true 2>/dev/null
+  send_msg "$chat" "🖥 Display off."
 }
 
 _cmd_monitor_on() {
   local chat="$1" args="$2"
-  local -a env_args
-  if session_env_args "$chat" env_args; then
-    sudo -u "${DEFAULT_USER}" env "${env_args[@]}" \
-      xset dpms force on 2>/dev/null
-    send_msg "$chat" "🖥 Display on."
-  else
-    send_msg "$chat" "❌ No session available."
-  fi
+  # Use GNOME Shell DBus to deactivate screen blank (Wayland-native)
+  gdbus call --session \
+    --dest org.gnome.ScreenSaver \
+    --object-path /org/gnome/ScreenSaver \
+    --method org.gnome.ScreenSaver.SetActive false 2>/dev/null
+  send_msg "$chat" "🖥 Display on."
 }
 
 register_command "lock" "_cmd_lock" "🔒 Lock screen"

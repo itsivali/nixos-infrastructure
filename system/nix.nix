@@ -26,7 +26,7 @@
     settings = {
       experimental-features = [ "nix-command" "flakes" ];
       auto-optimise-store = true;
-      trusted-users = [ "root" username ];
+      trusted-users = [ "root" username "gitlab-runner" ];
       substituters = [ "https://cache.nixos.org" ];
       warn-dirty = false;
     };

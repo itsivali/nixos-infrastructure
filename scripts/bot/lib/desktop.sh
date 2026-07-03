@@ -3,7 +3,7 @@
 #
 # Dependencies: lib/telegram.sh, lib/core.sh (log)
 # Provides:     detect_session, require_session, validate_binary, launch_app,
-#               gnome_dbus, session_env_args
+#               gnome_dbus, session_env_args, resolve_binary
 ##############################################################################
 
 # Detect the running graphical session's environment variables for a user.
@@ -73,13 +73,22 @@ launch_app() {
   local chat="$1" cmdline="$2"
   local bin="${cmdline%% *}"
 
-  validate_binary "$chat" "$bin" || return 1
+  # Resolve binary to full store path (avoids PATH issues under sudo -u)
+  local resolved_bin
+  resolved_bin="$(resolve_binary "$bin")" || true
+  if [[ -z "$resolved_bin" ]]; then
+    send_msg "$chat" "❌ \`${bin}\` not found on ${HOST}."
+    return 1
+  fi
 
   local -a env_args
   session_env_args "$chat" env_args || return 1
 
+  # Replace the binary name with the resolved path in the command line
+  local resolved_cmdline="${resolved_bin}${cmdline#"$bin"}"
+
   local -a args_array
-  read -ra args_array <<< "$cmdline"
+  read -ra args_array <<< "$resolved_cmdline"
 
   sudo -u "${DEFAULT_USER}" env "${env_args[@]}" \
     bash -c 'nohup "$@" >/dev/null 2>&1 & disown' _ "${args_array[@]}"
@@ -94,13 +103,20 @@ launch_systemd() {
   local chat="$1" cmdline="$2"
   local bin="${cmdline%% *}"
 
-  validate_binary "$chat" "$bin" || return 1
+  # Resolve binary to full store path
+  local resolved_bin
+  resolved_bin="$(resolve_binary "$bin")" || true
+  if [[ -z "$resolved_bin" ]]; then
+    send_msg "$chat" "❌ \`${bin}\` not found on ${HOST}."
+    return 1
+  fi
 
   local -a env_args
   session_env_args "$chat" env_args || return 1
 
+  local resolved_cmdline="${resolved_bin}${cmdline#"$bin"}"
   local -a args_array
-  read -ra args_array <<< "$cmdline"
+  read -ra args_array <<< "$resolved_cmdline"
 
   # Try systemd-run first
   if sudo -u "${DEFAULT_USER}" env "${env_args[@]}" \
@@ -113,11 +129,29 @@ launch_systemd() {
   launch_app "$chat" "$cmdline"
 }
 
+# Resolve a binary to its full store path.
+# The bot runs as root and /run/current-system/sw/bin is always available.
+# This avoids PATH issues when running commands as DEFAULT_USER via sudo.
+# Usage: bin_path="$(resolve_binary "grim")"
+resolve_binary() {
+  local bin="$1"
+  local sys_path="/run/current-system/sw/bin/${bin}"
+  if [[ -x "$sys_path" ]]; then
+    echo "$sys_path"
+    return 0
+  fi
+  # Fallback: try user profile (may fail if profile dirs not in PATH)
+  local uid
+  uid="$(id -u "${DEFAULT_USER}" 2>/dev/null || echo '1000')"
+  sudo -u "${DEFAULT_USER}" env XDG_RUNTIME_DIR="/run/user/${uid}" \
+    command -v "$bin" 2>/dev/null
+}
+
 # Call a GNOME Shell DBus method.
-# Usage: gnome_dbus "org.gnome.ScreenSaver" "/org/gnome/ScreenSaver" "Lock"
+# Usage: gnome_dbus "org.gnome.Shell" "/org/gnome/Shell" "Eval" "global.get_window_actors().length"
 gnome_dbus() {
   local dest="$1" path="$2" method="$3"
   shift 3
   gdbus call --session --dest "$dest" --object-path "$path" \
-    --method "$dest.$method" "$@" 2>/dev/null || true
+    --method "${dest}.${method}" "$@" 2>/dev/null || true
 }

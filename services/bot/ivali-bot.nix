@@ -85,12 +85,11 @@ in
         zed-editor
 
         # Desktop control
-        wmctrl
-        grim
+        gnome-screenshot
         brightnessctl
         libnotify
         wireplumber
-        xset
+        glib          # provides gdbus for GNOME Shell DBus calls
 
         # Clipboard
         wl-clipboard

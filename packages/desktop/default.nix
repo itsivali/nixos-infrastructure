@@ -10,4 +10,5 @@ with pkgs; [
   firefox
   libreoffice-fresh
   stremio-linux-shell
+  gnome-screenshot
 ]

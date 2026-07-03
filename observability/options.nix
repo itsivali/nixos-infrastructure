@@ -45,5 +45,9 @@ in
       default = "http://${lokiListenAddress}:${toString lokiPort}/loki/api/v1/push";
       description = "Loki push endpoint for Grafana Alloy.";
     };
+
+    exporters.enable = lib.mkEnableOption "NixOS Prometheus exporter";
+
+    healthEndpoint.enable = lib.mkEnableOption "Health check HTTP endpoint";
   };
 }

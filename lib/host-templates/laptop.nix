@@ -142,4 +142,9 @@ in
     healthEndpoint.enable = true;
     exporters.enable = true;
   };
+
+  ############################################################################
+  # SECURITY SCANNING
+  ############################################################################
+  ivali.security.scanning.enable = true;
 }

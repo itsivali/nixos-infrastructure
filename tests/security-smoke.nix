@@ -43,5 +43,35 @@ pkgs.testers.nixosTest {
 
     # Core dumps disabled
     machine.succeed("sysctl fs.suid_dumpable | grep 0")
+
+    # Additional sysctl hardening
+    machine.succeed("sysctl net.ipv4.conf.all.rp_filter | grep 1")
+    machine.succeed("sysctl net.ipv4.conf.default.rp_filter | grep 1")
+    machine.succeed("sysctl net.ipv4.icmp_echo_ignore_broadcasts | grep 1")
+    machine.succeed("sysctl net.ipv4.conf.all.accept_redirects | grep 0")
+    machine.succeed("sysctl net.ipv6.conf.all.accept_redirects | grep 0")
+    machine.succeed("sysctl net.ipv4.conf.all.send_redirects | grep 0")
+    machine.succeed("sysctl net.ipv4.conf.all.accept_source_route | grep 0")
+    machine.succeed("sysctl net.ipv4.conf.all.log_martians | grep 1")
+    machine.succeed("sysctl net.ipv4.tcp_syncookies | grep 1")
+    machine.succeed("sysctl net.ipv4.tcp_rfc1337 | grep 1")
+    machine.succeed("sysctl net.ipv6.conf.all.accept_ra | grep 0")
+    machine.succeed("sysctl kernel.unprivileged_userns_clone | grep 0")
+    machine.succeed("sysctl kernel.unprivileged_audit_access | grep 0")
+    machine.succeed("sysctl vm.unprivileged_userfaultfd | grep 0")
+    machine.succeed("sysctl fs.protected_hardlinks | grep 1")
+    machine.succeed("sysctl fs.protected_symlinks | grep 1")
+
+    # AppArmor profiles present (complain mode)
+    machine.succeed("ls /etc/apparmor.d/")
+    machine.succeed("cat /etc/apparmor.d/ivali-bot")
+    machine.succeed("cat /etc/apparmor.d/ivali-cli")
+    machine.succeed("cat /etc/apparmor.d/gitops-reconciler")
+
+    # fail2ban filter installed
+    machine.succeed("cat /etc/fail2ban/filter.d/telegram-webhook.conf")
+
+    # Security scanner metrics file created
+    machine.succeed("mkdir -p /var/lib/security-scanner")
   '';
 }

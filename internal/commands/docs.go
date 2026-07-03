@@ -4,21 +4,27 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
 	"github.com/willisivali/nixos-infrastructure/internal/repository"
+	"github.com/willisivali/nixos-infrastructure/internal/scanner"
 	"github.com/willisivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdDocs(a *app.App) *cobra.Command {
-	return &cobra.Command{
+	var generateCodex bool
+
+	cmd := &cobra.Command{
 		Use:   "docs [module]",
 		Short: "Generate project documentation",
 		Long: `Generate Markdown documentation from module doc headers.
 With a module argument, show docs for that specific module.
-Without arguments, generate a full project DOCS.md file.`,
+Without arguments, generate a full project DOCS.md file.
+
+Use --codex to also generate opencode/modules.md catalog.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !a.RequireRepo() {
@@ -54,9 +60,20 @@ Without arguments, generate a full project DOCS.md file.`,
 				return nil
 			}
 
-			return writeDocs(t, r)
+			if err := writeDocs(t, r); err != nil {
+				return err
+			}
+
+			if generateCodex {
+				return writeCodexModules(t, r)
+			}
+
+			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&generateCodex, "codex", false, "Also generate opencode/modules.md catalog")
+	return cmd
 }
 
 type modDoc struct {
@@ -102,6 +119,78 @@ func writeDocs(t *terminal.Terminal, r *repository.Repository) error {
 	docPath := filepath.Join(r.Root, "DOCS.md")
 	if err := os.WriteFile(docPath, []byte(b.String()), 0644); err != nil {
 		return fmt.Errorf("write docs: %w", err)
+	}
+
+	fmt.Printf("  %s %s\n", t.Good("✓"), t.Dim("Generated "+docPath))
+	fmt.Println()
+	return nil
+}
+
+func writeCodexModules(t *terminal.Terminal, r *repository.Repository) error {
+	// Group modules by domain
+	domains := make(map[string][]scanner.Module)
+	for _, m := range r.Result.AllModules {
+		parts := strings.SplitN(m.RelPath, "/", 2)
+		domain := parts[0]
+		domains[domain] = append(domains[domain], m)
+	}
+
+	// Sort domains
+	var sortedDomains []string
+	for d := range domains {
+		sortedDomains = append(sortedDomains, d)
+	}
+	sort.Strings(sortedDomains)
+
+	var b strings.Builder
+	b.WriteString("# Module Catalog\n\n")
+	b.WriteString("## NixOS Domain Modules\n\n")
+	b.WriteString("| Domain | Location | Key Files |\n")
+	b.WriteString("|--------|----------|-----------|\n")
+
+	for _, domain := range sortedDomains {
+		mods := domains[domain]
+		// Find key files (not default.nix, not _ prefixed)
+		var keyFiles []string
+		for _, m := range mods {
+			base := filepath.Base(m.RelPath)
+			if base != "default.nix" && !strings.HasPrefix(base, "_") {
+				keyFiles = append(keyFiles, base)
+			}
+		}
+		if len(keyFiles) > 5 {
+			keyFiles = keyFiles[:5]
+			keyFiles = append(keyFiles, "...")
+		}
+		b.WriteString(fmt.Sprintf("| **%s** | `%s/` | %s |\n", domain, domain, strings.Join(keyFiles, ", ")))
+	}
+
+	b.WriteString("\n## Home Manager Modules\n\n")
+	b.WriteString("| Module | Location | Purpose |\n")
+	b.WriteString("|--------|----------|---------|\n")
+
+	for _, domain := range sortedDomains {
+		mods := domains[domain]
+		for _, m := range mods {
+			if strings.HasPrefix(m.RelPath, "home/") {
+				info, ok := r.Parsed[m.Path]
+				purpose := ""
+				if ok && info.Purpose != "" {
+					purpose = info.Purpose
+				} else {
+					purpose = strings.TrimSuffix(filepath.Base(m.RelPath), ".nix")
+				}
+				if len(purpose) > 40 {
+					purpose = purpose[:37] + "..."
+				}
+				b.WriteString(fmt.Sprintf("| %s | `%s` | %s |\n", strings.TrimSuffix(filepath.Base(m.RelPath), ".nix"), m.RelPath, purpose))
+			}
+		}
+	}
+
+	docPath := filepath.Join(r.Root, "opencode", "modules.md")
+	if err := os.WriteFile(docPath, []byte(b.String()), 0644); err != nil {
+		return fmt.Errorf("write codex modules: %w", err)
 	}
 
 	fmt.Printf("  %s %s\n", t.Good("✓"), t.Dim("Generated "+docPath))

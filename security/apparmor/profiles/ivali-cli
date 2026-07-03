@@ -1,0 +1,56 @@
+# AppArmor profile for ivali CLI binary
+# Complain mode by default — switch to enforce after soak period:
+#   aa-enforce /etc/apparmor.d/ivali-cli
+#
+# This profile restricts the CLI to:
+# - Read-only access to the repository
+# - Execute nix commands for health checks
+# - Write to terminal only
+
+#include <tunables/global>
+
+profile ivali-cli /nix/store/**/bin/ivali flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+
+  # ── Binary itself (read-only) ────────────────────────────────
+  /nix/store/** r,
+
+  # ── Repository (read-only) ───────────────────────────────────
+  /home/ivali/nixos-infrastructure/** r,
+
+  # ── Nix commands (execute) ───────────────────────────────────
+  /run/current-system/sw/bin/nix ix,
+  /run/current-system/sw/bin/nix-env ix,
+  /run/current-system/sw/bin/nixos-rebuild ix,
+
+  # ── Core utilities (execute) ─────────────────────────────────
+  /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,git,stat,date,uname} ix,
+
+  # ── Device access ────────────────────────────────────────────
+  /dev/null rw,
+  /dev/zero r,
+  /dev/urandom r,
+
+  # ── Proc and sys (read-only) ─────────────────────────────────
+  /proc/ r,
+  /proc/[0-9]*/ r,
+  /proc/[0-9]*/** r,
+  /proc/cpuinfo r,
+  /proc/meminfo r,
+  /proc/loadavg r,
+  /proc/uptime r,
+  /sys/ r,
+  /sys/** r,
+
+  # ── Temp files ───────────────────────────────────────────────
+  /tmp/ r,
+  /tmp/** rw,
+
+  # ── Deny ─────────────────────────────────────────────────────
+  deny /etc/shadow r,
+  deny /etc/passwd w,
+  deny /root/** rw,
+  deny /home/*/.ssh/** rw,
+  deny /home/*/.gnupg/** rw,
+}

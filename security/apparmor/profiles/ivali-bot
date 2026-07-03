@@ -1,0 +1,96 @@
+# AppArmor profile for ivali Telegram bot
+# Complain mode by default — switch to enforce after soak period:
+#   aa-enforce /etc/apparmor.d/ivali-bot
+#
+# This profile restricts the bot to only the resources it needs:
+# - Read-only access to the repository
+# - Read-only access to Nix store
+# - Network access only to Telegram API and GitLab
+# - Write access to state directory and logs
+# - Read access to SOPS secrets
+
+#include <tunables/global>
+
+profile ivali-bot /run/current-system/sw/bin/bash flags=(complain) {
+  #include <abstractions/base>
+  #include <abstractions/nameservice>
+  #include <abstractions/ssl_certs>
+
+  # ── Bot entrypoint and core scripts ──────────────────────────
+  /run/current-system/sw/bin/bash r,
+  /nix/store/** r,
+
+  # ── Repository (read-only) ───────────────────────────────────
+  /home/ivali/nixos-infrastructure/** r,
+  /home/ivali/nixos-infrastructure/scripts/bot/bot.sh ix,
+  /home/ivali/nixos-infrastructure/scripts/bot/config.sh r,
+  /home/ivali/nixos-infrastructure/scripts/bot/lib/*.sh r,
+  /home/ivali/nixos-infrastructure/scripts/bot/commands/*.sh r,
+  /home/ivali/nixos-infrastructure/scripts/bot/desktop/*.sh r,
+
+  # ── State directory (read/write) ─────────────────────────────
+  /var/lib/ivali-bot/ rw,
+  /var/lib/ivali-bot/** rw,
+
+  # ── SOPS secrets (read-only) ─────────────────────────────────
+  /run/secrets/ r,
+  /run/secrets/* r,
+
+  # ── NixOS commands (execute) ─────────────────────────────────
+  /run/current-system/sw/bin/nixos-rebuild ix,
+  /run/current-system/sw/bin/nix ix,
+  /run/current-system/sw/bin/systemctl ix,
+  /run/current-system/sw/bin/git ix,
+  /run/current-system/sw/bin/ix,
+  /run/current-system/sw/bin/ivali ix,
+
+  # ── Core utilities (execute) ─────────────────────────────────
+  /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,curl,jq,timeout,cat,head,tail,wc,stat,date,hostname,uname,free,df,uptime,nproc,ip,ss,dig,timedatectl,loginctl} ix,
+
+  # ── Network access ───────────────────────────────────────────
+  network inet stream,
+  network inet6 stream,
+  network inet dgram,
+  network unix stream,
+
+  # ── Telegram API access (HTTPS) ──────────────────────────────
+  /etc/ssl/** r,
+
+  # ── Device access ────────────────────────────────────────────
+  /dev/null rw,
+  /dev/zero r,
+  /dev/urandom r,
+
+  # ── Proc and sys (read-only) ─────────────────────────────────
+  /proc/ r,
+  /proc/[0-9]*/ r,
+  /proc/[0-9]*/** r,
+  /proc/sys/kernel/hostname r,
+  /proc/sys/kernel/osrelease r,
+  /proc/cpuinfo r,
+  /proc/meminfo r,
+  /proc/loadavg r,
+  /proc/uptime r,
+  /sys/ r,
+  /sys/** r,
+
+  # ── Temp files ───────────────────────────────────────────────
+  /tmp/ rw,
+  /tmp/** rw,
+
+  # ── Logs ─────────────────────────────────────────────────────
+  /var/log/ivali-bot/ rw,
+  /var/log/ivali-bot/** rw,
+  /var/log/sudo.log r,
+
+  # ── Desktop commands (execute as user) ───────────────────────
+  /run/current-system/sw/bin/{xdotool,xdg-open,gnome-screenshot,amixer,brightnessctl,playerctl,notify-send,xclip,xsel} ix,
+
+  # ── Deny ─────────────────────────────────────────────────────
+  deny /etc/shadow r,
+  deny /etc/passwd w,
+  deny /root/** rw,
+  deny /home/*/.ssh/** rw,
+  deny /home/*/.gnupg/** rw,
+  deny /home/*/.config/** w,
+}

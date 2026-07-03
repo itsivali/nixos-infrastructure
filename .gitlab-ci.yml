@@ -168,13 +168,13 @@ notify:
   stage: notify
   needs: ["deploy"]
   script:
-    - cat > /tmp/ci-notify.env <<EOF
-PIPELINE_BRANCH='$CI_COMMIT_BRANCH'
-PIPELINE_SHA='$CI_COMMIT_SHORT_SHA'
-PIPELINE_AUTHOR='$CI_COMMIT_AUTHOR'
-PIPELINE_MESSAGE='$CI_COMMIT_MESSAGE'
-PIPELINE_URL='$CI_PIPELINE_URL'
-EOF
+    - cat > /tmp/ci-notify.env <<'EOF'
+    PIPELINE_BRANCH=$CI_COMMIT_BRANCH
+    PIPELINE_SHA=$CI_COMMIT_SHORT_SHA
+    PIPELINE_AUTHOR=$CI_COMMIT_AUTHOR
+    PIPELINE_MESSAGE=$CI_COMMIT_MESSAGE
+    PIPELINE_URL=$CI_PIPELINE_URL
+    EOF
     - sudo systemctl start ci-notify.service
   extends: .default_tags
   rules:

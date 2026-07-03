@@ -1,0 +1,149 @@
+# AGENTS.md
+
+This file provides context for AI agents (Codex, Copilot, Claude, etc.) working on this repository.
+
+## What This Repository Is
+
+Autonomous NixOS + Home Manager infrastructure for a single-user laptop.
+Declarative, reproducible, self-healing, GitOps-driven, Telegram-controlled.
+
+**Primary host:** `prague` (AMD laptop, NixOS 26.11)
+**Owner:** Willis Ivali (`ivali`)
+
+## Architecture at a Glance
+
+```
+flake.nix
+├── hosts/hosts.nix          ← host registry (declarative host specs)
+├── configuration.nix         ← top-level module registry (auto-imports everything)
+├── lib/host-templates/       ← NixOS host templates (laptop.nix generates full config)
+├── security/                 ← SOPS secrets, Tailscale, firewall, hardening
+├── boot/                     ← kernel, systemd-boot, sysctl tuning
+├── networking/               ← NetworkManager, DNS, timezone
+├── desktop/                  ← GNOME lean, GPU acceleration
+├── observability/            ← Prometheus, Grafana, Loki, Alloy, Falco
+├── recovery/                 ← health checks, rollback, self-heal
+├── automation/               ← GitOps reconciler, Telegram bot, CI
+├── developer/                ← Go, Node, Python, Flutter toolchains
+├── services/                 ← msmtp, bot, nginx, postgres, redis
+├── home/                     ← Home Manager (shell, git, editors, fonts, services)
+├── packages/                 ← CLI, desktop, system, user package sets
+├── lib/                      ← Nix helpers (auto-imports, hardware detection)
+├── scripts/                  ← Shell scripts (deploy, health, rollback, bot)
+├── internal/                 ← Go CLI (ivali) source code
+├── tests/                    ← NixOS smoke tests
+└── docs/                     ← Generated documentation
+```
+
+## How Modules Work
+
+Every top-level directory with a `default.nix` is auto-imported by `configuration.nix`
+via `lib/auto-imports.nix`. No manual registration needed.
+
+**To add a new domain module:**
+1. Create `newdomain/default.nix`
+2. It will be auto-discovered on next rebuild
+
+**To skip a file from auto-import:**
+- Prefix with `_` (e.g., `_common.nix`)
+
+**To add a module within an existing domain:**
+1. Create `domain/submodule.nix`
+2. Import it in `domain/default.nix` (for ordered imports)
+
+## Host Management
+
+Hosts are defined in `hosts/hosts.nix` as a Nix attrset. Each host entry specifies:
+- `hostName`, `userName`, `repoPath`
+- `tags` (Tailscale ACL), `tailnetDomain`
+- `features` (secrets, gitlabRunner, bot, tailscale, ssh)
+- `config` (extra NixOS overrides)
+
+The flake generates `nixosConfigurations` dynamically from this registry.
+The template `lib/host-templates/laptop.nix` reads `hostSpec` from `specialArgs`
+and generates the full NixOS configuration.
+
+**To add a new host:**
+1. Add entry to `hosts/hosts.nix`
+2. Create `hosts/<name>/hardware-configuration.nix`
+3. Run `nixos-rebuild switch --flake .#<name>`
+
+## Key Commands
+
+### NixOS
+```bash
+sudo nixos-rebuild switch --flake .#prague    # Apply system config
+nix flake check --no-build                     # Validate flake
+nix fmt                                        # Format all .nix files
+```
+
+### Go CLI
+```bash
+ivali status          # Repository state summary
+ivali doctor          # Full health check
+ivali doctor --fix    # Auto-fix issues
+ivali docs            # Generate DOCS.md from module headers
+ivali explain <mod>   # Explain a module
+ivali graph tree      # Import hierarchy
+ivali dashboard       # Interactive TUI
+ivali bootstrap host  # Generate new host config
+```
+
+### Scripts
+```bash
+scripts/deployment-health.sh    # Health check
+scripts/rollback.sh             # Rollback to previous generation
+scripts/gitops-reconcile.sh     # Pull + rebuild + verify
+```
+
+### Telegram Bot
+```
+/status    /health    /deploy    /rollback
+/update    /reboot    /shutdown  /cancel
+/open      /apps      /run       /git
+/screenshot /volume   /brightness /clipboard
+```
+
+## Secrets
+
+All secrets use SOPS with age encryption. Encrypted files in `secrets/`:
+- `secrets/tailscale.yaml` — Tailscale auth key, Grafana secret
+- `secrets/gitlab-runner.yaml` — GitLab Runner registration token
+- `secrets/telegram.yaml` — Bot token, chat ID, email
+- `secrets/gitlab.yaml` — GitLab API token
+- `secrets/hosts/<name>.yaml` — Per-host secrets
+
+Runtime secrets are at `/run/secrets/` (symlinked by sops-nix).
+
+## CI/CD
+
+GitLab CI pipeline (`.gitlab-ci.yml`):
+1. **test** — Go tests, nix flake check
+2. **build** — NixOS toplevel, Home Manager activation
+3. **deploy** — Manual trigger, runs `ci-deploy.service`
+4. **notify** — Sends Telegram + email notification
+
+## Conventions
+
+- **Doc headers**: Every `.nix` module should have a standard doc header with
+  Purpose, Ownership, Responsibilities, Usage sections
+- **Options**: Declare in `options.nix`, implement in sibling files
+- **Barrel modules**: Each domain has `default.nix` that imports sub-modules
+- **Private files**: Prefix with `_` to skip auto-import
+- **SOPS paths**: Use `/run/secrets/<name>` in NixOS modules
+- **Home Manager**: User configs in `home/`, wired via flake.nix extraSpecialArgs
+
+## Testing
+
+- `nixos-rebuild switch --flake .#prague` — full system rebuild
+- `nix flake check --no-build` — flake validation
+- `go test ./...` — Go unit tests
+- `tests/laptop-smoke.nix` — NixOS VM smoke test
+
+## Common Issues
+
+- **Flake evaluation fails**: Check `hosts/hosts.nix` for syntax errors
+- **Module conflict**: Use `lib.mkDefault` or `lib.mkForce` for priority
+- **Secret not found**: Verify SOPS config in `.sops.yaml` and encrypted files
+- **Home Manager username error**: Ensure `username` is in `extraSpecialArgs`
+- **Build timeout**: Large rebuilds may take 10+ minutes on first run

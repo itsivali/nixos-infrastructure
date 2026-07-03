@@ -236,19 +236,19 @@ in
     ];
   };
 
-  # Install custom AppArmor profiles via environment.etc
-  environment.etc."apparmor.d/ivali-bot" = {
-    source =ivali-bot-profile;
-    mode = "0644";
-  };
-
-  environment.etc."apparmor.d/ivali-cli" = {
-    source =ivali-cli-profile;
-    mode = "0644";
-  };
-
-  environment.etc."apparmor.d/gitops-reconciler" = {
-    source = gitops-reconciler-profile;
-    mode = "0644";
+  # Install custom AppArmor profiles via policies
+  security.apparmor.policies = {
+    "ivali-bot" = {
+      profile = builtins.readFile ivali-bot-profile;
+      state = "complain";
+    };
+    "ivali-cli" = {
+      profile = builtins.readFile ivali-cli-profile;
+      state = "complain";
+    };
+    "gitops-reconciler" = {
+      profile = builtins.readFile gitops-reconciler-profile;
+      state = "complain";
+    };
   };
 }

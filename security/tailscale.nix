@@ -370,7 +370,7 @@ in
           EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
           EXPIRY_DATE=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
           HOSTNAME=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.HostName // empty' 2>/dev/null || echo "unknown")
-         Connected=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.BackendState // empty' 2>/dev/null || echo "unknown")
+          Connected=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.BackendState // empty' 2>/dev/null || echo "unknown")
 
           # Calculate days until expiry
           KEY_EXPIRY_DAYS=999
@@ -389,23 +389,21 @@ in
           fi
 
           # Write metrics
-          cat > "$METRICS_FILE" <<EOF
-          # HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)
-          # TYPE tailscale_connected gauge
-          tailscale_connected{host="$HOSTNAME"} $(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
-
-          # HELP tailscale_key_expiry_days Days until Tailscale key expires
-          # TYPE tailscale_key_expiry_days gauge
-          tailscale_key_expiry_days{host="$HOSTNAME"} $KEY_EXPIRY_DAYS
-
-          # HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)
-          # TYPE tailscale_magicdns_status gauge
-          tailscale_magicdns_status{host="$HOSTNAME"} $MAGICDNS_STATUS
-
-          # HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection
-          # TYPE tailscale_metrics_timestamp gauge
-          tailscale_metrics_timestamp{host="$HOSTNAME"} $TIMESTAMP
-          EOF
+          CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
+          {
+            echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
+            echo "# TYPE tailscale_connected gauge"
+            echo "tailscale_connected{host=\"$HOSTNAME\"} $CONNECTED_VAL"
+            echo "# HELP tailscale_key_expiry_days Days until Tailscale key expires"
+            echo "# TYPE tailscale_key_expiry_days gauge"
+            echo "tailscale_key_expiry_days{host=\"$HOSTNAME\"} $KEY_EXPIRY_DAYS"
+            echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
+            echo "# TYPE tailscale_magicdns_status gauge"
+            echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
+            echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
+            echo "# TYPE tailscale_metrics_timestamp gauge"
+            echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"
+          } > "$METRICS_FILE"
 
           sleep 60
         done

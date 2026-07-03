@@ -2,10 +2,10 @@
 
 let
   ivaliPurple = "bold #A78BFA";
-  ivaliCyan  = "bold #22D3EE";
+  ivaliCyan = "bold #22D3EE";
   ivaliGreen = "bold #4ADE80";
-  ivaliGray  = "#9CA3AF";
-  ivaliGold  = "bold #FBBF24";
+  ivaliGray = "#9CA3AF";
+  ivaliGold = "bold #FBBF24";
 in
 
 {
@@ -38,7 +38,7 @@ in
         "$nix_shell"
         "$custom.repo"
         "$fill"
-        "$cmd_duration"
+        "$custom.cmd_duration"
         "$status"
         "$line_break"
         "$character"
@@ -132,8 +132,8 @@ in
         symbol = "";
         style = "bold #22C55E";
         format = "via [$symbol v$version ]($style) ";
-        detect_extensions = ["js" "ts" "jsx" "tsx" "mjs" "cjs"];
-        detect_files = ["package.json" ".node-version" "tsconfig.json"];
+        detect_extensions = [ "js" "ts" "jsx" "tsx" "mjs" "cjs" ];
+        detect_files = [ "package.json" ".node-version" "tsconfig.json" ];
         not_if_venv = true;
       };
 
@@ -142,40 +142,61 @@ in
         style = "bold #FBBF24";
         format = "via [$symbol v$version \($virtualenv\) ]($style) ";
         pyenv_version_name = true;
-        detect_extensions = ["py"];
-        detect_files = ["requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock"];
+        detect_extensions = [ "py" ];
+        detect_files = [ "requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock" ];
       };
 
       docker = {
         symbol = "";
         style = "bold #60A5FA";
         format = "via [$symbol]($style) ";
-        detect_files = ["docker-compose.yml" "Dockerfile" ".dockerignore"];
+        detect_files = [ "docker-compose.yml" "Dockerfile" ".dockerignore" ];
       };
 
       golang = {
         symbol = "";
         style = "bold #60A5FA";
         format = "via [$symbol v$version ]($style) ";
-        detect_extensions = ["go"];
-        detect_files = ["go.mod" "go.sum"];
+        detect_extensions = [ "go" ];
+        detect_files = [ "go.mod" "go.sum" ];
       };
 
       rust = {
         symbol = "";
         style = "bold #F87171";
         format = "via [$symbol v$version ]($style) ";
-        detect_extensions = ["rs"];
-        detect_files = ["Cargo.toml"];
+        detect_extensions = [ "rs" ];
+        detect_files = [ "Cargo.toml" ];
       };
 
       # ── Metadata ────────────────────────────────────────────────
 
       cmd_duration = {
+        disabled = true;
+      };
+
+      custom.cmd_duration = {
+        command = ''
+          duration=$STARSHIP_CMD_DURATION
+          if [ -z "$duration" ] || [ "$duration" -eq 0 ]; then
+            exit 1
+          fi
+          ms=$((duration % 1000))
+          s=$(((duration / 1000) % 60))
+          m=$(((duration / 1000 / 60) % 60))
+          h=$((duration / 1000 / 60 / 60))
+          out=""
+          [ "$h" -gt 0 ] && out="$out $h h"
+          [ "$m" -gt 0 ] && out="$out $m m"
+          [ "$s" -gt 0 ] && out="$out $s s"
+          [ "$ms" -gt 0 ] && out="$out $ms ms"
+          [ -z "$out" ] && out=" 0 ms"
+          echo "$out"
+        '';
+        when = "STARSHIP_CMD_DURATION > 500";
         style = ivaliGray;
-        format = "[ $duration]($style) ";
-        show_milliseconds = true;
-        min_time = 500;
+        format = "[ ⏱$output]($style) ";
+        shell = "bash";
       };
 
       status = {

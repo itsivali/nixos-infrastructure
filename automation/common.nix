@@ -9,8 +9,6 @@
 ##############################################################################
 
 {
-  networking.hostName = "prague";
-
   fleet = {
     gitops = {
       repo = "https://gitlab.com/willisivali/nixos-infrastructure";

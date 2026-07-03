@@ -65,17 +65,12 @@ let
       (builtins.attrNames entries));
 in
 {
-  imports =
-    # ── Pinned host files (order matters — hardware before identity) ────────
-    [
-      ./hosts/hardware-configuration.nix
-      ./hosts/laptop.nix
-    ]
+  # ── Auto-discovered domain modules (no pinned host files — handled by flake) ──
+  imports = [
     # ── Explicit domain modules ────────────────────────────────────────────
-    ++ [
-      ./desktop
-      ./packages/system
-    ]
+    ./desktop
+    ./packages/system
+  ]
     # ── Auto-discovered domain modules ──────────────────────────────────────
     ++ domainModules;
 

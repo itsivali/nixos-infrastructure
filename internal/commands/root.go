@@ -49,6 +49,7 @@ a beautiful interactive terminal experience.`,
 
 	root.AddCommand(
 		CmdBootstrap(a),
+		CmdBootstrapHost(a),
 		CmdDashboard(a),
 		CmdDeploy(a),
 		CmdDoctor(a),
@@ -119,11 +120,12 @@ func rootHelp(a *app.App) string {
 		{
 			Title: "Bootstrap Generators",
 			Commands: []string{
+				"bootstrap module    Generate a NixOS domain module",
+				"bootstrap service   Generate a service module",
 				"bootstrap shell     Generate a shell module structure",
 				"bootstrap editor    Generate an editor module",
-				"bootstrap service   Generate a service module",
 				"bootstrap package   Generate a package set",
-				"bootstrap module    Generate a NixOS domain module",
+				"bootstrap host      Generate a new laptop host configuration",
 			},
 		},
 		{

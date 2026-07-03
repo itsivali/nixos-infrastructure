@@ -1,68 +1,112 @@
 #!/run/current-system/sw/bin/bash
-# install-fresh-nixos.sh
+# install-fresh-nixos.sh v2 — Universal laptop bootstrap
+#
 # Bootstrap a fresh NixOS machine from the willisivali/nixos-infrastructure flake.
+# Works on any laptop with GNOME desktop environment.
 #
-# Run as your normal user (NOT root). sudo is called only when needed.
-#
+# Usage:
 #   nix --extra-experimental-features "nix-command flakes" \
 #     shell nixpkgs#curl --command bash -c \
 #     'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
 #
-# Override defaults via environment variables before running:
-#   REPO_URL, GIT_PUSH_URL, REPO_DIR, HOST, BRANCH
+# Or with flags for non-interactive:
+#   curl -fsSL ... | bash -s -- --host my-laptop --user myuser --yes
+#
+# Environment variables (overridable):
+#   REPO_URL, GIT_PUSH_URL, REPO_DIR, BRANCH, YES
 set -euo pipefail
 
+# ── Defaults ─────────────────────────────────────────────────────────────────
 REPO_URL="${REPO_URL:-https://gitlab.com/willisivali/nixos-infrastructure.git}"
 GIT_PUSH_URL="${GIT_PUSH_URL:-git@gitlab.com:willisivali/nixos-infrastructure.git}"
 REPO_DIR="${REPO_DIR:-$HOME/nixos-infrastructure}"
-HOST="${HOST:-prague}"
 BRANCH="${BRANCH:-main}"
-EXPECTED_USER="${EXPECTED_USER:-ivali}"
 NIX_FEATURES="nix-command flakes"
 
-# ── logging ────────────────────────────────────────────────────────────────────
+# ── Parse flags ──────────────────────────────────────────────────────────────
+HOST="${HOST:-}"
+USER_NAME="${USER_NAME:-}"
+YES="${YES:-false}"
+FEATURES="${FEATURES:-secrets,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh}"
+TAILNET_DOMAIN="${TAILNET_DOMAIN:-codlet-trench.ts.net}"
+SSH_KEYS="${SSH_KEYS:-}"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --host)    HOST="$2";      shift 2 ;;
+    --user)    USER_NAME="$2"; shift 2 ;;
+    --repo)    REPO_DIR="$2";  shift 2 ;;
+    --push-url) GIT_PUSH_URL="$2"; shift 2 ;;
+    --branch)  BRANCH="$2";    shift 2 ;;
+    --yes|-y)  YES="true";     shift ;;
+    --tailnet-domain) TAILNET_DOMAIN="$2"; shift 2 ;;
+    --ssh-keys) SSH_KEYS="$2"; shift 2 ;;
+    --help|-h)
+      echo "Usage: install-fresh-nixos.sh [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --host NAME        Host name (default: current hostname)"
+      echo "  --user NAME        Username (default: current user)"
+      echo "  --repo PATH        Repository path (default: ~/nixos-infrastructure)"
+      echo "  --push-url URL     Git push URL (default: git@gitlab.com:willisivali/nixos-infrastructure.git)"
+      echo "  --branch BRANCH    Git branch (default: main)"
+      echo "  --yes, -y          Non-interactive mode"
+      echo "  --tailnet-domain   Tailscale domain (default: codlet-trench.ts.net)"
+      echo "  --ssh-keys KEYS    Comma-separated SSH public keys"
+      echo "  --help, -h         Show this help"
+      exit 0
+      ;;
+    *) echo "Unknown option: $1"; exit 1 ;;
+  esac
+done
+
+# ── Logging ──────────────────────────────────────────────────────────────────
 log()  { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 warn() { printf '\n\033[1;33mWARN:\033[0m %s\n' "$*" >&2; }
 die()  { printf '\n\033[1;31mERROR:\033[0m %s\n' "$*" >&2; exit 1; }
 
-# ── nix wrappers ───────────────────────────────────────────────────────────────
-
-# Wrap every plain `nix` call so --extra-experimental-features is always
-# present — required when the script is piped through a fresh bash that
-# hasn't read any nix.conf yet.
+# ── Nix wrappers ─────────────────────────────────────────────────────────────
 nix() {
   command nix --extra-experimental-features "$NIX_FEATURES" "$@"
 }
 
-# nix fmt and nix flake check both exec `git` internally (to resolve the repo
-# root and respect .gitignore). On a fresh install git is not on PATH, so we
-# enter a temporary shell that provides it before calling nix.
 nix_with_git() {
   command nix --extra-experimental-features "$NIX_FEATURES" \
     shell nixpkgs#git --command \
     nix --extra-experimental-features "$NIX_FEATURES" "$@"
 }
 
-# ── steps ──────────────────────────────────────────────────────────────────────
-
+# ── Step 1: Validate environment ─────────────────────────────────────────────
 require_nixos() {
   [[ -f /etc/NIXOS ]] || die "This script must run on NixOS."
   command -v sudo >/dev/null 2>&1 || die "sudo is required."
-  [[ "$(id -u)" -ne 0 ]] \
-    || die "Run as your normal user, not root. The script calls sudo only when needed."
-  [[ "$(id -un)" == "$EXPECTED_USER" ]] \
-    || die "This flake configures the '$EXPECTED_USER' user. Log in as '$EXPECTED_USER' before running the installer."
+  [[ "$(id -u)" -ne 0 ]] || die "Run as your normal user, not root."
 }
 
-enable_nix_features() {
-  # /etc/nix is read-only on a fresh NixOS install — it is managed by the
-  # Nix module system and cannot be written to with sudo tee.
-  # Write to the user-level config instead; it is always writable and is
-  # honoured by every subsequent nix invocation for this user.
-  # Permanent system-level config is already declared in the flake:
-  #   nix.settings.experimental-features = [ "nix-command" "flakes" ];
-  log "Enabling nix-command + flakes (user config)"
+# ── Step 2: Detect or prompt for host/user ──────────────────────────────────
+detect_identity() {
+  if [[ -z "$HOST" ]]; then
+    HOST=$(hostname -s 2>/dev/null || echo "laptop")
+    if [[ "$YES" != "true" ]]; then
+      read -p "Host name [$HOST]: " input_host
+      HOST="${input_host:-$HOST}"
+    fi
+  fi
 
+  if [[ -z "$USER_NAME" ]]; then
+    USER_NAME=$(whoami)
+    if [[ "$YES" != "true" ]]; then
+      read -p "Username [$USER_NAME]: " input_user
+      USER_NAME="${input_user:-$USER_NAME}"
+    fi
+  fi
+
+  log "Identity: host=$HOST user=$USER_NAME"
+}
+
+# ── Step 3: Enable nix features ──────────────────────────────────────────────
+enable_nix_features() {
+  log "Enabling nix-command + flakes (user config)"
   local conf_dir="$HOME/.config/nix"
   local conf="$conf_dir/nix.conf"
   mkdir -p "$conf_dir"
@@ -75,42 +119,126 @@ enable_nix_features() {
     log "experimental-features already present — skipping"
   fi
 
-  # Also export NIX_CONFIG so the current piped-bash process picks it up
-  # immediately, before nix-daemon re-reads anything from disk.
   export NIX_CONFIG="experimental-features = nix-command flakes"
 }
 
+# ── Step 4: Clone or update repo ─────────────────────────────────────────────
 clone_or_update_repo() {
-  log "Fetching repo (via temporary git shell): ${REPO_URL}"
-
+  log "Fetching repo: ${REPO_URL}"
   if [[ -d "$REPO_DIR/.git" ]]; then
     nix shell nixpkgs#git --command git -C "$REPO_DIR" fetch --prune origin "$BRANCH"
     nix shell nixpkgs#git --command git -C "$REPO_DIR" checkout "$BRANCH"
     nix shell nixpkgs#git --command git -C "$REPO_DIR" merge --ff-only "origin/$BRANCH"
   else
     mkdir -p "$(dirname "$REPO_DIR")"
-    nix shell nixpkgs#git --command git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+    nix shell nixpkgs#git --command git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
   fi
-
   nix shell nixpkgs#git --command git -C "$REPO_DIR" remote set-url --push origin "$GIT_PUSH_URL"
 }
 
-copy_hardware_config() {
+# ── Step 5: Detect hardware ─────────────────────────────────────────────────
+detect_hardware() {
   log "Capturing hardware configuration"
-
-  local src="/etc/nixos/hardware-configuration.nix"
   local dst="$REPO_DIR/hosts/hardware-configuration.nix"
 
-  if [[ ! -f "$src" ]]; then
-    warn "$src not found — generating with nixos-generate-config"
+  if [[ ! -f /etc/nixos/hardware-configuration.nix ]]; then
+    warn "/etc/nixos/hardware-configuration.nix not found — generating"
     sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix
-    src="/tmp/hardware-configuration.nix"
   fi
 
-  install -Dm0644 "$src" "$dst"
+  install -Dm0644 "${/etc/nixos/hardware-configuration.nix:-/tmp/hardware-configuration.nix}" "$dst"
   log "Hardware config written to $dst"
 }
 
+# ── Step 6: Generate host config ─────────────────────────────────────────────
+generate_host_config() {
+  log "Generating host configuration: $HOST"
+
+  # Build host spec file
+  local host_dir="$REPO_DIR/hosts/$HOST"
+  mkdir -p "$host_dir"
+
+  local host_nix="$host_dir/${HOST}.nix"
+  if [[ -f "$host_nix" ]] && [[ "$YES" != "true" ]]; then
+    read -p "Host config exists. Overwrite? [y/N]: " overwrite
+    [[ "${overwrite,,}" == "y" ]] || return 0
+  fi
+
+  # Generate host.nix from template
+  cat > "$host_nix" << 'HOST_EOF'
+##############################################################################
+#
+# Host Configuration — HOST_PLACEHOLDER
+#
+# Purpose
+# -------
+# Host-specific configuration for HOST_PLACEHOLDER laptop.
+# Generated by: ivali bootstrap host HOST_PLACEHOLDER
+#
+##############################################################################
+
+{ config, lib, pkgs, hostSpec, hostName, defaultUsername, gitlabUrl, ... }:
+
+let
+  userName = hostSpec.userName or defaultUsername;
+in
+{
+  ############################################################################
+  # SYSTEM IDENTITY
+  ############################################################################
+  networking.hostName = hostName;
+
+  ############################################################################
+  # USER ACCOUNT
+  ############################################################################
+  users.users.${userName} = {
+    isNormalUser = true;
+    description = "Primary user";
+    extraGroups = [ "wheel" "networkmanager" "docker" "systemd-journal" "flatpak" ];
+    shell = config.programs.zsh.package.path + "/bin/zsh";
+    home = "/home/${userName}";
+    createHome = true;
+    useDefaultShell = true;
+  };
+
+  systemd.tmpfiles.rules = [
+    "d /home/${userName} 0755 ${userName} ${userName} -"
+  ];
+
+  ############################################################################
+  # SUDO CONFIGURATION
+  ############################################################################
+  security.sudo.extraRules = [
+    # Primary user gets full sudo
+    {
+      users = [ userName ];
+      commands = [
+        {
+          command = "ALL";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
+
+  ############################################################################
+  # GIT CONFIGURATION (system-wide for root/CI access)
+  ############################################################################
+  environment.etc."gitconfig".text = ''
+    [safe]
+      directory = HOME_PLACEHOLDER/nixos-infrastructure
+  '';
+}
+HOST_EOF
+
+  # Replace placeholders
+  sed -i "s/HOST_PLACEHOLDER/$HOST/g" "$host_nix"
+  sed -i "s|HOME_PLACEHOLDER|$(dirname "$REPO_DIR")|g" "$host_nix"
+
+  log "Generated $host_nix"
+}
+
+# ── Step 7: Install format hook ──────────────────────────────────────────────
 install_format_hook() {
   log "Installing pre-commit formatter hook"
   local hook_src="$REPO_DIR/hooks/pre-commit"
@@ -118,54 +246,44 @@ install_format_hook() {
   if [[ -f "$hook_src" ]]; then
     install -m0755 "$hook_src" "$hook_dst"
   else
-    warn "hooks/pre-commit not found in repo — skipping"
+    warn "hooks/pre-commit not found — skipping"
   fi
 }
 
-format_repo() {
+# ── Step 8: Format and validate ──────────────────────────────────────────────
+format_and_validate() {
   log "Formatting Nix files"
-  # Must run inside a shell that has git on PATH (nix fmt calls git internally).
   ( cd "$REPO_DIR" && nix_with_git fmt )
-}
 
-validate_config() {
-  # We do NOT run `nix flake check` here. On a fresh install it would:
-  #   - try to build every packages.* output
-  #   - require a clean git tree (dirty tree = instant failure)
-  #   - evaluate checks.* which forces a full system build
-  #   - evaluate nixosTests.* which requires QEMU
-  #
-  # Instead we evaluate only the target host's toplevel .drv path.
-  # This fully type-checks the NixOS config (catches missing modules,
-  # list-vs-string type errors, undefined options, etc.) without
-  # building anything or caring about a dirty tree.
   log "Evaluating nixosConfigurations.${HOST} (dry-run, no build)"
   local drv
-  drv=$(
-    cd "$REPO_DIR"
-    nix_with_git eval --raw \
-      ".#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath"
-  )
+  drv=$( cd "$REPO_DIR" && nix_with_git eval --raw ".#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath" )
   log "Config evaluates cleanly → ${drv}"
 }
 
+# ── Step 9: Switch system ────────────────────────────────────────────────────
 switch_system() {
   log "Running nixos-rebuild switch → ${HOST}"
   sudo nixos-rebuild switch \
     --option experimental-features "$NIX_FEATURES" \
-    --flake "$REPO_DIR#$HOST"
+    --flake "$REPO_DIR#${HOST}"
 }
 
-post_install_notes() {
+# ── Step 10: Post-install ────────────────────────────────────────────────────
+post_install() {
   cat <<EOF
 
 ════════════════════════════════════════
   Install complete ✓
 ════════════════════════════════════════
 
+  Host:   $HOST
+  User:   $USER_NAME
+  Repo:   $REPO_DIR
+
 Next steps
 ──────────
-1. Reboot to load the zen kernel and lean GNOME profile:
+1. Reboot to load all services:
      sudo reboot
 
 2. After reboot, bring up Tailscale:
@@ -174,23 +292,19 @@ Next steps
 3. Commit the generated hardware file:
      cd "$REPO_DIR"
      git add hosts/hardware-configuration.nix
-     git commit -m "chore: add hardware configuration for ${HOST}"
+     git commit -m "chore: add hardware configuration for $HOST"
      git push
 
 4. Test GitLab SSH:
      ssh -T git@gitlab.com
 
-5. After the hardware file is pushed, enable system.autoUpgrade in:
-     hosts/laptop.nix
+5. Access local services (after reboot):
+     Grafana    http://localhost:3000   (admin / admin on first boot)
+     Prometheus http://localhost:9090
+     Loki       http://localhost:3100
 
-Local services (after reboot)
-──────────────────────────────
-  Grafana    http://localhost:3000   (admin / admin on first boot)
-  Prometheus http://localhost:9090
-  Loki       http://localhost:3100
-
-Open config in your editor:
-  code "$REPO_DIR"   or   edit-config
+6. Open config in your editor:
+     ivali dashboard
 
 Docs
 ────
@@ -201,16 +315,18 @@ Docs
 EOF
 }
 
+# ── Main ─────────────────────────────────────────────────────────────────────
 main() {
   require_nixos
+  detect_identity
   enable_nix_features
   clone_or_update_repo
-  copy_hardware_config
+  detect_hardware
+  generate_host_config
   install_format_hook
-  format_repo
-  validate_config
+  format_and_validate
   switch_system
-  post_install_notes
+  post_install
 }
 
 main "$@"

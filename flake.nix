@@ -4,7 +4,8 @@
 #
 # Purpose
 # -------
-# Auto-generated module description.
+# Autonomous NixOS and Home Manager infrastructure for ivali.
+# Supports multiple hosts with dynamic configuration.
 #
 ##############################################################################
 
@@ -29,14 +30,63 @@
     inputs@{ self, nixpkgs, home-manager, sops-nix, ... }:
     let
       system = "x86_64-linux";
-      username = "ivali";
-      hostName = "prague";
+      lib = nixpkgs.lib;
+
+      # Import host registry
+      hostsConfig = import ./hosts/hosts.nix { inherit lib; };
+
+      # Default username (can be overridden per-host)
+      defaultUsername = "ivali";
 
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
       };
 
+      # Generate nixosConfigurations for each host
+      nixosConfigurations = lib.mapAttrs (name: hostSpec:
+        lib.nixosSystem {
+          inherit system;
+
+          specialArgs = {
+            inherit inputs self;
+            hostSpec = hostSpec;
+            defaultUsername = hostSpec.userName or defaultUsername;
+            username = hostSpec.userName or defaultUsername;
+            gitlabUrl = "https://gitlab.com/willisivali/nixos-infrastructure";
+          };
+
+          modules = [
+            sops-nix.nixosModules.sops
+            home-manager.nixosModules.home-manager
+
+            ./configuration.nix
+
+            # Host-specific hardware configuration
+            ./hosts/hardware-configuration.nix
+
+            # Host-specific configuration from template
+            ./lib/host-templates/laptop.nix
+
+            # Home Manager user configuration
+            {
+              home-manager = {
+                useGlobalPkgs = true;
+                useUserPackages = true;
+
+                extraSpecialArgs = {
+                  inherit inputs hostSpec defaultUsername;
+                  hostName = hostSpec.hostName;
+                  username = hostSpec.userName or defaultUsername;
+                };
+
+                users.${hostSpec.userName or defaultUsername} = import ./home/ivali.nix;
+                backupFileExtension = "hm-backup";
+              };
+            }
+          ];
+        }
+      ) hostsConfig;
     in
     {
       # ─────────────────────────────────────────────
@@ -62,45 +112,16 @@
 
         # FIX: required for `nix build` / CI default behavior
         default =
-          self.nixosConfigurations.${hostName}.config.system.build.toplevel;
+          self.nixosConfigurations.prague.config.system.build.toplevel;
 
         # Standalone home-manager activation for user config only
         hm-activate =
-          self.nixosConfigurations.${hostName}.config.home-manager.users.${username}.home.activationPackage;
+          self.nixosConfigurations.prague.config.home-manager.users.${defaultUsername}.home.activationPackage;
       };
 
       # ─────────────────────────────────────────────
-      # NixOS configuration
+      # NixOS configurations (generated above)
       # ─────────────────────────────────────────────
-      nixosConfigurations.${hostName} = nixpkgs.lib.nixosSystem {
-        inherit system;
-
-        specialArgs = {
-          inherit inputs self username hostName;
-
-          gitlabUrl = "https://gitlab.com/willisivali/nixos-infrastructure";
-        };
-
-        modules = [
-          sops-nix.nixosModules.sops
-          home-manager.nixosModules.home-manager
-
-          ./configuration.nix
-
-          {
-            home-manager = {
-              useGlobalPkgs = true;
-              useUserPackages = true;
-
-              extraSpecialArgs = {
-                inherit inputs username hostName;
-              };
-
-              users.${username} = import ./home/ivali.nix;
-              backupFileExtension = "hm-backup";
-            };
-          }
-        ];
-      };
+      inherit nixosConfigurations;
     };
 }

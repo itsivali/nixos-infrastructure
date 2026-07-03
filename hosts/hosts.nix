@@ -84,28 +84,6 @@
       ssh = true;
     };
     config = {
-      # Sudo rules (from original laptop.nix)
-      security.sudo.extraRules = [
-        {
-          users = [ "gitlab-runner" ];
-          commands = [
-            {
-              command = "/run/current-system/sw/bin/systemctl";
-              options = [ "NOPASSWD" ];
-            }
-          ];
-        }
-        {
-          users = [ "ivali" ];
-          commands = [
-            {
-              command = "ALL";
-              options = [ "NOPASSWD" ];
-            }
-          ];
-        }
-      ];
-
       # Git config for root/CI access
       environment.etc."gitconfig".text = ''
         [safe]

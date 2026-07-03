@@ -22,6 +22,7 @@
 #     tailnetDomain = "xxx.ts.net";         # Optional split DNS domain
 #     gitlabRunnerTags = [ "nixos", "..." ]; # GitLab runner tags
 #     sshAuthorizedKeys = [ "ssh-...", ... ]; # SSH public keys
+#     sopsKeyPath     = "/home/user/.config/sops/age/keys.txt"; # SOPS age key path
 #     features = {
 #       secrets         = true;             # Enable SOPS secrets
 #       gitlabRunner    = true;             # Enable self-hosted GitLab runner
@@ -50,6 +51,7 @@
     tailnetDomain = null;
     gitlabRunnerTags = [ "nixos" "self-hosted" ];
     sshAuthorizedKeys = [];
+    sopsKeyPath = "/home/user/.config/sops/age/keys.txt";
     features = {
       secrets = true;
       gitlabRunner = true;
@@ -75,6 +77,7 @@
     sshAuthorizedKeys = [
       # Key loaded from SOPS secret at runtime
     ];
+    sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
     features = {
       secrets = true;
       gitlabRunner = true;

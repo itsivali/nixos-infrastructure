@@ -16,6 +16,7 @@ let
   tailnetDomain = hostSpec.tailnetDomain or null;
   gitlabRunnerTags = hostSpec.gitlabRunnerTags or [];
   sshAuthorizedKeys = hostSpec.sshAuthorizedKeys or [];
+  sopsKeyPath = hostSpec.sopsKeyPath or "/home/${userName}/.config/sops/age/keys.txt";
   features = hostSpec.features or {};
   repoPath = hostSpec.repoPath or "/home/${userName}/nixos-infrastructure";
   extraConfig = hostSpec.config or {};
@@ -90,7 +91,13 @@ in
   ############################################################################
   # SOPS SECRETS ENABLE
   ############################################################################
-  ivali.secrets.enable = lib.mkDefault hasSecrets;
+  ivali.secrets = {
+    enable = lib.mkDefault hasSecrets;
+    rotation = {
+      enable = lib.mkDefault hasSecrets;
+      keyPath = lib.mkDefault sopsKeyPath;
+    };
+  };
 
   ############################################################################
   # GITLAB RUNNER

@@ -1,4 +1,4 @@
-# Codex — Knowledge Base
+# OpenCode — Knowledge Base
 
 Structured documentation for this NixOS infrastructure repository.
 

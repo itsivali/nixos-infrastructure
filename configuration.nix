@@ -46,6 +46,7 @@ let
     "home"
     "hosts"
     "lib"
+    "opencode"
     "packages"
     "scripts"
     "secrets"

@@ -189,10 +189,10 @@ Use --output to write to a file.`,
 	return cmd
 }
 
-// writeMetricsToCodex writes metrics to codex/metrics.json for tracking
-func writeMetricsToCodex(root string, report MetricsReport) error {
-	codexDir := filepath.Join(root, "codex")
-	if err := os.MkdirAll(codexDir, 0755); err != nil {
+// writeMetricsToOpencode writes metrics to opencode/metrics.json for tracking
+func writeMetricsToOpencode(root string, report MetricsReport) error {
+	opencodeDir := filepath.Join(root, "opencode")
+	if err := os.MkdirAll(opencodeDir, 0755); err != nil {
 		return err
 	}
 
@@ -201,5 +201,5 @@ func writeMetricsToCodex(root string, report MetricsReport) error {
 		return err
 	}
 
-	return os.WriteFile(filepath.Join(codexDir, "metrics.json"), data, 0644)
+	return os.WriteFile(filepath.Join(opencodeDir, "metrics.json"), data, 0644)
 }

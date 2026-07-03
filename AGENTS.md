@@ -1,6 +1,6 @@
 # AGENTS.md
 
-This file provides context for AI agents (Codex, Copilot, Claude, etc.) working on this repository.
+This file provides context for AI agents (OpenCode, Copilot, Claude, etc.) working on this repository.
 
 ## What This Repository Is
 
@@ -32,7 +32,7 @@ flake.nix
 ├── scripts/                  ← Shell scripts (deploy, health, rollback, bot)
 ├── internal/                 ← Go CLI (ivali) source code
 ├── tests/                    ← NixOS smoke tests
-└── docs/                     ← Generated documentation
+└── opencode/                 ← Knowledge base (AI context, architecture, troubleshooting)
 ```
 
 ## How Modules Work

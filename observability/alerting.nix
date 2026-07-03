@@ -16,6 +16,7 @@
 # - Service failure detection
 # - Generation drift alerts
 # - High CPU/memory usage
+# - Security scan failures
 #
 ##############################################################################
 
@@ -98,6 +99,36 @@ in
                 annotations:
                   summary: "NixOS generation drift detected"
                   description: "System generations may need optimization"
+
+          - name: security
+            rules:
+              # Security scan failures
+              - alert: SecurityScanFailed
+                expr: security_scan_status == 0
+                for: 0m
+                labels:
+                  severity: critical
+                annotations:
+                  summary: "Security scan failed on {{ $labels.host }}"
+                  description: "Security scan detected issues with failed units or critical conditions"
+
+              - alert: SecurityScanStale
+                expr: (time() - security_scan_timestamp) > 86400
+                for: 0m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Security scan stale on {{ $labels.host }}"
+                  description: "Security scan has not run in over 24 hours"
+
+              - alert: FailedSystemdUnitsHigh
+                expr: security_scan_failed_units > 3
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "High failed units on {{ $labels.host }}"
+                  description: "{{ $value }} systemd units have failed"
 
           - name: nixos
             rules:

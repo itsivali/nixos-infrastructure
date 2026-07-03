@@ -5,6 +5,7 @@ let
   ivaliCyan  = "bold #22D3EE";
   ivaliGreen = "bold #4ADE80";
   ivaliGray  = "#9CA3AF";
+  ivaliGold  = "bold #FBBF24";
 in
 
 {
@@ -51,29 +52,30 @@ in
         show_always = true;
         style_user = ivaliPurple;
         style_root = "bold red";
-        format = "[ $user]($style) ";
+        format = "[ $user]($style) ";
       };
 
       hostname = {
         ssh_only = false;
         style = ivaliGreen;
-        format = "[ $hostname]($style) ";
+        format = "[ $hostname]($style) ";
       };
 
       directory = {
         style = ivaliCyan;
         truncation_length = 3;
         truncate_to_repo = true;
-        format = "[ $path]($style) ";
-        home_symbol = " ";
-        repo_root_format = "[ $repo_root]($style) ";
+        format = "[ $path]($style) ";
+        home_symbol = " ";
+        repo_root_format = "[ $repo_root]($style) ";
+        read_only = " ";
       };
 
       # ── Git ──────────────────────────────────────────────────────
 
       git_branch = {
         style = ivaliPurple;
-        format = "[ $branch]($style) ";
+        format = "[ $branch]($style) ";
         symbol = "";
         only_attached = true;
       };
@@ -81,28 +83,28 @@ in
       git_state = {
         style = "bold yellow";
         format = "[\($state( $progress_current of $progress_total)\)]($style) ";
-        cherry_pick = " cherry-pick";
-        revert = " revert";
-        merge = " merge";
-        bisect = " bisect";
-        am = " am";
-        am_or_rebase = " am/rebase";
-        rebase = " rebase";
+        cherry_pick = " cherry-pick";
+        revert = " revert";
+        merge = " merge";
+        bisect = " bisect";
+        am = " am";
+        am_or_rebase = " am/rebase";
+        rebase = " rebase";
       };
 
       git_status = {
         style = "bold yellow";
         format = "[\\( $all_status$ahead_behind \\)]($style) ";
-        conflicted = "";
-        ahead = "\${count}";
-        behind = "\${count}";
-        diverged = "⇡\${ahead_count}⇣\${behind_count}";
-        untracked = "";
-        stashed = "";
-        modified = "";
-        staged = "";
-        renamed = "";
-        deleted = "";
+        conflicted = "";
+        ahead = "\${count}";
+        behind = "\${count}";
+        diverged = "⇡\${ahead_count}⇣\${behind_count}";
+        untracked = "";
+        stashed = "";
+        modified = "";
+        staged = "";
+        renamed = "";
+        deleted = "";
       };
 
       git_metrics = {
@@ -117,8 +119,8 @@ in
 
       nix_shell = {
         style = "bold yellow";
-        symbol = "";
-        format = "[$symbol]($style) [$state]($style) ";
+        symbol = "";
+        format = "[$symbol $state]($style) ";
         impure_msg = "impure";
         pure_msg = "pure";
         heuristic = true;
@@ -127,42 +129,42 @@ in
       # ── Utility modules (only shown when relevant) ───────────────
 
       nodejs = {
-        symbol = "";
+        symbol = "";
         style = "bold #22C55E";
-        format = "via [$symbol(v$version) ]($style) ";
+        format = "via [$symbol v$version ]($style) ";
         detect_extensions = ["js" "ts" "jsx" "tsx" "mjs" "cjs"];
         detect_files = ["package.json" ".node-version" "tsconfig.json"];
         not_if_venv = true;
       };
 
       python = {
-        symbol = "";
+        symbol = "";
         style = "bold #FBBF24";
-        format = "via [$symbol$version( \($virtualenv\))]($style) ";
+        format = "via [$symbol v$version \($virtualenv\) ]($style) ";
         pyenv_version_name = true;
         detect_extensions = ["py"];
         detect_files = ["requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock"];
       };
 
       docker = {
-        symbol = "";
+        symbol = "";
         style = "bold #60A5FA";
         format = "via [$symbol]($style) ";
         detect_files = ["docker-compose.yml" "Dockerfile" ".dockerignore"];
       };
 
       golang = {
-        symbol = "";
+        symbol = "";
         style = "bold #60A5FA";
-        format = "via [$symbol(v$version) ]($style) ";
+        format = "via [$symbol v$version ]($style) ";
         detect_extensions = ["go"];
         detect_files = ["go.mod" "go.sum"];
       };
 
       rust = {
-        symbol = "";
+        symbol = "";
         style = "bold #F87171";
-        format = "via [$symbol(v$version) ]($style) ";
+        format = "via [$symbol v$version ]($style) ";
         detect_extensions = ["rs"];
         detect_files = ["Cargo.toml"];
       };
@@ -171,31 +173,31 @@ in
 
       cmd_duration = {
         style = ivaliGray;
-        format = "[⏱ $duration]($style) ";
+        format = "[ $duration]($style) ";
         show_milliseconds = true;
         min_time = 500;
       };
 
       status = {
         style = "bold red";
-        format = "[ $status]($style) ";
+        format = "[ $status]($style) ";
         disabled = false;
-        not_found_symbol = "";
-        signal_symbol = " ";
+        not_found_symbol = "";
+        signal_symbol = " ";
         pipestatus = true;
-        pipestatus_separator = "  ";
+        pipestatus_separator = "  ";
       };
 
       time = {
         style = ivaliGray;
-        format = "[ $time]($style) ";
+        format = "[ $time]($style) ";
         disabled = false;
-        time_format = "%T";
+        time_format = "%H : %M : %S";
       };
 
       localip = {
         style = "bold yellow";
-        format = "[ $localipv4]($style) ";
+        format = "[ $localipv4]($style) ";
         ssh_only = true;
       };
 
@@ -204,16 +206,16 @@ in
         format = "[$symbol\${shlvl}]($style) ";
         disabled = false;
         repeat = true;
-        symbol = " ";
+        symbol = " ";
         threshold = 2;
       };
 
       # ── Prompt character ─────────────────────────────────────────
 
       character = {
-        success_symbol = "[](bold #A78BFA)";
-        error_symbol = "[](bold #F87171)";
-        vicmd_symbol = "[](bold #4ADE80)";
+        success_symbol = "[❯](bold #A78BFA)";
+        error_symbol = "[❯](bold #F87171)";
+        vicmd_symbol = "[❮](bold #4ADE80)";
         format = "$symbol ";
       };
 
@@ -224,9 +226,9 @@ in
           "root=$(git rev-parse --show-toplevel 2>/dev/null) && "
           "basename=$(basename \"$root\" 2>/dev/null) && "
           "if [ \"$basename\" = \"nixos-infrastructure\" ]; then "
-          "  echo \"  infra\"; "
+          "  echo \"  infra\"; "
           "elif git rev-parse --git-dir >/dev/null 2>&1; then "
-          "  echo \"\"; "
+          "  echo \"\"; "
           "fi"
         ];
         style = ivaliGreen;

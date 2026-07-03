@@ -4,8 +4,8 @@
 #
 # Purpose
 # -------
-# Show a pretty system info dashboard (fastfetch) on terminal open,
-# but only once per session to avoid spam on every new tab.
+# Disabled — fastfetch removed from startup for faster shell launch.
+# Use `ff` alias to run fastfetch manually.
 #
 # Order
 # -----
@@ -18,11 +18,8 @@
 {
   programs.zsh.initContent = ''
     ######################################################################
-    # System dashboard — fastfetch on first terminal of each session
+    # System dashboard — disabled for faster startup
+    # Use `ff` to run fastfetch manually
     ######################################################################
-    if [[ -z "$FASTFETCH_SHOWN" ]] && [[ -z "$SSH_TTY" ]] && [[ $TERM != "dumb" ]]; then
-      export FASTFETCH_SHOWN=1
-      ${pkgs.fastfetch}/bin/fastfetch
-    fi
   '';
 }

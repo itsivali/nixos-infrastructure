@@ -50,6 +50,22 @@ in
           findutils
           procps
           python3
+          which
+
+          # Network tools
+          iproute2
+          dnsutils
+          host
+          iputils
+
+          # System monitoring
+          sysstat
+
+          # Tailscale
+          tailscale
+
+          # NixOS
+          nix
 
           # Desktop applications
           firefox
@@ -64,6 +80,12 @@ in
           libnotify
           wireplumber
           xset
+
+          # Clipboard
+          wl-clipboard
+
+          # Session management
+          systemd
         ];
 
         environment = {

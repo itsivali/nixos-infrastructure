@@ -13,7 +13,7 @@
 #
 # Does NOT Own
 # ------------
-# - System-wide packages (hosts/laptop.nix, packages/system)
+# - System-wide packages (hosts/hosts.nix, packages/system)
 # - Shell tools (home/shell/tools/packages.nix)
 # - Git tools (home/git/packages.nix)
 #

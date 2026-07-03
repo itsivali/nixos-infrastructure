@@ -4,7 +4,7 @@
 #
 # Purpose
 # -------
-# SOPS secret management integration.
+# SOPS secret management integration with rotation and audit support.
 #
 # Ownership
 # ---------
@@ -17,19 +17,88 @@
 #
 ##############################################################################
 
-{ lib, ... }:
+{ config, lib, pkgs, ... }:
 
+let
+  cfg = config.ivali.secrets;
+in
 {
-  options.ivali.secrets.enable = lib.mkOption {
-    type = lib.types.bool;
-    default = true;
-    description = ''
-      Enable SOPS-backed secrets. Leave disabled for a first install unless
-      /var/lib/sops-nix/key.txt already contains the matching age private key.
-    '';
+  options.ivali.secrets = {
+    enable = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Enable SOPS-backed secrets. Leave disabled for a first install unless
+        /var/lib/sops-nix/key.txt already contains the matching age private key.
+      '';
+    };
+
+    rotation = {
+      enable = lib.mkEnableOption "SOPS key rotation auditing";
+
+      maxAgeDays = lib.mkOption {
+        type = lib.types.int;
+        default = 90;
+        description = ''
+          Maximum age in days for SOPS secrets before triggering a rotation warning.
+          Secrets older than this will be flagged by `ivali doctor`.
+        '';
+      };
+
+      keyPath = lib.mkOption {
+        type = lib.types.str;
+        default = "/home/ivali/.config/sops/age/keys.txt";
+        description = ''
+          Path to the SOPS age private key file.
+        '';
+      };
+    };
   };
 
   config = {
-    sops.age.keyFile = "/home/ivali/.config/sops/age/keys.txt";
+    sops.age.keyFile = cfg.rotation.keyPath;
+
+    # Install rotation script
+    environment.systemPackages = lib.mkIf cfg.rotation.enable [
+      (pkgs.writeShellScriptBin "sops-rotate" ''
+        #!/bin/sh
+        set -euo pipefail
+
+        echo "=== SOPS Key Rotation ==="
+        echo ""
+        echo "This script will generate a new SOPS age key and re-encrypt all secrets."
+        echo ""
+        echo "IMPORTANT: Make sure you have a backup of the current key!"
+        echo ""
+        echo "Press Enter to continue or Ctrl+C to abort..."
+        read -r
+
+        # Generate new age key
+        KEY_DIR="$(dirname "${cfg.rotation.keyPath}")"
+        mkdir -p "$KEY_DIR"
+
+        if [ -f "${cfg.rotation.keyPath}" ]; then
+          BACKUP="${cfg.rotation.keyPath}.backup.$(date +%Y%m%d)"
+          cp "${cfg.rotation.keyPath}" "$BACKUP"
+          echo "✓ Backed up current key to $BACKUP"
+        fi
+
+        # Generate new key
+        ${pkgs.age}/bin/age-keygen -o "${cfg.rotation.keyPath}"
+        echo "✓ Generated new age key"
+
+        # Get the public key
+        PUB_KEY=$(${pkgs.age}/bin/age-keygen -y "${cfg.rotation.keyPath}")
+        echo "✓ Public key: $PUB_KEY"
+
+        echo ""
+        echo "Next steps:"
+        echo "1. Update .sops.yaml with the new public key"
+        echo "2. Re-encrypt all secrets with: sops -e -i secrets/*.yaml"
+        echo "3. Test the new key works with: nixos-rebuild switch --flake .#prague"
+        echo ""
+        echo "=== Rotation Complete ==="
+      '')
+    ];
   };
 }

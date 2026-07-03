@@ -383,7 +383,41 @@ The observability stack provides comprehensive monitoring, logging, and alerting
 
 ### Browser Access
 
-All services are bound to **localhost only** (127.0.0.1) by default for security.
+All services are bound to **localhost only** (127.0.0.1) for security. Access them locally or via SSH tunnel.
+
+#### Quick Reference — All URLs
+
+| Service | URL | Purpose |
+|---------|-----|---------|
+| **Grafana** | `http://localhost:3000` | Dashboards, visualization, log exploration |
+| **Prometheus** | `http://localhost:9090` | Metrics queries (PromQL), targets, rules |
+| **Prometheus (nginx)** | `http://localhost/prometheus/` | Same as above, via nginx reverse proxy |
+| **Grafana (nginx)** | `http://localhost/grafana/` | Same as above, via nginx reverse proxy |
+| **Loki** | `http://localhost:3100` | Log aggregation API |
+| **Alertmanager** | `http://localhost:9093` | Alert routing, silences, status |
+| **Health Endpoint** | `http://localhost:9100` | JSON health check (all services) |
+| **NixOS Exporter** | `http://localhost:9101` | NixOS-specific Prometheus metrics |
+| **Tailscale Metrics** | `http://localhost:9121` | Tailscale Prometheus metrics |
+| **OTel Metrics** | `http://localhost:8888` | OpenTelemetry self-monitoring |
+
+#### Remote Access (via Tailscale)
+
+Since services bind to localhost, use SSH port forwarding to access from another device on your tailnet:
+
+```bash
+# From any device on your tailnet:
+ssh -L 3000:localhost:3000 -L 9090:localhost:9090 prague
+
+# Then open in browser:
+# Grafana:     http://localhost:3000
+# Prometheus:  http://localhost:9090
+```
+
+Or forward all observability ports at once:
+
+```bash
+ssh -L 3000:localhost:3000 -L 9090:localhost:9090 -L 9093:localhost:9093 -L 9100:localhost:9100 prague
+```
 
 #### Grafana Dashboards
 
@@ -414,7 +448,19 @@ node_systemd_unit_state{state="failed"} == 1
 
 1. **Access Prometheus:** `http://localhost:9090`
 2. **Features:** Query metrics with PromQL, view active targets, review alerting rules
-3. **Available targets:** `node`, `prometheus`, `tailscale`, `otelcol`, `security-scanner`
+3. **Available targets:** `node`, `prometheus`, `tailscale`, `otelcol`, `nixos-exporter`
+
+**Quick checks:**
+```bash
+# Health
+curl http://localhost:9090/-/healthy
+
+# Active targets
+curl http://localhost:9090/api/v1/targets | jq '.data.activeTargets[].scrapePool'
+
+# Query example
+curl 'http://localhost:9090/api/v1/query?query=up'
+```
 
 #### Loki (Logs)
 
@@ -429,7 +475,34 @@ node_systemd_unit_state{state="failed"} == 1
 
    # Specific unit
    {job="systemd-journal", unit="nginx.service"}
+
+   # Bot logs
+   {job="systemd-journal", unit="ivali-bot.service"}
+
+   # Errors in last hour
+   {job="systemd-journal"} |= "error" | __error__=""
    ```
+
+**Quick checks:**
+```bash
+# Health
+curl http://localhost:3100/ready
+
+# Query logs
+curl -G http://localhost:3100/loki/api/v1/query_range \
+  --data-urlencode 'query={job="systemd-journal"}' \
+  --data-urlencode 'limit=5'
+```
+
+#### Health Endpoint
+
+```bash
+# Full health check (returns JSON)
+curl http://localhost:9100 | jq .
+
+# Quick status
+curl -s http://localhost:9100 | jq -r '.status'
+```
 
 ### Telegram Access
 
@@ -555,17 +628,20 @@ The system includes Prometheus alerting rules for critical conditions:
 
 ### Service Ports
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| **Grafana** | 3000 | Dashboards & visualization |
-| **Prometheus** | 9090 | Metrics collection & alerting |
-| **Loki** | 3100 | Log aggregation |
-| **Health Endpoint** | 9100 | Health check JSON API |
-| **NixOS Exporter** | 9101 | NixOS-specific metrics |
-| **Tailscale Metrics** | 9121 | Tailscale status metrics |
-| **Security Scanner** | 9120 | Security scan metrics |
-| **OTel Collector** | 4317/4318 | OTLP gRPC/HTTP |
-| **OTel Metrics** | 8888 | OTel self-monitoring |
+| Service | Port | Listen | Firewall | URL |
+|---------|------|--------|----------|-----|
+| **Grafana** | 3000 | 127.0.0.1 | No | `http://localhost:3000` |
+| **Prometheus** | 9090 | 127.0.0.1 | No | `http://localhost:9090` |
+| **Loki** | 3100 | 127.0.0.1 | No | `http://localhost:3100` |
+| **Alertmanager** | 9093 | 127.0.0.1 | No | `http://localhost:9093` |
+| **Health Endpoint** | 9100 | 0.0.0.0 | Yes | `http://localhost:9100` |
+| **NixOS Exporter** | 9101 | 0.0.0.0 | Yes | `http://localhost:9101` |
+| **Tailscale Metrics** | 9121 | 0.0.0.0 | Yes | `http://localhost:9121` |
+| **OTel Collector gRPC** | 4317 | 0.0.0.0 | No | `grpc://localhost:4317` |
+| **OTel Collector HTTP** | 4318 | 0.0.0.0 | No | `http://localhost:4318` |
+| **OTel Metrics** | 8888 | 0.0.0.0 | Yes | `http://localhost:8888` |
+| **Nginx** | 80, 443 | 0.0.0.0 | Yes | `http://localhost/grafana/` |
+| **SSH** | 22 | tailscale0 | Tailscale-only | `ssh prague` |
 
 ---
 

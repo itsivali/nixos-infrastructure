@@ -33,11 +33,10 @@
 { pkgs, lib, ... }:
 
 let
-  # Helper to create an AppArmor profile
-  mkProfile = name: path: {
-    profile = builtins.readFile path;
-    state = "complain";
-  };
+  # Load profiles as derivations
+  ivali-bot-profile = pkgs.writeText "ivali-bot" (builtins.readFile ./profiles/ivali-bot);
+  ivali-cli-profile = pkgs.writeText "ivali-cli" (builtins.readFile ./profiles/ivali-cli);
+  gitops-reconciler-profile = pkgs.writeText "gitops-reconciler" (builtins.readFile ./profiles/gitops-reconciler);
 in
 {
   security.apparmor = {
@@ -52,11 +51,20 @@ in
       pkgs.apparmor-parser
     ];
 
-    # Load custom profiles from the security/apparmor/profiles/ directory
+    # Load custom profiles
     policies = {
-      ivali-bot = mkProfile "ivali-bot" ./profiles/ivali-bot;
-      ivali-cli = mkProfile "ivali-cli" ./profiles/ivali-cli;
-      gitops-reconciler = mkProfile "gitops-reconciler" ./profiles/gitops-reconciler;
+      ivali-bot = {
+        profile =ivali-bot-profile;
+        state = "complain";
+      };
+      ivali-cli = {
+        profile =ivali-cli-profile;
+        state = "complain";
+      };
+      gitops-reconciler = {
+        profile = gitops-reconciler-profile;
+        state = "complain";
+      };
     };
   };
 }

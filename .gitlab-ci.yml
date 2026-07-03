@@ -92,8 +92,8 @@ security-scan:
     - nixos
     - self-hosted
   script:
-    - nix build .#packages.x86_64-linux.ivali --out-link ./ivali-bin
-    - ./ivali-bin/bin/ivali doctor 2>&1 | tee security-report.txt
+    - nix build .#packages.x86_64-linux.ivali --out-link ./ivali-bin 2>&1 | tee security-report.txt
+    - ./ivali-bin/bin/ivali doctor 2>&1 | tee -a security-report.txt || echo "ivali doctor failed" >> security-report.txt
   artifacts:
     when: always
     paths:

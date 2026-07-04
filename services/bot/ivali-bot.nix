@@ -87,6 +87,9 @@ in
         # NixOS
         nix
 
+        # Privilege escalation
+        sudo
+
         # Desktop applications
         firefox
         gnome-terminal

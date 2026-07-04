@@ -215,8 +215,6 @@ _init_default_roles() {
   register_command_role "hibernate" "user"
   register_command_role "monitoroff" "user"
   register_command_role "monitoron" "user"
-  register_command_role "monitor-off" "user"
-  register_command_role "monitor-on" "user"
 
   # Misc commands
   register_command_role "git" "user"

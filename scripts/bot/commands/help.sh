@@ -77,8 +77,8 @@ _NixOS GitOps bot · long-poll session active_
 \`/logout\`       Log out of GNOME
 \`/suspend\`      Suspend to RAM
 \`/hibernate\`    Hibernate to disk
-\`/monitor-off\`  Turn displays off
-\`/monitor-on\`   Wake displays
+\`/monitoroff\`   Turn displays off
+\`/monitoron\`    Wake displays
 
 🔧 *Raw Access*
 \`/git <cmd>\`    Run git in the infra repo
@@ -237,7 +237,7 @@ Switch workspaces.
 \`/lock\` / \`/logout\` / \`/suspend\` / \`/hibernate\`
 Power management commands.
 
-\`/monitor-off\` / \`/monitor-on\`
+\`/monitoroff\` / \`/monitoron\`
 Control display power.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━

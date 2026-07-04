@@ -131,7 +131,8 @@ in
 
         StateDirectory = "ivali-bot";
 
-        NoNewPrivileges = true;
+        # sudo -u user is required for user-context operations
+        # (launch_app, clipboard, volume, D-Bus calls).
         PrivateTmp = true;
       };
     };

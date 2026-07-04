@@ -110,11 +110,23 @@ desktop::ext_dbus_call() {
 # Usage: bin_path="$(desktop::resolve_binary "firefox")"
 desktop::resolve_binary() {
   local bin="$1"
+
+  # 1. Check system closure (NixOS system packages)
   local sys_path="/run/current-system/sw/bin/${bin}"
   if [[ -x "$sys_path" ]]; then
     echo "$sys_path"
     return 0
   fi
+
+  # 2. Check current process PATH (includes service path attribute)
+  local cmd_path
+  cmd_path="$(command -v "$bin" 2>/dev/null)" || true
+  if [[ -n "$cmd_path" ]]; then
+    echo "$cmd_path"
+    return 0
+  fi
+
+  # 3. Fallback: check user's PATH via sudo
   local uid
   uid="$(id -u "${DEFAULT_USER}" 2>/dev/null || echo 1000)"
   sudo -u "${DEFAULT_USER}" env XDG_RUNTIME_DIR="/run/user/${uid}" \
@@ -161,6 +173,8 @@ desktop::launch_app() {
   if sudo -u "${DEFAULT_USER}" \
     XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
     DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
+    WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+    DISPLAY="$DISPLAY" \
     systemd-run --user --scope "${args_array[@]}" >/dev/null 2>&1; then
     send_msg "$chat" "✅ \`${bin}\` launching on *${HOST}*."
     return 0

@@ -4,7 +4,7 @@
 
 _cmd_lock() {
   local chat="$1" args="$2"
-  loginctl lock-session 2>/dev/null
+  loginctl lock-sessions 2>/dev/null
   send_msg "$chat" "🔒 Screen locked."
 }
 

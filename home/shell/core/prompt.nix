@@ -9,20 +9,13 @@ let
 in
 
 {
-  programs.zsh.plugins = [
-    {
-      name = "zsh-completions";
-      src = pkgs.zsh-completions;
-    }
-  ];
-
   programs.starship = {
     enable = true;
     enableZshIntegration = true;
 
     settings = {
-      add_newline = true;
-      scan_timeout = 10;
+      add_newline = false;
+      scan_timeout = 5;
 
       format = lib.concatStrings [
         "$username"
@@ -36,11 +29,11 @@ in
         "$time"
         "$line_break"
         "$nix_shell"
-        "$custom.repo"
-        "$fill"
-        "$custom.cmd_duration"
+        "$nodejs"
+        "$python"
+        "$golang"
+        "$cmd_duration"
         "$status"
-        "$line_break"
         "$character"
       ];
 
@@ -76,7 +69,6 @@ in
       git_branch = {
         style = ivaliPurple;
         format = "[ $branch]($style) ";
-        symbol = "";
         only_attached = true;
       };
 
@@ -95,21 +87,21 @@ in
       git_status = {
         style = "bold yellow";
         format = "[\\( $all_status$ahead_behind \\)]($style) ";
-        conflicted = "";
-        ahead = "\${count}";
-        behind = "\${count}";
+        conflicted = "! ";
+        ahead = "↑\${count}";
+        behind = "↓\${count}";
         diverged = "⇡\${ahead_count}⇣\${behind_count}";
-        untracked = "";
-        stashed = "";
-        modified = "";
-        staged = "";
-        renamed = "";
-        deleted = "";
+        untracked = "? ";
+        stashed = "$ ";
+        modified = "✎ ";
+        staged = "+ ";
+        renamed = "→ ";
+        deleted = "✘ ";
       };
 
       git_metrics = {
         disabled = false;
-        format = "[\(+$added ($deleted)\)]($style) ";
+        format = "[\(+$added -$deleted\)]($style) ";
         added_style = "bold green";
         deleted_style = "bold red";
         only_nonzero_diffs = true;
@@ -119,107 +111,69 @@ in
 
       nix_shell = {
         style = "bold yellow";
-        symbol = "";
-        format = "[$symbol $state]($style) ";
+        symbol = "❄";
+        format = "[$symbol]($style) ";
         impure_msg = "impure";
         pure_msg = "pure";
         heuristic = true;
       };
 
-      # ── Utility modules (only shown when relevant) ───────────────
+      # ── Languages (only shown when in relevant directory) ────────
 
       nodejs = {
-        symbol = "";
+        symbol = " ";
         style = "bold #22C55E";
-        format = "via [$symbol v$version ]($style) ";
+        format = "[$symbol v$version]($style) ";
         detect_extensions = [ "js" "ts" "jsx" "tsx" "mjs" "cjs" ];
         detect_files = [ "package.json" ".node-version" "tsconfig.json" ];
         not_if_venv = true;
       };
 
       python = {
-        symbol = "";
+        symbol = " ";
         style = "bold #FBBF24";
-        format = "via [$symbol v$version \($virtualenv\) ]($style) ";
+        format = "[$symbol v$version]($style) ";
         pyenv_version_name = true;
         detect_extensions = [ "py" ];
         detect_files = [ "requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock" ];
       };
 
-      docker = {
-        symbol = "";
-        style = "bold #60A5FA";
-        format = "via [$symbol]($style) ";
-        detect_files = [ "docker-compose.yml" "Dockerfile" ".dockerignore" ];
-      };
-
       golang = {
-        symbol = "";
+        symbol = " ";
         style = "bold #60A5FA";
-        format = "via [$symbol v$version ]($style) ";
+        format = "[$symbol v$version]($style) ";
         detect_extensions = [ "go" ];
         detect_files = [ "go.mod" "go.sum" ];
       };
 
-      rust = {
-        symbol = "";
-        style = "bold #F87171";
-        format = "via [$symbol v$version ]($style) ";
-        detect_extensions = [ "rs" ];
-        detect_files = [ "Cargo.toml" ];
-      };
+      docker = { disabled = true; };
+      rust = { disabled = true; };
+      localip = { disabled = true; };
 
       # ── Metadata ────────────────────────────────────────────────
 
       cmd_duration = {
-        disabled = true;
-      };
-
-      custom.cmd_duration = {
-        command = ''
-          duration=$STARSHIP_CMD_DURATION
-          if [ -z "$duration" ] || [ "$duration" -eq 0 ]; then
-            exit 1
-          fi
-          ms=$((duration % 1000))
-          s=$(((duration / 1000) % 60))
-          m=$(((duration / 1000 / 60) % 60))
-          h=$((duration / 1000 / 60 / 60))
-          out=""
-          [ "$h" -gt 0 ] && out="$out $h h"
-          [ "$m" -gt 0 ] && out="$out $m m"
-          [ "$s" -gt 0 ] && out="$out $s s"
-          [ "$ms" -gt 0 ] && out="$out $ms ms"
-          [ -z "$out" ] && out=" 0 ms"
-          echo "$out"
-        '';
-        when = "STARSHIP_CMD_DURATION > 500";
         style = ivaliGray;
-        format = "[ ⏱$output]($style) ";
-        shell = "bash";
+        format = "[⏱ $duration]($style) ";
+        min_time = 500;
+        show_milliseconds = true;
       };
 
       status = {
         style = "bold red";
-        format = "[ $status]($style) ";
+        format = "[$status]($style) ";
         disabled = false;
-        not_found_symbol = "";
-        signal_symbol = " ";
+        not_found_symbol = "✘";
+        signal_symbol = "✘";
         pipestatus = true;
-        pipestatus_separator = "  ";
+        pipestatus_separator = " ";
       };
 
       time = {
         style = ivaliGray;
         format = "[ $time]($style) ";
         disabled = false;
-        time_format = "%H : %M : %S";
-      };
-
-      localip = {
-        style = "bold yellow";
-        format = "[ $localipv4]($style) ";
-        ssh_only = true;
+        time_format = "%H:%M:%S";
       };
 
       shlvl = {
@@ -238,24 +192,6 @@ in
         error_symbol = "[❯](bold #F87171)";
         vicmd_symbol = "[❮](bold #4ADE80)";
         format = "$symbol ";
-      };
-
-      # ── Custom: IVALI repo context ──────────────────────────────
-
-      custom.repo = {
-        command = lib.concatStrings [
-          "root=$(git rev-parse --show-toplevel 2>/dev/null) && "
-          "basename=$(basename \"$root\" 2>/dev/null) && "
-          "if [ \"$basename\" = \"nixos-infrastructure\" ]; then "
-          "  echo \"  infra\"; "
-          "elif git rev-parse --git-dir >/dev/null 2>&1; then "
-          "  echo \"\"; "
-          "fi"
-        ];
-        style = ivaliGreen;
-        format = "[$output]($style) ";
-        when = true;
-        shell = "bash";
       };
     };
   };

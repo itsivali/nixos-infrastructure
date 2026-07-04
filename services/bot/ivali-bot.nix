@@ -51,7 +51,7 @@ in
       wants = [ "network-online.target" ];
       partOf = [ "graphical.target" ];
 
-      wantedBy = [ "multi-user.target" ];
+      wantedBy = [ "graphical.target" ];
 
       path = with pkgs; [
         # Core

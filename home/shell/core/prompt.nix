@@ -5,7 +5,6 @@ let
   ivaliCyan = "bold #22D3EE";
   ivaliGreen = "bold #4ADE80";
   ivaliGray = "#9CA3AF";
-  ivaliGold = "bold #FBBF24";
 in
 
 {
@@ -45,22 +44,22 @@ in
         show_always = true;
         style_user = ivaliPurple;
         style_root = "bold red";
-        format = "[ $user]($style) ";
+        format = "[$user]($style) ";
       };
 
       hostname = {
         ssh_only = false;
         style = ivaliGreen;
-        format = "[ $hostname]($style) ";
+        format = "[$hostname]($style) ";
       };
 
       directory = {
         style = ivaliCyan;
         truncation_length = 3;
         truncate_to_repo = true;
-        format = "[ $path]($style) ";
-        home_symbol = " ";
-        repo_root_format = "[ $repo_root]($style) ";
+        format = "[$path]($style) ";
+        home_symbol = "~";
+        repo_root_format = "[$repo_root]($style) ";
         read_only = " ";
       };
 
@@ -68,7 +67,7 @@ in
 
       git_branch = {
         style = ivaliPurple;
-        format = "[ $branch]($style) ";
+        format = "[$branch]($style) ";
         only_attached = true;
       };
 
@@ -88,15 +87,15 @@ in
         style = "bold yellow";
         format = "[\\( $all_status$ahead_behind \\)]($style) ";
         conflicted = "! ";
-        ahead = "↑\${count}";
-        behind = "↓\${count}";
-        diverged = "⇡\${ahead_count}⇣\${behind_count}";
+        ahead = "\${count}";
+        behind = "\${count}";
+        diverged = "\${ahead_count}\${behind_count}";
         untracked = "? ";
         stashed = "$ ";
-        modified = "✎ ";
+        modified = "~ ";
         staged = "+ ";
-        renamed = "→ ";
-        deleted = "✘ ";
+        renamed = " ";
+        deleted = "- ";
       };
 
       git_metrics = {
@@ -121,27 +120,24 @@ in
       # ── Languages (only shown when in relevant directory) ────────
 
       nodejs = {
-        symbol = " ";
         style = "bold #22C55E";
-        format = "[$symbol $version]($style) ";
+        format = "[node $version]($style) ";
         detect_extensions = [ "js" "ts" "jsx" "tsx" "mjs" "cjs" ];
         detect_files = [ "package.json" ".node-version" "tsconfig.json" ];
         not_if_venv = true;
       };
 
       python = {
-        symbol = " ";
         style = "bold #FBBF24";
-        format = "[$symbol $version]($style) ";
+        format = "[py $version]($style) ";
         pyenv_version_name = true;
         detect_extensions = [ "py" ];
         detect_files = [ "requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock" ];
       };
 
       golang = {
-        symbol = " ";
         style = "bold #60A5FA";
-        format = "[$symbol $version]($style) ";
+        format = "[go $version]($style) ";
         detect_extensions = [ "go" ];
         detect_files = [ "go.mod" "go.sum" ];
       };
@@ -163,8 +159,6 @@ in
         style = "bold red";
         format = "[$status]($style) ";
         disabled = false;
-        not_found_symbol = "✘";
-        signal_symbol = "✘";
         pipestatus = true;
         pipestatus_separator = " ";
       };

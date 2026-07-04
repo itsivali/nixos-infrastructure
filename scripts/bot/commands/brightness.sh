@@ -24,8 +24,13 @@ _cmd_brightness() {
   if [[ "$value" =~ ^[0-9]+$ ]] && (( value >= 0 && value <= 100 )); then
     "$bctl" set "${value}%" 2>/dev/null
     send_msg "$chat" "🔆 Brightness set to ${value}%"
+  elif [[ "$value" =~ ^[+-][0-9]+$ ]]; then
+    "$bctl" set "${value}%" 2>/dev/null
+    local info
+    info="$("$bctl" info 2>/dev/null | grep -oP '\d+%' | head -1)" || true
+    send_msg "$chat" "🔆 Brightness: ${info:-unknown}"
   else
-    send_msg "$chat" "🔧 *Usage:* \`/brightness <0-100>\`"
+    send_msg "$chat" "🔧 *Usage:* \`/brightness <0-100>\` or \`/brightness +5\` / \`/brightness -10\`"
   fi
 }
 

@@ -11,10 +11,13 @@ _cmd_users() {
   if [[ ! -f "$auth_file" ]]; then
     send_msg "$chat" "👥 *Authorized Users*
 
-_No users configured yet._
+_Single-user mode — no auth file configured._
 
-*Single-user mode:* All commands are available to everyone.
-Use \`/adduser\` to set up role-based access."
+Your chat ID: \`${chat}\`
+Role: *owner*
+
+All commands are available to you.
+Use \`/adduser ${chat} owner You\` to create an explicit user entry."
     return
   fi
 

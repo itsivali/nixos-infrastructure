@@ -11,7 +11,13 @@ _cmd_windows() {
   local result
   result="$(desktop::ext_dbus_call ListWindows)" || true
 
-  if [[ -z "$result" || "$result" == *'[]'* ]]; then
+  if [[ -z "$result" ]]; then
+    send_msg "$chat" "❌ Could not list windows. Is the DesktopControl extension installed and enabled?
+Restart GNOME Shell (Alt+F2 → \`r\`) or log out and back in."
+    return
+  fi
+
+  if [[ "$result" == *'[]'* ]]; then
     send_msg "$chat" "🪟 No open windows detected."
     return
   fi
@@ -52,7 +58,9 @@ _Example:_ \`/focus Firefox\`"
   local result
   result="$(desktop::ext_dbus_call FocusWindow "$args")" || true
 
-  if echo "$result" | grep -q "true"; then
+  if [[ -z "$result" ]]; then
+    send_msg "$chat" "❌ Could not focus window. Is the DesktopControl extension installed and enabled?"
+  elif echo "$result" | grep -q "true"; then
     send_msg "$chat" "🪟 Focused: \`${args}\`"
   else
     send_msg "$chat" "❌ Window \`${args}\` not found."
@@ -74,7 +82,9 @@ _Example:_ \`/close Firefox\`"
   local result
   result="$(desktop::ext_dbus_call CloseWindow "$args")" || true
 
-  if echo "$result" | grep -q "true"; then
+  if [[ -z "$result" ]]; then
+    send_msg "$chat" "❌ Could not close window. Is the DesktopControl extension installed and enabled?"
+  elif echo "$result" | grep -q "true"; then
     send_msg "$chat" "🪟 Closed: \`${args}\`"
   else
     send_msg "$chat" "❌ Window \`${args}\` not found."

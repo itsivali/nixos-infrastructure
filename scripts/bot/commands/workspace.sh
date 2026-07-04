@@ -1,6 +1,5 @@
-#!/usr/bin/env bash
 # commands/workspace.sh — /workspace next|prev|N — workspace switching
-# Uses GNOME Shell DBus API (works natively on Wayland)
+# Uses DesktopControl GNOME Shell extension (Wayland-native via D-Bus).
 ##############################################################################
 
 _cmd_workspace() {
@@ -13,57 +12,36 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
     return
   fi
 
-  # Get current workspace index via GNOME Shell DBus
+  desktop::require_graphical "$chat" || return
+
+  # Get current workspace index
+  local current_result
+  current_result="$(desktop::ext_dbus_call GetActiveWorkspace)" || true
   local current
-  current="$(gdbus call --session \
-    --dest org.gnome.Shell \
-    --object-path /org/gnome/Shell \
-    --method org.gnome.Shell.Eval \
-    'global.workspace_manager.get_active_workspace_index()' 2>/dev/null)" || true
-  current="$(echo "$current" | grep -oP '\d+')"
+  current="$(echo "$current_result" | grep -oP '\d+')"
+
+  # Get total workspace count
+  local total_result
+  total_result="$(desktop::ext_dbus_call GetWorkspaceCount)" || true
+  local total
+  total="$(echo "$total_result" | grep -oP '\d+')"
 
   case "$args" in
     next)
-      if [[ -n "$current" ]]; then
+      if [[ -n "$current" && -n "$total" ]]; then
         local next_ws=$(( current + 1 ))
-        local total
-        total="$(gdbus call --session \
-          --dest org.gnome.Shell \
-          --object-path /org/gnome/Shell \
-          --method org.gnome.Shell.Eval \
-          'global.workspace_manager.get_n_workspaces()' 2>/dev/null)" || true
-        total="$(echo "$total" | grep -oP '\d+')"
-        if [[ -n "$total" ]] && (( next_ws >= total )); then
-          next_ws=0
-        fi
-        gdbus call --session \
-          --dest org.gnome.Shell \
-          --object-path /org/gnome/Shell \
-          --method org.gnome.Shell.Eval \
-          "global.workspace_manager.get_workspace_by_index(${next_ws}).activate(global.get_current_time())" 2>/dev/null
+        (( next_ws >= total )) && next_ws=0
+        desktop::ext_dbus_call SwitchWorkspace "$next_ws"
         send_msg "$chat" "🖥 Workspace → ${next_ws}"
       else
         send_msg "$chat" "❌ Could not detect current workspace."
       fi
       ;;
     prev)
-      if [[ -n "$current" ]]; then
+      if [[ -n "$current" && -n "$total" ]]; then
         local prev_ws=$(( current - 1 ))
-        if (( prev_ws < 0 )); then
-          local total
-          total="$(gdbus call --session \
-            --dest org.gnome.Shell \
-            --object-path /org/gnome/Shell \
-            --method org.gnome.Shell.Eval \
-            'global.workspace_manager.get_n_workspaces()' 2>/dev/null)" || true
-          total="$(echo "$total" | grep -oP '\d+')"
-          prev_ws=$(( ${total:-1} - 1 ))
-        fi
-        gdbus call --session \
-          --dest org.gnome.Shell \
-          --object-path /org/gnome/Shell \
-          --method org.gnome.Shell.Eval \
-          "global.workspace_manager.get_workspace_by_index(${prev_ws}).activate(global.get_current_time())" 2>/dev/null
+        (( prev_ws < 0 )) && prev_ws=$(( total - 1 ))
+        desktop::ext_dbus_call SwitchWorkspace "$prev_ws"
         send_msg "$chat" "🖥 Workspace → ${prev_ws}"
       else
         send_msg "$chat" "❌ Could not detect current workspace."
@@ -71,12 +49,11 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
       ;;
     [0-9]*)
       local target="$args"
-      gdbus call --session \
-        --dest org.gnome.Shell \
-        --object-path /org/gnome/Shell \
-        --method org.gnome.Shell.Eval \
-        "global.workspace_manager.get_workspace_by_index(${target}).activate(global.get_current_time())" 2>/dev/null
-      send_msg "$chat" "🖥 Workspace → ${target}"
+      if desktop::ext_dbus_call SwitchWorkspace "$target" | grep -q "true"; then
+        send_msg "$chat" "🖥 Workspace → ${target}"
+      else
+        send_msg "$chat" "❌ Workspace ${target} does not exist."
+      fi
       ;;
     *)
       send_msg "$chat" "🔧 *Usage:* \`/workspace <next|prev|N>\`"

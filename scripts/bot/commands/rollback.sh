@@ -16,7 +16,7 @@ _cmd_rollback() {
   # Check for confirmation token
   if [[ "$args" == *"confirm"* ]]; then
     send_msg "$chat" "⏪ Rolling back to generation ${prev_gen}..."
-    sudo nixos-rebuild switch --profile /nix/var/nix/profiles/system 2>/dev/null
+    sudo nixos-rebuild switch --rollback 2>/dev/null
     local result=$?
     if [[ $result -eq 0 ]]; then
       send_msg "$chat" "✅ Rollback successful! Now running generation ${prev_gen}"
@@ -59,3 +59,5 @@ _cmd_rollback_callback() {
 }
 
 register_command "rollback" "_cmd_rollback" "⏪ Rollback to previous NixOS generation"
+register_callback "rollback_confirm" "_cmd_rollback_callback"
+register_callback "rollback_cancel" "_cmd_rollback_callback"

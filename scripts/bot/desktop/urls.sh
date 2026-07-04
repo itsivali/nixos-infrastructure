@@ -56,11 +56,11 @@ urlencode() {
 # Open a URL in Firefox.
 _open_url() {
   local chat="$1" url="$2"
-  launch_app "$chat" "firefox --new-window ${url}"
+  desktop::launch_app "$chat" "firefox --new-window ${url}"
 }
 
 # Open a folder in Nautilus.
 _open_folder() {
   local chat="$1" path="$2"
-  launch_app "$chat" "nautilus ${path}"
+  desktop::launch_app "$chat" "nautilus ${path}"
 }

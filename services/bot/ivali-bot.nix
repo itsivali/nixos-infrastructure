@@ -14,6 +14,11 @@
 # ------------
 # Requires fleet.bot options (declared in automation/options.nix).
 #
+# Desktop commands use call-time session bridging (lib/desktop.sh) to
+# discover DBUS_SESSION_BUS_ADDRESS, XDG_RUNTIME_DIR, and WAYLAND_DISPLAY
+# from the running gnome-shell process at dispatch time. This avoids
+# baking stale env vars at service start and works across session restarts.
+#
 ##############################################################################
 
 { config, lib, pkgs, ... }:
@@ -39,8 +44,12 @@ in
     systemd.services.ivali-bot = {
       description = "Telegram Bot Control Plane";
 
-      after = [ "network-online.target" ];
+      after = [
+        "network-online.target"
+        "graphical.target"
+      ];
       wants = [ "network-online.target" ];
+      partOf = [ "graphical.target" ];
 
       wantedBy = [ "multi-user.target" ];
 
@@ -91,7 +100,7 @@ in
         wireplumber
         glib          # provides gdbus for GNOME Shell DBus calls
 
-        # Clipboard
+        # Clipboard (Wayland-native)
         wl-clipboard
 
         # Session management
@@ -116,6 +125,9 @@ in
         StandardOutput = "journal";
         StandardError = "journal";
         SyslogIdentifier = "ivali-bot";
+
+        # Session env is discovered at call-time by lib/desktop.sh
+        # No DISPLAY/WAYLAND_DISPLAY/DBUS_SESSION_BUS_ADDRESS needed here.
 
         StateDirectory = "ivali-bot";
 

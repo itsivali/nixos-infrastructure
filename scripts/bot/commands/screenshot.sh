@@ -1,28 +1,27 @@
-#!/usr/bin/env bash
-# commands/screenshot.sh — /screenshot — capture desktop via gnome-screenshot
+# commands/screenshot.sh — /screenshot — capture desktop via GNOME Shell extension D-Bus
 ##############################################################################
 
 _cmd_screenshot() {
   local chat="$1" args="$2"
-  local file="/tmp/ivali-screenshot-$(date +%s).png"
+  local file
+  file="/tmp/ivali-screenshot-$(date +%s).png"
 
   send_msg "$chat" "📸 Capturing screenshot…"
 
-  local -a env_args
-  session_env_args "$chat" env_args || return
+  desktop::require_graphical "$chat" || return
 
-  local ss_bin
-  ss_bin="$(resolve_binary gnome-screenshot)" || true
-  if [[ -z "$ss_bin" ]]; then
-    send_msg "$chat" "❌ gnome-screenshot not found on ${HOST}."
-    return
-  fi
+  local result
+  result="$(desktop::ext_dbus_call Screenshot "$file")" || true
 
-  if sudo -u "${DEFAULT_USER}" env "${env_args[@]}" "$ss_bin" -f "$file" 2>/dev/null; then
-    send_photo "$chat" "$file" "📸 Screenshot from *${HOST}*"
-    rm -f "$file"
+  if echo "$result" | grep -q "true"; then
+    if [[ -f "$file" ]]; then
+      send_photo "$chat" "$file" "📸 Screenshot from *${HOST}*"
+      rm -f "$file"
+    else
+      send_msg "$chat" "❌ Screenshot captured but file not found at expected path."
+    fi
   else
-    send_msg "$chat" "❌ Screenshot failed. Is gnome-screenshot installed?"
+    send_msg "$chat" "❌ Screenshot failed. Is the DesktopControl extension installed and enabled?"
   fi
 }
 

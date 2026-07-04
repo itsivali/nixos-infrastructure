@@ -1,6 +1,5 @@
-#!/usr/bin/env bash
 # commands/desktop_power.sh — /lock, /logout, /suspend, /hibernate, /monitoroff, /monitoron
-# Uses GNOME Shell DBus API for display power management (Wayland-native)
+# Uses GNOME Shell D-Bus API for display power management (Wayland-native).
 ##############################################################################
 
 _cmd_lock() {
@@ -12,7 +11,16 @@ _cmd_lock() {
 _cmd_logout() {
   local chat="$1" args="$2"
   send_msg "$chat" "👋 Logging out…"
-  gnome-session-quit --no-prompt 2>/dev/null || loginctl terminate-user "${DEFAULT_USER}" 2>/dev/null
+  # Try GNOME session quit first, fall back to loginctl
+  desktop::require_graphical "$chat" 2>/dev/null || {
+    loginctl terminate-user "${DEFAULT_USER}" 2>/dev/null
+    return
+  }
+  sudo -u "${DEFAULT_USER}" \
+    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
+    gnome-session-quit --no-prompt 2>/dev/null || \
+    loginctl terminate-user "${DEFAULT_USER}" 2>/dev/null
 }
 
 _cmd_suspend() {
@@ -29,21 +37,21 @@ _cmd_hibernate() {
 
 _cmd_monitor_off() {
   local chat="$1" args="$2"
-  # Use GNOME Shell DBus to activate screen blank (Wayland-native)
-  gdbus call --session \
-    --dest org.gnome.ScreenSaver \
-    --object-path /org/gnome/ScreenSaver \
-    --method org.gnome.ScreenSaver.SetActive true 2>/dev/null
+  # Use GNOME Shell ScreenSaver D-Bus (Wayland-native)
+  desktop::require_graphical "$chat" || return
+  desktop::dbus_call \
+    org.gnome.ScreenSaver /org/gnome/ScreenSaver \
+    org.gnome.ScreenSaver.SetActive true
   send_msg "$chat" "🖥 Display off."
 }
 
 _cmd_monitor_on() {
   local chat="$1" args="$2"
-  # Use GNOME Shell DBus to deactivate screen blank (Wayland-native)
-  gdbus call --session \
-    --dest org.gnome.ScreenSaver \
-    --object-path /org/gnome/ScreenSaver \
-    --method org.gnome.ScreenSaver.SetActive false 2>/dev/null
+  # Use GNOME Shell ScreenSaver D-Bus (Wayland-native)
+  desktop::require_graphical "$chat" || return
+  desktop::dbus_call \
+    org.gnome.ScreenSaver /org/gnome/ScreenSaver \
+    org.gnome.ScreenSaver.SetActive false
   send_msg "$chat" "🖥 Display on."
 }
 
@@ -53,3 +61,5 @@ register_command "suspend" "_cmd_suspend" "💤 Suspend"
 register_command "hibernate" "_cmd_hibernate" "❄ Hibernate"
 register_command "monitoroff" "_cmd_monitor_off" "🖥 Turn displays off"
 register_command "monitoron" "_cmd_monitor_on" "🖥 Wake displays"
+register_command "monitor-off" "_cmd_monitor_off" "🖥 Turn displays off"
+register_command "monitor-on" "_cmd_monitor_on" "🖥 Wake displays"

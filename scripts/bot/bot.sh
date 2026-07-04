@@ -60,7 +60,7 @@ while true; do
   updates="$(curl -fsSL --max-time 65 "${API}/getUpdates" \
     -d "offset=${OFFSET}" \
     -d "timeout=60" \
-    -d "allowed_updates=[\"message\"]" 2>/dev/null || true)"
+    -d "allowed_updates=[\"message\",\"callback_query\"]" 2>/dev/null || true)"
 
   if [[ -z "$updates" ]]; then
     sleep 5
@@ -70,7 +70,23 @@ while true; do
   while read -r item; do
     uid="$(echo "$item" | jq -r '.update_id')"
     msg="$(echo "$item" | jq -r '.message // empty')"
+    cb="$(echo "$item" | jq -r '.callback_query // empty')"
 
+    # Handle callback queries (inline keyboard button presses)
+    if [[ -n "$cb" && "$cb" != "null" ]]; then
+      OFFSET=$((uid + 1))
+      save_offset "$OFFSET"
+      cb_id="$(echo "$cb" | jq -r '.id')"
+      cb_chat="$(echo "$cb" | jq -r '.message.chat.id // empty')"
+      cb_data="$(echo "$cb" | jq -r '.data // empty')"
+      if [[ -n "$cb_chat" && "$cb_chat" == "$CHAT_ID" && -n "$cb_data" ]]; then
+        log "Callback: ${cb_data}"
+        dispatch_callback "$cb_id" "$cb_chat" "$cb_data"
+      fi
+      continue
+    fi
+
+    # Regular messages only
     if [[ -z "$msg" || "$msg" == "null" ]]; then
       OFFSET=$((uid + 1))
       save_offset "$OFFSET"

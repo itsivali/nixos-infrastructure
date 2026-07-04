@@ -7,9 +7,18 @@ _cmd_processes() {
   local chat="$1" args="$2"
   local sep="━━━━━━━━━━━━━━━━━━━━━━"
 
+  # Ensure graphical session env vars are available
+  desktop::ensure_session_env 2>/dev/null || {
+    send_msg "$chat" "📋 No GUI processes detected (no graphical session)."
+    return
+  }
+
   # Query GNOME Shell for window list with PIDs via DBus
   local result
-  result="$(gdbus call --session \
+  result="$(sudo -u "${DEFAULT_USER}" \
+    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
+    gdbus call --session \
     --dest org.gnome.Shell \
     --object-path /org/gnome/Shell \
     --method org.gnome.Shell.Eval \

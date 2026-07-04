@@ -193,6 +193,36 @@ _init_default_roles() {
   register_command_role "start" "guest"
   register_command_role "help" "guest"
   register_command_role "menu" "guest"
+
+  # Desktop commands (user level — require graphical session)
+  register_command_role "open" "user"
+  register_command_role "apps" "user"
+  register_command_role "firefox" "user"
+  register_command_role "screenshot" "user"
+  register_command_role "clipboard" "user"
+  register_command_role "volume" "user"
+  register_command_role "mute" "user"
+  register_command_role "unmute" "user"
+  register_command_role "brightness" "user"
+  register_command_role "notify" "user"
+  register_command_role "windows" "user"
+  register_command_role "focus" "user"
+  register_command_role "close" "user"
+  register_command_role "workspace" "user"
+  register_command_role "lock" "user"
+  register_command_role "logout" "user"
+  register_command_role "suspend" "user"
+  register_command_role "hibernate" "user"
+  register_command_role "monitoroff" "user"
+  register_command_role "monitoron" "user"
+  register_command_role "monitor-off" "user"
+  register_command_role "monitor-on" "user"
+
+  # Misc commands
+  register_command_role "git" "user"
+  register_command_role "github" "user"
+  register_command_role "cancel" "user"
+  register_command_role "m" "user"
 }
 
 # Initialize default roles on source

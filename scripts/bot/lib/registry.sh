@@ -51,6 +51,28 @@ Send \`/help\` to see what's available."
   fi
 }
 
+# ── Callback query registry (for inline keyboard button presses) ──────────────
+declare -A _CALLBACK_HANDLER
+
+# Register a callback query handler.
+# Usage: register_callback "deploy_confirm" "_cmd_deploy_callback"
+register_callback() {
+  local name="$1" handler="$2"
+  _CALLBACK_HANDLER["$name"]="$handler"
+}
+
+# Dispatch a callback query to its handler.
+# Usage: dispatch_callback "$callback_id" "$chat" "$data"
+dispatch_callback() {
+  local cb_id="$1" chat="$2" data="$3"
+  if [[ -v "_CALLBACK_HANDLER[$data]" ]]; then
+    "${_CALLBACK_HANDLER[$data]}" "$chat" "$cb_id" "$data"
+  else
+    log "Unknown callback: ${data}"
+    answer_callback "$cb_id" "Unknown action"
+  fi
+}
+
 # Generate the full help menu from registered commands.
 # Usage: send_msg "$chat" "$(generate_menu)"
 generate_menu() {

@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # lib/app_registry.sh — Application registry with aliases and fuzzy matching
 #
 # Dependencies: lib/core.sh (log)
@@ -31,26 +30,29 @@ app_add_entry() {
 _parse_desktop_file() {
   local file="$1"
   local name="" exec="" categories="" comment=""
+  local nodisplay=false
 
-  while IFS='=' read -r key value; do
+  while IFS= read -r line; do
+    [[ "$line" == \[* ]] && continue
+    [[ "$line" == \#* ]] && continue
+
+    local key="${line%%=*}"
+    local value="${line#*=}"
+
     case "$key" in
-      Name) name="$value" ;;
-      Exec) exec="$value" ;;
-      Categories) categories="$value" ;;
-      Comment) comment="$value" ;;
+      Name)          name="$value" ;;
+      Exec)          exec="$value" ;;
+      Categories)    categories="$value" ;;
+      Comment)       comment="$value" ;;
+      NoDisplay)     [[ "$value" == "true" ]] && nodisplay=true ;;
     esac
   done < "$file"
 
-  # Skip NoDisplay and DBus-activated apps
-  grep -q "^NoDisplay=true" "$file" 2>/dev/null && return 1
-  grep -q "^DBusActivatable=true" "$file" 2>/dev/null && return 1
-
-  # Skip if no exec or no name
+  [[ "$nodisplay" == true ]] && return 1
   [[ -z "$exec" || -z "$name" ]] && return 1
 
-  # Clean up Exec: remove %f, %u, field codes
+  # Clean up Exec: remove field codes (%f, %u, %F, %U, etc.)
   exec="${exec%% %*}"
-  # Get basename of exec path
   local bin="${exec##*/}"
 
   echo "${bin}|${name}|${exec}|${categories}|${comment}"
@@ -89,7 +91,6 @@ app_registry_save() {
     else
       json+=','
     fi
-    # Escape JSON strings
     name="${name//\"/\\\"}"
     exec="${exec//\"/\\\"}"
     categories="${categories//\"/\\\"}"
@@ -108,12 +109,10 @@ app_registry_load() {
   # Load aliases first
   _load_aliases
 
-  # Check if cache exists and is less than 1 hour old
   if [[ -f "$APP_CACHE" ]]; then
     local cache_age
     cache_age=$(( $(date +%s) - $(stat -c %Y "$APP_CACHE" 2>/dev/null || echo 0) ))
     if (( cache_age < 3600 )); then
-      # Load from cache
       local count=0
       while IFS= read -r line; do
         local bin name exec categories comment
@@ -131,31 +130,25 @@ app_registry_load() {
     fi
   fi
 
-  # Discover fresh
   app_discover_all
   app_registry_save
   _APP_REGISTRY_LOADED=true
 }
 
 # Resolve a friendly name or alias to a binary.
-# Returns 0 and prints binary name if found, returns 1 if not found.
-# Usage: bin="$(app_resolve "terminal")" || echo "not found"
 app_resolve() {
-  local query="${1,,}"  # lowercase
+  local query="${1,,}"
 
-  # 1. Check exact alias match
   if [[ -v "_APP_ALIASES[$query]" ]]; then
     echo "${_APP_ALIASES[$query]}"
     return 0
   fi
 
-  # 2. Check exact binary match in registry
   if [[ -v "_APP_REGISTRY[$query]" ]]; then
     echo "$query"
     return 0
   fi
 
-  # 3. Check against Name field (case-insensitive)
   local lower_query="$query"
   for bin in "${!_APP_REGISTRY[@]}"; do
     IFS='|' read -r name _exec _cats _comment <<< "${_APP_REGISTRY[$bin]}"
@@ -166,7 +159,6 @@ app_resolve() {
     fi
   done
 
-  # 4. Fuzzy match: check if query is a substring of any name
   for bin in "${!_APP_REGISTRY[@]}"; do
     IFS='|' read -r name _exec _cats _comment <<< "${_APP_REGISTRY[$bin]}"
     local lower_name="${name,,}"
@@ -180,7 +172,6 @@ app_resolve() {
 }
 
 # List all known applications in a formatted string.
-# Usage: send_long "$chat" "$(app_list)"
 app_list() {
   app_registry_load
 
@@ -189,19 +180,16 @@ app_list() {
 ${sep}
 \`\`\`"
 
-  # Collect and sort by name
   local entries=()
   for bin in "${!_APP_REGISTRY[@]}"; do
     IFS='|' read -r name _exec categories _comment <<< "${_APP_REGISTRY[$bin]}"
     entries+=("${name}|${bin}|${categories}")
   done
 
-  # Sort by name field
   local sorted
   sorted="$(printf '%s\n' "${entries[@]}" | sort -t'|' -k1,1)"
 
   while IFS='|' read -r name bin cats; do
-    # Truncate long names
     local display_name="${name:0:20}"
     local display_bin="${bin:0:16}"
     printf -v line "  %-20s %-16s %s" "$display_name" "$display_bin" "${cats:0:30}"
@@ -217,27 +205,22 @@ ${sep}
 
 # Load the alias mappings.
 _load_aliases() {
-  # Terminal
   app_add_alias "terminal" "kgx"
   app_add_alias "term" "kgx"
   app_add_alias "shell" "kgx"
   app_add_alias "console" "kgx"
 
-  # File manager
   app_add_alias "files" "nautilus"
   app_add_alias "file" "nautilus"
   app_add_alias "nautilus" "nautilus"
 
-  # Browser
   app_add_alias "browser" "firefox"
   app_add_alias "web" "firefox"
 
-  # Editors
   app_add_alias "editor" "zeditor"
   app_add_alias "code" "zeditor"
   app_add_alias "zed" "zeditor"
 
-  # System tools
   app_add_alias "settings" "gnome-control-center"
   app_add_alias "monitor" "gnome-system-monitor"
   app_add_alias "disks" "gnome-disks"
@@ -248,9 +231,7 @@ _load_aliases() {
   app_add_alias "btop" "btop"
   app_add_alias "htop" "htop"
 
-  # Network
   app_add_alias "localsend" "localsend_app"
 
-  # Office
   app_add_alias "libreoffice" "libreoffice"
 }

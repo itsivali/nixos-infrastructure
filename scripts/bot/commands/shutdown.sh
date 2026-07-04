@@ -8,8 +8,7 @@ _cmd_shutdown() {
   # Check for confirmation token
   if [[ "$args" == *"confirm"* ]]; then
     send_msg "$chat" "⏻ Shutting down system in 5 seconds..."
-    sleep 5
-    sudo shutdown now
+    pending_set bash -c 'sleep 5 && sudo shutdown now'
     return
   fi
 
@@ -35,9 +34,8 @@ _cmd_shutdown_callback() {
   case "$data" in
     shutdown_confirm)
       answer_callback "$callback_id" "Shutting down..."
+      pending_set bash -c 'sleep 5 && sudo shutdown now'
       send_msg "$chat" "⏻ Shutting down system in 5 seconds..."
-      sleep 5
-      sudo shutdown now
       ;;
     shutdown_cancel)
       answer_callback "$callback_id" "Shutdown cancelled"
@@ -47,3 +45,5 @@ _cmd_shutdown_callback() {
 }
 
 register_command "shutdown" "_cmd_shutdown" "⏻ Shut down the system (with confirmation)"
+register_callback "shutdown_confirm" "_cmd_shutdown_callback"
+register_callback "shutdown_cancel" "_cmd_shutdown_callback"

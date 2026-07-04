@@ -333,4 +333,4 @@ _Run \`/help\` to see all categories_"
 }
 
 register_command "help" "_cmd_help" "📖 Show command menu and help"
-register_command "menu" "_cmd_help" "📖 Show command menu"
+# /menu is registered by menu.sh — this line intentionally omitted to avoid override

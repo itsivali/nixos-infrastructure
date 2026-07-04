@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # config.sh — Configuration constants for the bot control plane
 #
 # All configuration lives here. No business logic.
@@ -34,7 +33,7 @@ readonly GITLAB_PROJECT="willisivali%2Fnixos-infrastructure"
 readonly DESKTOP_DIRS=(
   /run/current-system/sw/share/applications
   /usr/share/applications
-  "${HOME}/.local/share/applications"
+  "/home/${DEFAULT_USER}/.local/share/applications"
 )
 
 # Validate required secrets

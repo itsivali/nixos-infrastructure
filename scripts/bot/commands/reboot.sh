@@ -8,8 +8,7 @@ _cmd_reboot() {
   # Check for confirmation token
   if [[ "$args" == *"confirm"* ]]; then
     send_msg "$chat" "🔄 Rebooting system in 5 seconds..."
-    sleep 5
-    sudo reboot
+    pending_set bash -c 'sleep 5 && sudo reboot'
     return
   fi
 
@@ -35,9 +34,8 @@ _cmd_reboot_callback() {
   case "$data" in
     reboot_confirm)
       answer_callback "$callback_id" "Rebooting..."
+      pending_set bash -c 'sleep 5 && sudo reboot'
       send_msg "$chat" "🔄 Rebooting system in 5 seconds..."
-      sleep 5
-      sudo reboot
       ;;
     reboot_cancel)
       answer_callback "$callback_id" "Reboot cancelled"
@@ -47,3 +45,5 @@ _cmd_reboot_callback() {
 }
 
 register_command "reboot" "_cmd_reboot" "🔄 Reboot the system (with confirmation)"
+register_callback "reboot_confirm" "_cmd_reboot_callback"
+register_callback "reboot_cancel" "_cmd_reboot_callback"

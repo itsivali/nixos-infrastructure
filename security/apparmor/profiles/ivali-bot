@@ -8,6 +8,7 @@
 # - Network access only to Telegram API and GitLab
 # - Write access to state directory and logs
 # - Read access to SOPS secrets
+# - Session bus and Wayland socket access (for desktop commands)
 
 #include <tunables/global>
 
@@ -47,6 +48,12 @@ profile ivali-bot /run/current-system/sw/bin/bash flags=(complain) {
   # ── Core utilities (execute) ─────────────────────────────────
   /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,curl,jq,timeout,cat,head,tail,wc,stat,date,hostname,uname,free,df,uptime,nproc,ip,ss,dig,timedatectl,loginctl} ix,
 
+  # ── Desktop command binaries (execute as user) ───────────────
+  /run/current-system/sw/bin/{xdg-open,gnome-screenshot,brightnessctl,playerctl,notify-send,wpctl,wl-copy,wl-paste,gdbus,bash,systemd-run,nohup,gnome-session-quit} ix,
+
+  # ── Session environment discovery ────────────────────────────
+  /proc/[0-9]*/environ r,
+
   # ── Network access ───────────────────────────────────────────
   network inet stream,
   network inet6 stream,
@@ -56,10 +63,18 @@ profile ivali-bot /run/current-system/sw/bin/bash flags=(complain) {
   # ── Telegram API access (HTTPS) ──────────────────────────────
   /etc/ssl/** r,
 
+  # ── Session bus and Wayland socket access ────────────────────
+  /run/user/*/bus rw,
+  /run/user/*/wayland-* rw,
+  /run/user/*/wayland-*.lock rw,
+
   # ── Device access ────────────────────────────────────────────
   /dev/null rw,
   /dev/zero r,
   /dev/urandom r,
+
+  # ── Backlight (brightnessctl) ────────────────────────────────
+  /sys/class/backlight/** rw,
 
   # ── Proc and sys (read-only) ─────────────────────────────────
   /proc/ r,
@@ -82,9 +97,6 @@ profile ivali-bot /run/current-system/sw/bin/bash flags=(complain) {
   /var/log/ivali-bot/ rw,
   /var/log/ivali-bot/** rw,
   /var/log/sudo.log r,
-
-  # ── Desktop commands (execute as user) ───────────────────────
-  /run/current-system/sw/bin/{xdotool,xdg-open,gnome-screenshot,amixer,brightnessctl,playerctl,notify-send,xclip,xsel} ix,
 
   # ── Deny ─────────────────────────────────────────────────────
   deny /etc/shadow r,

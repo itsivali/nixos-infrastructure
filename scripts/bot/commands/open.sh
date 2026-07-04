@@ -67,9 +67,9 @@ _Example:_ \`/open google nix flakes\`"
     local remaining="${args#"$first_word"}"
     remaining="${remaining# }"
     if [[ -n "$remaining" ]]; then
-      launch_app "$chat" "${bin} ${remaining}"
+      desktop::launch_app "$chat" "${bin} ${remaining}"
     else
-      launch_app "$chat" "$bin"
+      desktop::launch_app "$chat" "$bin"
     fi
     return
   fi

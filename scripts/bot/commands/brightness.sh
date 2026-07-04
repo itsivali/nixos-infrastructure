@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # commands/brightness.sh — /brightness [N] — backlight control via brightnessctl
 ##############################################################################
 
@@ -6,7 +5,7 @@ _cmd_brightness() {
   local chat="$1" args="$2"
 
   local bctl
-  bctl="$(resolve_binary brightnessctl)" || true
+  bctl="$(desktop::resolve_binary brightnessctl)" || true
   if [[ -z "$bctl" ]]; then
     send_msg "$chat" "❌ brightnessctl not found on ${HOST}."
     return

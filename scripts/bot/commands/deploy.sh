@@ -11,7 +11,8 @@ _cmd_deploy() {
     send_msg "$chat" "🚀 Deploying NixOS configuration..."
     local start_time=$(date +%s)
     
-    # Run nixos-rebuild
+    # Pull latest changes, then rebuild
+    cd "${REPO_DIR}" && git pull --ff-only 2>&1 || true
     sudo nixos-rebuild switch --flake ".#${HOST}" 2>&1 | tail -20
     local result=$?
     
@@ -64,3 +65,5 @@ _cmd_deploy_callback() {
 }
 
 register_command "deploy" "_cmd_deploy" "🚀 Deploy NixOS configuration"
+register_callback "deploy_confirm" "_cmd_deploy_callback"
+register_callback "deploy_cancel" "_cmd_deploy_callback"

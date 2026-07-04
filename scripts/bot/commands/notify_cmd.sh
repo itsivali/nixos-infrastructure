@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 # commands/notify_cmd.sh — /notify <msg> — desktop notification
 ##############################################################################
 
@@ -12,10 +11,11 @@ _Example:_ \`/notify Build complete!\`"
     return
   fi
 
-  local -a env_args
-  session_env_args "$chat" env_args || return
+  desktop::require_graphical "$chat" || return
 
-  sudo -u "${DEFAULT_USER}" env "${env_args[@]}" \
+  sudo -u "${DEFAULT_USER}" \
+    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
     notify-send "Notification from ${HOST}" "$args" 2>/dev/null
 
   send_msg "$chat" "🔔 Notification sent."

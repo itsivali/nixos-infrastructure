@@ -144,11 +144,26 @@ in
   ############################################################################
   # OBSERVABILITY
   ############################################################################
-  ivali.observability = {
-    enable = true;
-    healthEndpoint.enable = true;
-    exporters.enable = true;
-  };
+  ivali.observability = lib.mkMerge [
+    {
+      enable = true;
+      healthEndpoint.enable = true;
+      exporters.enable = true;
+      alertmanager.enable = true;
+      otel.enable = true;
+    }
+    (lib.mkIf hasSecrets {
+      alertmanager = {
+        telegramBotTokenFile = config.sops.secrets.telegram_bot_token.path;
+        telegramChatIdFile = config.sops.secrets.telegram_chat_id.path;
+      };
+    })
+  ];
+
+  ############################################################################
+  # WEB SERVER (reverse proxy for observability)
+  ############################################################################
+  ivali.services.nginx.enable = true;
 
   ############################################################################
   # SECURITY SCANNING

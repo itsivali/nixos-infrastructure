@@ -52,6 +52,7 @@ in
       enable = true;
       listenAddress = prometheusListenAddress;
       port = prometheusPort;
+      webExternalUrl = "http://localhost/prometheus/";
       retentionTime = cfg.prometheus.retentionTime;
       globalConfig = {
         scrape_interval = cfg.prometheus.scrapeInterval;

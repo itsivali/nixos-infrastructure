@@ -5,6 +5,7 @@
 # Purpose
 # -------
 # Web server and reverse proxy for local services.
+# Exposes Grafana, Prometheus, Loki, and Health endpoint via HTTP.
 #
 # Ownership
 # ---------
@@ -12,9 +13,10 @@
 #
 # Responsibilities
 # ----------------
-# - Reverse proxy for Grafana (localhost:3000)
-# - Reverse proxy for Prometheus (localhost:9090)
-# - Static file serving
+# - Reverse proxy for Grafana (/grafana/)
+# - Reverse proxy for Prometheus (/prometheus/)
+# - Reverse proxy for Loki (/loki/)
+# - Reverse proxy for Health endpoint (/health/)
 #
 ##############################################################################
 
@@ -36,11 +38,17 @@ in
       virtualHosts."localhost" = {
         locations = {
           "/grafana/" = {
-            proxyPass = "http://127.0.0.1:3000/";
+            proxyPass = "http://127.0.0.1:3000/grafana/";
             proxyWebsockets = true;
           };
           "/prometheus/" = {
             proxyPass = "http://127.0.0.1:9090/";
+          };
+          "/loki/" = {
+            proxyPass = "http://127.0.0.1:3100/";
+          };
+          "/health" = {
+            proxyPass = "http://127.0.0.1:9100/";
           };
         };
       };

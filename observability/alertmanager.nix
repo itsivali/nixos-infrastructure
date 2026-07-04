@@ -34,6 +34,12 @@ in
       description = "SOPS-encrypted file containing Telegram bot token";
     };
 
+    telegramChatIdFile = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      description = "Path to file containing Telegram chat ID (for SOPS secrets)";
+    };
+
     telegramChatId = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
@@ -59,100 +65,105 @@ in
     };
   };
 
-  config = lib.mkIf (cfg.enable && cfg.alertmanager.enable) {
-    services.prometheus.alertmanager = {
-      enable = true;
-      listenAddress = "127.0.0.1";
-      port = alertmanagerPort;
+  config = lib.mkIf (cfg.enable && cfg.alertmanager.enable) (
+    let
+      alertCfg = cfg.alertmanager;
+      hasTelegram = alertCfg.telegramBotTokenFile != null && (alertCfg.telegramChatIdFile != null || alertCfg.telegramChatId != null);
+      chatIdAttrs = if alertCfg.telegramChatIdFile != null then {
+        chat_id_file = alertCfg.telegramChatIdFile;
+      } else {
+        chat_id = alertCfg.telegramChatId;
+      };
+      mkTelegramConfig = msg: (chatIdAttrs // {
+        bot_token = "{{ .Env.TELEGRAM_BOT_TOKEN }}";
+        parse_mode = "HTML";
+        message = msg;
+      });
+    in {
+      services.prometheus.alertmanager = {
+        enable = true;
+        listenAddress = "127.0.0.1";
+        port = alertmanagerPort;
 
-      configuration = {
-        global = {
-          resolve_timeout = "5m";
-        };
+        configuration = {
+          global = {
+            resolve_timeout = "5m";
+          };
 
-        route = {
-          receiver = "telegram";
-          group_by = [ "alertname" "host" ];
-          group_wait = cfg.alertmanager.groupWait;
-          group_interval = cfg.alertmanager.groupInterval;
-          repeat_interval = cfg.alertmanager.repeatInterval;
+          route = {
+            receiver = "telegram";
+            group_by = [ "alertname" "host" ];
+            group_wait = alertCfg.groupWait;
+            group_interval = alertCfg.groupInterval;
+            repeat_interval = alertCfg.repeatInterval;
 
-          routes = [
-            {
-              match = {
-                severity = "critical";
-              };
-              receiver = "telegram-critical";
-              group_wait = "10s";
-            }
-            {
-              match = {
-                severity = "warning";
-              };
-              receiver = "telegram";
-            }
-          ];
-        };
-
-        receivers = [
-          {
-            name = "telegram";
-            telegram_configs = [
+            routes = [
               {
-                bot_token = "{{ .Env.TELEGRAM_BOT_TOKEN }}";
-                chat_id = cfg.alertmanager.telegramChatId;
-                parse_mode = "HTML";
-                message = ''
+                match = {
+                  severity = "critical";
+                };
+                receiver = "telegram-critical";
+                group_wait = "10s";
+              }
+              {
+                match = {
+                  severity = "warning";
+                };
+                receiver = "telegram";
+              }
+            ];
+          };
+
+          receivers = [
+            {
+              name = "telegram";
+              telegram_configs = lib.optionals hasTelegram [
+                (mkTelegramConfig ''
                   {{ range .Alerts }}
                   <b>{{ .Labels.alertname }}</b>
                   Host: {{ .Labels.host }}
                   Severity: {{ .Labels.severity }}
                   {{ .Annotations.description }}
                   {{ end }}
-                '';
-              }
-            ];
-          }
-          {
-            name = "telegram-critical";
-            telegram_configs = [
-              {
-                bot_token = "{{ .Env.TELEGRAM_BOT_TOKEN }}";
-                chat_id = cfg.alertmanager.telegramChatId;
-                parse_mode = "HTML";
-                message = ''
+                '')
+              ];
+            }
+            {
+              name = "telegram-critical";
+              telegram_configs = lib.optionals hasTelegram [
+                (mkTelegramConfig ''
                   🚨 <b>CRITICAL ALERT</b>
                   {{ range .Alerts }}
                   <b>{{ .Labels.alertname }}</b>
                   Host: {{ .Labels.host }}
                   {{ .Annotations.description }}
                   {{ end }}
-                '';
-              }
-            ];
-          }
-        ];
+                '')
+              ];
+            }
+          ];
 
-        inhibit_rules = [
-          {
-            source_match = {
-              severity = "critical";
-            };
-            target_match = {
-              severity = "warning";
-            };
-            equal = [ "alertname" "host" ];
-          }
-        ];
+          inhibit_rules = [
+            {
+              source_match = {
+                severity = "critical";
+              };
+              target_match = {
+                severity = "warning";
+              };
+              equal = [ "alertname" "host" ];
+            }
+          ];
+        };
       };
-    };
 
-    # Provide bot token via environment file
-    systemd.services.alertmanager = {
-      serviceConfig = {
-        EnvironmentFile = lib.mkIf (cfg.alertmanager.telegramBotTokenFile != null)
-          cfg.alertmanager.telegramBotTokenFile;
+      # Provide bot token via environment file
+      systemd.services.alertmanager = {
+        serviceConfig = {
+          EnvironmentFile = lib.mkIf (alertCfg.telegramBotTokenFile != null)
+            alertCfg.telegramBotTokenFile;
+        };
       };
-    };
-  };
+    }
+  );
 }

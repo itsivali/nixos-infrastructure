@@ -29,101 +29,121 @@ let
   hostName = config.networking.hostName;
 in
 {
-  config = lib.mkIf cfg.otel.enable {
-    environment.etc."otelcol/config.yaml" = {
-      text = ''
-        receivers:
-          otlp:
-            protocols:
-              grpc:
-                endpoint: 0.0.0.0:4317
-              http:
-                endpoint: 0.0.0.0:4318
+  config = lib.mkIf cfg.otel.enable (
+    let
+      yamlFormat = pkgs.formats.yaml { };
+      otelExporters = [ "otlp" ] ++ lib.optional cfg.otel.enableLoggingExporter "debug";
+      otelMetricsExporters = [ "otlp" ] ++ lib.optional cfg.otel.enablePrometheusForwarding "prometheusremotewrite"
+        ++ lib.optional cfg.otel.enableLoggingExporter "debug";
+    in {
+      environment.etc."otelcol/config.yaml" = {
+        source = yamlFormat.generate "otelcol-config.yaml" {
+          receivers = {
+            otlp = {
+              protocols = {
+                grpc.endpoint = "0.0.0.0:4317";
+                http.endpoint = "0.0.0.0:4318";
+              };
+            };
+            hostmetrics = {
+              collection_interval = "30s";
+              scrapers = {
+                cpu = { };
+                memory = { };
+                disk = { };
+                filesystem = { };
+                network = { };
+                processes = { };
+                system = { };
+              };
+            };
+          };
 
-          hostmetrics:
-            collection_interval: 30s
-            scrapers:
-              cpu:
-              memory:
-              disk:
-              filesystem:
-              network:
-              processes:
-              system:
+          processors = {
+            batch = {
+              timeout = "5s";
+              send_batch_size = 1024;
+            };
+            memory_limiter = {
+              check_interval = "1s";
+              limit_mib = 512;
+              spike_limit_mib = 128;
+            };
+            attributes = {
+              actions = [
+                {
+                  key = "host.name";
+                  value = hostName;
+                  action = "upsert";
+                }
+                {
+                  key = "environment";
+                  value = "production";
+                  action = "upsert";
+                }
+              ];
+            };
+            resourcedetection = {
+              detectors = [ "system" ];
+              timeout = "5s";
+            };
+          };
 
-          journald:
-            oneat: true
-            operations:
-              - read
+          exporters = {
+            otlp = {
+              endpoint = "localhost:4317";
+              tls.insecure = true;
+            };
+          } // lib.optionalAttrs cfg.otel.enableLoggingExporter {
+            debug = {
+              verbosity = "basic";
+              sampling_initial = 5;
+              sampling_thereafter = 200;
+            };
+          } // lib.optionalAttrs cfg.otel.enablePrometheusForwarding {
+            prometheusremotewrite = {
+              endpoint = "http://127.0.0.1:9090/api/v1/write";
+              resource_to_telemetry_conversion.enabled = true;
+            };
+          };
 
-        processors:
-          batch:
-            timeout: 5s
-            send_batch_size: 1024
-
-          memory_limiter:
-            check_interval: 1s
-            limit_mib: 512
-            spike_limit_mib: 128
-
-          attributes:
-            actions:
-              - key: host.name
-                value: "${hostName}"
-                action: upsert
-              - key: environment
-                value: "production"
-                action: upsert
-
-          resourcedetection:
-            detectors: [system]
-            timeout: 5s
-
-        exporters:
-          ${lib.optionalString cfg.otel.enableLoggingExporter ''
-          logging:
-            verbosity: basic
-            sampling_initial: 5
-            sampling_thereafter: 200
-          ''}
-
-          ${lib.optionalString cfg.otel.enablePrometheusForwarding ''
-          prometheusremotewrite:
-            endpoint: "http://127.0.0.1:9090/api/v1/write"
-            resource_to_telemetry_conversion:
-              enabled: true
-          ''}
-
-          otlp:
-            endpoint: "localhost:4317"
-            tls:
-              insecure: true
-
-        service:
-          extensions: []
-          pipelines:
-            traces:
-              receivers: [otlp]
-              processors: [memory_limiter, batch, attributes, resourcedetection]
-              exporters: [otlp] ++ lib.optional cfg.otel.enableLoggingExporter "logging"
-
-            metrics:
-              receivers: [otlp, hostmetrics]
-              processors: [memory_limiter, batch, attributes, resourcedetection]
-              exporters: [otlp] ++ lib.optional cfg.otel.enablePrometheusForwarding "prometheusremotewrite" ++ lib.optional cfg.otel.enableLoggingExporter "logging"
-
-            logs:
-              receivers: [otlp, journald]
-              processors: [memory_limiter, batch, attributes, resourcedetection]
-              exporters: [otlp] ++ lib.optional cfg.otel.enableLoggingExporter "logging"
-
-          telemetry:
-            logs:
-              level: info
-            metrics:
-              address: 0.0.0.0:8888
-      '';
-    };
+          service = {
+            extensions = [ ];
+            pipelines = {
+              traces = {
+                receivers = [ "otlp" ];
+                processors = [ "memory_limiter" "batch" "attributes" "resourcedetection" ];
+                exporters = otelExporters;
+              };
+              metrics = {
+                receivers = [ "otlp" "hostmetrics" ];
+                processors = [ "memory_limiter" "batch" "attributes" "resourcedetection" ];
+                exporters = otelMetricsExporters;
+              };
+              logs = {
+                receivers = [ "otlp" ];
+                processors = [ "memory_limiter" "batch" "attributes" "resourcedetection" ];
+                exporters = otelExporters;
+              };
+            };
+            telemetry = {
+              logs.level = "info";
+              metrics.readers = [
+                {
+                  pull = {
+                    exporter = {
+                      prometheus = {
+                        host = "0.0.0.0";
+                        port = 8888;
+                      };
+                    };
+                  };
+                }
+              ];
+            };
+          };
+        };
+      };
 
     systemd.services.opentelemetry-collector = {
       description = "OpenTelemetry collector";
@@ -132,13 +152,7 @@ in
       wants = [ "network-online.target" ];
       serviceConfig = {
         ExecStart =
-          let
-            otelPkg =
-              pkgs.opentelemetry-collector-contrib
-                or pkgs.otelcol-contrib
-                or pkgs.opentelemetry-collector;
-          in
-          "${otelPkg}/bin/otelcol --config=/etc/otelcol/config.yaml";
+          "${pkgs.opentelemetry-collector-contrib}/bin/otelcol-contrib --config=/etc/otelcol/config.yaml";
         Restart = "always";
         RestartSec = "10s";
 
@@ -171,5 +185,5 @@ in
         scrape_interval = "15s";
       }
     ];
-  };
+    });
 }

@@ -15,7 +15,7 @@ in
 
     settings = {
       add_newline = false;
-      scan_timeout = 5;
+      scan_timeout = 30;
 
       format = lib.concatStrings [
         "$username"
@@ -123,7 +123,7 @@ in
       nodejs = {
         symbol = " ";
         style = "bold #22C55E";
-        format = "[$symbol v$version]($style) ";
+        format = "[$symbol $version]($style) ";
         detect_extensions = [ "js" "ts" "jsx" "tsx" "mjs" "cjs" ];
         detect_files = [ "package.json" ".node-version" "tsconfig.json" ];
         not_if_venv = true;
@@ -132,7 +132,7 @@ in
       python = {
         symbol = " ";
         style = "bold #FBBF24";
-        format = "[$symbol v$version]($style) ";
+        format = "[$symbol $version]($style) ";
         pyenv_version_name = true;
         detect_extensions = [ "py" ];
         detect_files = [ "requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock" ];
@@ -141,7 +141,7 @@ in
       golang = {
         symbol = " ";
         style = "bold #60A5FA";
-        format = "[$symbol v$version]($style) ";
+        format = "[$symbol $version]($style) ";
         detect_extensions = [ "go" ];
         detect_files = [ "go.mod" "go.sum" ];
       };

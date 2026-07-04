@@ -387,44 +387,46 @@ All services are bound to **localhost only** (127.0.0.1) for security. Access th
 
 #### Quick Reference — All URLs
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Grafana** | `http://localhost:3000` | Dashboards, visualization, log exploration |
-| **Prometheus** | `http://localhost:9090` | Metrics queries (PromQL), targets, rules |
-| **Prometheus (nginx)** | `http://localhost/prometheus/` | Same as above, via nginx reverse proxy |
-| **Grafana (nginx)** | `http://localhost/grafana/` | Same as above, via nginx reverse proxy |
-| **Loki** | `http://localhost:3100` | Log aggregation API |
-| **Alertmanager** | `http://localhost:9093` | Alert routing, silences, status |
-| **Health Endpoint** | `http://localhost:9100` | JSON health check (all services) |
-| **NixOS Exporter** | `http://localhost:9101` | NixOS-specific Prometheus metrics |
-| **Tailscale Metrics** | `http://localhost:9121` | Tailscale Prometheus metrics |
-| **OTel Metrics** | `http://localhost:8888` | OpenTelemetry self-monitoring |
+All services accessible through nginx reverse proxy (ports 80/443) or directly:
+
+| Service | Nginx URL (recommended) | Direct URL | Purpose |
+|---------|------------------------|------------|---------|
+| **Grafana** | `http://localhost/grafana/` | `http://localhost:3000` | Dashboards, visualization, log exploration |
+| **Prometheus** | `http://localhost/prometheus/` | `http://localhost:9090` | Metrics queries (PromQL), targets, rules |
+| **Loki** | `http://localhost/loki/` | `http://localhost:3100` | Log aggregation API |
+| **Health** | `http://localhost/health` | `http://localhost:9100` | JSON health check (all services) |
+| **Alertmanager** | — | `http://localhost:9093` | Alert routing, silences, status |
+| **NixOS Exporter** | — | `http://localhost:9101` | NixOS-specific Prometheus metrics |
+| **Tailscale Metrics** | — | `http://localhost:9121` | Tailscale Prometheus metrics |
+| **OTel Metrics** | — | `http://localhost:8888` | OpenTelemetry self-monitoring |
 
 #### Remote Access (via Tailscale)
 
 Since services bind to localhost, use SSH port forwarding to access from another device on your tailnet:
 
 ```bash
-# From any device on your tailnet:
-ssh -L 3000:localhost:3000 -L 9090:localhost:9090 prague
+# Forward nginx (single port gives you all services)
+ssh -L 80:localhost:80 prague
 
 # Then open in browser:
-# Grafana:     http://localhost:3000
-# Prometheus:  http://localhost:9090
+# Grafana:     http://localhost/grafana/
+# Prometheus:  http://localhost/prometheus/
+# Loki:        http://localhost/loki/
+# Health:      http://localhost/health
 ```
 
-Or forward all observability ports at once:
+Or forward direct ports for services without nginx routing:
 
 ```bash
-ssh -L 3000:localhost:3000 -L 9090:localhost:9090 -L 9093:localhost:9093 -L 9100:localhost:9100 prague
+ssh -L 9093:localhost:9093 -L 9101:localhost:9101 -L 9121:localhost:9121 prague
 ```
 
 #### Grafana Dashboards
 
-1. **Access Grafana:** `http://localhost:3000`
-2. **Login credentials:** Username: `admin`, Password: Check SOPS secrets or use default `admin`
+1. **Access Grafana:** `http://localhost/grafana/` (or `http://localhost:3000` directly)
+2. **Login credentials:** Username: `admin`, Password: `ivali` (or SOPS `grafana_admin_password`)
 3. **Pre-configured data sources:** Prometheus (default), Loki
-4. **Auto-provisioned dashboards:** NixOS System Overview — CPU, memory, disk, load, services, generations, network
+4. **Auto-provisioned dashboards:** System Overview (CPU, memory, disk, network, generations), Services Health, Network & Tailscale, Logs Explorer
 
 **Useful PromQL queries:**
 ```promql
@@ -446,7 +448,7 @@ node_systemd_unit_state{state="failed"} == 1
 
 #### Prometheus
 
-1. **Access Prometheus:** `http://localhost:9090`
+1. **Access Prometheus:** `http://localhost/prometheus/` (or `http://localhost:9090` directly)
 2. **Features:** Query metrics with PromQL, view active targets, review alerting rules
 3. **Available targets:** `node`, `prometheus`, `tailscale`, `otelcol`, `nixos-exporter`
 
@@ -464,7 +466,7 @@ curl 'http://localhost:9090/api/v1/query?query=up'
 
 #### Loki (Logs)
 
-1. **Access Loki:** `http://localhost:3100`
+1. **Access Loki:** `http://localhost/loki/` (or `http://localhost:3100` directly)
 2. **Query logs in Grafana** using LogQL:
    ```
    # All systemd journal entries
@@ -498,10 +500,10 @@ curl -G http://localhost:3100/loki/api/v1/query_range \
 
 ```bash
 # Full health check (returns JSON)
-curl http://localhost:9100 | jq .
+curl http://localhost/health | jq .
 
 # Quick status
-curl -s http://localhost:9100 | jq -r '.status'
+curl -s http://localhost/health | jq -r '.status'
 ```
 
 ### Telegram Access
@@ -630,17 +632,17 @@ The system includes Prometheus alerting rules for critical conditions:
 
 | Service | Port | Listen | Firewall | URL |
 |---------|------|--------|----------|-----|
-| **Grafana** | 3000 | 127.0.0.1 | No | `http://localhost:3000` |
-| **Prometheus** | 9090 | 127.0.0.1 | No | `http://localhost:9090` |
-| **Loki** | 3100 | 127.0.0.1 | No | `http://localhost:3100` |
+| **Nginx (all services)** | 80, 443 | 0.0.0.0 | Yes | `http://localhost/grafana/` |
+| **Grafana** | 3000 | 127.0.0.1 | No | `http://localhost/grafana/` |
+| **Prometheus** | 9090 | 127.0.0.1 | No | `http://localhost/prometheus/` |
+| **Loki** | 3100 | 127.0.0.1 | No | `http://localhost/loki/` |
 | **Alertmanager** | 9093 | 127.0.0.1 | No | `http://localhost:9093` |
-| **Health Endpoint** | 9100 | 0.0.0.0 | Yes | `http://localhost:9100` |
+| **Health Endpoint** | 9100 | 127.0.0.1 | No | `http://localhost/health` |
 | **NixOS Exporter** | 9101 | 0.0.0.0 | Yes | `http://localhost:9101` |
 | **Tailscale Metrics** | 9121 | 0.0.0.0 | Yes | `http://localhost:9121` |
 | **OTel Collector gRPC** | 4317 | 0.0.0.0 | No | `grpc://localhost:4317` |
 | **OTel Collector HTTP** | 4318 | 0.0.0.0 | No | `http://localhost:4318` |
 | **OTel Metrics** | 8888 | 0.0.0.0 | Yes | `http://localhost:8888` |
-| **Nginx** | 80, 443 | 0.0.0.0 | Yes | `http://localhost/grafana/` |
 | **SSH** | 22 | tailscale0 | Tailscale-only | `ssh prague` |
 
 ---

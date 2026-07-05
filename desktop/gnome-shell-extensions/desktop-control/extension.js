@@ -1,8 +1,11 @@
 // Desktop Control — GNOME Shell extension for Telegram bot
 // Provides a D-Bus API for remote window/workspace control.
 // UUID: desktop-control@prague.ivali
+//
+// NOTE: Shell is a global injected by GNOME Shell — do NOT import
+// from imports.gi.Shell (removed in GNOME Shell 45+).
 
-const { GLib, Gio, Meta, Shell } = imports.gi;
+const { GLib, Gio, Meta } = imports.gi;
 const Main = imports.ui.main;
 
 const BUS_NAME = 'org.gnome.Shell.Extensions.DesktopControl';
@@ -43,51 +46,91 @@ const DesktopControlIface = `
 let _dbusImpl = null;
 let _dbusId = null;
 
+// ── Window iteration (works across GNOME Shell versions) ──────────────────
+
+function _getWindows() {
+  // Mutter 45+ (GNOME 45+): global.display.get_windows()
+  if (typeof global.display.get_windows === 'function') {
+    return global.display.get_windows();
+  }
+  // Mutter 42-44 fallback
+  if (typeof global.display.get_tab_list === 'function') {
+    let tabList = Meta.TabList || {};
+    return global.display.get_tab_list(tabList.NORMAL_ALL || 0, null);
+  }
+  // Mutter 40-42 fallback (deprecated, removed in 44)
+  if (typeof global.get_window_actors === 'function') {
+    return global.get_window_actors().map(a => a.meta_window);
+  }
+  log('DesktopControl: no window iteration method available');
+  return [];
+}
+
+// ── Window listing ────────────────────────────────────────────────────────
+
 function _listWindows() {
   let wins = [];
-  let windows = global.display.get_windows();
-  for (let w of windows) {
-    if (w.is_monitor) continue;
-    wins.push({
-      title: w.get_title() || '',
-      wm_class: w.get_wm_class() || '',
-      pid: w.get_pid(),
-      workspace: w.get_workspace() ? w.get_workspace().index() : -1,
-      minimized: w.is_minimized()
-    });
+  try {
+    let windows = _getWindows();
+    for (let w of windows) {
+      if (w.is_monitor) continue;
+      wins.push({
+        title: w.get_title() || '',
+        wm_class: w.get_wm_class() || '',
+        pid: w.get_pid(),
+        workspace: w.get_workspace() ? w.get_workspace().index() : -1,
+        minimized: w.is_minimized()
+      });
+    }
+  } catch (e) {
+    log(`DesktopControl: _listWindows failed: ${e}`);
   }
   return JSON.stringify(wins);
 }
 
+// ── Window focusing ───────────────────────────────────────────────────────
+
 function _focusWindow(title) {
-  let windows = global.display.get_windows();
-  let lower = title.toLowerCase();
-  for (let w of windows) {
-    if (w.is_monitor) continue;
-    let t = (w.get_title() || '').toLowerCase();
-    let wm = (w.get_wm_class() || '').toLowerCase();
-    if (t.includes(lower) || wm.includes(lower)) {
-      w.activate(global.get_current_time());
-      return true;
+  try {
+    let windows = _getWindows();
+    let lower = title.toLowerCase();
+    for (let w of windows) {
+      if (w.is_monitor) continue;
+      let t = (w.get_title() || '').toLowerCase();
+      let wm = (w.get_wm_class() || '').toLowerCase();
+      if (t.includes(lower) || wm.includes(lower)) {
+        w.activate(global.get_current_time());
+        return true;
+      }
     }
+  } catch (e) {
+    log(`DesktopControl: _focusWindow failed: ${e}`);
   }
   return false;
 }
 
+// ── Window closing ────────────────────────────────────────────────────────
+
 function _closeWindow(title) {
-  let windows = global.display.get_windows();
-  let lower = title.toLowerCase();
-  for (let w of windows) {
-    if (w.is_monitor) continue;
-    let t = (w.get_title() || '').toLowerCase();
-    let wm = (w.get_wm_class() || '').toLowerCase();
-    if (t.includes(lower) || wm.includes(lower)) {
-      w.delete(global.get_current_time());
-      return true;
+  try {
+    let windows = _getWindows();
+    let lower = title.toLowerCase();
+    for (let w of windows) {
+      if (w.is_monitor) continue;
+      let t = (w.get_title() || '').toLowerCase();
+      let wm = (w.get_wm_class() || '').toLowerCase();
+      if (t.includes(lower) || wm.includes(lower)) {
+        w.delete(global.get_current_time());
+        return true;
+      }
     }
+  } catch (e) {
+    log(`DesktopControl: _closeWindow failed: ${e}`);
   }
   return false;
 }
+
+// ── Workspace methods ─────────────────────────────────────────────────────
 
 function _getActiveWorkspace() {
   return global.workspace_manager.get_active_workspace_index();
@@ -104,19 +147,27 @@ function _switchWorkspace(index) {
   return true;
 }
 
+// ── Running apps ──────────────────────────────────────────────────────────
+
 function _getRunningApps() {
   let apps = [];
-  let appSys = Shell.AppSystem.get_default();
-  let running = appSys.get_running();
-  for (let app of running) {
-    apps.push({
-      id: app.get_id(),
-      name: app.get_name(),
-      wm_class: app.get_wm_class()
-    });
+  try {
+    let appSys = Shell.AppSystem.get_default();
+    let running = appSys.get_running();
+    for (let app of running) {
+      apps.push({
+        id: app.get_id(),
+        name: app.get_name(),
+        wm_class: app.get_wm_class()
+      });
+    }
+  } catch (e) {
+    log(`DesktopControl: _getRunningApps failed: ${e}`);
   }
   return JSON.stringify(apps);
 }
+
+// ── D-Bus implementation ──────────────────────────────────────────────────
 
 const DesktopControlImpl = {
   ListWindows(params) {
@@ -145,20 +196,30 @@ const DesktopControlImpl = {
   }
 };
 
+// ── Lifecycle ─────────────────────────────────────────────────────────────
+
 function init() {
 }
 
 function enable() {
-  let ifaceXml = DesktopControlIface;
-  let info = Gio.DBusNodeInfo.new_for_xml(ifaceXml);
-  _dbusImpl = Gio.DBusExportedObject.wrapJSObject(info.interfaces[0], DesktopControlImpl);
-  _dbusId = _dbusImpl.export(Gio.DBus.session, OBJECT_PATH);
-  log('DesktopControl extension enabled — D-Bus service registered');
+  try {
+    let ifaceXml = DesktopControlIface;
+    let info = Gio.DBusNodeInfo.new_for_xml(ifaceXml);
+    _dbusImpl = Gio.DBusExportedObject.wrapJSObject(info.interfaces[0], DesktopControlImpl);
+    _dbusId = _dbusImpl.export(Gio.DBus.session, OBJECT_PATH);
+    log('DesktopControl extension enabled — D-Bus service registered');
+  } catch (e) {
+    log(`DesktopControl: enable failed: ${e}`);
+  }
 }
 
 function disable() {
   if (_dbusImpl && _dbusId) {
-    _dbusImpl.unexport();
+    try {
+      _dbusImpl.unexport();
+    } catch (e) {
+      log(`DesktopControl: disable unexport failed: ${e}`);
+    }
     _dbusImpl = null;
     _dbusId = null;
   }

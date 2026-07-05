@@ -2,7 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
@@ -20,7 +19,6 @@ Runs: git pull --ff-only && nixos-rebuild switch --flake .`,
 			if !a.RequireRepo() {
 				return nil
 			}
-
 			t := a.Term
 			root := a.Repo.Root
 
@@ -28,30 +26,18 @@ Runs: git pull --ff-only && nixos-rebuild switch --flake .`,
 			fmt.Println(t.Section("Reconcile"))
 			fmt.Println()
 
-			fmt.Println("  " + t.Dim("Pulling latest changes..."))
-			gitCmd := exec.Command("git", "pull", "--ff-only")
-			gitCmd.Dir = root
-			if err := gitCmd.Run(); err != nil {
-				fmt.Println()
-				fmt.Println("  " + t.Warn("Git pull failed"))
-				fmt.Println()
-				return nil
-			}
-			fmt.Println()
-
-			fmt.Println("  " + t.Dim("Rebuilding system..."))
-			rebuildCmd := exec.Command("sudo", "nixos-rebuild", "switch", "--flake", root)
-			if err := rebuildCmd.Run(); err != nil {
-				fmt.Println()
-				fmt.Println("  " + t.Warn("Rebuild failed"))
+			if !confirmAction(t, "Reconcile (pull + rebuild)?") {
+				fmt.Println("  " + t.Dim("Cancelled"))
 				fmt.Println()
 				return nil
 			}
 
-			fmt.Println()
-			fmt.Println("  " + t.Good("Reconciliation complete"))
-			fmt.Println()
-			return nil
+			if err := runSilent(t, "Pulling latest changes", "git", "-C", root, "pull", "--ff-only"); err != nil {
+				fmt.Println()
+				return nil
+			}
+
+			return runWithOutput(t, "Rebuilding system", "sudo", "nixos-rebuild", "switch", "--flake", root)
 		},
 	}
 }

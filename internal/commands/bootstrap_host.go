@@ -6,9 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
 	"github.com/willisivali/nixos-infrastructure/internal/template"
+	"github.com/willisivali/nixos-infrastructure/internal/wizard"
 )
 
 func CmdBootstrapHost(a *app.App) *cobra.Command {
@@ -190,16 +192,73 @@ func runHostBootstrap(a *app.App, hostName, userName, repoPath string, tags []st
 }
 
 func runInteractiveHostBootstrap(a *app.App) error {
-	fmt.Println("Interactive mode not yet implemented")
+	t := a.Term
+	p := tea.NewProgram(wizard.NewHostWizard(t), tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func updateHostRegistry(root string, spec template.HostSpec, force bool) error {
 	registryPath := filepath.Join(root, "hosts", "hosts.nix")
+	data, err := os.ReadFile(registryPath)
+	if err != nil {
+		return fmt.Errorf("read host registry: %w", err)
+	}
 
-	// TODO: Proper Nix parsing/editing
-	// For now, the registry must be manually updated
-	// In production, use a proper Nix parser or generate the whole file
-	_ = registryPath
-	return nil
+	content := string(data)
+	hostEntry := generateHostEntry(spec)
+
+	// Insert before the closing "}" of the top-level attrset
+	idx := strings.LastIndex(content, "}\n")
+	if idx < 0 {
+		return fmt.Errorf("could not find insertion point in hosts.nix")
+	}
+
+	newContent := content[:idx] + hostEntry + "\n" + content[idx:]
+	return os.WriteFile(registryPath, []byte(newContent), 0644)
+}
+
+func generateHostEntry(spec template.HostSpec) string {
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("\n  %s = {\n", spec.HostName))
+	b.WriteString(fmt.Sprintf("    hostName = \"%s\";\n", spec.HostName))
+	b.WriteString(fmt.Sprintf("    userName = \"%s\";\n", spec.UserName))
+	b.WriteString(fmt.Sprintf("    repoPath = \"%s\";\n", spec.RepoPath))
+	b.WriteString("    tags = [ ")
+	for _, t := range spec.Tags {
+		b.WriteString(fmt.Sprintf("\"%s\" ", t))
+	}
+	b.WriteString("];\n")
+	if spec.TailnetDomain != "" {
+		b.WriteString(fmt.Sprintf("    tailnetDomain = \"%s\";\n", spec.TailnetDomain))
+	} else {
+		b.WriteString("    tailnetDomain = null;\n")
+	}
+	b.WriteString("    gitlabRunnerTags = [ ")
+	for _, t := range spec.GitLabRunnerTags {
+		b.WriteString(fmt.Sprintf("\"%s\" ", t))
+	}
+	b.WriteString("];\n")
+	b.WriteString("    sshAuthorizedKeys = [\n")
+	for _, k := range spec.SSHAuthorizedKeys {
+		if k != "" {
+			b.WriteString(fmt.Sprintf("      \"%s\";\n", k))
+		}
+	}
+	b.WriteString("    ];\n")
+	b.WriteString(fmt.Sprintf("    sopsKeyPath = \"/home/%s/.config/sops/age/keys.txt\";\n", spec.UserName))
+	b.WriteString("    features = {\n")
+	for _, name := range []string{"secrets", "gitlabRunner", "bot", "tailscale", "tailscaleExitNode", "ssh"} {
+		val := "false"
+		if spec.Features[name] {
+			val = "true"
+		}
+		b.WriteString(fmt.Sprintf("      %s = %s;\n", name, val))
+	}
+	b.WriteString("    };\n")
+	b.WriteString("    config = {};\n")
+	b.WriteString("  };")
+	return b.String()
 }

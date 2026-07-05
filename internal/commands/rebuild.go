@@ -2,9 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
@@ -23,7 +20,6 @@ Runs: sudo nixos-rebuild switch --flake .#<host>`,
 			if !a.RequireRepo() {
 				return nil
 			}
-
 			t := a.Term
 			root := a.Repo.Root
 
@@ -41,23 +37,18 @@ Runs: sudo nixos-rebuild switch --flake .#<host>`,
 				rebuildArgs[len(rebuildArgs)-1] = root + "#" + host
 			}
 
-			fmt.Println("  " + t.Dim("Running: sudo "+strings.Join(rebuildArgs, " ")))
-			fmt.Println()
+			label := "Rebuilding system"
+			if host != "" {
+				label += " (" + host + ")"
+			}
 
-			c := exec.Command("sudo", rebuildArgs...)
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			if err := c.Run(); err != nil {
-				fmt.Println()
-				fmt.Println("  " + t.Warn("Rebuild failed"))
+			if !confirmAction(t, label+"?") {
+				fmt.Println("  " + t.Dim("Cancelled"))
 				fmt.Println()
 				return nil
 			}
 
-			fmt.Println()
-			fmt.Println("  " + t.Good("Rebuild complete"))
-			fmt.Println()
-			return nil
+			return runWithOutput(t, label, "sudo", rebuildArgs...)
 		},
 	}
 }

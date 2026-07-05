@@ -2,8 +2,6 @@ package commands
 
 import (
 	"fmt"
-	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
@@ -21,7 +19,6 @@ Runs: git pull --ff-only && nix flake update`,
 			if !a.RequireRepo() {
 				return nil
 			}
-
 			t := a.Term
 			root := a.Repo.Root
 
@@ -29,36 +26,18 @@ Runs: git pull --ff-only && nix flake update`,
 			fmt.Println(t.Section("Update"))
 			fmt.Println()
 
-			fmt.Println("  " + t.Dim("Pulling latest changes..."))
-			gitCmd := exec.Command("git", "pull", "--ff-only")
-			gitCmd.Dir = root
-			gitCmd.Stdout = os.Stdout
-			gitCmd.Stderr = os.Stderr
-			if err := gitCmd.Run(); err != nil {
-				fmt.Println()
-				fmt.Println("  " + t.Warn("Git pull failed"))
+			if !confirmAction(t, "Update (pull + flake update)?") {
+				fmt.Println("  " + t.Dim("Cancelled"))
 				fmt.Println()
 				return nil
 			}
-			fmt.Println()
 
-			fmt.Println("  " + t.Dim("Updating flake inputs..."))
-			nixCmd := exec.Command("nix", "flake", "update")
-			nixCmd.Dir = root
-			nixCmd.Stdout = os.Stdout
-			nixCmd.Stderr = os.Stderr
-			if err := nixCmd.Run(); err != nil {
-				fmt.Println()
-				fmt.Println("  " + t.Warn("Flake update failed"))
+			if err := runWithOutput(t, "Pulling latest changes", "git", "-C", root, "pull", "--ff-only"); err != nil {
 				fmt.Println()
 				return nil
 			}
-			fmt.Println()
 
-			fmt.Println("  " + t.Good("Update complete"))
-			fmt.Println()
-
-			return nil
+			return runWithOutput(t, "Updating flake inputs", "nix", "flake", "update", "--option", "flake-dir", root)
 		},
 	}
 }

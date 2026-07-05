@@ -30,27 +30,24 @@ Runs: nixos-rebuild switch --flake .#<host> --target-host <host>`,
 			fmt.Println()
 			fmt.Println(t.Section("Deploy"))
 			fmt.Println()
-
 			fmt.Printf("  %s %s\n", t.Dim("Target:"), t.Code(host))
 			fmt.Println()
 
-			c := exec.Command("nixos-rebuild", "switch",
-				"--flake", root+"#"+host,
-				"--target-host", host,
-			)
-			c.Stdout = os.Stdout
-			c.Stderr = os.Stderr
-			if err := c.Run(); err != nil {
-				fmt.Println()
-				fmt.Println("  " + t.Warn("Deploy failed"))
+			if !confirmAction(t, "Deploy to "+host+"?") {
+				fmt.Println("  " + t.Dim("Cancelled"))
 				fmt.Println()
 				return nil
 			}
 
-			fmt.Println()
-			fmt.Println("  " + t.Good("Deployed to " + host))
-			fmt.Println()
-			return nil
+			return runWithTimer(t, "Deploying to "+host, func() error {
+				c := exec.Command("nixos-rebuild", "switch",
+					"--flake", root+"#"+host,
+					"--target-host", host,
+				)
+				c.Stdout = os.Stdout
+				c.Stderr = os.Stderr
+				return c.Run()
+			})
 		},
 	}
 }

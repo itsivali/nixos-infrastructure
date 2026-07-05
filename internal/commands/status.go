@@ -2,6 +2,8 @@ package commands
 
 import (
 	"fmt"
+	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
@@ -38,7 +40,8 @@ packages, secrets, and pending changes.`,
 			fmt.Println()
 
 			fmt.Println(t.Section("Git"))
-			fmt.Println(t.KeyValue("Branch", "main"))
+			branch := getGitBranch(r.Root)
+			fmt.Println(t.KeyValue("Branch", branch))
 			fmt.Println(t.KeyValue("Status", t.Good("healthy")))
 			fmt.Println()
 
@@ -69,6 +72,14 @@ packages, secrets, and pending changes.`,
 	}
 }
 
+func getGitBranch(repoPath string) string {
+	out, err := exec.Command("git", "-C", repoPath, "rev-parse", "--abbrev-ref", "HEAD").Output()
+	if err != nil {
+		return "unknown"
+	}
+	return strings.TrimSpace(string(out))
+}
+
 func joinHosts(hosts []string) string {
 	switch len(hosts) {
 	case 0:
@@ -76,13 +87,6 @@ func joinHosts(hosts []string) string {
 	case 1:
 		return hosts[0]
 	default:
-		result := ""
-		for i, h := range hosts {
-			if i > 0 {
-				result += ", "
-			}
-			result += h
-		}
-		return result
+		return strings.Join(hosts, ", ")
 	}
 }

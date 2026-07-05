@@ -1,5 +1,10 @@
 # commands/workspace.sh — /workspace next|prev|N — workspace switching
 # Uses DesktopControl GNOME Shell extension (Wayland-native via D-Bus).
+#
+# D-Bus methods (v2):
+#   CurrentWorkspace  → integer (active workspace index)
+#   WorkspaceCount    → integer (total workspace count)
+#   SwitchWorkspace(i) → JSON {ok, data} response
 ##############################################################################
 
 _cmd_workspace() {
@@ -14,15 +19,15 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
 
   desktop::require_graphical "$chat" || return
 
-  # Get current workspace index
+  # Get current workspace index (v2: CurrentWorkspace)
   local current_result
-  current_result="$(desktop::ext_dbus_call GetActiveWorkspace)" || true
+  current_result="$(desktop::ext_dbus_call CurrentWorkspace)" || true
   local current
   current="$(echo "$current_result" | grep -oP '\d+')"
 
-  # Get total workspace count
+  # Get total workspace count (v2: WorkspaceCount)
   local total_result
-  total_result="$(desktop::ext_dbus_call GetWorkspaceCount)" || true
+  total_result="$(desktop::ext_dbus_call WorkspaceCount)" || true
   local total
   total="$(echo "$total_result" | grep -oP '\d+')"
 
@@ -31,7 +36,8 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
       if [[ -n "$current" && -n "$total" ]]; then
         local next_ws=$(( current + 1 ))
         (( next_ws >= total )) && next_ws=0
-        desktop::ext_dbus_call SwitchWorkspace "$next_ws"
+        local result
+        result="$(desktop::ext_dbus_call SwitchWorkspace "$next_ws")" || true
         send_msg "$chat" "🖥 Workspace → ${next_ws}"
       else
         send_msg "$chat" "❌ Could not detect current workspace."
@@ -41,7 +47,8 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
       if [[ -n "$current" && -n "$total" ]]; then
         local prev_ws=$(( current - 1 ))
         (( prev_ws < 0 )) && prev_ws=$(( total - 1 ))
-        desktop::ext_dbus_call SwitchWorkspace "$prev_ws"
+        local result
+        result="$(desktop::ext_dbus_call SwitchWorkspace "$prev_ws")" || true
         send_msg "$chat" "🖥 Workspace → ${prev_ws}"
       else
         send_msg "$chat" "❌ Could not detect current workspace."
@@ -49,10 +56,19 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
       ;;
     [0-9]*)
       local target="$args"
-      if desktop::ext_dbus_call SwitchWorkspace "$target" | grep -q "true"; then
+      local result
+      result="$(desktop::ext_dbus_call SwitchWorkspace "$target")" || true
+
+      # Parse structured JSON response
+      local json
+      json="$(echo "$result" | sed "s/^('//; s/'.*$//; s/\\\\//g")"
+
+      if echo "$json" | jq -e '.ok and .data' >/dev/null 2>&1; then
         send_msg "$chat" "🖥 Workspace → ${target}"
-      else
+      elif echo "$json" | jq -e '.ok and (.data | not)' >/dev/null 2>&1; then
         send_msg "$chat" "❌ Workspace ${target} does not exist."
+      else
+        send_msg "$chat" "❌ Could not switch to workspace ${target}."
       fi
       ;;
     *)

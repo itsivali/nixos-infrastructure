@@ -1,5 +1,10 @@
 # commands/windows.sh — /windows, /focus <title>, /close <title> — window management
 # Uses DesktopControl GNOME Shell extension (Wayland-native via D-Bus).
+#
+# D-Bus methods (v2):
+#   ListWindows      → JSON array of window objects
+#   FocusWindow(s)   → JSON {ok, data} response
+#   CloseWindow(s)   → JSON {ok, data} response
 ##############################################################################
 
 _cmd_windows() {
@@ -17,14 +22,14 @@ Restart GNOME Shell (Alt+F2 → \`r\`) or log out and back in."
     return
   fi
 
-  if [[ "$result" == *'[]'* ]]; then
+  # D-Bus returns: ('[...]',) — extract the JSON array
+  local json
+  json="$(echo "$result" | sed "s/^('//; s/'.*$//; s/\\\\//g")"
+
+  if [[ "$json" == "[]" ]]; then
     send_msg "$chat" "🪟 No open windows detected."
     return
   fi
-
-  # Parse JSON from D-Bus response: ('[...]',) → extract JSON array
-  local json
-  json="$(echo "$result" | sed "s/^('//; s/'.*$//; s/\\\\//g")"
 
   local wins
   wins="$(echo "$json" | jq -r '.[] | "• \(.title) [\(.wm_class)] (ws:\(.workspace))"' 2>/dev/null)" || true
@@ -60,10 +65,19 @@ _Example:_ \`/focus Firefox\`"
 
   if [[ -z "$result" ]]; then
     send_msg "$chat" "❌ Could not focus window. Is the DesktopControl extension installed and enabled?"
-  elif echo "$result" | grep -q "true"; then
+    return
+  fi
+
+  # Response: ('{"ok":true,"data":true}',) — extract JSON
+  local json
+  json="$(echo "$result" | sed "s/^('//; s/'.*$//; s/\\\\//g")"
+
+  if echo "$json" | jq -e '.ok and .data' >/dev/null 2>&1; then
     send_msg "$chat" "🪟 Focused: \`${args}\`"
-  else
+  elif echo "$json" | jq -e '.ok and (.data | not)' >/dev/null 2>&1; then
     send_msg "$chat" "❌ Window \`${args}\` not found."
+  else
+    send_msg "$chat" "❌ Could not focus window."
   fi
 }
 
@@ -84,10 +98,19 @@ _Example:_ \`/close Firefox\`"
 
   if [[ -z "$result" ]]; then
     send_msg "$chat" "❌ Could not close window. Is the DesktopControl extension installed and enabled?"
-  elif echo "$result" | grep -q "true"; then
+    return
+  fi
+
+  # Response: ('{"ok":true,"data":true}',) — extract JSON
+  local json
+  json="$(echo "$result" | sed "s/^('//; s/'.*$//; s/\\\\//g")"
+
+  if echo "$json" | jq -e '.ok and .data' >/dev/null 2>&1; then
     send_msg "$chat" "🪟 Closed: \`${args}\`"
-  else
+  elif echo "$json" | jq -e '.ok and (.data | not)' >/dev/null 2>&1; then
     send_msg "$chat" "❌ Window \`${args}\` not found."
+  else
+    send_msg "$chat" "❌ Could not close window."
   fi
 }
 

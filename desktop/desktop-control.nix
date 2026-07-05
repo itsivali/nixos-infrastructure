@@ -1,8 +1,22 @@
 # desktop/desktop-control.nix
+#
 # GNOME Shell extension providing D-Bus API for remote desktop control.
 #
 # Packages the DesktopControl extension for GNOME Shell.
 # Enablement (dconf) is handled by home-manager in home/environment/extensions.nix.
+#
+# Architecture:
+#   extension.js   → lifecycle (enable/disable only)
+#   dbus.js        → D-Bus interface definition and export
+#   desktop.js     → high-level facade
+#   windows.js     → window management
+#   workspaces.js  → workspace management
+#   applications.js → app system queries
+#   logger.js      → structured logging
+#   utils.js       → validation and helpers
+#
+# All .js files are copied automatically via glob.
+# No hardcoded file list — adding a new module requires zero Nix changes.
 
 { config, lib, pkgs, ... }:
 
@@ -15,8 +29,7 @@ let
     src = extSrc;
     installPhase = ''
       mkdir -p $out/share/gnome-shell/extensions/${extUuid}
-      cp metadata.json $out/share/gnome-shell/extensions/${extUuid}/
-      cp extension.js $out/share/gnome-shell/extensions/${extUuid}/
+      cp *.js *.json $out/share/gnome-shell/extensions/${extUuid}/
     '';
     meta = {
       description = "D-Bus API for remote desktop control via Telegram bot";

@@ -5,6 +5,11 @@ let
   ivaliCyan = "bold #22D3EE";
   ivaliGreen = "bold #4ADE80";
   ivaliGray = "#9CA3AF";
+  ivaliGold = "bold #FBBF24";
+  ivaliRed = "bold #F87171";
+  ivaliBlue = "bold #60A5FA";
+  ivaliPink = "bold #F472B6";
+  ivaliOrange = "bold #FB923C";
 in
 
 {
@@ -17,7 +22,11 @@ in
       scan_timeout = 30;
 
       format = lib.concatStrings [
+        # ── Top line ────────────────────────────────────────────────
+        "╭─"
+        "$os"
         "$username"
+        "$container"
         "$hostname"
         "$directory"
         "$git_branch"
@@ -25,12 +34,17 @@ in
         "$git_status"
         "$git_metrics"
         "$fill"
+        "$sudo"
         "$time"
         "$line_break"
+        # ── Bottom line ─────────────────────────────────────────────
+        "╰─"
         "$nix_shell"
+        "$shell"
         "$nodejs"
         "$python"
         "$golang"
+        "$docker_context"
         "$cmd_duration"
         "$status"
         "$character"
@@ -40,69 +54,81 @@ in
 
       # ── Context ──────────────────────────────────────────────────
 
+      os = {
+        style = ivaliGray;
+        disabled = false;
+        format = "[ $symbol]($style) ";
+      };
+
       username = {
         show_always = true;
         style_user = ivaliPurple;
-        style_root = "bold red";
-        format = "[$user]($style) ";
+        style_root = ivaliRed;
+        format = "[  $user]($style) ";
       };
 
       hostname = {
         ssh_only = false;
         style = ivaliGreen;
-        format = "[$hostname]($style) ";
+        format = "[ 󰒋 $hostname]($style) ";
+      };
+
+      container = {
+        style = "dimmed white";
+        format = "[  $name]($style) ";
       };
 
       directory = {
         style = ivaliCyan;
         truncation_length = 3;
         truncate_to_repo = true;
-        format = "[$path]($style) ";
+        format = "[  $path]($style) ";
         home_symbol = "~";
-        repo_root_format = "[$repo_root]($style) ";
-        read_only = " ";
+        repo_root_format = "[  $repo_root]($style) ";
+        read_only = " ";
       };
 
       # ── Git ──────────────────────────────────────────────────────
 
       git_branch = {
         style = ivaliPurple;
-        format = "[$branch]($style) ";
+        format = "[  $branch]($style) ";
         only_attached = true;
       };
 
       git_state = {
         style = "bold yellow";
-        format = "[\($state( $progress_current of $progress_total)\)]($style) ";
-        cherry_pick = " cherry-pick";
-        revert = " revert";
-        merge = " merge";
-        bisect = " bisect";
-        am = " am";
-        am_or_rebase = " am/rebase";
-        rebase = " rebase";
+        format = "[  $state( $progress_current of $progress_total)]($style) ";
+        cherry_pick = "cherry-pick";
+        revert = "revert";
+        merge = "merge";
+        bisect = "bisect";
+        am = "am";
+        am_or_rebase = "am/rebase";
+        rebase = "rebase";
       };
 
       git_status = {
         style = "bold yellow";
-        format = "[\\( $all_status$ahead_behind \\)]($style) ";
-        conflicted = "! ";
-        ahead = "\${count}";
-        behind = "\${count}";
-        diverged = "\${ahead_count}\${behind_count}";
-        untracked = "? ";
-        stashed = "$ ";
-        modified = "~ ";
-        staged = "+ ";
-        renamed = " ";
-        deleted = "- ";
+        format = "[\\($all_status$ahead_behind\\)]($style) ";
+        conflicted = " ";
+        ahead = " \${count}";
+        behind = " \${count}";
+        diverged = " \${ahead_count}  \${behind_count}";
+        up_to_date = " ";
+        untracked = " ";
+        stashed = " ";
+        modified = " ";
+        staged = " ";
+        renamed = " ";
+        deleted = " ";
       };
 
       git_metrics = {
         disabled = false;
         format = "[\(+$added -$deleted\)]($style) ";
         added_style = "bold green";
-        deleted_style = "bold red";
+        deleted_style = ivaliRed;
         only_nonzero_diffs = true;
       };
 
@@ -111,38 +137,51 @@ in
       nix_shell = {
         style = "bold yellow";
         symbol = "❄";
-        format = "[$symbol]($style) ";
+        format = "[ $symbol]($style) ";
         impure_msg = "impure";
         pure_msg = "pure";
         heuristic = true;
+      };
+
+      shell = {
+        style = ivaliGray;
+        disabled = false;
+        format = "[  $indicator]($style) ";
+        zsh_indicator = "zsh";
+        fish_indicator = "fish";
+        bash_indicator = "bash";
       };
 
       # ── Languages (only shown when in relevant directory) ────────
 
       nodejs = {
         style = "bold #22C55E";
-        format = "[node $version]($style) ";
+        format = "[  v$version]($style) ";
         detect_extensions = [ "js" "ts" "jsx" "tsx" "mjs" "cjs" ];
         detect_files = [ "package.json" ".node-version" "tsconfig.json" ];
-        not_if_venv = true;
       };
 
       python = {
-        style = "bold #FBBF24";
-        format = "[py $version]($style) ";
+        style = ivaliGold;
+        format = "[  v$version]($style) ";
         pyenv_version_name = true;
         detect_extensions = [ "py" ];
         detect_files = [ "requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock" ];
       };
 
       golang = {
-        style = "bold #60A5FA";
-        format = "[go $version]($style) ";
+        style = ivaliCyan;
+        format = "[  v$version]($style) ";
         detect_extensions = [ "go" ];
         detect_files = [ "go.mod" "go.sum" ];
       };
 
-      docker = { disabled = true; };
+      docker_context = {
+        style = ivaliPink;
+        only_with_files = false;
+        format = "[  $context]($style) ";
+      };
+
       rust = { disabled = true; };
       localip = { disabled = true; };
 
@@ -150,33 +189,41 @@ in
 
       cmd_duration = {
         style = ivaliGray;
-        format = "[⏱ $duration]($style) ";
+        format = "[ ⏱ $duration]($style) ";
         min_time = 500;
         show_milliseconds = true;
       };
 
       status = {
-        style = "bold red";
-        format = "[$status]($style) ";
+        style = ivaliRed;
+        format = "[✗ $status]($style) ";
         disabled = false;
         pipestatus = true;
-        pipestatus_separator = " ";
+        pipestatus_separator = "|";
+        success_symbol = "";
       };
 
       time = {
         style = ivaliGray;
-        format = "[ $time]($style) ";
+        format = "[  $time]($style) ";
         disabled = false;
-        time_format = "%H:%M:%S";
+        time_format = "%H:%M";
       };
 
       shlvl = {
         style = "bold yellow";
-        format = "[$symbol\${shlvl}]($style) ";
+        format = "[  \${shlvl}]($style) ";
         disabled = false;
         repeat = true;
         symbol = " ";
         threshold = 2;
+      };
+
+      sudo = {
+        style = "bold white";
+        format = "[  as $user]($style) ";
+        disabled = false;
+        allow_other_user = true;
       };
 
       # ── Prompt character ─────────────────────────────────────────
@@ -185,7 +232,7 @@ in
         success_symbol = "[❯](bold #A78BFA)";
         error_symbol = "[❯](bold #F87171)";
         vicmd_symbol = "[❮](bold #4ADE80)";
-        format = "$symbol ";
+        format = " $symbol";
       };
     };
   };

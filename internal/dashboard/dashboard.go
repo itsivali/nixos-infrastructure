@@ -58,8 +58,8 @@ func New(repo *repository.Repository, term *terminal.Terminal) tea.Model {
 	return &model{
 		repo:     repo,
 		term:     term,
-		tabs:     []string{"Overview", "Modules", "Health", "Domains"},
-		tabIcons: []string{"", "", "", ""},
+		tabs:     []string{"Overview", "Modules", "Health", "Domains", "Git Log", "Generations"},
+		tabIcons: []string{"", "", "", "", "", ""},
 	}
 }
 
@@ -300,6 +300,10 @@ func (m *model) View() string {
 		b.WriteString(m.renderHealth())
 	case 3:
 		b.WriteString(m.renderDomains())
+	case 4:
+		b.WriteString(m.renderGitLog())
+	case 5:
+		b.WriteString(m.renderGenerations())
 	}
 
 	b.WriteString("\n")
@@ -319,7 +323,7 @@ func (m *model) renderHeader() string {
 
 func (m *model) tabCounts() []int {
 	if m.repo.Result == nil {
-		return []int{0, 0, 0, 0}
+		return []int{0, 0, 0, 0, 0, 0}
 	}
 	dups := len(m.repo.CheckDuplicateImports())
 	orphans := len(m.repo.CheckOrphanModules())
@@ -331,6 +335,8 @@ func (m *model) tabCounts() []int {
 		len(m.modules),
 		healthBad,
 		len(m.repo.Result.Domains),
+		-1, // Git Log — no count
+		-1, // Generations — no count
 	}
 }
 
@@ -873,15 +879,187 @@ func (m *model) renderDomains() string {
 	return b.String()
 }
 
+type gitLogEntry struct {
+	Hash    string
+	Author  string
+	Date    string
+	Message string
+}
+
+func (m *model) renderGitLog() string {
+	var b strings.Builder
+
+	gitDir := "--git-dir=" + m.repo.Root + "/.git"
+
+	// Branch info
+	branchOut, _ := exec.Command("git", gitDir, "rev-parse", "--abbrev-ref", "HEAD").Output()
+	branch := strings.TrimSpace(string(branchOut))
+	if branch == "" {
+		branch = "unknown"
+	}
+
+	// Ahead/behind
+	var behind, ahead int
+	revList, _ := exec.Command("git", gitDir, "rev-list", "--left-right", "--count", "HEAD...@{u}").Output()
+	parts := strings.Fields(string(revList))
+	if len(parts) == 2 {
+		behind, _ = strconv.Atoi(parts[0])
+		ahead, _ = strconv.Atoi(parts[1])
+	}
+
+	b.WriteString(m.term.IconH1("", fmt.Sprintf(" Git: %s", branch)) + "\n\n")
+
+	statusParts := []string{
+		fmt.Sprintf("Branch: %s", m.term.Bold(branch)),
+	}
+	if ahead > 0 {
+		statusParts = append(statusParts, fmt.Sprintf(" %d ahead", ahead))
+	}
+	if behind > 0 {
+		statusParts = append(statusParts, fmt.Sprintf(" %d behind", behind))
+	}
+	if behind == 0 && ahead == 0 {
+		statusParts = append(statusParts, m.term.Good("synced with origin"))
+	}
+	b.WriteString("  " + strings.Join(statusParts, "  ") + "\n\n")
+
+	// Last commit info
+	lastOut, _ := exec.Command("git", gitDir, "log", "-1", "--format=%H|%an|%ai|%s").Output()
+	lastParts := strings.SplitN(strings.TrimSpace(string(lastOut)), "|", 4)
+	if len(lastParts) == 4 {
+		b.WriteString(m.term.IconH2("", "Latest Commit") + "\n")
+		b.WriteString(fmt.Sprintf("  %s %s\n", m.term.ColoredIcon("", m.term.Color.Gray), m.term.Dim("Hash: ")+m.term.Bold(lastParts[0][:12])))
+		shortMsg := lastParts[3]
+		if len(shortMsg) > 60 {
+			shortMsg = shortMsg[:60] + "…"
+		}
+		b.WriteString(fmt.Sprintf("  %s %s\n", m.term.ColoredIcon("", m.term.Color.Gray), m.term.Dim("Message: ")+m.term.Bold(shortMsg)))
+		b.WriteString(fmt.Sprintf("  %s %s\n", m.term.ColoredIcon("", m.term.Color.Gray), m.term.Dim("Author: ")+lastParts[1]))
+		b.WriteString(fmt.Sprintf("  %s %s\n", m.term.ColoredIcon("", m.term.Color.Gray), m.term.Dim("Date: ")+lastParts[2][:19]))
+		b.WriteString("\n")
+	}
+
+	// Recent commits
+	b.WriteString(m.term.IconH2("", "Recent Commits") + "\n")
+
+	out, err := exec.Command("git", gitDir, "log", "--oneline", "-20", "--format=%h|%an|%ar|%s").Output()
+	if err != nil {
+		return b.String() + "  " + m.term.Dim("No git history available.")
+	}
+
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if len(lines) == 0 || (len(lines) == 1 && lines[0] == "") {
+		b.WriteString("  " + m.term.Dim("No commits yet."))
+		return b.String()
+	}
+
+	for _, line := range lines {
+		parts := strings.SplitN(line, "|", 4)
+		if len(parts) < 4 {
+			continue
+		}
+		msg := parts[3]
+		if len(msg) > 50 {
+			msg = msg[:50] + "…"
+		}
+		b.WriteString(fmt.Sprintf("  %s  %s  %s  %s\n",
+			m.term.Dim(parts[0]),
+			m.term.Dim(parts[1]),
+			m.term.Dim(parts[2]),
+			msg))
+	}
+
+	b.WriteString("\n")
+	b.WriteString(m.term.Dim("   r refresh"))
+
+	return b.String()
+}
+
+type genEntry struct {
+	Number  int
+	Date    string
+	Current bool
+}
+
+func (m *model) renderGenerations() string {
+	var b strings.Builder
+
+	b.WriteString(m.term.IconH1("", "NixOS Generations") + "\n\n")
+
+	out, err := exec.Command("nix-env", "--list-generations", "--profile", "/nix/var/nix/profiles/system").Output()
+	if err != nil {
+		// Try nix profile history as fallback
+		altOut, altErr := exec.Command("nix", "profile", "history", "--profile", "/nix/var/nix/profiles/system").Output()
+		if altErr != nil {
+			b.WriteString("  " + m.term.Dim("No generation data available."))
+			return b.String()
+		}
+		b.WriteString("  " + m.term.Dim(strings.TrimSpace(string(altOut))))
+		return b.String()
+	}
+
+	genLines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	var gens []genEntry
+	for _, line := range genLines {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		num, err := strconv.Atoi(fields[0])
+		if err != nil {
+			continue
+		}
+		date := fields[1] + " " + fields[2]
+		current := strings.Contains(line, "(current)")
+		gens = append(gens, genEntry{Number: num, Date: date, Current: current})
+	}
+
+	if len(gens) == 0 {
+		b.WriteString("  " + m.term.Dim("No generations found."))
+		return b.String()
+	}
+
+	// Show last 15 generations (most recent last)
+	start := 0
+	if len(gens) > 15 {
+		start = len(gens) - 15
+	}
+
+	for _, g := range gens[start:] {
+		icon := ""
+		color := m.term.Color.Gray
+		if g.Current {
+			icon = ""
+			color = m.term.Color.Purple
+		}
+
+		line := fmt.Sprintf("  %s  Gen %d  %s",
+			m.term.ColoredIcon(icon, color),
+			g.Number,
+			m.term.Dim(g.Date[:16]))
+
+		if g.Current {
+			line += "  " + m.term.TagBg(" current ", m.term.Color.White, m.term.Color.Purple)
+		}
+
+		b.WriteString(line + "\n")
+	}
+
+	b.WriteString("\n")
+	b.WriteString(m.term.Dim("   r refresh"))
+
+	return b.String()
+}
+
 func (m *model) renderHelpBar() string {
 	help := m.term.Dim("   help  / tab   r  s sort  / filter   q quit")
 	if m.helpVisible {
 		help += "\n" + m.term.Dim("    IVALI Dashboard — Bubbletea TUI for repository management")
-		help += "\n" + m.term.Dim("   Tab / h/l: Switch panels   Up/Down / j/k: Navigate lists")
+		help += "\n" + m.term.Dim("   Tab / h,l: Switch panels (6 tabs)   Up/Down / j,k: Navigate")
 		help += "\n" + m.term.Dim("   /: Filter modules   Esc: Clear filter   Backspace: Delete char")
 		help += "\n" + m.term.Dim("   Enter: Toggle module detail   Esc: Back to list")
 		help += "\n" + m.term.Dim("   s: Cycle sort (none → category → type → name → lines)")
-		help += "\n" + m.term.Dim("   r: Refresh data  g: Top  G: Bottom   q/Ctrl+C: Quit")
+		help += "\n" + m.term.Dim("   r: Refresh all data  g: Top  G: Bottom   q/Ctrl+C: Quit")
 	}
 	return help
 }

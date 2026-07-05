@@ -38,8 +38,8 @@ a beautiful interactive terminal experience.`,
 			fmt.Println(a.Term.RenderSplash())
 			return nil
 		},
-		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceUsage: false,
+		SilenceErrors: false,
 	}
 
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")

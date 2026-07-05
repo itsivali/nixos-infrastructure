@@ -18,6 +18,10 @@ func main() {
 	root := commands.Root(application)
 
 	if err := root.Execute(); err != nil {
+		t := application.Term
+		fmt.Println()
+		fmt.Println("  " + t.Bad(fmt.Sprintf("%v", err)))
+		fmt.Println()
 		os.Exit(1)
 	}
 }

@@ -120,26 +120,29 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 				missingDocs = r.CheckMissingDocHeaders()
 			}
 
+			lintChecks := []terminal.CheckItem{
+				{Label: "nix fmt", Status: runCheck("nix", r.Root, "fmt", "--check")},
+				{Label: "deadnix", Status: runLintTool("deadnix", r.Root)},
+				{Label: "statix", Status: runLintTool("statix", r.Root)},
+			}
+
+			flakeChecks := []terminal.CheckItem{
+				{Label: "nix flake check", Status: runCheck("nix", r.Root, "flake", "check", "--no-build")},
+				{Label: fmt.Sprintf("Inputs (%d)", r.FlakeInputs()),
+					Status: terminal.StatusPass},
+			}
+
 			allChecks := []struct {
 				Category string
 				Checks   []terminal.CheckItem
 			}{
 				{
 					Category: "Formatting & Linting",
-					Checks: []terminal.CheckItem{
-						{Label: "nix fmt", Status: terminal.StatusPass},
-						{Label: "deadnix", Status: terminal.StatusPass},
-						{Label: "statix", Status: terminal.StatusPass},
-					},
+					Checks:   lintChecks,
 				},
 				{
 					Category: "Flake",
-					Checks: []terminal.CheckItem{
-						{Label: "nix flake check", Status: terminal.StatusPass},
-						{Label: "Flake metadata", Status: terminal.StatusPass},
-						{Label: fmt.Sprintf("Inputs (%d)", r.FlakeInputs()),
-							Status: terminal.StatusPass},
-					},
+					Checks:   flakeChecks,
 				},
 				{
 					Category: "Module Integrity",
@@ -308,4 +311,20 @@ func docTitle(path string) string {
 	stem = strings.ReplaceAll(stem, "-", " ")
 	stem = strings.ReplaceAll(stem, "_", " ")
 	return strings.Title(stem)
+}
+
+func runCheck(name, root string, args ...string) terminal.CheckStatus {
+	cmd := exec.Command(name, args...)
+	cmd.Dir = root
+	if err := cmd.Run(); err != nil {
+		return terminal.StatusFail
+	}
+	return terminal.StatusPass
+}
+
+func runLintTool(name, root string) terminal.CheckStatus {
+	if _, err := exec.LookPath(name); err != nil {
+		return terminal.StatusWarn
+	}
+	return runCheck(name, root)
 }

@@ -137,6 +137,10 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 				Checks   []terminal.CheckItem
 			}{
 				{
+					Category: "System Health",
+					Checks:   systemHealthChecks(),
+				},
+				{
 					Category: "Formatting & Linting",
 					Checks:   lintChecks,
 				},

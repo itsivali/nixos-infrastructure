@@ -15,18 +15,36 @@ import (
 
 func CmdHealth(a *app.App) *cobra.Command {
 	var watch bool
+	var system bool
 
 	cmd := &cobra.Command{
 		Use:   "health",
-		Short: "Show repository health summary",
+		Short: "Show repository and system health summary",
 		Long: `Display a health summary of the repository including:
   - Module integrity
   - Duplicate imports
   - Orphan modules
   - Documentation coverage
 
-Use --watch to continuously monitor health status (refreshes every 3s).`,
+Use --watch to continuously monitor health status (refreshes every 3s).
+Use --system to show system health (disk, memory, CPU, services, Tailscale).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			t := a.Term
+
+			if system {
+				if watch {
+					return runSystemWatch(t)
+				}
+				fmt.Println()
+				fmt.Println(t.Section("System Health"))
+				fmt.Println()
+				for _, c := range systemHealthChecks() {
+					fmt.Println(t.CheckList([]terminal.CheckItem{c}))
+				}
+				fmt.Println()
+				return nil
+			}
+
 			if !a.RequireRepo() {
 				return nil
 			}
@@ -35,7 +53,6 @@ Use --watch to continuously monitor health status (refreshes every 3s).`,
 				return err
 			}
 
-			t := a.Term
 			r := a.Repo
 
 			if watch {
@@ -48,6 +65,7 @@ Use --watch to continuously monitor health status (refreshes every 3s).`,
 	}
 
 	cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch for changes (live monitoring)")
+	cmd.Flags().BoolVar(&system, "system", false, "Show system health only (disk, memory, CPU, services, Tailscale)")
 	return cmd
 }
 
@@ -100,6 +118,44 @@ func renderHealth(t *terminal.Terminal, r *repository.Repository) {
 		for _, d := range missing {
 			fmt.Printf("  %s %s\n", t.ColoredIcon("", t.Color.Yellow), t.Dim(d))
 		}
+	}
+	fmt.Println()
+}
+
+func runSystemWatch(t *terminal.Terminal) error {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	fmt.Print("\033[?25l")
+	defer fmt.Print("\033[?25h")
+
+	renderSystemHealth(t)
+	fmt.Println("  " + t.Dim(" Watching... refresh every 3s  (Ctrl+C to stop)"))
+
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-sigCh:
+			fmt.Println()
+			fmt.Println("  " + t.Dim("Stopped"))
+			fmt.Println()
+			return nil
+		case <-ticker.C:
+			fmt.Print("\033[2J\033[H")
+			renderSystemHealth(t)
+			fmt.Println("  " + t.Dim(" Watching... refresh every 3s  (Ctrl+C to stop)"))
+		}
+	}
+}
+
+func renderSystemHealth(t *terminal.Terminal) {
+	fmt.Println()
+	fmt.Println(t.Section("System Health"))
+	fmt.Println()
+	for _, c := range systemHealthChecks() {
+		fmt.Println(t.CheckList([]terminal.CheckItem{c}))
 	}
 	fmt.Println()
 }

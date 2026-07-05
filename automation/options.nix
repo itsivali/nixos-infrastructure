@@ -45,6 +45,35 @@ with lib;
     };
 
     ############################################################
+    # GitOps Reconciler Configuration
+    ############################################################
+
+    gitopsReconciler = {
+
+      maxRetries = mkOption {
+        type = types.int;
+        default = 3;
+        description = "Max retries for transient operations (git fetch, git pull)";
+      };
+
+      retryDelay = mkOption {
+        type = types.str;
+        default = "5";
+        description = "Initial retry backoff delay in seconds";
+      };
+
+      useIvaliDoctor = mkOption {
+        type = types.bool;
+        default = true;
+        description = ''
+          Use ivali doctor for post-deployment health checks.
+          Falls back to deployment-health.sh when unavailable.
+        '';
+      };
+
+    };
+
+    ############################################################
     # Notification Configuration
     ############################################################
 

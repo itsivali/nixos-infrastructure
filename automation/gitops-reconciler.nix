@@ -100,6 +100,10 @@ in
         GITOPS_BRANCH = gitops.branch;
 
         GITOPS_WORKTREE = "/var/lib/gitops";
+
+        GITOPS_MAX_RETRIES = builtins.toString cfg.maxRetries;
+        GITOPS_RETRY_DELAY = builtins.toString cfg.retryDelay;
+        GITOPS_USE_IVALI_DOCTOR = if cfg.useIvaliDoctor then "true" else "false";
       };
 
       serviceConfig = {

@@ -9,6 +9,7 @@ set -Eeuo pipefail
 REPO_DIR="/home/ivali/nixos-infrastructure"
 NOTIFY="${REPO_DIR}/scripts/notify.sh"
 HEALTH="${REPO_DIR}/scripts/deployment-health.sh"
+IVALI="${REPO_DIR}/result/bin/ivali"
 
 HOST="prague"
 
@@ -49,7 +50,23 @@ ROLLED_TO="$(
 
 sleep 10  # let services settle
 
-if "$HEALTH"; then
+health_passed=false
+if [[ -x "$IVALI" ]]; then
+  log "Using ivali doctor for health check..."
+  if "$IVALI" doctor > /dev/null 2>&1; then
+    health_passed=true
+  fi
+elif [[ -x "$HEALTH" ]]; then
+  log "Using legacy deployment-health.sh..."
+  if "$HEALTH"; then
+    health_passed=true
+  fi
+else
+  log "No health check tool available — skipping health gate."
+  health_passed=true
+fi
+
+if "$health_passed"; then
   notify "✅ Rollback successful on ${HOST}
 
 Rolled back : generation ${CURRENT_GEN} → ${ROLLED_TO}

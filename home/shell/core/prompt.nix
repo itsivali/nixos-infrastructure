@@ -221,9 +221,8 @@ in
 
       sudo = {
         style = "bold white";
-        format = "[  as $user]($style) ";
+        format = "[ as $user]($style) ";
         disabled = false;
-        allow_other_user = true;
       };
 
       # ── Prompt character ─────────────────────────────────────────

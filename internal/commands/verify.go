@@ -38,7 +38,7 @@ Returns structured output suitable for CI/CD integration.`,
 
 			// ── Formatting ──────────────────────────────────────────────
 			fmt.Println(t.Subsection("Formatting"))
-			fmt.Println(checkNixFmt(r.Root, t))
+			fmt.Println(t.CheckList([]terminal.CheckItem{checkNixFormatting(r.Root)}))
 			fmt.Println()
 
 			// ── Flake ────────────────────────────────────────────────────
@@ -137,25 +137,6 @@ Returns structured output suitable for CI/CD integration.`,
 			return nil
 		},
 	}
-}
-
-func checkNixFmt(root string, t *terminal.Terminal) string {
-	cmd := exec.Command("nix", "fmt", "--check")
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		if len(out) > 0 {
-			return t.CheckList([]terminal.CheckItem{
-				{Label: "nix fmt", Status: terminal.StatusFail, Detail: strings.TrimSpace(string(out))},
-			})
-		}
-		return t.CheckList([]terminal.CheckItem{
-			{Label: "nix fmt", Status: terminal.StatusFail},
-		})
-	}
-	return t.CheckList([]terminal.CheckItem{
-		{Label: "All .nix files formatted", Status: terminal.StatusPass},
-	})
 }
 
 func checkNixFlakeCheck(root string) terminal.CheckItem {

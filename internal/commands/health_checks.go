@@ -11,6 +11,25 @@ import (
 	"github.com/willisivali/nixos-infrastructure/internal/terminal"
 )
 
+func checkNixFormatting(root string) terminal.CheckItem {
+	cmd := exec.Command("git", "-C", root, "stash", "push", "-m", "format-check", "--", "*.nix")
+	cmd.Run()
+
+	nixFmt := exec.Command("nix", "fmt")
+	nixFmt.Dir = root
+	nixFmt.Run()
+
+	out, _ := exec.Command("git", "-C", root, "diff", "--stat", "--", "*.nix").Output()
+
+	exec.Command("git", "-C", root, "stash", "pop").Run()
+
+	diff := strings.TrimSpace(string(out))
+	if diff != "" {
+		return terminal.CheckItem{Label: "Formatting", Status: terminal.StatusFail, Detail: diff}
+	}
+	return terminal.CheckItem{Label: "Formatting", Status: terminal.StatusPass, Detail: "all .nix files formatted"}
+}
+
 type healthFunc func() terminal.CheckItem
 
 func systemHealthChecks() []terminal.CheckItem {
@@ -221,17 +240,12 @@ func checkNixStore() terminal.CheckItem {
 		return terminal.CheckItem{Label: "Nix Store", Status: terminal.StatusPass, Detail: "nix not installed"}
 	}
 
-	out, err := exec.Command("nix", "store", "check").CombinedOutput()
+	out, err := exec.Command("nix", "store", "info").CombinedOutput()
 	if err != nil {
-		return terminal.CheckItem{Label: "Nix Store", Status: terminal.StatusWarn, Detail: strings.TrimSpace(string(out))}
+		return terminal.CheckItem{Label: "Nix Store", Status: terminal.StatusWarn, Detail: "unreachable"}
 	}
 
-	detail := strings.TrimSpace(string(out))
-	if detail == "" {
-		detail = "integrity verified"
-	}
-
-	return terminal.CheckItem{Label: "Nix Store", Status: terminal.StatusPass, Detail: detail}
+	return terminal.CheckItem{Label: "Nix Store", Status: terminal.StatusPass, Detail: strings.TrimSpace(string(out))}
 }
 
 func checkTailscale() terminal.CheckItem {

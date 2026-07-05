@@ -121,7 +121,7 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 			}
 
 			lintChecks := []terminal.CheckItem{
-				{Label: "nix fmt", Status: runCheck("nix", r.Root, "fmt", "--check")},
+				checkNixFormatting(r.Root),
 				{Label: "deadnix", Status: runLintTool("deadnix", r.Root)},
 				{Label: "statix", Status: runLintTool("statix", r.Root)},
 			}

@@ -1,4 +1,5 @@
-# commands/screenshot.sh — /screenshot — capture desktop via grim (Wayland-native)
+# commands/screenshot.sh — /screenshot — capture desktop via gnome-screenshot
+# Uses xdg-desktop-portal (shows allow dialog on first use per app).
 ##############################################################################
 
 _cmd_screenshot() {
@@ -12,12 +13,14 @@ _cmd_screenshot() {
 
   if sudo -u "${DEFAULT_USER}" \
     XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
     WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
-    grim "$file" 2>/dev/null && [[ -f "$file" ]]; then
+    DISPLAY="$DISPLAY" \
+    gnome-screenshot -f "$file" 2>/dev/null && [[ -f "$file" ]]; then
     send_photo "$chat" "$file" "📸 Screenshot from *${HOST}*"
     rm -f "$file"
   else
-    send_msg "$chat" "❌ Screenshot failed. Is grim installed and is Wayland running?"
+    send_msg "$chat" "❌ Screenshot failed. A permission dialog may have appeared on your screen — click *Allow* and try again."
   fi
 }
 

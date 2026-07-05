@@ -5,8 +5,7 @@
 // NOTE: Shell is a global injected by GNOME Shell — do NOT import
 // from imports.gi.Shell (removed in GNOME Shell 45+).
 
-const { GLib, Gio, Meta } = imports.gi;
-const Main = imports.ui.main;
+const { Gio, Meta } = imports.gi;
 
 const BUS_NAME = 'org.gnome.Shell.Extensions.DesktopControl';
 const OBJECT_PATH = '/org/gnome/Shell/Extensions/DesktopControl';

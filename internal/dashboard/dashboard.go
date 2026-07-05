@@ -2,7 +2,10 @@ package dashboard
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -457,7 +460,89 @@ func (m *model) renderOverview() string {
 		}
 	}
 
+	// System info
+	b.WriteString("\n")
+	b.WriteString("  " + m.term.IconH1("", "System") + "\n")
+	sys := getSystemInfo()
+	sysItems := []struct {
+		icon  string
+		label string
+		value string
+		color lipgloss.TerminalColor
+	}{
+		{"", "Host", sys.hostname, m.term.Color.Blue},
+		{"", "Kernel", sys.kernel, m.term.Color.Purple},
+		{"", "Uptime", sys.uptime, m.term.Color.Cyan},
+		{"", "Load", sys.loadAvg, m.term.Color.Yellow},
+	}
+	for i, item := range sysItems {
+		line := fmt.Sprintf("  %s %s: %s",
+			m.term.ColoredIcon(item.icon, item.color),
+			m.term.Dim(item.label),
+			m.term.Bold(item.value))
+		if i%2 == 0 && i+1 < len(sysItems) {
+			next := sysItems[i+1]
+			pad := w - utf8Count(line)
+			if pad < 2 {
+				pad = 2
+			}
+			line += strings.Repeat(" ", pad)
+			line += fmt.Sprintf("%s %s: %s",
+				m.term.ColoredIcon(next.icon, next.color),
+				m.term.Dim(next.label),
+				m.term.Bold(next.value))
+		}
+		b.WriteString(line + "\n")
+	}
+
 	return b.String()
+}
+
+type sysInfo struct {
+	hostname string
+	kernel   string
+	uptime   string
+	loadAvg  string
+}
+
+func getSystemInfo() sysInfo {
+	info := sysInfo{hostname: "unknown", kernel: "unknown", uptime: "unknown", loadAvg: "unknown"}
+
+	host, err := os.Hostname()
+	if err == nil {
+		info.hostname = host
+	}
+
+	if k, err := exec.Command("uname", "-r").Output(); err == nil {
+		info.kernel = strings.TrimSpace(string(k))
+	}
+
+	if u, err := os.ReadFile("/proc/uptime"); err == nil {
+		parts := strings.Fields(string(u))
+		if len(parts) > 0 {
+			if secs, err := strconv.ParseFloat(parts[0], 64); err == nil {
+				d := int(secs) / 86400
+				h := int(secs) % 86400 / 3600
+				m := int(secs) % 3600 / 60
+				if d > 0 {
+					info.uptime = fmt.Sprintf("%dd %dh %dm", d, h, m)
+				} else if h > 0 {
+					info.uptime = fmt.Sprintf("%dh %dm", h, m)
+				} else {
+					info.uptime = fmt.Sprintf("%dm", m)
+				}
+			}
+		}
+	}
+
+	if l, err := os.ReadFile("/proc/loadavg"); err == nil {
+		parts := strings.Fields(string(l))
+		if len(parts) >= 3 {
+			info.loadAvg = fmt.Sprintf("%s %s %s", parts[0], parts[1], parts[2])
+		}
+	}
+
+	return info
 }
 
 func utf8Count(s string) int {

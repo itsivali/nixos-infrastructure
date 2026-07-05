@@ -1,10 +1,9 @@
 // Desktop Control — GNOME Shell extension for Telegram bot
-// Provides a D-Bus API for remote window/workspace/screenshot control.
+// Provides a D-Bus API for remote window/workspace control.
 // UUID: desktop-control@prague.ivali
 
-const { GLib, Gio, Meta } = imports.gi;
+const { GLib, Gio, Meta, Shell } = imports.gi;
 const Main = imports.ui.main;
-const Screenshot = imports.ui.screenshot;
 
 const BUS_NAME = 'org.gnome.Shell.Extensions.DesktopControl';
 const OBJECT_PATH = '/org/gnome/Shell/Extensions/DesktopControl';
@@ -34,10 +33,6 @@ const DesktopControlIface = `
       <arg type="i" name="index" direction="in"/>
       <arg type="b" name="success" direction="out"/>
     </method>
-    <method name="Screenshot">
-      <arg type="s" name="filename" direction="in"/>
-      <arg type="b" name="success" direction="out"/>
-    </method>
     <method name="GetRunningApps">
       <arg type="s" name="apps_json" direction="out"/>
     </method>
@@ -50,10 +45,9 @@ let _dbusId = null;
 
 function _listWindows() {
   let wins = [];
-  let actors = global.get_window_actors();
-  for (let a of actors) {
-    let w = a.meta_window;
-    if (!w) continue;
+  let windows = global.display.get_windows();
+  for (let w of windows) {
+    if (w.is_monitor) continue;
     wins.push({
       title: w.get_title() || '',
       wm_class: w.get_wm_class() || '',
@@ -66,11 +60,10 @@ function _listWindows() {
 }
 
 function _focusWindow(title) {
-  let actors = global.get_window_actors();
+  let windows = global.display.get_windows();
   let lower = title.toLowerCase();
-  for (let a of actors) {
-    let w = a.meta_window;
-    if (!w) continue;
+  for (let w of windows) {
+    if (w.is_monitor) continue;
     let t = (w.get_title() || '').toLowerCase();
     let wm = (w.get_wm_class() || '').toLowerCase();
     if (t.includes(lower) || wm.includes(lower)) {
@@ -82,11 +75,10 @@ function _focusWindow(title) {
 }
 
 function _closeWindow(title) {
-  let actors = global.get_window_actors();
+  let windows = global.display.get_windows();
   let lower = title.toLowerCase();
-  for (let a of actors) {
-    let w = a.meta_window;
-    if (!w) continue;
+  for (let w of windows) {
+    if (w.is_monitor) continue;
     let t = (w.get_title() || '').toLowerCase();
     let wm = (w.get_wm_class() || '').toLowerCase();
     if (t.includes(lower) || wm.includes(lower)) {
@@ -110,28 +102,6 @@ function _switchWorkspace(index) {
   if (!ws) return false;
   ws.activate(global.get_current_time());
   return true;
-}
-
-function _screenshot(filename) {
-  try {
-    let conn = Gio.DBus.session;
-    let result = conn.call_sync(
-      'org.gnome.Shell.Screenshot',
-      '/org/gnome/Shell/Screenshot',
-      'org.gnome.Shell.Screenshot',
-      'Screenshot',
-      new GLib.Variant('(bbs)', [false, false, filename]),
-      null,
-      Gio.DBusCallFlags.NONE,
-      -1,
-      null
-    );
-    let [success, usedFile] = result.deep_unpack();
-    return success;
-  } catch (e) {
-    log(`DesktopControl: Screenshot failed: ${e}`);
-    return false;
-  }
 }
 
 function _getRunningApps() {
@@ -169,10 +139,6 @@ const DesktopControlImpl = {
   SwitchWorkspace(params) {
     let [index] = params;
     return [_switchWorkspace(index)];
-  },
-  Screenshot(params) {
-    let [filename] = params;
-    return [_screenshot(filename)];
   },
   GetRunningApps(params) {
     return [_getRunningApps()];

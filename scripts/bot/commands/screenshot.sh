@@ -1,4 +1,4 @@
-# commands/screenshot.sh — /screenshot — capture desktop via GNOME Shell extension D-Bus
+# commands/screenshot.sh — /screenshot — capture desktop via grim (Wayland-native)
 ##############################################################################
 
 _cmd_screenshot() {
@@ -10,18 +10,14 @@ _cmd_screenshot() {
 
   desktop::require_graphical "$chat" || return
 
-  local result
-  result="$(desktop::ext_dbus_call Screenshot "$file")" || true
-
-  if echo "$result" | grep -q "true"; then
-    if [[ -f "$file" ]]; then
-      send_photo "$chat" "$file" "📸 Screenshot from *${HOST}*"
-      rm -f "$file"
-    else
-      send_msg "$chat" "❌ Screenshot captured but file not found at expected path."
-    fi
+  if sudo -u "${DEFAULT_USER}" \
+    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+    grim "$file" 2>/dev/null && [[ -f "$file" ]]; then
+    send_photo "$chat" "$file" "📸 Screenshot from *${HOST}*"
+    rm -f "$file"
   else
-    send_msg "$chat" "❌ Screenshot failed. Is the DesktopControl extension installed and enabled?"
+    send_msg "$chat" "❌ Screenshot failed. Is grim installed and is Wayland running?"
   fi
 }
 

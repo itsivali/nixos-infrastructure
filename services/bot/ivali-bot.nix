@@ -102,6 +102,7 @@ in
         libnotify
         wireplumber
         glib          # provides gdbus for GNOME Shell DBus calls
+        grim          # Wayland-native screenshot (no portal dependency)
 
         # Clipboard (Wayland-native)
         wl-clipboard

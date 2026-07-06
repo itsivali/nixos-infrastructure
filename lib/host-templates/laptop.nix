@@ -27,6 +27,7 @@ let
   hasTailscale = features.tailscale or false;
   hasTailscaleExitNode = features.tailscaleExitNode or true;
   hasSSH = features.ssh or false;
+  hasBitwarden = features.bitwarden or false;
 
   tailscaleTags = tags
     ++ lib.optional (hasTailscaleExitNode && !(builtins.elem "tag:exit-node" tags)) "tag:exit-node";
@@ -46,6 +47,22 @@ in
       telegram_chat_id = { sopsFile = ../../secrets/telegram.yaml; };
       notify_email = { sopsFile = ../../secrets/telegram.yaml; };
       gitlab_token = { sopsFile = ../../secrets/gitlab.yaml; };
+    } // lib.optionalAttrs hasBitwarden {
+      bitwarden_clientid = {
+        sopsFile = ../../secrets/bitwarden.yaml;
+        owner = userName;
+        mode = "0400";
+      };
+      bitwarden_clientsecret = {
+        sopsFile = ../../secrets/bitwarden.yaml;
+        owner = userName;
+        mode = "0400";
+      };
+      bitwarden_password = {
+        sopsFile = ../../secrets/bitwarden.yaml;
+        owner = userName;
+        mode = "0400";
+      };
     };
   };
 

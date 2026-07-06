@@ -85,6 +85,7 @@
       tailscale = true;
       tailscaleExitNode = true;
       ssh = true;
+      bitwarden = true;
     };
     config = {
       # Git config for root/CI access

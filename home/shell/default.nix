@@ -12,11 +12,11 @@
 #
 # Responsibilities
 # ----------------
-# - core/        — Bash, Zsh, history, completion, keybindings, prompt, startup
+# - core/         — Bash, Zsh, history, completion, keybindings, prompt, startup
 # - integrations/ — Direnv, FZF, Zoxide, Atuin
-# - tools/       — Bat, Btop, Eza, Fastfetch, shell packages
-# - aliases/     — Domain-grouped shell aliases
-# - bitwarden.nix — Bitwarden CLI integration
+# - tools/        — Bat, Btop, Eza, Fastfetch, shell packages
+# - aliases/      — Domain-grouped shell aliases
+# - bitwarden/    — Bitwarden CLI integration (auth, clipboard, cache, search)
 #
 ##############################################################################
 
@@ -28,6 +28,6 @@
     ./integrations
     ./tools
     ./aliases
-    ./bitwarden.nix
+    ./bitwarden
   ];
 }

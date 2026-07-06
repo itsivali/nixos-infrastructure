@@ -102,7 +102,8 @@
           name = "ivali-system-packages";
           paths =
             (import ./packages/cli { inherit pkgs; })
-            ++ (import ./packages/desktop { inherit pkgs; });
+            ++ (import ./packages/desktop { inherit pkgs; })
+            ++ [ self.packages.${system}.bw ];
         };
 
         user = pkgs.buildEnv {

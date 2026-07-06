@@ -158,7 +158,7 @@ in
     ];
 
     home.sessionVariables = {
-      BW_SESSION_DIR = "/run/user/1000/bitwarden";
+      BW_SESSION_DIR = "${config.xdg.cacheHome}/bitwarden";
     };
 
     programs.zsh.shellAliases = lib.mkIf cfg.enableAliases {
@@ -171,9 +171,13 @@ in
       bwf   = "bwfind";
     };
 
-    programs.zsh.initContent = lib.mkAfter ''
-      # Ensure runtime directory exists
+    programs.zsh.initContent = lib.mkBefore ''
+      # ═══════════════════════════════════════════════════════════════════════
+      # Bitwarden — Runtime Directory (must be first)
+      # ═══════════════════════════════════════════════════════════════════════
       BW_RT_DIR="''${XDG_RUNTIME_DIR:-/run/user/$UID}/bitwarden"
+      BW_SESSION_FILE="$BW_RT_DIR/session"
+      BW_ACTIVITY_FILE="$BW_RT_DIR/last-activity"
       [ -d "$BW_RT_DIR" ] || mkdir -p "$BW_RT_DIR"
 
       # Bitwarden notification wrapper

@@ -22,10 +22,6 @@ in
       # Bitwarden Session Management
       # ═══════════════════════════════════════════════════════════════════════
 
-      BW_RT_DIR="''${XDG_RUNTIME_DIR:-/run/user/$UID}/bitwarden"
-      BW_SESSION_FILE="$BW_RT_DIR/session"
-      BW_ACTIVITY_FILE="$BW_RT_DIR/last-activity"
-
       bw_ensure_rt_dir() {
         [ -d "$BW_RT_DIR" ] || mkdir -p "$BW_RT_DIR"
       }

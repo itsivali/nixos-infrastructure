@@ -8,6 +8,9 @@
 # convenience commands (bwfind, bwp, bwuser, bwpass, bwuri, bwnotes).
 # Supports colored output, icons, favorites, and recent entries.
 #
+# NOTE: All jq operations read directly from $BW_CACHE_FILE to avoid
+# shell variable capture mangling literal newlines in JSON strings.
+#
 ##############################################################################
 
 { config, pkgs, lib, ... }:
@@ -91,12 +94,17 @@ in
         esac
       }
 
+      _bw_ensure_cache() {
+        if [ ! -f "$BW_CACHE_FILE" ] || [ ! -f "$BW_CACHE_TIME" ]; then
+          bw_cache_update 2>/dev/null
+        fi
+        [ -f "$BW_CACHE_FILE" ]
+      }
+
       bw-search() {
         local query="$1"
-        local items
-        items=$(bw-cache get)
 
-        if [ -z "$items" ] || [ "$items" = "null" ]; then
+        if ! _bw_ensure_cache; then
           echo "Error: No vault items found. Run: bwsync" >&2
           return 1
         fi
@@ -109,8 +117,8 @@ in
           if [ -n "$fav_list" ]; then
             while IFS= read -r fav_id; do
               local fav_entry
-              fav_entry=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg id "$fav_id" \
-                '.[] | select(.id == $id) | "⭐ " + .name + (if .login.username != null then " (" + .login.username + ")" else "" end) + " [" + .id + "]"' 2>/dev/null)
+              fav_entry=$(${pkgs.jq}/bin/jq -r --arg id "$fav_id" \
+                '.[] | select(.id == $id) | "⭐ " + .name + (if .login.username != null then " (" + .login.username + ")" else "" end) + " [" + .id + "]"' "$BW_CACHE_FILE" 2>/dev/null)
               [ -n "$fav_entry" ] && display_list="$display_list$fav_entry"$'\n'
             done <<< "$fav_list"
           fi
@@ -121,15 +129,28 @@ in
             while IFS= read -r recent_id; do
               [ -z "$recent_id" ] && continue
               local recent_entry
-              recent_entry=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg id "$recent_id" \
-                '.[] | select(.id == $id) | "🕐 " + .name + (if .login.username != null then " (" + .login.username + ")" else "" end) + " [" + .id + "]"' 2>/dev/null)
+              recent_entry=$(${pkgs.jq}/bin/jq -r --arg id "$recent_id" \
+                '.[] | select(.id == $id) | "🕐 " + .name + (if .login.username != null then " (" + .login.username + ")" else "" end) + " [" + .id + "]"' "$BW_CACHE_FILE" 2>/dev/null)
               [ -n "$recent_entry" ] && display_list="$display_list$recent_entry"$'\n'
             done < "$BW_RECENT_FILE"
           fi
         ''}
 
         local all_items
-        all_items=$(echo "$items" | _bw_format_item)
+        all_items=$(${pkgs.jq}/bin/jq -r '
+          .[] |
+          if .type == 1 then "🔑"
+          elif .type == 2 then "💳"
+          elif .type == 3 then "🔒"
+          elif .type == 4 then "📝"
+          elif .type == 5 then "📁"
+          else "📄"
+          end
+          as $icon |
+          $icon + " " + .name +
+          (if .login.username != null then " (" + .login.username + ")" else "" end) +
+          " [" + .id + "]"
+        ' "$BW_CACHE_FILE" 2>/dev/null)
         display_list="$display_list$all_items"
 
         # Deduplicate
@@ -174,7 +195,7 @@ in
           return 1
         fi
 
-        # Get item details
+        # Get item details directly from bw (single item, no newline issues)
         local item
         item=$(${pkgs.bitwarden-cli}/bin/bw get item "$item_id" 2>/dev/null)
         if [ -z "$item" ]; then
@@ -260,7 +281,7 @@ in
       }
 
       # ═══════════════════════════════════════════════════════════════════════
-      # Helper Commands
+      # Helper Commands — All read from $BW_CACHE_FILE directly
       # ═══════════════════════════════════════════════════════════════════════
 
       bwfind() {
@@ -276,13 +297,14 @@ in
           return 1
         fi
 
-        local items
-        items=$(bw-cache get)
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found. Run: bwsync" >&2
+          return 1
+        fi
 
-        # Filter matching items
         local matches
-        matches=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-          '[.[] | select(.name | test($q; "i"))] | length' 2>/dev/null)
+        matches=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+          '[.[] | select(.name | test($q; "i"))] | length' "$BW_CACHE_FILE" 2>/dev/null)
 
         if [ "$matches" = "0" ]; then
           echo "Error: No items match '$query'" >&2
@@ -290,14 +312,12 @@ in
         fi
 
         if [ "$matches" = "1" ]; then
-          # Single match: copy password directly
           local item_id
-          item_id=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-            '.[] | select(.name | test($q; "i")) | .id' 2>/dev/null | head -1)
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
           bw_copy_field "$item_id" "password" "Password"
           ${lib.optionalString cfg.enableRecent ''bw_add_recent "$item_id" 2>/dev/null''}
         else
-          # Multiple matches: show fzf
           local item_id
           item_id=$(bw-search "$query")
           if [ -n "$item_id" ]; then
@@ -313,11 +333,14 @@ in
           return 1
         fi
 
-        local items
-        items=$(bw-cache get)
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found. Run: bwsync" >&2
+          return 1
+        fi
+
         local matches
-        matches=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-          '[.[] | select(.name | test($q; "i"))] | length' 2>/dev/null)
+        matches=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+          '[.[] | select(.name | test($q; "i"))] | length' "$BW_CACHE_FILE" 2>/dev/null)
 
         if [ "$matches" = "0" ]; then
           echo "Error: No items match '$query'" >&2
@@ -326,8 +349,8 @@ in
 
         local item_id
         if [ "$matches" = "1" ]; then
-          item_id=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-            '.[] | select(.name | test($q; "i")) | .id' 2>/dev/null | head -1)
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
         else
           item_id=$(bw-search "$query")
         fi
@@ -346,11 +369,14 @@ in
           return 1
         fi
 
-        local items
-        items=$(bw-cache get)
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found. Run: bwsync" >&2
+          return 1
+        fi
+
         local matches
-        matches=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-          '[.[] | select(.name | test($q; "i"))] | length' 2>/dev/null)
+        matches=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+          '[.[] | select(.name | test($q; "i"))] | length' "$BW_CACHE_FILE" 2>/dev/null)
 
         if [ "$matches" = "0" ]; then
           echo "Error: No items match '$query'" >&2
@@ -359,8 +385,8 @@ in
 
         local item_id
         if [ "$matches" = "1" ]; then
-          item_id=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-            '.[] | select(.name | test($q; "i")) | .id' 2>/dev/null | head -1)
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
         else
           item_id=$(bw-search "$query")
         fi
@@ -375,11 +401,14 @@ in
           return 1
         fi
 
-        local items
-        items=$(bw-cache get)
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found. Run: bwsync" >&2
+          return 1
+        fi
+
         local matches
-        matches=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-          '[.[] | select(.name | test($q; "i"))] | length' 2>/dev/null)
+        matches=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+          '[.[] | select(.name | test($q; "i"))] | length' "$BW_CACHE_FILE" 2>/dev/null)
 
         if [ "$matches" = "0" ]; then
           echo "Error: No items match '$query'" >&2
@@ -388,8 +417,8 @@ in
 
         local item_id
         if [ "$matches" = "1" ]; then
-          item_id=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-            '.[] | select(.name | test($q; "i")) | .id' 2>/dev/null | head -1)
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
         else
           item_id=$(bw-search "$query")
         fi
@@ -397,19 +426,22 @@ in
         [ -n "$item_id" ] && bw_copy_field "$item_id" "notes" "Notes"
       }
 
-      bwtotp() {
-        ${lib.optionalString cfg.enableTotp ''
+      ${lib.optionalString cfg.enableTotp ''
+        bwtotp() {
           local query="$*"
           if [ -z "$query" ]; then
             echo "Usage: bwtotp <search-query>" >&2
             return 1
           fi
 
-          local items
-          items=$(bw-cache get)
+          if ! _bw_ensure_cache; then
+            echo "Error: No vault items found. Run: bwsync" >&2
+            return 1
+          fi
+
           local matches
-          matches=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-            '[.[] | select(.name | test($q; "i"))] | length' 2>/dev/null)
+          matches=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '[.[] | select(.name | test($q; "i"))] | length' "$BW_CACHE_FILE" 2>/dev/null)
 
           if [ "$matches" = "0" ]; then
             echo "Error: No items match '$query'" >&2
@@ -418,21 +450,22 @@ in
 
           local item_id
           if [ "$matches" = "1" ]; then
-            item_id=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-              '.[] | select(.name | test($q; "i")) | .id' 2>/dev/null | head -1)
+            item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+              '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
           else
             item_id=$(bw-search "$query")
           fi
 
           [ -n "$item_id" ] && bw_copy_field "$item_id" "totp" "TOTP"
-        ''}
-        ${lib.optionalString (!cfg.enableTotp) ''
-          bwtotp() {
-            echo "Error: TOTP requires Bitwarden Premium subscription" >&2
-            return 1
-          }
-        ''}
-      }
+        }
+      ''}
+
+      ${lib.optionalString (!cfg.enableTotp) ''
+        bwtotp() {
+          echo "Error: TOTP requires Bitwarden Premium subscription" >&2
+          return 1
+        }
+      ''}
     '';
   };
 }

@@ -50,13 +50,21 @@ in
           return 1
         fi
 
-        local items
-        items=$(${pkgs.bitwarden-cli}/bin/bw list items 2>/dev/null)
-        if [ $? -eq 0 ] && [ -n "$items" ]; then
-          printf '%s' "$items" > "$BW_CACHE_FILE"
+        local tmpfile
+        tmpfile=$(mktemp)
+        # Pipe directly from bw to jq to avoid shell variable mangling newlines
+        bw list items 2>/dev/null | jq -c '
+          [.[] | del(.key, .fido2Credentials, .passwordHistory, .attachments)]
+          | sort_by(.name | ascii_downcase)
+        ' > "$tmpfile" 2>/dev/null
+        local count
+        count=$(jq 'length' "$tmpfile" 2>/dev/null)
+        if [ $? -eq 0 ] && [ "$count" != "0" ] && [ "$count" != "null" ]; then
+          mv "$tmpfile" "$BW_CACHE_FILE"
           date +%s > "$BW_CACHE_TIME"
-          echo "Cache updated."
+          echo "Cache updated. $count items."
         else
+          rm -f "$tmpfile"
           echo "Error: Failed to fetch vault items" >&2
           return 1
         fi
@@ -110,8 +118,8 @@ in
           fi
 
           local item_id
-          item_id=$(bw_cache_get | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-            '.[] | select(.name | test($q; "i")) | .id' 2>/dev/null | head -1)
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
 
           if [ -z "$item_id" ]; then
             echo "Error: No item matching '$query'" >&2
@@ -135,8 +143,8 @@ in
           fi
 
           local item_id
-          item_id=$(bw_cache_get | ${pkgs.jq}/bin/jq -r --arg q "$query" \
-            '.[] | select(.name | test($q; "i")) | .id' 2>/dev/null | head -1)
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
 
           if [ -z "$item_id" ]; then
             echo "Error: No item matching '$query'" >&2
@@ -153,12 +161,10 @@ in
             return 0
           fi
 
-          local items
-          items=$(bw_cache_get)
           while IFS= read -r fav_id; do
             local name
-            name=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg id "$fav_id" \
-              '.[] | select(.id == $id) | .name' 2>/dev/null)
+            name=$(${pkgs.jq}/bin/jq -r --arg id "$fav_id" \
+              '.[] | select(.id == $id) | .name' "$BW_CACHE_FILE" 2>/dev/null)
             if [ -n "$name" ]; then
               echo "⭐ $name"
             fi
@@ -168,6 +174,10 @@ in
         bw_is_fav() {
           local item_id="$1"
           [ -f "$BW_FAV_FILE" ] && grep -qF "$item_id" "$BW_FAV_FILE" 2>/dev/null
+        }
+
+        bw_list_fav_ids() {
+          [ -f "$BW_FAV_FILE" ] && cat "$BW_FAV_FILE" 2>/dev/null
         }
       ''}
 
@@ -201,12 +211,10 @@ in
             return 0
           fi
 
-          local items
-          items=$(bw_cache_get)
           while IFS= read -r recent_id; do
             local name
-            name=$(echo "$items" | ${pkgs.jq}/bin/jq -r --arg id "$recent_id" \
-              '.[] | select(.id == $id) | .name' 2>/dev/null)
+            name=$(${pkgs.jq}/bin/jq -r --arg id "$recent_id" \
+              '.[] | select(.id == $id) | .name' "$BW_CACHE_FILE" 2>/dev/null)
             if [ -n "$name" ]; then
               echo "🕐 $name"
             fi

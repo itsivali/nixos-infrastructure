@@ -1,7 +1,7 @@
 .PHONY: all build build/quick install clean test lint vet run help
 
 BINARY     = ivali
-BINARY_BW  = bw
+BINARY_BW  = bw-tui
 GO         = go
 CGO        = CGO_ENABLED=0
 GOFLAGS    = -ldflags="-s -w"

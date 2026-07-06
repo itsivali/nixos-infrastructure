@@ -103,17 +103,17 @@
           paths =
             (import ./packages/cli { inherit pkgs; })
             ++ (import ./packages/desktop { inherit pkgs; })
-            ++ [ self.packages.${system}.bw ];
+                  ++ [ self.packages.${system}.bw-tui ];
         };
 
         user = pkgs.buildEnv {
           name = "ivali-user-packages";
           paths = (import ./packages/user { inherit pkgs; })
-                  ++ [ self.packages.${system}.bw ];
+            ++ [ self.packages.${system}.bw-tui ];
         };
 
-        bw = pkgs.buildGoModule {
-          name = "bw";
+        bw-tui = pkgs.buildGoModule {
+          name = "bw-tui";
           src = pkgs.lib.cleanSourceWith {
             filter = name: type:
               !(type == "directory" && builtins.baseNameOf name == "vendor")
@@ -121,7 +121,7 @@
             src = self;
           };
           vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
-          subPackages = [ "cmd/bw" ];
+          subPackages = [ "cmd/bw-tui" ];
         };
 
         # FIX: required for `nix build` / CI default behavior

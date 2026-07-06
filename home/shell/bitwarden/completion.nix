@@ -36,10 +36,10 @@ in
       _bw_subcommands() {
         local -a subcmds
         subcmds=("unlock:Unlock vault" "lock:Lock vault" "status:Show status" "sync:Sync vault" "logout:Log out")
-        _describe -t subcommands 'bw subcommands' subcmds
+        _describe -t subcommands 'bw-tui subcommands' subcmds
       }
 
-      _bw() {
+      _bw_tui() {
         if (( CURRENT == 2 )); then
           _alternative \
             'subcommands:subcommand:_bw_subcommands' \
@@ -47,7 +47,8 @@ in
         fi
       }
 
-      compdef _bw bw
+      compdef _bw_tui bw-tui
+      compdef _bw_tui bw
 
       # bwfind — accepts vault item names as arguments
       _bwfind() {
@@ -61,7 +62,7 @@ in
       # Bash Completions
       # ═══════════════════════════════════════════════════════════════════════
 
-      _bw_complete_bash() {
+      _bw_tui_complete_bash() {
         local cur prev
         COMPREPLY=()
         cur="''${COMP_WORDS[COMP_CWORD]}"
@@ -73,7 +74,7 @@ in
           COMPREPLY+=($(compgen -W "$(_bw_complete_items 2>/dev/null)" -- "$cur"))
         fi
       }
-      complete -F _bw_complete_bash bw
+      complete -F _bw_tui_complete_bash bw-tui bw
 
       _bwfind_bash() {
         local cur
@@ -85,11 +86,11 @@ in
     '';
 
     programs.fish.shellAbbrs = lib.mkIf config.programs.fish.enable {
-      bwu = "bw unlock";
-      bwl = "bw lock";
-      bws = "bw status";
-      bwsy = "bw sync";
-      bwlo = "bw logout";
+      bwu = "bw-tui unlock";
+      bwl = "bw-tui lock";
+      bws = "bw-tui status";
+      bwsy = "bw-tui sync";
+      bwlo = "bw-tui logout";
       bwf = "bwfind";
     };
 
@@ -98,6 +99,8 @@ in
       # Fish Completions
       # ═══════════════════════════════════════════════════════════════════════
 
+      complete -c bw-tui -f -a "unlock lock status sync logout"
+      complete -c bw-tui -f -a "(_bw_complete_items 2>/dev/null)"
       complete -c bw -f -a "unlock lock status sync logout"
       complete -c bw -f -a "(_bw_complete_items 2>/dev/null)"
       complete -c bwfind -f -a "(_bw_complete_items 2>/dev/null)"

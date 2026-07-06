@@ -131,18 +131,18 @@ in
       xclip
       libnotify
     ] ++ lib.optional (inputs ? self)
-      inputs.self.packages.${pkgs.system}.bw;
+      inputs.self.packages.${pkgs.system}.bw-tui;
 
     home.sessionVariables = {
       BW_SESSION_DIR = "${config.xdg.cacheHome}/bitwarden";
     };
 
     programs.zsh.shellAliases = lib.mkIf cfg.enableAliases {
-      bwu   = "bw unlock";
-      bwl   = "bw lock";
-      bws   = "bw status";
-      bwsy  = "bw sync";
-      bwlo  = "bw logout";
+      bwu   = "bw-tui unlock";
+      bwl   = "bw-tui lock";
+      bws   = "bw-tui status";
+      bwsy  = "bw-tui sync";
+      bwlo  = "bw-tui logout";
       bwf   = "bwfind";
     };
 
@@ -163,8 +163,11 @@ in
         ${lib.optionalString cfg.enableNotifications ''notify-send "Bitwarden" "$1" 2>/dev/null''}
       }
 
-      # bwfind — alias for the bw TUI with filter pre-populated
-      bwfind() { bw "$@"; }
+      # bwfind — alias for the bw-tui TUI with filter pre-populated
+      bwfind() { bw-tui "$@"; }
+
+      # bw — alias for the bw-tui TUI
+      alias bw='bw-tui'
     '';
   };
 }

@@ -1,12 +1,14 @@
 .PHONY: all build build/quick install clean test lint vet run help
 
-BINARY    = ivali
-GO        = go
-CGO       = CGO_ENABLED=0
-GOFLAGS   = -ldflags="-s -w"
+BINARY     = ivali
+BINARY_BW  = bw
+GO         = go
+CGO        = CGO_ENABLED=0
+GOFLAGS    = -ldflags="-s -w"
 GOPACKAGES = ./cmd/$(BINARY)
+GOPACKAGES_BW = ./cmd/$(BINARY_BW)
 
-all: build
+all: build build-bw
 
 build:
 	$(CGO) $(GO) build $(GOFLAGS) -o $(BINARY) $(GOPACKAGES)
@@ -16,12 +18,21 @@ build/quick:
 	$(CGO) $(GO) build -o $(BINARY) $(GOPACKAGES)
 	@echo "  built  ./$(BINARY) (no optimisations)"
 
+build-bw:
+	$(CGO) $(GO) build $(GOFLAGS) -o $(BINARY_BW) $(GOPACKAGES_BW)
+	@echo "  built  ./$(BINARY_BW)"
+
+build-bw/quick:
+	$(CGO) $(GO) build -o $(BINARY_BW) $(GOPACKAGES_BW)
+	@echo "  built  ./$(BINARY_BW) (no optimisations)"
+
 install:
 	$(CGO) $(GO) install $(GOFLAGS) $(GOPACKAGES)
-	@echo "  installed  $$(which $(BINARY))"
+	$(CGO) $(GO) install $(GOFLAGS) $(GOPACKAGES_BW)
+	@echo "  installed  $$(which $(BINARY)) and $$(which $(BINARY_BW))"
 
 clean:
-	rm -f $(BINARY)
+	rm -f $(BINARY) $(BINARY_BW)
 	$(GO) clean
 	@echo "  cleaned"
 
@@ -39,6 +50,10 @@ vet:
 
 run: build
 	@./$(BINARY)
+
+run-bw: build-bw
+	@echo "Run: ./$(BINARY_BW)"
+	@true
 
 deps:
 	$(GO) mod tidy

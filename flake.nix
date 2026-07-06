@@ -110,6 +110,18 @@
           paths = import ./packages/user { inherit pkgs; };
         };
 
+        bw = pkgs.buildGoModule {
+          name = "bw";
+          src = pkgs.lib.cleanSourceWith {
+            filter = name: type:
+              !(type == "directory" && builtins.baseNameOf name == "vendor")
+            ;
+            src = self;
+          };
+          vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+          subPackages = [ "cmd/bw" ];
+        };
+
         # FIX: required for `nix build` / CI default behavior
         default =
           self.nixosConfigurations.prague.config.system.build.toplevel;

@@ -5,7 +5,8 @@
 # Purpose
 # -------
 # First-class Bitwarden subsystem for NixOS infrastructure.
-# Provides authentication, clipboard, cache, search, and helper commands.
+# Provides authentication, session management, cache, and shell
+# integration for the `bw` Go TUI binary.
 #
 # Ownership
 # ---------
@@ -14,15 +15,11 @@
 # Responsibilities
 # ----------------
 # - env.nix       — Authentication, session management, SOPS credentials
-# - clipboard.nix — Clipboard abstraction (wl-copy/xclip) + auto-clear
 # - cache.nix     — Vault item cache, favorites, recent entries
-# - search.nix    — fzf/rofi/wofi search, action menu, helper commands
 # - completion.nix — Shell completions (Zsh, Bash, Fish)
 #
-# Does NOT Own
-# ------------
-# - Shell aliases (home/shell/aliases/bitwarden.nix)
-# - SOPS secrets (lib/host-templates/laptop.nix)
+# The interactive TUI (bwfind, bw) lives in cmd/bw/ — a Go binary
+# built with Bubble Tea. This module only handles shell-level setup.
 #
 ##############################################################################
 
@@ -34,9 +31,7 @@ in
 {
   imports = [
     ./env.nix
-    ./clipboard.nix
     ./cache.nix
-    ./search.nix
     ./completion.nix
   ];
 
@@ -44,43 +39,25 @@ in
     enable = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Enable Bitwarden CLI integration.";
-    };
-
-    clipboardTimeout = lib.mkOption {
-      type = lib.types.int;
-      default = 30;
-      description = "Seconds before clipboard is automatically cleared.";
+      description = "Enable Bitwarden integration.";
     };
 
     enableNotifications = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Enable desktop notifications for clipboard and vault events.";
-    };
-
-    searchTool = lib.mkOption {
-      type = lib.types.enum [ "auto" "fzf" "rofi" "wofi" ];
-      default = "auto";
-      description = "Search tool for interactive selection. 'auto' probes rofi then wofi then fzf.";
+      description = "Enable desktop notifications for vault events.";
     };
 
     enableAliases = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Register shell aliases (bws, bwu, bwl, etc.).";
-    };
-
-    enableTotp = lib.mkOption {
-      type = lib.types.bool;
-      default = false;
-      description = "Enable TOTP support (requires Bitwarden Premium).";
+      description = "Register shell aliases (bw, bwfind, etc.).";
     };
 
     enableFavorites = lib.mkOption {
       type = lib.types.bool;
       default = true;
-      description = "Enable favorite vault entries (pinned at top of search).";
+      description = "Enable favorite vault entries.";
     };
 
     enableRecent = lib.mkOption {
@@ -89,16 +66,16 @@ in
       description = "Enable recent vault entries (last 10 accessed).";
     };
 
-    autoSync = lib.mkOption {
-      type = lib.types.bool;
-      default = true;
-      description = "Automatically sync vault on unlock.";
-    };
-
     autoUnlock = lib.mkOption {
       type = lib.types.bool;
       default = false;
       description = "Automatically unlock vault at shell startup using SOPS credentials.";
+    };
+
+    autoSync = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Automatically sync vault on unlock.";
     };
 
     inactivityTimeout = lib.mkOption {
@@ -150,10 +127,8 @@ in
     home.packages = with pkgs; [
       bitwarden-cli
       jq
-      fzf
       wl-clipboard
       xclip
-      libsecret
       libnotify
     ];
 
@@ -162,29 +137,12 @@ in
     };
 
     programs.zsh.shellAliases = lib.mkIf cfg.enableAliases {
-      # Session
-      bws   = "bwstatus";
-      bwu   = "bwunlock";
-      bwl   = "bwlock";
-      bwc   = "bwclear";
-      bwsy  = "bwsync";
-      bwlo  = "bwlogout";
-
-      # Search & Copy
+      bwu   = "bw unlock";
+      bwl   = "bw lock";
+      bws   = "bw status";
+      bwsy  = "bw sync";
+      bwlo  = "bw logout";
       bwf   = "bwfind";
-
-      # Cache
-      bwcu  = "bw-cache update";
-      bwcc  = "bw-cache get";
-      bwci  = "bw-cache invalidate";
-
-      # Favorites
-      bwfa  = "bwfav add";
-      bwfr  = "bwfav rm";
-      bwfl  = "bwfav list";
-
-      # Quick actions
-      bwgi  = "bw-get-item";
     };
 
     programs.zsh.initContent = lib.mkBefore ''
@@ -196,10 +154,16 @@ in
       BW_ACTIVITY_FILE="$BW_RT_DIR/last-activity"
       [ -d "$BW_RT_DIR" ] || mkdir -p "$BW_RT_DIR"
 
+      BW_CACHE_FILE="$BW_RT_DIR/cache.json"
+      BW_CACHE_TIME="$BW_RT_DIR/cache-time"
+
       # Bitwarden notification wrapper
       bw-notify() {
         ${lib.optionalString cfg.enableNotifications ''notify-send "Bitwarden" "$1" 2>/dev/null''}
       }
+
+      # bwfind — alias for the bw TUI with filter pre-populated
+      bwfind() { bw "$@"; }
     '';
   };
 }

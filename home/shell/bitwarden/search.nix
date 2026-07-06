@@ -426,6 +426,44 @@ in
         [ -n "$item_id" ] && bw_copy_field "$item_id" "notes" "Notes"
       }
 
+      # ═══════════════════════════════════════════════════════════════════════
+      # Item Details
+      # ═══════════════════════════════════════════════════════════════════════
+
+      bw-get-item() {
+        local query="$*"
+        if [ -z "$query" ]; then
+          echo "Usage: bw-get-item <search-query>" >&2
+          return 1
+        fi
+
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found. Run: bwsync" >&2
+          return 1
+        fi
+
+        local item_id
+        local matches
+        matches=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+          '[.[] | select(.name | test($q; "i"))] | length' "$BW_CACHE_FILE" 2>/dev/null)
+
+        if [ "$matches" = "0" ]; then
+          echo "Error: No items match '$query'" >&2
+          return 1
+        fi
+
+        if [ "$matches" = "1" ]; then
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
+        else
+          item_id=$(bw-search "$query")
+        fi
+
+        [ -z "$item_id" ] && return 1
+
+        ${pkgs.bitwarden-cli}/bin/bw get item "$item_id" 2>/dev/null | ${pkgs.jq}/bin/jq '.'
+      }
+
       ${lib.optionalString cfg.enableTotp ''
         bwtotp() {
           local query="$*"

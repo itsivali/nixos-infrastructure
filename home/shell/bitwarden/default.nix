@@ -162,13 +162,29 @@ in
     };
 
     programs.zsh.shellAliases = lib.mkIf cfg.enableAliases {
+      # Session
       bws   = "bwstatus";
       bwu   = "bwunlock";
       bwl   = "bwlock";
       bwc   = "bwclear";
       bwsy  = "bwsync";
       bwlo  = "bwlogout";
+
+      # Search & Copy
       bwf   = "bwfind";
+
+      # Cache
+      bwcu  = "bw-cache update";
+      bwcc  = "bw-cache get";
+      bwci  = "bw-cache invalidate";
+
+      # Favorites
+      bwfa  = "bwfav add";
+      bwfr  = "bwfav rm";
+      bwfl  = "bwfav list";
+
+      # Quick actions
+      bwgi  = "bw-get-item";
     };
 
     programs.zsh.initContent = lib.mkBefore ''

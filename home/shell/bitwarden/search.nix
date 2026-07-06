@@ -257,9 +257,8 @@ in
             [ -n "$item_username" ] && bw-clipboard "$item_username" "${toString cfg.clipboardTimeout}" "Email" || echo "No email found."
             ;;
           p|P)
-            # Refresh session if needed
-            if [ -z "$BW_SESSION" ] && [ -f "$BW_SESSION_FILE" ]; then
-              export BW_SESSION=$(<"$BW_SESSION_FILE")
+            if [ -f "$BW_SESSION_FILE" ]; then
+              export BW_SESSION="''${BW_SESSION:-$(<"$BW_SESSION_FILE")}"
             fi
             local password
             password=$(${pkgs.bitwarden-cli}/bin/bw get password "$item_id" 2>/dev/null)
@@ -308,15 +307,14 @@ in
         name=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .name' "$BW_CACHE_FILE" 2>/dev/null)
         email=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .login.username // empty' "$BW_CACHE_FILE" 2>/dev/null)
 
-        # Refresh session if needed
-        if [ -z "$BW_SESSION" ] && [ -f "$BW_SESSION_FILE" ]; then
-          export BW_SESSION=$(<"$BW_SESSION_FILE")
+        # Ensure BW_SESSION is exported for bw CLI
+        if [ -f "$BW_SESSION_FILE" ]; then
+          export BW_SESSION="''${BW_SESSION:-$(<"$BW_SESSION_FILE")}"
         fi
 
         local password
         password=$(${pkgs.bitwarden-cli}/bin/bw get password "$item_id" 2>/dev/null)
         if [ -z "$password" ]; then
-          # Session may be stale — re-sync and retry
           echo "Session stale, syncing..." >&2
           ${pkgs.bitwarden-cli}/bin/bw sync 2>/dev/null
           password=$(${pkgs.bitwarden-cli}/bin/bw get password "$item_id" 2>/dev/null)

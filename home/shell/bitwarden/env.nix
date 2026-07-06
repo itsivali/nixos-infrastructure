@@ -161,8 +161,8 @@ in
       }
 
       bwsync() {
-        if [ -z "$BW_SESSION" ] && [ -f "$BW_SESSION_FILE" ]; then
-          export BW_SESSION=$(<"$BW_SESSION_FILE")
+        if [ -f "$BW_SESSION_FILE" ]; then
+          export BW_SESSION="''${BW_SESSION:-$(<"$BW_SESSION_FILE")}"
         fi
 
         if [ -z "$BW_SESSION" ]; then

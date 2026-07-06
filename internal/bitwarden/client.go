@@ -25,10 +25,15 @@ func (c *Client) run(args ...string) ([]byte, error) {
 
 	cmd := exec.CommandContext(ctx, c.BwPath, args...)
 
-	// Prevent bw from ever reading the TUI's stdin (it prompts for password
-	// when session is invalid, which would hang the UI).
-	cmd.Stdin = nil // nil = /dev/null
-	cmd.Stderr = new(strings.Builder)
+	// Closed stdin pipe so bw gets EOF immediately instead of reading the
+	// TUI's stdin (which would cause it to prompt for password interactively
+	// and hang the UI).
+	r, w, _ := os.Pipe()
+	w.Close()
+	cmd.Stdin = r
+
+	stderr := new(strings.Builder)
+	cmd.Stderr = stderr
 
 	if c.Session != "" {
 		// Filter out any existing BW_SESSION from parent env so ours takes
@@ -43,30 +48,41 @@ func (c *Client) run(args ...string) ([]byte, error) {
 	}
 
 	out, err := cmd.Output()
-	if err != nil {
-		stderr := strings.TrimSpace(cmd.Stderr.(*strings.Builder).String())
 
-		// Timeout: bw tried to prompt interactively (stale/invalid session)
-		if ctx.Err() == context.DeadlineExceeded {
-			return nil, fmt.Errorf("bw %s: timeout (vault may be locked)", strings.Join(args, " "))
-		}
-
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			msg := stderr
-			if msg == "" {
-				msg = strings.TrimSpace(string(exitErr.Stderr))
-			}
-			// Only keep first meaningful line (strip Node.js stack traces)
-			if idx := strings.Index(msg, "\n"); idx > 0 {
-				first := strings.TrimSpace(msg[:idx])
-				if strings.Contains(first, "Error:") || strings.Contains(first, "failed:") {
-					msg = first
-				}
-			}
-			return nil, fmt.Errorf("bw %s failed: %s", strings.Join(args, " "), msg)
-		}
-		return nil, fmt.Errorf("bw %s: %w", strings.Join(args, " "), err)
+	// Timeout: bw tried to prompt interactively (stale/invalid session)
+	if ctx.Err() == context.DeadlineExceeded {
+		return nil, fmt.Errorf("bw %s: timeout (vault may be locked)", strings.Join(args, " "))
 	}
+
+	if err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			// Some bw errors go to stdout (exit code 1, no stderr written)
+			msg = strings.TrimSpace(string(out))
+		}
+		if msg == "" {
+			msg = err.Error()
+		}
+		// Only keep first meaningful line (strip Node.js stack traces)
+		if idx := strings.Index(msg, "\n"); idx > 0 {
+			first := strings.TrimSpace(msg[:idx])
+			if strings.Contains(first, "Error:") || strings.Contains(first, "failed:") {
+				msg = first
+			}
+		}
+		return nil, fmt.Errorf("bw %s failed: %s", strings.Join(args, " "), msg)
+	}
+
+	// bw sometimes exits 0 with empty output (e.g. when session is invalid
+	// but bw doesn't classify it as an error)
+	if len(out) == 0 {
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = "empty response (vault may be locked)"
+		}
+		return nil, fmt.Errorf("bw %s: %s", strings.Join(args, " "), msg)
+	}
+
 	return out, nil
 }
 
@@ -116,14 +132,26 @@ func (c *Client) Status() (string, error) {
 }
 
 func (c *Client) Unlock(password string) (string, error) {
-	cmd := exec.Command(c.BwPath, "unlock", "--raw", "--passwordenv", "BW_PASS")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, c.BwPath, "unlock", "--raw", "--passwordenv", "BW_PASS")
+	r, w, _ := os.Pipe()
+	w.Close()
+	cmd.Stdin = r
+	stderr := new(strings.Builder)
+	cmd.Stderr = stderr
 	cmd.Env = append(cmd.Environ(), "BW_PASS="+password)
 	out, err := cmd.Output()
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
-			return "", fmt.Errorf("unlock: %s", strings.TrimSpace(string(exitErr.Stderr)))
+		if ctx.Err() == context.DeadlineExceeded {
+			return "", fmt.Errorf("unlock: timeout")
 		}
-		return "", fmt.Errorf("unlock: %w", err)
+		msg := strings.TrimSpace(stderr.String())
+		if msg == "" {
+			msg = "unlock failed"
+		}
+		return "", fmt.Errorf("unlock: %s", msg)
 	}
 	return strings.TrimSpace(string(out)), nil
 }
@@ -134,13 +162,22 @@ func (c *Client) Lock() error {
 }
 
 func (c *Client) Login(clientID, clientSecret string) error {
-	cmd := exec.Command(c.BwPath, "login", "--apikey")
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, c.BwPath, "login", "--apikey")
+	r, w, _ := os.Pipe()
+	w.Close()
+	cmd.Stdin = r
 	cmd.Env = append(cmd.Environ(),
 		"BW_CLIENTID="+clientID,
 		"BW_CLIENTSECRET="+clientSecret,
 	)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
+		if ctx.Err() == context.DeadlineExceeded {
+			return fmt.Errorf("login: timeout")
+		}
 		return fmt.Errorf("login: %s", strings.TrimSpace(string(out)))
 	}
 	return nil

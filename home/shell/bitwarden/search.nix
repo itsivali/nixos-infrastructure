@@ -201,7 +201,7 @@ in
         if [ -z "$item_id" ]; then
           # Try command:query format — extract query and find item by sanitized name
           local bw_query
-          bw_query=$(echo "$selected" | ${pkgs.gnugrep}/bin/grep -o '\[bwe:[^]]*\]\|\[bwp:[^]]*\]\|\[bwn:[^]]*\]' | head -1 | ${pkgs.gnused}/bin/sed 's/.*://;s/\]//')
+          bw_query=$(echo "$selected" | ${pkgs.gnugrep}/bin/grep -oE '\[(bwe|bwp|bwn):[^]]+\]' | head -1 | ${pkgs.gnused}/bin/sed 's/.*://;s/\]//')
           if [ -n "$bw_query" ]; then
             item_id=$(${pkgs.jq}/bin/jq -r --arg q "$bw_query" \
               '.[] | select(.name | ascii_downcase | gsub("[^a-z0-9.]"; "") | startswith($q)) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
@@ -230,41 +230,49 @@ in
           return 1
         fi
 
-        # Get item details directly from bw (single item, no newline issues)
-        local item
-        item=$(${pkgs.bitwarden-cli}/bin/bw get item "$item_id" 2>/dev/null)
-        if [ -z "$item" ]; then
-          echo "Error: Could not fetch item" >&2
+        # Read item details from cache (fast, no API call)
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found. Run: bwsync" >&2
           return 1
         fi
 
-        local item_name
-        item_name=$(echo "$item" | ${pkgs.jq}/bin/jq -r '.name')
+        local item_name item_username item_uri item_notes
+        item_name=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .name' "$BW_CACHE_FILE" 2>/dev/null)
+        item_username=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .login.username // empty' "$BW_CACHE_FILE" 2>/dev/null)
+        item_uri=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .login.uris[0].uri // empty' "$BW_CACHE_FILE" 2>/dev/null)
+        item_notes=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .notes // empty' "$BW_CACHE_FILE" 2>/dev/null)
 
-        # Build action menu
-        local actions=""
-        actions="1) Copy Email"$'\n'
-        actions="$actions 2) Copy Password"$'\n'
-        ${lib.optionalString cfg.enableTotp ''actions="$actions 3) Copy TOTP"$'\n''}
-        actions="$actions 4) Copy URI"$'\n'
-        actions="$actions 5) Copy Notes"$'\n'
-        actions="$actions 6) Show Details"$'\n'
+        if [ -z "$item_name" ]; then
+          echo "Error: Item not found in cache" >&2
+          return 1
+        fi
+
+        # Build action menu — only show available options
+        local actions=()
+        [ -n "$item_username" ] && actions+=("Copy Email")
+        actions+=("Copy Password")
+        ${lib.optionalString cfg.enableTotp ''actions+=("Copy TOTP")''}
+        [ -n "$item_uri" ] && actions+=("Copy URI")
+        [ -n "$item_notes" ] && actions+=("Copy Notes")
+        actions+=("Show Details")
+
+        local actions_str=""
+        local i=1
+        for action in "''${actions[@]}"; do
+          actions_str="$actions_str$i) $action"$'\n'
+          ((i++))
+        done
 
         echo "=== $item_name ==="
         local choice
-        choice=$(echo "$actions" | _bw_select "Action")
+        choice=$(echo "$actions_str" | _bw_select "Action")
 
         case "$choice" in
           *"Copy Email"*)
-            local username
-            username=$(echo "$item" | ${pkgs.jq}/bin/jq -r '.login.username // empty')
-            if [ -z "$username" ]; then
-              echo "Error: No email/username found" >&2
-              return 1
-            fi
-            bw-clipboard "$username" "${toString cfg.clipboardTimeout}" "Email"
+            bw-clipboard "$item_username" "${toString cfg.clipboardTimeout}" "Email"
             ;;
           *"Copy Password"*)
+            # Password requires API call (not in cache)
             local password
             password=$(${pkgs.bitwarden-cli}/bin/bw get password "$item_id" 2>/dev/null)
             if [ -z "$password" ]; then
@@ -289,25 +297,13 @@ in
             ''}
             ;;
           *"Copy URI"*)
-            local uri
-            uri=$(echo "$item" | ${pkgs.jq}/bin/jq -r '.login.uris[0].uri // empty')
-            if [ -z "$uri" ]; then
-              echo "Error: No URI found" >&2
-              return 1
-            fi
-            bw-clipboard "$uri" "${toString cfg.clipboardTimeout}" "URI"
+            bw-clipboard "$item_uri" "${toString cfg.clipboardTimeout}" "URI"
             ;;
           *"Copy Notes"*)
-            local notes
-            notes=$(echo "$item" | ${pkgs.jq}/bin/jq -r '.notes // empty')
-            if [ -z "$notes" ]; then
-              echo "Error: No notes found" >&2
-              return 1
-            fi
-            bw-clipboard "$notes" "${toString cfg.clipboardTimeout}" "Notes"
+            bw-clipboard "$item_notes" "${toString cfg.clipboardTimeout}" "Notes"
             ;;
           *"Show Details"*)
-            echo "$item" | ${pkgs.jq}/bin/jq '.'
+            ${pkgs.bitwarden-cli}/bin/bw get item "$item_id" 2>/dev/null | ${pkgs.jq}/bin/jq '.'
             ;;
           *)
             echo "Cancelled."
@@ -322,7 +318,11 @@ in
       bwfind() {
         local item_id
         item_id=$(bw-search "$*")
-        [ -n "$item_id" ] && bw-action "$item_id"
+        if [ -z "$item_id" ]; then
+          echo "No item selected." >&2
+          return 1
+        fi
+        bw-action "$item_id"
       }
 
       bwp() {

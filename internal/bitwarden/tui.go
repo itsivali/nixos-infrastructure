@@ -207,14 +207,12 @@ func (e *Env) Resolve() {
 		}
 		e.CacheTimeFile = rtDir + "/cache-time"
 	}
-	// Prefer session file over env var: the file is authoritative (deleted on
-	// lock), while the env var from shell startup may be stale after inactivity
-	// lock. Fall back to env var only if the file doesn't exist.
+	// Only trust the session file — it's deleted on lock. The env var from
+	// shell startup may be stale after inactivity lock. If the file doesn't
+	// exist the vault is locked; don't guess with the env var.
 	if e.Session == "" {
 		if session, err := ReadSessionFromFile(e.SessionFile); err == nil {
 			e.Session = session
-		} else {
-			e.Session = SessionFromEnv()
 		}
 	}
 }

@@ -25,12 +25,10 @@ func (c *Client) run(args ...string) ([]byte, error) {
 
 	cmd := exec.CommandContext(ctx, c.BwPath, args...)
 
-	// Closed stdin pipe so bw gets EOF immediately instead of reading the
-	// TUI's stdin (which would cause it to prompt for password interactively
-	// and hang the UI).
-	r, w, _ := os.Pipe()
-	w.Close()
-	cmd.Stdin = r
+	// Use /dev/null for stdin so bw gets EOF immediately instead of reading
+	// the TUI's stdin (which would cause it to prompt for password
+	// interactively and hang the UI). nil maps to os.DevNull in Go's exec.
+	cmd.Stdin = nil
 
 	stderr := new(strings.Builder)
 	cmd.Stderr = stderr
@@ -93,15 +91,11 @@ func (c *Client) ListItems() ([]VaultItem, error) {
 	}
 	var items []VaultItem
 	if err := json.Unmarshal(out, &items); err != nil {
-		// Show a snippet of the actual output to help diagnose non-JSON replies
 		snippet := strings.TrimSpace(string(out))
 		if len(snippet) > 120 {
 			snippet = snippet[:120] + "..."
 		}
-		if snippet != "" {
-			return nil, fmt.Errorf("parse items: %w (got: %q)", err, snippet)
-		}
-		return nil, fmt.Errorf("parse items: %w", err)
+		return nil, fmt.Errorf("parse items: %w (got: %q)", err, snippet)
 	}
 	return items, nil
 }
@@ -144,9 +138,7 @@ func (c *Client) Unlock(password string) (string, error) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, c.BwPath, "unlock", "--raw", "--passwordenv", "BW_PASS")
-	r, w, _ := os.Pipe()
-	w.Close()
-	cmd.Stdin = r
+	cmd.Stdin = nil
 	stderr := new(strings.Builder)
 	cmd.Stderr = stderr
 	cmd.Env = append(cmd.Environ(), "BW_PASS="+password)
@@ -174,9 +166,7 @@ func (c *Client) Login(clientID, clientSecret string) error {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, c.BwPath, "login", "--apikey")
-	r, w, _ := os.Pipe()
-	w.Close()
-	cmd.Stdin = r
+	cmd.Stdin = nil
 	cmd.Env = append(cmd.Environ(),
 		"BW_CLIENTID="+clientID,
 		"BW_CLIENTSECRET="+clientSecret,

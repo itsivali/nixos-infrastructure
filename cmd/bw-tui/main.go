@@ -65,6 +65,8 @@ func runCommand(env *bitwarden.Env, args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		os.Remove(env.SessionFile)
+		os.Remove(env.CacheFile)
 		fmt.Println("Vault locked.")
 
 	case "sync":

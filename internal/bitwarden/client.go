@@ -1,11 +1,13 @@
 package bitwarden
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 type Client struct {
@@ -18,7 +20,16 @@ func NewClient(bwPath, session string) *Client {
 }
 
 func (c *Client) run(args ...string) ([]byte, error) {
-	cmd := exec.Command(c.BwPath, args...)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, c.BwPath, args...)
+
+	// Prevent bw from ever reading the TUI's stdin (it prompts for password
+	// when session is invalid, which would hang the UI).
+	cmd.Stdin = nil // nil = /dev/null
+	cmd.Stderr = new(strings.Builder)
+
 	if c.Session != "" {
 		// Filter out any existing BW_SESSION from parent env so ours takes
 		// precedence (on Linux the first duplicate key wins with execve).
@@ -30,10 +41,21 @@ func (c *Client) run(args ...string) ([]byte, error) {
 		}
 		cmd.Env = append(filtered, "BW_SESSION="+c.Session)
 	}
+
 	out, err := cmd.Output()
 	if err != nil {
+		stderr := strings.TrimSpace(cmd.Stderr.(*strings.Builder).String())
+
+		// Timeout: bw tried to prompt interactively (stale/invalid session)
+		if ctx.Err() == context.DeadlineExceeded {
+			return nil, fmt.Errorf("bw %s: timeout (vault may be locked)", strings.Join(args, " "))
+		}
+
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			msg := strings.TrimSpace(string(exitErr.Stderr))
+			msg := stderr
+			if msg == "" {
+				msg = strings.TrimSpace(string(exitErr.Stderr))
+			}
 			// Only keep first meaningful line (strip Node.js stack traces)
 			if idx := strings.Index(msg, "\n"); idx > 0 {
 				first := strings.TrimSpace(msg[:idx])

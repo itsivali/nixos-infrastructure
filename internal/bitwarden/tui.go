@@ -165,7 +165,7 @@ func DefaultEnv() *Env {
 	}
 	return &Env{
 		BwPath:        FindBwPath(),
-		Session:       SessionFromEnv(),
+		Session:       "",
 		SessionFile:   os.Getenv("BW_SESSION_FILE"),
 		CacheFile:     os.Getenv("BW_CACHE_FILE"),
 		CacheTimeFile: os.Getenv("BW_CACHE_TIME"),
@@ -206,6 +206,16 @@ func (e *Env) Resolve() {
 			rtDir = xdgRun + "/bitwarden"
 		}
 		e.CacheTimeFile = rtDir + "/cache-time"
+	}
+	// Prefer session file over env var: the file is authoritative (deleted on
+	// lock), while the env var from shell startup may be stale after inactivity
+	// lock. Fall back to env var only if the file doesn't exist.
+	if e.Session == "" {
+		if session, err := ReadSessionFromFile(e.SessionFile); err == nil {
+			e.Session = session
+		} else {
+			e.Session = SessionFromEnv()
+		}
 	}
 }
 
@@ -613,10 +623,15 @@ func (m *tuiModel) renderList() string {
 
 	// Footer
 	footerStr := m.renderFilter()
-	if m.err != nil && time.Since(m.errTime) < 5*time.Second {
-		footerStr += styleRed(" " + m.err.Error())
-	} else if m.err != nil {
-		m.err = nil
+	if m.err != nil {
+		if m.state == "error" || time.Since(m.errTime) < 5*time.Second {
+			footerStr += styleRed(" " + m.err.Error())
+		} else {
+			m.err = nil
+		}
+	}
+	if m.state == "error" && m.err == nil {
+		footerStr += styleRed(" Vault is locked or unreachable — press r to retry, or run bw-tui unlock")
 	}
 	footer := styleStatusBar.Render(footerStr)
 	b.WriteString(footer)

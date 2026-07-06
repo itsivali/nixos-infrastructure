@@ -230,9 +230,8 @@ in
           return 1
         fi
 
-        # Read item details from cache (fast, no API call)
         if ! _bw_ensure_cache; then
-          echo "Error: No vault items found. Run: bwsync" >&2
+          echo "Error: No vault items found." >&2
           return 1
         fi
 
@@ -243,66 +242,36 @@ in
         item_notes=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .notes // empty' "$BW_CACHE_FILE" 2>/dev/null)
 
         if [ -z "$item_name" ]; then
-          echo "Error: Item not found in cache" >&2
+          echo "Error: Item not found" >&2
           return 1
         fi
 
-        # Build action menu — only show available options
-        local actions=()
-        [ -n "$item_username" ] && actions+=("Copy Email")
-        actions+=("Copy Password")
-        ${lib.optionalString cfg.enableTotp ''actions+=("Copy TOTP")''}
-        [ -n "$item_uri" ] && actions+=("Copy URI")
-        [ -n "$item_notes" ] && actions+=("Copy Notes")
-        actions+=("Show Details")
-
-        local actions_str=""
-        local i=1
-        for action in "''${actions[@]}"; do
-          actions_str="$actions_str$i) $action"$'\n'
-          ((i++))
-        done
-
         echo "=== $item_name ==="
+        local prompt="[e]mail  [p]assword  [u]ri  [n]otes  [d]etails: "
         local choice
-        choice=$(echo "$actions_str" | _bw_select "Action")
+        read -r -p "$prompt" choice 2>/dev/null
+        echo
 
         case "$choice" in
-          *"Copy Email"*)
-            bw-clipboard "$item_username" "${toString cfg.clipboardTimeout}" "Email"
+          e|E)
+            [ -n "$item_username" ] && bw-clipboard "$item_username" "${toString cfg.clipboardTimeout}" "Email" || echo "No email found."
             ;;
-          *"Copy Password"*)
-            # Password requires API call (not in cache)
+          p|P)
             local password
             password=$(${pkgs.bitwarden-cli}/bin/bw get password "$item_id" 2>/dev/null)
-            if [ -z "$password" ]; then
+            if [ -n "$password" ]; then
+              bw-clipboard "$password" "${toString cfg.clipboardTimeout}" "Password"
+            else
               echo "Error: No password found" >&2
-              return 1
             fi
-            bw-clipboard "$password" "${toString cfg.clipboardTimeout}" "Password"
             ;;
-          *"Copy TOTP"*)
-            ${lib.optionalString cfg.enableTotp ''
-              local totp
-              totp=$(${pkgs.bitwarden-cli}/bin/bw get totp "$item_id" 2>/dev/null)
-              if [ -z "$totp" ]; then
-                echo "Error: TOTP not available (requires Bitwarden Premium)" >&2
-                return 1
-              fi
-              bw-clipboard "$totp" 30 "TOTP"
-            ''}
-            ${lib.optionalString (!cfg.enableTotp) ''
-              echo "Error: TOTP requires Bitwarden Premium subscription" >&2
-              return 1
-            ''}
+          u|U)
+            [ -n "$item_uri" ] && bw-clipboard "$item_uri" "${toString cfg.clipboardTimeout}" "URI" || echo "No URI found."
             ;;
-          *"Copy URI"*)
-            bw-clipboard "$item_uri" "${toString cfg.clipboardTimeout}" "URI"
+          n|N)
+            [ -n "$item_notes" ] && bw-clipboard "$item_notes" "${toString cfg.clipboardTimeout}" "Notes" || echo "No notes found."
             ;;
-          *"Copy Notes"*)
-            bw-clipboard "$item_notes" "${toString cfg.clipboardTimeout}" "Notes"
-            ;;
-          *"Show Details"*)
+          d|D)
             ${pkgs.bitwarden-cli}/bin/bw get item "$item_id" 2>/dev/null | ${pkgs.jq}/bin/jq '.'
             ;;
           *)
@@ -319,10 +288,31 @@ in
         local item_id
         item_id=$(bw-search "$*")
         if [ -z "$item_id" ]; then
-          echo "No item selected." >&2
           return 1
         fi
-        bw-action "$item_id"
+
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found." >&2
+          return 1
+        fi
+
+        local name email
+        name=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .name' "$BW_CACHE_FILE" 2>/dev/null)
+        email=$(${pkgs.jq}/bin/jq -r --arg id "$item_id" '.[] | select(.id == $id) | .login.username // empty' "$BW_CACHE_FILE" 2>/dev/null)
+
+        local password
+        password=$(${pkgs.bitwarden-cli}/bin/bw get password "$item_id" 2>/dev/null)
+        if [ -z "$password" ]; then
+          echo "Error: Could not get password" >&2
+          return 1
+        fi
+
+        bw-clipboard "$password" "${toString cfg.clipboardTimeout}" "Password"
+
+        ${lib.optionalString cfg.enableRecent ''bw_add_recent "$item_id" 2>/dev/null''}
+
+        echo "✓ Password copied for $name (${toString cfg.clipboardTimeout}s)"
+        [ -n "$email" ] && echo "  Email: $email"
       }
 
       bwp() {

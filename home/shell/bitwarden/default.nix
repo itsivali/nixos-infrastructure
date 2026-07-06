@@ -23,7 +23,7 @@
 #
 ##############################################################################
 
-{ config, pkgs, lib, ... }:
+{ config, pkgs, lib, inputs, ... }:
 
 let
   cfg = config.ivali.bitwarden;
@@ -130,7 +130,8 @@ in
       wl-clipboard
       xclip
       libnotify
-    ];
+    ] ++ lib.optional (inputs ? self)
+      inputs.self.packages.${pkgs.system}.bw;
 
     home.sessionVariables = {
       BW_SESSION_DIR = "${config.xdg.cacheHome}/bitwarden";

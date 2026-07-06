@@ -108,7 +108,8 @@
 
         user = pkgs.buildEnv {
           name = "ivali-user-packages";
-          paths = import ./packages/user { inherit pkgs; };
+          paths = (import ./packages/user { inherit pkgs; })
+                  ++ [ self.packages.${system}.bw ];
         };
 
         bw = pkgs.buildGoModule {

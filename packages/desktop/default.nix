@@ -9,6 +9,6 @@ with pkgs; [
   vlc
   firefox
   libreoffice-fresh
-  stremio-linux-shell
+  kodi-wayland
   gnome-screenshot
 ]

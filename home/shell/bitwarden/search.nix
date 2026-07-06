@@ -76,9 +76,14 @@ in
           else "📄"
           end
           as $icon |
+          # Build query: lowercase, keep only alphanum and dots, first 25 chars
+          (.name | ascii_downcase | gsub("[^a-z0-9.]"; "") | .[0:25]) as $q |
           $icon + " " + .name +
           (if .login.username != null then " (" + .login.username + ")" else "" end) +
-          " [" + .id + "]"
+          (if .type == 1 then " [bwe:$q] [bwp:$q]"
+           elif .type == 4 then " [bwn:$q]"
+           else " [" + .id + "]"
+           end)
         '
       }
 
@@ -117,8 +122,16 @@ in
           if [ -n "$fav_list" ]; then
             while IFS= read -r fav_id; do
               local fav_entry
-              fav_entry=$(${pkgs.jq}/bin/jq -r --arg id "$fav_id" \
-                '.[] | select(.id == $id) | "⭐ " + .name + (if .login.username != null then " (" + .login.username + ")" else "" end) + " [" + .id + "]"' "$BW_CACHE_FILE" 2>/dev/null)
+              fav_entry=$(${pkgs.jq}/bin/jq -r --arg id "$fav_id" '
+                .[] | select(.id == $id) |
+                (.name | ascii_downcase | gsub("[^a-z0-9.]"; "") | .[0:25]) as $q |
+                "⭐ " + .name +
+                (if .login.username != null then " (" + .login.username + ")" else "" end) +
+                (if .type == 1 then " [bwe:" + $q + "] [bwp:" + $q + "]"
+                 elif .type == 4 then " [bwn:" + $q + "]"
+                 else " [" + .id + "]"
+                 end)
+              ' "$BW_CACHE_FILE" 2>/dev/null)
               [ -n "$fav_entry" ] && display_list="$display_list$fav_entry"$'\n'
             done <<< "$fav_list"
           fi
@@ -129,8 +142,16 @@ in
             while IFS= read -r recent_id; do
               [ -z "$recent_id" ] && continue
               local recent_entry
-              recent_entry=$(${pkgs.jq}/bin/jq -r --arg id "$recent_id" \
-                '.[] | select(.id == $id) | "🕐 " + .name + (if .login.username != null then " (" + .login.username + ")" else "" end) + " [" + .id + "]"' "$BW_CACHE_FILE" 2>/dev/null)
+              recent_entry=$(${pkgs.jq}/bin/jq -r --arg id "$recent_id" '
+                .[] | select(.id == $id) |
+                (.name | ascii_downcase | gsub("[^a-z0-9.]"; "") | .[0:25]) as $q |
+                "🕐 " + .name +
+                (if .login.username != null then " (" + .login.username + ")" else "" end) +
+                (if .type == 1 then " [bwe:" + $q + "] [bwp:" + $q + "]"
+                 elif .type == 4 then " [bwn:" + $q + "]"
+                 else " [" + .id + "]"
+                 end)
+              ' "$BW_CACHE_FILE" 2>/dev/null)
               [ -n "$recent_entry" ] && display_list="$display_list$recent_entry"$'\n'
             done < "$BW_RECENT_FILE"
           fi
@@ -147,9 +168,13 @@ in
           else "📄"
           end
           as $icon |
+          (.name | ascii_downcase | gsub("[^a-z0-9.]"; "") | .[0:25]) as $q |
           $icon + " " + .name +
           (if .login.username != null then " (" + .login.username + ")" else "" end) +
-          " [" + .id + "]"
+          (if .type == 1 then " [bwe:$q] [bwp:$q]"
+           elif .type == 4 then " [bwn:$q]"
+           else " [" + .id + "]"
+           end)
         ' "$BW_CACHE_FILE" 2>/dev/null)
         display_list="$display_list$all_items"
 
@@ -169,9 +194,19 @@ in
           return 1
         fi
 
-        # Extract ID
+        # Extract item ID — try UUID first, then command:query format
         local item_id
         item_id=$(echo "$selected" | ${pkgs.gnugrep}/bin/grep -o '[a-f0-9-]\{36\}')
+
+        if [ -z "$item_id" ]; then
+          # Try command:query format — extract query and find item by sanitized name
+          local bw_query
+          bw_query=$(echo "$selected" | ${pkgs.gnugrep}/bin/grep -o '\[bwe:[^]]*\]\|\[bwp:[^]]*\]\|\[bwn:[^]]*\]' | head -1 | ${pkgs.gnused}/bin/sed 's/.*://;s/\]//')
+          if [ -n "$bw_query" ]; then
+            item_id=$(${pkgs.jq}/bin/jq -r --arg q "$bw_query" \
+              '.[] | select(.name | ascii_downcase | gsub("[^a-z0-9.]"; "") | startswith($q)) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
+          fi
+        fi
 
         if [ -z "$item_id" ]; then
           echo "Error: Could not extract item ID" >&2

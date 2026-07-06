@@ -55,7 +55,7 @@ in
 
     alloy.enable = lib.mkOption {
       type = lib.types.bool;
-      default = true;
+      default = false;
       description = "Forward journal logs to Loki using Grafana Alloy.";
     };
 

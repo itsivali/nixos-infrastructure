@@ -164,7 +164,6 @@ in
   ivali.observability = lib.mkMerge [
     {
       enable = true;
-      healthEndpoint.enable = true;
       exporters.enable = true;
       alertmanager.enable = true;
       otel.enable = true;

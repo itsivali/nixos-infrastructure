@@ -3,6 +3,7 @@ package bitwarden
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -19,7 +20,15 @@ func NewClient(bwPath, session string) *Client {
 func (c *Client) run(args ...string) ([]byte, error) {
 	cmd := exec.Command(c.BwPath, args...)
 	if c.Session != "" {
-		cmd.Env = append(cmd.Environ(), "BW_SESSION="+c.Session)
+		// Filter out any existing BW_SESSION from parent env so ours takes
+		// precedence (on Linux the first duplicate key wins with execve).
+		filtered := make([]string, 0, len(os.Environ()))
+		for _, e := range os.Environ() {
+			if !strings.HasPrefix(e, "BW_SESSION=") {
+				filtered = append(filtered, e)
+			}
+		}
+		cmd.Env = append(filtered, "BW_SESSION="+c.Session)
 	}
 	out, err := cmd.Output()
 	if err != nil {

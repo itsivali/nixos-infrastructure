@@ -226,25 +226,15 @@ func NewTUI(env *Env, initialFilter string) *tuiModel {
 }
 
 func (m *tuiModel) Init() tea.Cmd {
-	return tea.Batch(m.loadItems(), m.restoreSession())
-}
-
-func (m *tuiModel) restoreSession() tea.Cmd {
-	return func() tea.Msg {
-		if m.env.Session != "" {
-			m.client.Session = m.env.Session
-			return nil
-		}
-		session, err := ReadSessionFromFile(m.sessionFile)
-		if err != nil {
-			return nil
-		}
-		if session != "" {
-			m.client.Session = session
-			m.env.Session = session
-		}
-		return nil
+	// Restore session synchronously before loading items to avoid
+	// a race where loadItems runs bw list without BW_SESSION set.
+	if m.env.Session != "" {
+		m.client.Session = m.env.Session
+	} else if session, err := ReadSessionFromFile(m.sessionFile); err == nil && session != "" {
+		m.client.Session = session
+		m.env.Session = session
 	}
+	return m.loadItems()
 }
 
 func (m *tuiModel) loadItems() tea.Cmd {
@@ -266,6 +256,11 @@ func (m *tuiModel) loadItems() tea.Cmd {
 		if err != nil {
 			m.state = "error"
 			return itemsErrMsg{err: err}
+		}
+		// Write back to cache for next startup
+		if m.cacheFile != "" {
+			WriteCache(m.cacheFile, items)
+			WriteCacheTime(m.cacheTimeFile)
 		}
 		m.state = "unlocked"
 		return itemsLoadedMsg{items: items}

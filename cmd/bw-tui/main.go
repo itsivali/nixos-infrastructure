@@ -35,6 +35,12 @@ func main() {
 }
 
 func runCommand(env *bitwarden.Env, args []string) {
+	// Restore session from file if not already in env
+	if env.Session == "" {
+		if session, err := bitwarden.ReadSessionFromFile(env.SessionFile); err == nil && session != "" {
+			env.Session = session
+		}
+	}
 	client := bitwarden.NewClient(env.BwPath, env.Session)
 
 	switch args[0] {
@@ -49,7 +55,10 @@ func runCommand(env *bitwarden.Env, args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
-		fmt.Println(session)
+		if err := bitwarden.WriteSessionFile(env.SessionFile, session); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to write session file: %v\n", err)
+		}
+		fmt.Println("Vault unlocked.")
 
 	case "lock":
 		if err := client.Lock(); err != nil {
@@ -63,6 +72,8 @@ func runCommand(env *bitwarden.Env, args []string) {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
+		// Invalidate cache so next TUI start fetches fresh data
+		os.Remove(env.CacheFile)
 		fmt.Println("Vault synced.")
 
 	case "status":

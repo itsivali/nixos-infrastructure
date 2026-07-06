@@ -208,7 +208,7 @@ in
 
         # Build action menu
         local actions=""
-        actions="1) Copy Username"$'\n'
+        actions="1) Copy Email"$'\n'
         actions="$actions 2) Copy Password"$'\n'
         ${lib.optionalString cfg.enableTotp ''actions="$actions 3) Copy TOTP"$'\n''}
         actions="$actions 4) Copy URI"$'\n'
@@ -220,14 +220,14 @@ in
         choice=$(echo "$actions" | _bw_select "Action")
 
         case "$choice" in
-          *"Copy Username"*)
+          *"Copy Email"*)
             local username
             username=$(echo "$item" | ${pkgs.jq}/bin/jq -r '.login.username // empty')
             if [ -z "$username" ]; then
-              echo "Error: No username found" >&2
+              echo "Error: No email/username found" >&2
               return 1
             fi
-            bw-clipboard "$username" "${toString cfg.clipboardTimeout}" "Username"
+            bw-clipboard "$username" "${toString cfg.clipboardTimeout}" "Email"
             ;;
           *"Copy Password"*)
             local password
@@ -360,6 +360,42 @@ in
 
       bwpass() {
         bwp "$@"
+      }
+
+      bwe() {
+        local query="$*"
+        if [ -z "$query" ]; then
+          echo "Usage: bwe <search-query>" >&2
+          return 1
+        fi
+
+        if ! _bw_ensure_cache; then
+          echo "Error: No vault items found. Run: bwsync" >&2
+          return 1
+        fi
+
+        local matches
+        matches=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+          '[.[] | select(.name | test($q; "i"))] | length' "$BW_CACHE_FILE" 2>/dev/null)
+
+        if [ "$matches" = "0" ]; then
+          echo "Error: No items match '$query'" >&2
+          return 1
+        fi
+
+        if [ "$matches" = "1" ]; then
+          local item_id
+          item_id=$(${pkgs.jq}/bin/jq -r --arg q "$query" \
+            '.[] | select(.name | test($q; "i")) | .id' "$BW_CACHE_FILE" 2>/dev/null | head -1)
+          bw_copy_field "$item_id" "username" "Email"
+          ${lib.optionalString cfg.enableRecent ''bw_add_recent "$item_id" 2>/dev/null''}
+        else
+          local item_id
+          item_id=$(bw-search "$query")
+          if [ -n "$item_id" ]; then
+            bw_copy_field "$item_id" "username" "Email"
+          fi
+        fi
       }
 
       bwuri() {

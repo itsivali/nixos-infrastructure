@@ -73,9 +73,9 @@ func (c *Client) run(args ...string) ([]byte, error) {
 		return nil, fmt.Errorf("bw %s failed: %s", strings.Join(args, " "), msg)
 	}
 
-	// bw sometimes exits 0 with empty output (e.g. when session is invalid
-	// but bw doesn't classify it as an error)
-	if len(out) == 0 {
+	// bw sometimes exits 0 with empty/whitespace output (e.g. when session
+	// is invalid but bw doesn't classify it as an error)
+	if len(strings.TrimSpace(string(out))) == 0 {
 		msg := strings.TrimSpace(stderr.String())
 		if msg == "" {
 			msg = "empty response (vault may be locked)"
@@ -93,6 +93,14 @@ func (c *Client) ListItems() ([]VaultItem, error) {
 	}
 	var items []VaultItem
 	if err := json.Unmarshal(out, &items); err != nil {
+		// Show a snippet of the actual output to help diagnose non-JSON replies
+		snippet := strings.TrimSpace(string(out))
+		if len(snippet) > 120 {
+			snippet = snippet[:120] + "..."
+		}
+		if snippet != "" {
+			return nil, fmt.Errorf("parse items: %w (got: %q)", err, snippet)
+		}
 		return nil, fmt.Errorf("parse items: %w", err)
 	}
 	return items, nil

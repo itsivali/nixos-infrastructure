@@ -24,8 +24,15 @@ func (c *Client) run(args ...string) ([]byte, error) {
 	out, err := cmd.Output()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok {
-			return nil, fmt.Errorf("bw %s failed: %s", strings.Join(args, " "),
-				strings.TrimSpace(string(exitErr.Stderr)))
+			msg := strings.TrimSpace(string(exitErr.Stderr))
+			// Only keep first meaningful line (strip Node.js stack traces)
+			if idx := strings.Index(msg, "\n"); idx > 0 {
+				first := strings.TrimSpace(msg[:idx])
+				if strings.Contains(first, "Error:") || strings.Contains(first, "failed:") {
+					msg = first
+				}
+			}
+			return nil, fmt.Errorf("bw %s failed: %s", strings.Join(args, " "), msg)
 		}
 		return nil, fmt.Errorf("bw %s: %w", strings.Join(args, " "), err)
 	}

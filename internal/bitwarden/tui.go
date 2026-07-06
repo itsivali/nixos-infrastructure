@@ -139,7 +139,8 @@ type tuiModel struct {
 
 	initialFilter string
 
-	err error
+	err     error
+	errTime time.Time
 }
 
 type Env struct {
@@ -316,6 +317,7 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case itemsErrMsg:
 		m.err = msg.err
+		m.errTime = time.Now()
 		m.state = "error"
 		return m, nil
 
@@ -338,6 +340,7 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case syncErrMsg:
 		m.err = msg.err
+		m.errTime = time.Now()
 		return m, nil
 	}
 
@@ -569,8 +572,10 @@ func (m *tuiModel) renderList() string {
 
 	// Footer
 	footerStr := m.renderFilter()
-	if m.err != nil {
+	if m.err != nil && time.Since(m.errTime) < 5*time.Second {
 		footerStr += styleRed(" " + m.err.Error())
+	} else if m.err != nil {
+		m.err = nil
 	}
 	footer := styleStatusBar.Render(footerStr)
 	b.WriteString(footer)

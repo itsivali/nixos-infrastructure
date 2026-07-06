@@ -117,6 +117,8 @@ type detailModel struct {
 	copiedField string
 	copiedAt    time.Time
 	err         string
+	status      string
+	statusAt    time.Time
 }
 
 type tuiModel struct {
@@ -441,40 +443,84 @@ func (m *tuiModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "p":
-		if m.detail.password != "" {
-			if err := CopyToClipboard(m.detail.password); err == nil {
-				m.detail.copiedField = "password"
-				m.detail.copiedAt = time.Now()
-			}
+		if m.detail.password == "" {
+			m.detail.status = "Password not yet loaded (still fetching)"
+			m.detail.statusAt = time.Now()
+			break
+		}
+		if err := CopyToClipboard(m.detail.password); err != nil {
+			m.detail.status = "Clipboard error: " + err.Error()
+			m.detail.statusAt = time.Now()
+		} else {
+			m.detail.copiedField = "password"
+			m.detail.copiedAt = time.Now()
+			m.detail.status = "✓ Password copied!"
+			m.detail.statusAt = time.Now()
 		}
 
 	case "e":
-		if u := m.detail.item.Username(); u != "" {
-			if err := CopyToClipboard(u); err == nil {
-				m.detail.copiedField = "email"
-				m.detail.copiedAt = time.Now()
-			}
+		u := m.detail.item.Username()
+		if u == "" {
+			m.detail.status = "No email/username for this item"
+			m.detail.statusAt = time.Now()
+			break
+		}
+		if err := CopyToClipboard(u); err != nil {
+			m.detail.status = "Clipboard error: " + err.Error()
+			m.detail.statusAt = time.Now()
+		} else {
+			m.detail.copiedField = "email"
+			m.detail.copiedAt = time.Now()
+			m.detail.status = "✓ Email copied!"
+			m.detail.statusAt = time.Now()
 		}
 
 	case "u":
-		if uri := m.detail.item.PrimaryURI(); uri != "" {
-			if err := CopyToClipboard(uri); err == nil {
-				m.detail.copiedField = "uri"
-				m.detail.copiedAt = time.Now()
-			}
+		uri := m.detail.item.PrimaryURI()
+		if uri == "" {
+			m.detail.status = "No URI for this item"
+			m.detail.statusAt = time.Now()
+			break
+		}
+		if err := CopyToClipboard(uri); err != nil {
+			m.detail.status = "Clipboard error: " + err.Error()
+			m.detail.statusAt = time.Now()
+		} else {
+			m.detail.copiedField = "uri"
+			m.detail.copiedAt = time.Now()
+			m.detail.status = "✓ URI copied!"
+			m.detail.statusAt = time.Now()
 		}
 
 	case "n":
-		if m.detail.item.Notes != "" {
-			if err := CopyToClipboard(m.detail.item.Notes); err == nil {
-				m.detail.copiedField = "notes"
-				m.detail.copiedAt = time.Now()
-			}
+		if m.detail.item.Notes == "" {
+			m.detail.status = "No notes for this item"
+			m.detail.statusAt = time.Now()
+			break
+		}
+		if err := CopyToClipboard(m.detail.item.Notes); err != nil {
+			m.detail.status = "Clipboard error: " + err.Error()
+			m.detail.statusAt = time.Now()
+		} else {
+			m.detail.copiedField = "notes"
+			m.detail.copiedAt = time.Now()
+			m.detail.status = "✓ Notes copied!"
+			m.detail.statusAt = time.Now()
 		}
 
 	case "o":
-		if uri := m.detail.item.PrimaryURI(); uri != "" {
-			exec.Command("xdg-open", uri).Start()
+		uri := m.detail.item.PrimaryURI()
+		if uri == "" {
+			m.detail.status = "No URI to open"
+			m.detail.statusAt = time.Now()
+			break
+		}
+		if err := exec.Command("xdg-open", uri).Start(); err != nil {
+			m.detail.status = "Failed to open browser: " + err.Error()
+			m.detail.statusAt = time.Now()
+		} else {
+			m.detail.status = "Opened in browser"
+			m.detail.statusAt = time.Now()
 		}
 	}
 
@@ -717,6 +763,15 @@ func (m *tuiModel) renderDetail() string {
 		styleKey.Render("[n]"), "notes",
 		styleKey.Render("[o]"), "open browser",
 	))
+
+	// Status message
+	if m.detail.status != "" && time.Since(m.detail.statusAt) < 3*time.Second {
+		if strings.HasPrefix(m.detail.status, "✓") {
+			b.WriteString(styleCopied.Render(" " + m.detail.status) + "\n\n")
+		} else {
+			b.WriteString(styleRed(" " + m.detail.status) + "\n\n")
+		}
+	}
 
 	// Footer
 	footer := styleStatusBar.Render(" Esc back   q quit")

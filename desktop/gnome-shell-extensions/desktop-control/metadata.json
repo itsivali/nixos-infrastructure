@@ -1,9 +1,0 @@
-{
-  "uuid": "desktop-control@prague.ivali",
-  "name": "Desktop Control",
-  "description": "D-Bus API for remote desktop control via Telegram bot",
-  "shell-version": ["50"],
-  "url": "https://gitlab.com/willisivali/nixos-infrastructure",
-  "version": 2,
-  "session-modes": ["user"]
-}

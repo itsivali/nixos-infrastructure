@@ -53,6 +53,12 @@ in
 
     falco.syscallEvents = lib.mkEnableOption "Log all syscall events";
 
+    loki.enable = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = "Enable local Loki log aggregation (overkill for single laptop; journald suffices).";
+    };
+
     alloy.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;

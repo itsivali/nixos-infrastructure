@@ -30,13 +30,13 @@ in
   options.ivali.observability.prometheus = {
     retentionTime = lib.mkOption {
       type = lib.types.str;
-      default = "15d";
+      default = "3d";
       description = "Prometheus data retention period";
     };
 
     scrapeInterval = lib.mkOption {
       type = lib.types.str;
-      default = "15s";
+      default = "120s";
       description = "Prometheus scrape interval";
     };
 

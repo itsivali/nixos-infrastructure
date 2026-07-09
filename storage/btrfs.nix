@@ -21,4 +21,7 @@
 { ... }:
 
 {
+  fileSystems."/".options = [ "compress-force=zstd:3" "noatime" ];
+  fileSystems."/home".options = [ "subvol=home" "compress-force=zstd:3" "noatime" ];
+  fileSystems."/nix".options = [ "subvol=nix" "compress-force=zstd:3" "noatime" ];
 }

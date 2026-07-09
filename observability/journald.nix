@@ -21,5 +21,7 @@
     ForwardToSyslog=no
     RateLimitIntervalSec=30s
     RateLimitBurst=10000
+    SystemMaxUse=100M
+    MaxFileSec=1week
   '';
 }

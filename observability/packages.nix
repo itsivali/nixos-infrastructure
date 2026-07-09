@@ -20,11 +20,11 @@ in
 {
   environment.systemPackages = with pkgs;
     [
-      grafana-loki
-      grafana-alloy
       syft
       trivy
     ]
+    ++ lib.optionals cfg.loki.enable [ grafana-loki ]
+    ++ lib.optionals cfg.alloy.enable [ grafana-alloy ]
     ++ lib.optionals cfg.falco.enable [ pkgs.falco ]
     ++ lib.optionals cfg.otel.enable [
       (

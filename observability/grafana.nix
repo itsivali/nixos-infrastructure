@@ -67,7 +67,7 @@ in
             url = "http://${prometheusListenAddress}:${toString prometheusPort}";
             isDefault = true;
             jsonData = {
-              timeInterval = "15s";
+              timeInterval = "60s";
             };
           }
           {
@@ -87,13 +87,40 @@ in
             folder = "NixOS";
             type = "file";
             disableDeletion = false;
-            updateIntervalSeconds = 30;
+            updateIntervalSeconds = 60;
             options = {
               path = "/var/lib/grafana/dashboards/nixos";
             };
           }
         ];
       };
+    };
+  };
+
+  systemd.services.grafana = lib.mkIf cfg.enable {
+    serviceConfig = {
+      MemoryMax = "128M";
+      MemoryHigh = "96M";
+    };
+  };
+
+  systemd.services.loki = lib.mkIf cfg.loki.enable {
+    serviceConfig = {
+      MemoryMax = "64M";
+      MemoryHigh = "48M";
+    };
+  };
+
+  systemd.services.prometheus = lib.mkIf cfg.enable {
+    serviceConfig = {
+      MemoryMax = "64M";
+      MemoryHigh = "48M";
+    };
+  };
+
+  systemd.services."prometheus-node-exporter" = lib.mkIf cfg.enable {
+    serviceConfig = {
+      MemoryMax = "32M";
     };
   };
 }

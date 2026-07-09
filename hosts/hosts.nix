@@ -88,6 +88,8 @@
       bitwarden = true;
     };
     config = {
+      hydenix.enable = true;
+
       # Git config for root/CI access
       environment.etc."gitconfig".text = ''
         [safe]

@@ -3,12 +3,10 @@
 # Domain entry-point for desktop environment modules.
 # Automatically imports every *.nix file placed in this directory.
 #
-# Current auto-discovered modules:
-#   gnome-lean.nix  ← hardened GNOME + Wayland + power management
-#
-# To swap desktop environments, drop a new .nix here and remove
-# (or disable with `enable = false` inside) gnome-lean.nix.
-# To add extensions, theming, or input config: drop a .nix file here.
+# Current modules:
+#   gnome-lean.nix  ← GNOME + Wayland + power management
+#   gpu.nix         ← AMD GPU acceleration
+#   desktop-control.nix — GNOME Shell extension for bot integration
 { ... }:
 {
   imports = import ../lib/auto-imports.nix ./.;

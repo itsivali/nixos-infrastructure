@@ -46,7 +46,7 @@ in
               };
             };
             hostmetrics = {
-              collection_interval = "30s";
+              collection_interval = "120s";
               scrapers = {
                 cpu = { };
                 memory = { };
@@ -66,8 +66,8 @@ in
             };
             memory_limiter = {
               check_interval = "1s";
-              limit_mib = 512;
-              spike_limit_mib = 128;
+              limit_mib = 128;
+              spike_limit_mib = 32;
             };
             attributes = {
               actions = [
@@ -157,6 +157,8 @@ in
         RestartSec = "10s";
 
         # Hardening
+        MemoryMax = "256M";
+        MemoryHigh = "192M";
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectHome = true;
@@ -182,7 +184,7 @@ in
             };
           }
         ];
-        scrape_interval = "15s";
+        scrape_interval = "60s";
       }
     ];
     });

@@ -20,8 +20,9 @@ let
   lokiPort = 3100;
 in
 {
-  services.loki = lib.mkIf cfg.enable {
+  services.loki = lib.mkIf cfg.loki.enable {
     enable = true;
+    extraFlags = [ "-config.expand-env=true" ];
     configuration = {
       auth_enabled = false;
       server = {
@@ -52,7 +53,12 @@ in
       ];
       limits_config = {
         allow_structured_metadata = false;
-        retention_period = "168h";
+        retention_period = "48h";
+        ingestion_rate_mb = 4;
+        ingestion_burst_size_mb = 8;
+        max_streams_per_user = 0;
+        max_global_streams_per_user = 0;
+        max_line_size = "256KB";
       };
       compactor = {
         working_directory = "/var/lib/loki/compactor";

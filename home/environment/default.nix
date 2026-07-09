@@ -17,7 +17,6 @@
 # - session.nix    — Session settings
 # - variables.nix  — Environment variables
 # - xdg.nix        — XDG base directory settings
-# - extensions.nix — GNOME Shell extensions (dconf enablement)
 #
 ##############################################################################
 
@@ -30,6 +29,5 @@
     ./session.nix
     ./variables.nix
     ./xdg.nix
-    ./extensions.nix
   ];
 }

@@ -116,7 +116,7 @@ ${sep}
 \`/close <app>\`  Close a window by title
 \`/workspace\`    Switch workspaces (next/prev/N)
 \`/lock\`         Lock screen
-\`/logout\`       Log out of GNOME
+\`/logout\`       Log out of desktop
 \`/suspend\`      Suspend to RAM
 \`/hibernate\`    Hibernate to disk
 \`/monitor-off\`  Turn displays off

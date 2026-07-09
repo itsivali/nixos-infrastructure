@@ -13,7 +13,7 @@
 # Responsibilities
 # ----------------
 # - btrfs.nix     — BTRFS filesystem tuning
-# - tmpfs.nix     — tmpfs mounts (future)
+# - tmpfs.nix     — tmpfs mounts
 # - encryption.nix — Disk encryption (future)
 #
 ##############################################################################

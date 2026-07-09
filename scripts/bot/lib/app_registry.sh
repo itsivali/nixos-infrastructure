@@ -205,14 +205,14 @@ ${sep}
 
 # Load the alias mappings.
 _load_aliases() {
-  app_add_alias "terminal" "kgx"
-  app_add_alias "term" "kgx"
-  app_add_alias "shell" "kgx"
-  app_add_alias "console" "kgx"
+  app_add_alias "terminal" "kitty"
+  app_add_alias "term" "kitty"
+  app_add_alias "shell" "kitty"
+  app_add_alias "console" "kitty"
 
-  app_add_alias "files" "nautilus"
-  app_add_alias "file" "nautilus"
-  app_add_alias "nautilus" "nautilus"
+  app_add_alias "files" "dolphin"
+  app_add_alias "file" "dolphin"
+  app_add_alias "dolphin" "dolphin"
 
   app_add_alias "browser" "firefox"
   app_add_alias "web" "firefox"
@@ -222,12 +222,8 @@ _load_aliases() {
   app_add_alias "zed" "zeditor"
 
   app_add_alias "settings" "gnome-control-center"
-  app_add_alias "monitor" "gnome-system-monitor"
+  app_add_alias "monitor" "btop"
   app_add_alias "disks" "gnome-disks"
-  app_add_alias "camera" "snapshot"
-  app_add_alias "extensions" "extension-manager"
-  app_add_alias "tweaks" "gnome-tweaks"
-  app_add_alias "calculator" "gnome-calculator"
   app_add_alias "btop" "btop"
   app_add_alias "htop" "htop"
 

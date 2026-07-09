@@ -131,7 +131,7 @@ in
 
       type = lib.types.str;
 
-      default = "10m";
+      default = "1h";
 
     };
 

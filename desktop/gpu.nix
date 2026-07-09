@@ -12,7 +12,7 @@
 #
 # Does NOT Own
 # ------------
-# - Display manager / desktop environment (desktop/gnome-lean.nix)
+# - Desktop environment (desktop/gnome-lean.nix)
 # - Power management (desktop/gnome-lean.nix)
 #
 ##############################################################################

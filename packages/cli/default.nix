@@ -18,6 +18,7 @@ with pkgs; [
   git
   gitui
   gitlab
+  glab
   gnupg
   home-manager
   htop

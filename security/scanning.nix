@@ -31,7 +31,7 @@ let
     # 2. Store integrity
     echo "--- Store Integrity ---"
     echo "Store size: $(du -sh /nix/store 2>/dev/null | cut -f1 || echo 'unknown')"
-    echo "Derivations: $(find /nix/store -maxdepth 1 -name '*.drv' 2>/dev/null | wc -l || echo 0)"
+    echo "Derivations: $(ls -d /nix/store/*.drv 2>/dev/null | wc -l || echo 0)"
     echo ""
 
     # 3. Systemd service status

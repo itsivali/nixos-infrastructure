@@ -24,10 +24,23 @@
       url = "github:Mic92/sops-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    hyprland = {
+      url = "github:hyprwm/Hyprland";
+    };
+
+    hyprland-contrib = {
+      url = "github:hyprwm/contrib";
+    };
+
+    hyde = {
+      url = "github:HyDE-Project/HyDE";
+      flake = false;
+    };
   };
 
   outputs =
-    inputs@{ self, nixpkgs, home-manager, sops-nix, ... }:
+    inputs@{ self, nixpkgs, home-manager, sops-nix, hyprland, hyprland-contrib, hyde, ... }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -43,13 +56,19 @@
         config.allowUnfree = true;
       };
 
+      # HyDE source packages
+      hyde-configs = pkgs.callPackage ./packages/hyde/hyde-configs.nix {
+        inherit (pkgs) lib;
+        src = hyde;
+      };
+
       # Generate nixosConfigurations for each host
       nixosConfigurations = lib.mapAttrs (name: hostSpec:
         lib.nixosSystem {
           inherit system;
 
           specialArgs = {
-            inherit inputs self;
+            inherit inputs self hyde-configs;
             hostSpec = hostSpec;
             defaultUsername = hostSpec.userName or defaultUsername;
             username = hostSpec.userName or defaultUsername;
@@ -75,7 +94,7 @@
                 useUserPackages = true;
 
                 extraSpecialArgs = {
-                  inherit inputs hostSpec defaultUsername;
+                  inherit inputs hostSpec defaultUsername hyde-configs;
                   hostName = hostSpec.hostName;
                   username = hostSpec.userName or defaultUsername;
                 };
@@ -98,6 +117,8 @@
       # Package sets
       # ─────────────────────────────────────────────
       packages.${system} = {
+        inherit hyde-configs;
+
         system = pkgs.buildEnv {
           name = "ivali-system-packages";
           paths =

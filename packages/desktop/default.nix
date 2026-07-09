@@ -10,5 +10,5 @@ with pkgs; [
   firefox
   libreoffice-fresh
   kodi-wayland
-  gnome-screenshot
+  brightnessctl
 ]

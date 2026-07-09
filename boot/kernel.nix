@@ -75,8 +75,6 @@
       "page_alloc.shuffle=1"
       "slab_nomerge"
       "randomize_kstack_offset=on"
-      "init_on_alloc=1"
-      "init_on_free=1"
       "vsyscall=none"
       "pti=on"
 

@@ -23,5 +23,6 @@
     ./environment
     ./editors
     ./services
+    ./hyde
   ];
 }

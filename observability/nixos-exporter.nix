@@ -3,57 +3,81 @@
 let
   cfg = config.ivali.observability.exporters;
 
-  # Script that collects NixOS-specific metrics
+  cacheUpdateScript = pkgs.writeShellScript "nixos-exporter-cache" ''
+    CACHE_FILE="/var/cache/nixos-exporter/metrics"
+    mkdir -p "$(dirname "$CACHE_FILE")"
+
+    cat > "$CACHE_FILE" << CACHEEOF
+# HELP nixos_generation_current Current NixOS generation number
+# TYPE nixos_generation_current gauge
+nixos_generation_current $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
+
+# HELP nixos_generation_total Total number of NixOS generations
+# TYPE nixos_generation_total gauge
+nixos_generation_total $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | wc -l || echo 0)
+
+# HELP nixos_store_size_bytes Size of /nix/store in bytes (updated hourly)
+# TYPE nixos_store_size_bytes gauge
+nixos_store_size_bytes $(du -sb /nix/store 2>/dev/null | cut -f1 || echo 0)
+
+# HELP nixos_store_derivations Number of derivations in store
+# TYPE nixos_store_derivations gauge
+nixos_store_derivations $(find /nix/store -maxdepth 1 -name '*.drv' 2>/dev/null | wc -l || echo 0)
+
+# HELP nixos_flake_inputs Number of flake inputs
+# TYPE nixos_flake_inputs gauge
+nixos_flake_inputs $(nix flake metadata --json 2>/dev/null | ${pkgs.jq}/bin/jq '.locks.nodes | length' 2>/dev/null || echo 0)
+CACHEEOF
+  '';
+
   nixosExporterScript = pkgs.writeShellScript "nixos-exporter" ''
     #!/bin/sh
     set -euo pipefail
 
     PORT="''${NIXOS_EXPORTER_PORT:-9101}"
+    CACHE_FILE="/var/cache/nixos-exporter/metrics"
+    METRICS_FILE=$(mktemp /tmp/nixos-exporter-XXXXXX)
+    trap 'rm -f "$METRICS_FILE"' EXIT
 
-    cat <<EOF
-    HTTP/1.1 200 OK
-    Content-Type: text/plain; version=0.0.4
+    while true; do
+      cat > "$METRICS_FILE" << EOF
+# HELP nixos_generation_current Current NixOS generation number
+# TYPE nixos_generation_current gauge
+nixos_generation_current $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
 
-    # HELP nixos_generation_current Current NixOS generation number
-    # TYPE nixos_generation_current gauge
-    nixos_generation_current $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
+# HELP nixos_generation_total Total number of NixOS generations
+# TYPE nixos_generation_total gauge
+nixos_generation_total $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | wc -l || echo 0)
 
-    # HELP nixos_generation_total Total number of NixOS generations
-    # TYPE nixos_generation_total gauge
-    nixos_generation_total $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | wc -l || echo 0)
+$(cat "$CACHE_FILE" 2>/dev/null || echo "# cache not ready")
 
-    # HELP nixos_store_size_bytes Size of /nix/store in bytes
-    # TYPE nixos_store_size_bytes gauge
-    nixos_store_size_bytes $(du -sb /nix/store 2>/dev/null | cut -f1 || echo 0)
+# HELP nixos_system_uptime_seconds System uptime in seconds
+# TYPE nixos_system_uptime_seconds gauge
+nixos_system_uptime_seconds $(awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0)
 
-    # HELP nixos_store_derivations Number of derivations in store
-    # TYPE nixos_store_derivations gauge
-    nixos_store_derivations $(find /nix/store -maxdepth 1 -name '*.drv' 2>/dev/null | wc -l || echo 0)
+# HELP nixos_git_dirty Whether the git repo has uncommitted changes (1=yes, 0=no)
+# TYPE nixos_git_dirty gauge
+nixos_git_dirty $(cd /home/ivali/nixos-infrastructure 2>/dev/null && git status --porcelain 2>/dev/null | wc -l | tr -d ' ' || echo 0)
 
-    # HELP nixos_flake_inputs Number of flake inputs
-    # TYPE nixos_flake_inputs gauge
-    nixos_flake_inputs $(nix flake metadata --json 2>/dev/null | ${pkgs.jq}/bin/jq '.locks.nodes | length' 2>/dev/null || echo 0)
+# HELP nixos_git_behind Number of commits behind remote
+# TYPE nixos_git_behind gauge
+nixos_git_behind $(cd /home/ivali/nixos-infrastructure 2>/dev/null && git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
 
-    # HELP nixos_system_uptime_seconds System uptime in seconds
-    # TYPE nixos_system_uptime_seconds gauge
-    nixos_system_uptime_seconds $(awk '{print int($1)}' /proc/uptime 2>/dev/null || echo 0)
+# HELP nixos_deployment_health_last_check_timestamp Timestamp of last successful health check
+# TYPE nixos_deployment_health_last_check_timestamp gauge
+nixos_deployment_health_last_check_timestamp $(stat -c %Y /tmp/deployment-health-last-ok 2>/dev/null || echo 0)
 
-    # HELP nixos_git_dirty Whether the git repo has uncommitted changes (1=yes, 0=no)
-    # TYPE nixos_git_dirty gauge
-    nixos_git_dirty $(cd /home/ivali/nixos-infrastructure 2>/dev/null && git status --porcelain 2>/dev/null | wc -l | tr -d ' ' || echo 0)
+# HELP nixos_deployment_health_status Last health check status (1=ok, 0=fail)
+# TYPE nixos_deployment_health_status gauge
+nixos_deployment_health_status $([ -f /tmp/deployment-health-last-ok ] && echo 1 || echo 0)
+EOF
 
-    # HELP nixos_git_behind Number of commits behind remote
-    # TYPE nixos_git_behind gauge
-    nixos_git_behind $(cd /home/ivali/nixos-infrastructure 2>/dev/null && git rev-list --count HEAD..@{u} 2>/dev/null || echo 0)
-
-    # HELP nixos_deployment_health_last_check_timestamp Timestamp of last successful health check
-    # TYPE nixos_deployment_health_last_check_timestamp gauge
-    nixos_deployment_health_last_check_timestamp $(stat -c %Y /tmp/deployment-health-last-ok 2>/dev/null || echo 0)
-
-    # HELP nixos_deployment_health_status Last health check status (1=ok, 0=fail)
-    # TYPE nixos_deployment_health_status gauge
-    nixos_deployment_health_status $([ -f /tmp/deployment-health-last-ok ] && echo 1 || echo 0)
-    EOF
+      echo "HTTP/1.1 200 OK"
+      echo "Content-Type: text/plain; version=0.0.4"
+      echo ""
+      cat "$METRICS_FILE"
+      sleep 60
+    done
   '';
 
 in
@@ -78,7 +102,8 @@ in
         Type = "simple";
         ExecStart = "${pkgs.bash}/bin/bash -c '${nixosExporterScript} | ${pkgs.coreutils}/bin/tee /dev/null'";
         Restart = "always";
-        RestartSec = 5;
+        RestartSec = 30;
+        MemoryMax = "64M";
       };
 
       # Hardening
@@ -88,6 +113,25 @@ in
         ProtectHome = true;
         ProtectSystem = "strict";
         ReadOnlyPaths = [ "/nix/store" "/proc" "/sys" ];
+      };
+    };
+
+    systemd.services.nixos-exporter-cache = {
+      description = "NixOS Prometheus Exporter Cache Update";
+      after = [ "network.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = cacheUpdateScript;
+      };
+    };
+
+    systemd.timers.nixos-exporter-cache = {
+      description = "Update NixOS exporter cache hourly";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnCalendar = "hourly";
+        Persistent = true;
+        RandomizedDelaySec = "300";
       };
     };
 
@@ -106,7 +150,7 @@ in
             };
           }
         ];
-        scrape_interval = "30s";
+        scrape_interval = "60s";
       }
     ];
   };

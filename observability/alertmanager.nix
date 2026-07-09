@@ -160,6 +160,8 @@ in
       # Provide bot token via environment file
       systemd.services.alertmanager = {
         serviceConfig = {
+          MemoryMax = "64M";
+          MemoryHigh = "48M";
           EnvironmentFile = lib.mkIf (alertCfg.telegramBotTokenFile != null)
             alertCfg.telegramBotTokenFile;
         };

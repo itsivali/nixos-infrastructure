@@ -98,9 +98,10 @@ sys_tailscale() {
   fi
 }
 
-# GNOME session info.
-sys_gnome() {
-  if [[ -n "${XDG_SESSION_TYPE:-}" ]]; then
+sys_session() {
+  if pgrep -u "${DEFAULT_USER}" Hyprland >/dev/null 2>&1; then
+    echo "Hyprland (Wayland)"
+  elif [[ -n "${XDG_SESSION_TYPE:-}" ]]; then
     echo "${XDG_SESSION_TYPE^^} session (${DEFAULT_USER})"
   else
     echo "no session"
@@ -125,7 +126,7 @@ ${sep}
 🧊 *NixGen:*     \`$(sys_generation)\`
 🌐 *Network:*    \`$(sys_network)\`
 📡 *VPN:*        \`$(sys_tailscale)\`
-🖥 *Session:*    \`$(sys_gnome)\`
+🖥 *Session:*    \`$(sys_session)\`
 ${sep}
 Run \`/health\` for a full diagnostic."
 

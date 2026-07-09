@@ -6,7 +6,7 @@ _cmd_notify_cmd() {
 
   if [[ -z "$args" ]]; then
     send_msg "$chat" "🔔 *Usage:* \`/notify <message>\`
-_Displays a GNOME desktop notification._
+_Displays a desktop notification._
 _Example:_ \`/notify Build complete!\`"
     return
   fi

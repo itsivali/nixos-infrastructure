@@ -34,6 +34,9 @@ let
 
 in
 {
+  # Merge per-host extra config (defined in hosts/hosts.nix or host-specific files)
+  imports = lib.optional (extraConfig != {}) { config = extraConfig; };
+
   ############################################################################
   # SOPS SECRETS DEFINITIONS
   ############################################################################

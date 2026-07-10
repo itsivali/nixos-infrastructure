@@ -1,4 +1,4 @@
-# commands/screenshot.sh — /screenshot — capture desktop via grim + slurp
+# commands/screenshot.sh — /screenshot — capture desktop via gnome-screenshot
 ##############################################################################
 
 _cmd_screenshot() {
@@ -14,8 +14,9 @@ _cmd_screenshot() {
 
   if sudo -u "${DEFAULT_USER}" \
     XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
     WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
-    grim "$file" 2>/dev/null && [[ -f "$file" ]]; then
+    gnome-screenshot -f "$file" 2>/dev/null && [[ -f "$file" ]]; then
     send_photo "$chat" "$file" "Screenshot saved to \`~/Pictures/\` on *${HOST}*"
   else
     send_msg "$chat" "Screenshot failed."

@@ -88,7 +88,7 @@
       bitwarden = true;
     };
     config = {
-      hydenix.enable = true;
+      ivali.desktop.gnome.enable = true;
 
       # Git config for root/CI access
       environment.etc."gitconfig".text = ''

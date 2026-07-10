@@ -131,7 +131,7 @@ in
       xclip
       libnotify
     ] ++ lib.optional (inputs ? self)
-      inputs.self.packages.${pkgs.system}.bw-tui;
+      inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.bw-tui;
 
     home.sessionVariables = {
       BW_SESSION_DIR = "${config.xdg.cacheHome}/bitwarden";

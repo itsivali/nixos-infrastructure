@@ -6,16 +6,16 @@
 ##############################################################################
 
 # -- Terminal --------------------
-app_add_alias "terminal"  "kitty"
-app_add_alias "term"      "kitty"
-app_add_alias "shell"     "kitty"
-app_add_alias "console"   "kitty"
+app_add_alias "terminal"  "gnome-terminal"
+app_add_alias "term"      "gnome-terminal"
+app_add_alias "shell"     "gnome-terminal"
+app_add_alias "console"   "gnome-console"
 app_add_alias "bash"      "bash"
 
 # -- File Manager ---------------
-app_add_alias "files"     "dolphin"
-app_add_alias "file"      "dolphin"
-app_add_alias "dolphin"   "dolphin"
+app_add_alias "files"     "nautilus"
+app_add_alias "file"      "nautilus"
+app_add_alias "dolphin"   "nautilus"
 
 # -- Browser --------------------
 app_add_alias "browser"   "firefox"

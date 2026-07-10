@@ -1,10 +1,10 @@
-# lib/desktop.sh — Desktop session bridging, Hyprland hyprctl abstraction layer
+# lib/desktop.sh — Desktop session bridging, GNOME Shell D-Bus abstraction layer
 #
 # Dependencies: lib/core.sh (log), lib/telegram.sh (send_msg)
-# Provides:     desktop::ensure_session_env, desktop::hyprctl_call,
+# Provides:     desktop::ensure_session_env, desktop::gnome_shell_eval,
 #               desktop::session_type, desktop::launch_app,
 #               desktop::launch_detached, desktop::require_graphical,
-#               desktop::resolve_binary, desktop::hyprctl_json
+#               desktop::resolve_binary, desktop::dbus_call
 ##############################################################################
 
 # ── Session environment bridging ───────────────────────────────────────────
@@ -55,27 +55,11 @@ desktop::require_graphical() {
   return 0
 }
 
-# ── Hyprland hyprctl calls ────────────────────────────────────────────────
-# Run hyprctl as DEFAULT_USER.
-# Usage: desktop::hyprctl_call <args...>
-desktop::hyprctl_call() {
-  desktop::ensure_session_env 2>/dev/null || return 1
-  sudo -u "${DEFAULT_USER}" \
-    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
-    WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
-    hyprctl "$@" 2>/dev/null || true
-}
-
-# Call hyprctl with JSON output, parse with jq.
-# Usage: desktop::hyprctl_json <args...>
-desktop::hyprctl_json() {
-  desktop::hyprctl_call -j "$@" 2>/dev/null || true
-}
-
-# ── GNOME Shell D-Bus calls (compat, deprecated) ─────────────────────────
-desktop::gnome_call() {
-  local method="$1"
-  shift
+# ── GNOME Shell D-Bus Eval ─────────────────────────────────────────────────
+# Evaluate JavaScript in GNOME Shell via D-Bus and return the result string.
+# Usage: desktop::gnome_shell_eval <javascript_code>
+desktop::gnome_shell_eval() {
+  local code="$1"
   desktop::ensure_session_env 2>/dev/null || return 1
   sudo -u "${DEFAULT_USER}" \
     XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
@@ -83,7 +67,23 @@ desktop::gnome_call() {
     gdbus call --session \
     --dest "org.gnome.Shell" \
     --object-path "/org/gnome/Shell" \
-    --method "$method" "$@" 2>/dev/null || true
+    --method "org.gnome.Shell.Eval" "$code" 2>/dev/null || true
+}
+
+# ── GNOME Shell Eval with JSON result ──────────────────────────────────────
+# Evaluates JS that returns a JSON string, extracts and returns it.
+desktop::gnome_shell_json() {
+  local code="$1"
+  local result
+  result="$(desktop::gnome_shell_eval "$code")" || return 1
+  # Result format: (true, '"[...json...]"') or (false, '...')
+  if [[ "$result" == (true,\ * ]]; then
+    local json
+    json="$(echo "$result" | sed "s/^(true, //" | sed "s/)$//" | xargs echo)"
+    echo "$json"
+    return 0
+  fi
+  return 1
 }
 
 # ── D-Bus calls ────────────────────────────────────────────────────────────

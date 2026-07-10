@@ -1,5 +1,5 @@
 # commands/desktop_power.sh — /lock, /logout, /suspend, /hibernate, /monitoroff, /monitoron
-# Uses loginctl / hyprctl for Hyprland desktop control.
+# Uses loginctl / gnome-session-quit / GNOME D-Bus for desktop control.
 ##############################################################################
 
 _cmd_lock() {
@@ -11,7 +11,11 @@ _cmd_lock() {
 _cmd_logout() {
   local chat="$1" args="$2"
   send_msg "$chat" "Logging out..."
-  desktop::hyprctl_call dispatch exit >/dev/null 2>&1
+  desktop::ensure_session_env 2>/dev/null || true
+  sudo -u "${DEFAULT_USER}" \
+    XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+    DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
+    gnome-session-quit --logout --no-prompt >/dev/null 2>&1 &
 }
 
 _cmd_suspend() {
@@ -28,14 +32,14 @@ _cmd_hibernate() {
 
 _cmd_monitor_off() {
   local chat="$1" args="$2"
-  desktop::hyprctl_call dispatch dpms off >/dev/null 2>&1
+  desktop::dbus_call "org.gnome.ScreenSaver" "/org/gnome/ScreenSaver" "org.gnome.ScreenSaver.SetActive" true >/dev/null 2>&1
   loginctl lock-sessions 2>/dev/null
   send_msg "$chat" "Display off."
 }
 
 _cmd_monitor_on() {
   local chat="$1" args="$2"
-  desktop::hyprctl_call dispatch dpms on >/dev/null 2>&1
+  desktop::dbus_call "org.gnome.ScreenSaver" "/org/gnome/ScreenSaver" "org.gnome.ScreenSaver.SetActive" false >/dev/null 2>&1
   send_msg "$chat" "Display on."
 }
 

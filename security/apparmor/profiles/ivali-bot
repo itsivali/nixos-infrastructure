@@ -49,7 +49,7 @@ profile ivali-bot /run/current-system/sw/bin/bash flags=(complain) {
   /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,curl,jq,timeout,cat,head,tail,wc,stat,date,hostname,uname,free,df,uptime,nproc,ip,ss,dig,timedatectl,loginctl} ix,
 
   # ── Desktop command binaries (execute as user) ───────────────
-  /run/current-system/sw/bin/{xdg-open,gnome-screenshot,brightnessctl,playerctl,notify-send,wpctl,wl-copy,wl-paste,gdbus,bash,systemd-run,nohup,gnome-session-quit} ix,
+  /run/current-system/sw/bin/{xdg-open,gnome-screenshot,gnome-session-quit,gnome-shell,brightnessctl,playerctl,notify-send,wpctl,wl-copy,wl-paste,gdbus,bash,systemd-run,nohup} ix,
 
   # ── Session environment discovery ────────────────────────────
   /proc/[0-9]*/environ r,

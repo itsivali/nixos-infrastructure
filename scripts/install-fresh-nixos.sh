@@ -1,19 +1,25 @@
 #!/run/current-system/sw/bin/bash
-# install-fresh-nixos.sh v3 — Universal NixOS + GNOME bootstrap
+# install-fresh-nixos.sh v4 — GNOME NixOS bootstrap
 #
-# Bootstrap a fresh NixOS machine from the willisivali/nixos-infrastructure flake.
-# Sets up GNOME desktop, BTRFS optimization, and all infrastructure.
+# Bootstrap a fresh NixOS machine with GNOME from the infrastructure flake.
+# Designed to run on a freshly installed NixOS with the GNOME desktop option.
+# Clones the repo, detects hardware, registers the host, and deploys.
 #
 # Usage:
 #   nix --extra-experimental-features "nix-command flakes" \
 #     shell nixpkgs#curl --command bash -c \
 #     'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
 #
-# Or with flags for non-interactive:
-#   curl -fsSL ... | bash -s -- --host my-laptop --user myuser --yes
-#
-# Environment variables (overridable):
-#   REPO_URL, GIT_PUSH_URL, REPO_DIR, BRANCH, YES
+# Flags:
+#   --host NAME        Host name (default: current hostname)
+#   --user NAME        Username (default: current user)
+#   --desktop gnome    Desktop environment (default: gnome)
+#   --push-url URL     Git push URL (default: git@gitlab.com:willisivali/...)
+#   --branch BRANCH    Git branch (default: main)
+#   --yes, -y          Non-interactive mode
+#   --tailnet-domain   Tailscale domain (default: codlet-trench.ts.net)
+#   --ssh-keys KEYS    Comma-separated SSH public keys
+#   --help, -h         Show this help
 set -euo pipefail
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
@@ -23,7 +29,6 @@ REPO_DIR="${REPO_DIR:-$HOME/nixos-infrastructure}"
 BRANCH="${BRANCH:-main}"
 NIX_FEATURES="nix-command flakes"
 
-# ── Parse flags ──────────────────────────────────────────────────────────────
 HOST="${HOST:-}"
 USER_NAME="${USER_NAME:-}"
 YES="${YES:-false}"
@@ -49,12 +54,11 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --host NAME        Host name (default: current hostname)"
       echo "  --user NAME        Username (default: current user)"
-      echo "  --repo PATH        Repository path (default: ~/nixos-infrastructure)"
-      echo "  --desktop TYPE     Desktop environment: gnome (default)"
-      echo "  --push-url URL     Git push URL (default: git@gitlab.com:willisivali/nixos-infrastructure.git)"
+      echo "  --desktop TYPE     Desktop: gnome (default)"
+      echo "  --push-url URL     Git push URL"
       echo "  --branch BRANCH    Git branch (default: main)"
       echo "  --yes, -y          Non-interactive mode"
-      echo "  --tailnet-domain   Tailscale domain (default: codlet-trench.ts.net)"
+      echo "  --tailnet-domain   Tailscale domain"
       echo "  --ssh-keys KEYS    Comma-separated SSH public keys"
       echo "  --help, -h         Show this help"
       exit 0
@@ -109,7 +113,7 @@ detect_identity() {
 
 # ── Step 3: Enable nix features ──────────────────────────────────────────────
 enable_nix_features() {
-  log "Enabling nix-command + flakes (user config)"
+  log "Enabling nix-command + flakes"
   local conf_dir="$HOME/.config/nix"
   local conf="$conf_dir/nix.conf"
   mkdir -p "$conf_dir"
@@ -118,8 +122,6 @@ enable_nix_features() {
     printf 'experimental-features = nix-command flakes\n' > "$conf"
   elif ! grep -Eq '(^|[[:space:]])experimental-features[[:space:]]*=.*flakes' "$conf"; then
     printf '\nexperimental-features = nix-command flakes\n' >> "$conf"
-  else
-    log "experimental-features already present — skipping"
   fi
 
   export NIX_CONFIG="experimental-features = nix-command flakes"
@@ -143,131 +145,130 @@ clone_or_update_repo() {
 detect_hardware() {
   log "Capturing hardware configuration"
   local dst="$REPO_DIR/hosts/hardware-configuration.nix"
+  local hw_src="/etc/nixos/hardware-configuration.nix"
 
-  if [[ ! -f /etc/nixos/hardware-configuration.nix ]]; then
-    warn "/etc/nixos/hardware-configuration.nix not found — generating"
-    sudo nixos-generate-config --show-hardware-config > /tmp/hardware-configuration.nix
+  if [[ ! -f "$hw_src" ]]; then
+    warn "$hw_src not found — generating"
+    hw_src=$(sudo nixos-generate-config --show-hardware-config 2>/dev/null) || {
+      die "Failed to generate hardware configuration"
+    }
+    printf '%s\n' "$hw_src" > /tmp/hardware-configuration.nix
+    hw_src=/tmp/hardware-configuration.nix
   fi
 
-  install -Dm0644 "${/etc/nixos/hardware-configuration.nix:-/tmp/hardware-configuration.nix}" "$dst"
+  install -Dm0644 "$hw_src" "$dst"
   log "Hardware config written to $dst"
 }
 
-# ── Step 6: Optimize BTRFS (multi-device → single on fastest device) ────────
+# ── Step 6: Register host in hosts/hosts.nix ────────────────────────────────
+register_host() {
+  log "Registering host '$HOST' in hosts/hosts.nix"
+
+  local registry="$REPO_DIR/hosts/hosts.nix"
+  local entry
+
+  # Build feature flags
+  local f_secrets="true" f_runner="true" f_bot="true"
+  local f_tailscale="true" f_exitnode="true" f_ssh="true"
+
+  case ",${FEATURES}," in
+    *,no-secrets,*)             f_secrets="false" ;;
+    *,no-secrets,*)             f_secrets="false" ;;
+    *,no-gitlab-runner,*)       f_runner="false" ;;
+    *,no-bot,*)                 f_bot="false" ;;
+    *,no-tailscale,*)           f_tailscale="false" ;;
+    *,no-tailscale-exit-node,*) f_exitnode="false" ;;
+    *,no-ssh,*)                 f_ssh="false" ;;
+  esac
+
+  # Parse optional SSH keys
+  local keys_block=""
+  if [[ -n "$SSH_KEYS" ]]; then
+    IFS=',' read -ra keys <<< "$SSH_KEYS"
+    for key in "${keys[@]}"; do
+      keys_block+="      \"${key}\";\n"
+    done
+    keys_block="\n${keys_block}    "
+  fi
+
+  local host_entry
+  host_entry=$(cat <<ENTRY_EOF
+
+  ${HOST} = {
+    hostName = "${HOST}";
+    userName = "${USER_NAME}";
+    repoPath = "${REPO_DIR}";
+    tags = [ "tag:personal" ];
+    tailnetDomain = "${TAILNET_DOMAIN}";
+    gitlabRunnerTags = [ "nixos" "${HOST}" "self-hosted" ];
+    sshAuthorizedKeys = [${keys_block}];
+    sopsKeyPath = "/home/${USER_NAME}/.config/sops/age/keys.txt";
+    features = {
+      secrets = ${f_secrets};
+      gitlabRunner = ${f_runner};
+      bot = ${f_bot};
+      tailscale = ${f_tailscale};
+      tailscaleExitNode = ${f_exitnode};
+      ssh = ${f_ssh};
+    };
+    config = {};
+  };
+ENTRY_EOF
+)
+
+  # Check if host already registered
+  if grep -Eq "^\s+${HOST}\s*=" "$registry"; then
+    log "Host '$HOST' already registered — updating registry entry"
+    # Remove existing entry (from the line with hostname to its closing };)
+    if [[ "$YES" == "true" ]]; then
+      # Non-interactive: silently keep existing entry
+      return 0
+    fi
+    read -p "Host '$HOST' already in registry. Overwrite? [y/N]: " overwrite
+    [[ "${overwrite,,}" == "y" ]] || return 0
+    # Remove old entry using awk (from match line to closing };)
+    local tmp
+    tmp=$(mktemp)
+    awk -v host="${HOST}" '
+      $0 ~ "^[[:space:]]*" host "[[:space:]]*=" { skip=1 }
+      skip && /^[[:space:]]*};/ { skip=0; next }
+      !skip { print }
+    ' "$registry" > "$tmp"
+    mv "$tmp" "$registry"
+  fi
+
+  # Insert new entry before the closing }
+  local tmp
+  tmp=$(mktemp)
+  head -n -1 "$registry" > "$tmp"
+  echo "$host_entry" >> "$tmp"
+  echo "}" >> "$tmp"
+  mv "$tmp" "$registry"
+
+  log "Host '$HOST' registered in hosts/hosts.nix"
+}
+
+# ── Step 7: Optimize BTRFS (single NVMe) ────────────────────────────────────
 optimize_btrfs() {
-  log "Checking BTRFS layout"
+  log "Optimizing BTRFS filesystem"
   local devices
   devices=$(sudo btrfs filesystem show / 2>/dev/null | grep -c 'devid') || true
 
-  if [[ "$devices" -le 1 ]]; then
-    log "Single-device BTRFS — no optimization needed"
+  if [[ "$devices" -gt 1 ]]; then
+    warn "Multi-device BTRFS detected — skipping optimization"
+    warn "This script assumes a single NVMe. Manually convert to single-device first."
     return
   fi
 
-  if sudo btrfs filesystem df / 2>/dev/null | grep -q RAID1; then
-    warn "Multi-device BTRFS with RAID1 detected — converting to single"
-    warn "This moves all data to the fastest device and removes redundancy."
-    if [[ "$YES" != "true" ]]; then
-      read -p "Continue with RAID1→single conversion? [y/N]: " confirm
-      [[ "${confirm,,}" == "y" ]] || { warn "Skipping BTRFS optimization"; return; }
-    fi
+  log "Running BTRFS balance for optimal layout"
+  sudo btrfs balance start / || true
 
-    log "Converting RAID1 → single (data + metadata)"
-    while sudo btrfs device usage / 2>/dev/null | grep -q 'RAID1'; do
-      sudo btrfs balance start -dprofiles=raid1 -dconvert=single / || true
-    done
-
-    log "Converting RAID1 metadata → single"
-    sudo btrfs balance start -mprofiles=raid1 -mconvert=single / || true
-
-    log "Removing secondary devices"
-    local second_dev
-    second_dev=$(sudo btrfs filesystem show / 2>/dev/null | grep -E '^\s+devid\s+2' | awk '{print $NF}')
-    if [[ -n "$second_dev" ]]; then
-      sudo btrfs device remove "$second_dev" / || warn "Could not remove $second_dev"
-    fi
-
-    log "Final balance for optimal layout"
-    sudo btrfs balance start / || true
-    log "BTRFS optimization complete — now single-device on NVMe"
-  fi
-}
-
-# ── Step 7: Generate host config ─────────────────────────────────────────────
-generate_host_config() {
-  log "Generating host configuration: $HOST"
-
-  local host_dir="$REPO_DIR/hosts/$HOST"
-  mkdir -p "$host_dir"
-
-  local host_nix="$host_dir/${HOST}.nix"
-  if [[ -f "$host_nix" ]] && [[ "$YES" != "true" ]]; then
-    read -p "Host config exists. Overwrite? [y/N]: " overwrite
-    [[ "${overwrite,,}" == "y" ]] || return 0
+  if command -v fstrim >/dev/null 2>&1; then
+    log "Running fstrim to reclaim free space"
+    sudo fstrim -va || true
   fi
 
-  cat > "$host_nix" << HOST_EOF
-##############################################################################
-#
-# Host Configuration — ${HOST}
-#
-# Purpose
-# -------
-# Host-specific configuration for ${HOST} laptop.
-# Desktop: GNOME
-#
-##############################################################################
-
-{ config, lib, pkgs, hostSpec, hostName, defaultUsername, gitlabUrl, ... }:
-
-let
-  userName = hostSpec.userName or defaultUsername;
-in
-{
-  ############################################################################
-  # SYSTEM IDENTITY
-  ############################################################################
-  networking.hostName = hostName;
-
-  ############################################################################
-  # USER ACCOUNT
-  ############################################################################
-  users.users.\${userName} = {
-    isNormalUser = true;
-    description = "Primary user";
-    extraGroups = [ "wheel" "networkmanager" "docker" "systemd-journal" ];
-    shell = pkgs.zsh;
-    home = "/home/\${userName}";
-    createHome = true;
-    useDefaultShell = true;
-  };
-
-  ############################################################################
-  # SUDO CONFIGURATION
-  ############################################################################
-  security.sudo.extraRules = [
-    {
-      users = [ userName ];
-      commands = [
-        {
-          command = "ALL";
-          options = [ "NOPASSWD" ];
-        }
-      ];
-    }
-  ];
-
-  ############################################################################
-  # GIT CONFIGURATION (system-wide for root/CI access)
-  ############################################################################
-  environment.etc."gitconfig".text = ''
-    [safe]
-      directory = $(dirname "$REPO_DIR")/nixos-infrastructure
-  '';
-}
-HOST_EOF
-
-  log "Generated $host_nix"
+  log "BTRFS optimization complete"
 }
 
 # ── Step 8: Install format hook ──────────────────────────────────────────────
@@ -287,7 +288,10 @@ format_and_validate() {
   log "Formatting Nix files"
   ( cd "$REPO_DIR" && nix_with_git fmt ) || warn "nix fmt failed — continuing"
 
-  log "Evaluating nixosConfigurations.${HOST} (dry-run, no build)"
+  log "Running flake check (no build)"
+  ( cd "$REPO_DIR" && nix flake check --no-build ) || warn "flake check found issues — continuing"
+
+  log "Evaluating nixosConfigurations.${HOST} (dry-run)"
   local drv
   drv=$( cd "$REPO_DIR" && nix_with_git eval --raw ".#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath" 2>/dev/null ) || {
     warn "Config evaluation failed — check for errors above"
@@ -296,7 +300,7 @@ format_and_validate() {
   log "Config evaluates cleanly → ${drv}"
 }
 
-# ── Step 10: Switch system ────────────────────────────────────────────────────
+# ── Step 10: Switch system ───────────────────────────────────────────────────
 switch_system() {
   log "Running nixos-rebuild switch → ${HOST}"
   sudo nixos-rebuild switch \
@@ -328,22 +332,32 @@ Next steps
 3. Bring up Tailscale:
      sudo tailscale up --ssh
 
-4. Install GNOME extensions from browser:
-     Open GNOME Extensions app → Browse for:
-     - Dash to Dock (already included)
-     - Desktop Control (custom, built in)
+4. Verify pre-installed GNOME Shell extensions:
+     gnome-extensions list
+   Expected: appindicatorsupport@rgcjonas.gmail.com,
+             dash-to-dock@micxgx.gmail.com,
+             blur-my-shell@aunetx,
+             user-theme@gnome-shell-extensions.gcampax.github.com,
+             caffeine@patapon.info,
+             clipboard-indicator@tudmotu.com,
+             Vitals@CoreCoding.com,
+             sound-output-device-chooser@kgshank.net
 
-5. Commit the generated hardware file:
+5. Set up SOPS age key:
+     mkdir -p ~/.config/sops/age
+     # Copy your age key to ~/.config/sops/age/keys.txt
+
+6. Commit and push generated files:
      cd "$REPO_DIR"
-     git add hosts/hardware-configuration.nix hosts/$HOST/
+     git add hosts/hardware-configuration.nix hosts/hosts.nix
      git commit -m "chore: add host configuration for $HOST"
-     git push
+     git push all main
 
-6. Test GitLab SSH:
+7. Test GitLab SSH:
      ssh -T git@gitlab.com
 
-7. Launch ivali dashboard:
-     ivali dashboard
+8. Verify the Telegram bot:
+     systemctl status ivali-bot
 
 EOF
 }
@@ -355,8 +369,8 @@ main() {
   enable_nix_features
   clone_or_update_repo
   detect_hardware
+  register_host
   optimize_btrfs
-  generate_host_config
   install_format_hook
   format_and_validate
   switch_system

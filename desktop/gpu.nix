@@ -10,11 +10,6 @@
 # ---------
 # boot.initrd.kernelModules, services.xserver.videoDrivers, hardware.graphics
 #
-# Does NOT Own
-# ------------
-# - Desktop environment (desktop/gnome-lean.nix)
-# - Power management (desktop/gnome-lean.nix)
-#
 ##############################################################################
 
 { ... }:

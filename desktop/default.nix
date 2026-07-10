@@ -4,10 +4,9 @@
 # Automatically imports every *.nix file placed in this directory.
 #
 # Current modules:
-#   gnome-lean.nix  ← GNOME + Wayland + power management
 #   gpu.nix         ← AMD GPU acceleration
-#   desktop-control.nix — GNOME Shell extension for bot integration
+#   gnome/          ← GNOME desktop, GDM, extensions, audio, packages
 { ... }:
 {
-  imports = import ../lib/auto-imports.nix ./.;
+  imports = [ ./gnome ] ++ import ../lib/auto-imports.nix ./.;
 }

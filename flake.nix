@@ -20,27 +20,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    sops-nix = {
-      url = "github:Mic92/sops-nix";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    hyprland = {
-      url = "github:hyprwm/Hyprland";
-    };
-
-    hyprland-contrib = {
-      url = "github:hyprwm/contrib";
-    };
-
-    hyde = {
-      url = "github:HyDE-Project/HyDE";
-      flake = false;
-    };
+      sops-nix = {
+        url = "github:Mic92/sops-nix";
+        inputs.nixpkgs.follows = "nixpkgs";
+      };
   };
 
   outputs =
-    inputs@{ self, nixpkgs, home-manager, sops-nix, hyprland, hyprland-contrib, hyde, ... }:
+    inputs@{ self, nixpkgs, home-manager, sops-nix, ... }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -56,19 +43,13 @@
         config.allowUnfree = true;
       };
 
-      # HyDE source packages
-      hyde-configs = pkgs.callPackage ./packages/hyde/hyde-configs.nix {
-        inherit (pkgs) lib;
-        src = hyde;
-      };
-
       # Generate nixosConfigurations for each host
       nixosConfigurations = lib.mapAttrs (name: hostSpec:
         lib.nixosSystem {
           inherit system;
 
           specialArgs = {
-            inherit inputs self hyde-configs;
+            inherit self;
             hostSpec = hostSpec;
             defaultUsername = hostSpec.userName or defaultUsername;
             username = hostSpec.userName or defaultUsername;
@@ -94,7 +75,7 @@
                 useUserPackages = true;
 
                 extraSpecialArgs = {
-                  inherit inputs hostSpec defaultUsername hyde-configs;
+                  inherit inputs hostSpec defaultUsername;
                   hostName = hostSpec.hostName;
                   username = hostSpec.userName or defaultUsername;
                 };
@@ -117,8 +98,6 @@
       # Package sets
       # ─────────────────────────────────────────────
       packages.${system} = {
-        inherit hyde-configs;
-
         system = pkgs.buildEnv {
           name = "ivali-system-packages";
           paths =

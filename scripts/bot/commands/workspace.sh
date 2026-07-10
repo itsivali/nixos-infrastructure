@@ -1,5 +1,5 @@
 # commands/workspace.sh — /workspace next|prev|N — workspace switching
-# Uses hyprctl dispatch for Hyprland workspace control.
+# Uses GNOME Shell D-Bus Eval for workspace control.
 ##############################################################################
 
 _cmd_workspace() {
@@ -7,7 +7,7 @@ _cmd_workspace() {
 
   if [[ -z "$args" ]]; then
     send_msg "$chat" "*Usage:* \`/workspace <next|prev|N>\`
-_Switch Hyprland workspaces._
+_Switch GNOME workspaces._
 _Examples:_ \`/workspace next\`, \`/workspace 3\`"
     return
   fi
@@ -16,15 +16,16 @@ _Examples:_ \`/workspace next\`, \`/workspace 3\`"
 
   case "$args" in
     next)
-      desktop::hyprctl_call dispatch workspace +1 >/dev/null 2>&1
+      desktop::gnome_shell_eval "global.workspace_manager.get_workspace_by_index(Math.min(global.workspace_manager.n_workspaces-1,global.workspace_manager.get_active_workspace_index()+1)).activate(global.get_current_time())"
       send_msg "$chat" "Workspace next"
       ;;
     prev)
-      desktop::hyprctl_call dispatch workspace -1 >/dev/null 2>&1
+      desktop::gnome_shell_eval "global.workspace_manager.get_workspace_by_index(Math.max(0,global.workspace_manager.get_active_workspace_index()-1)).activate(global.get_current_time())"
       send_msg "$chat" "Workspace prev"
       ;;
     [0-9]*)
-      desktop::hyprctl_call dispatch workspace "$args" >/dev/null 2>&1
+      local idx=$(( args - 1 ))
+      desktop::gnome_shell_eval "if(${idx}>=0&&${idx}<global.workspace_manager.n_workspaces){global.workspace_manager.get_workspace_by_index(${idx}).activate(global.get_current_time())}"
       send_msg "$chat" "Workspace → ${args}"
       ;;
     *)

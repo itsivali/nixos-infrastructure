@@ -11,6 +11,7 @@ Structured documentation for this NixOS infrastructure repository.
 | [hosts.md](hosts.md) | Host registry, adding new hosts, template system, hardware config, per-host secrets |
 | [deployment.md](deployment.md) | Deployment methods, CI/CD pipeline, health checks, rollback, generation tracking |
 | [troubleshooting.md](troubleshooting.md) | Common issues and fixes for flake, build, SOPS, Tailscale, Home Manager, GitLab Runner |
+| [tailscale-mesh.md](tailscale-mesh.md) | Multi-host Tailscale mesh setup, ACLs, MagicDNS, monitoring |
 
 ## Quick Reference
 

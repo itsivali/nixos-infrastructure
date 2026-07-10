@@ -1,10 +1,7 @@
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.hydenix;
-in
 {
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf config.ivali.desktop.gnome.enable {
     services.pipewire = {
       enable = true;
       audio.enable = true;

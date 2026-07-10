@@ -16,7 +16,7 @@
 #
 # Desktop commands use call-time session bridging (lib/desktop.sh) to
 # discover DBUS_SESSION_BUS_ADDRESS, XDG_RUNTIME_DIR, and WAYLAND_DISPLAY
-# from the running GNOME session at dispatch time. This avoids baking stale
+# from the running desktop session at dispatch time. This avoids baking stale
 # env vars at service start and works across session restarts.
 #
 ##############################################################################
@@ -94,6 +94,7 @@ in
         firefox
         gnome-terminal
         nautilus
+        gnome-console
         zed-editor
 
         # Desktop control (GNOME)
@@ -101,6 +102,9 @@ in
         libnotify
         wireplumber
         glib
+        gnome-screenshot
+        gnome-shell
+        gnome-session
 
         # Clipboard (Wayland-native)
         wl-clipboard

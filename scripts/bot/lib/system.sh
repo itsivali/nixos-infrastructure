@@ -99,8 +99,8 @@ sys_tailscale() {
 }
 
 sys_session() {
-  if pgrep -u "${DEFAULT_USER}" Hyprland >/dev/null 2>&1; then
-    echo "Hyprland (Wayland)"
+  if pgrep -u "${DEFAULT_USER}" gnome-shell >/dev/null 2>&1; then
+    echo "GNOME (Wayland)"
   elif [[ -n "${XDG_SESSION_TYPE:-}" ]]; then
     echo "${XDG_SESSION_TYPE^^} session (${DEFAULT_USER})"
   else

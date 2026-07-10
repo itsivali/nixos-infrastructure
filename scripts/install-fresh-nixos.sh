@@ -1,9 +1,10 @@
 #!/run/current-system/sw/bin/bash
-# install-fresh-nixos.sh v4 — GNOME NixOS bootstrap
+# install-fresh-nixos.sh v5 — GNOME NixOS bootstrap
 #
 # Bootstrap a fresh NixOS machine with GNOME from the infrastructure flake.
 # Designed to run on a freshly installed NixOS with the GNOME desktop option.
-# Clones the repo, detects hardware, registers the host, and deploys.
+# Clones the repo, detects hardware, registers the host, sets up secrets,
+# generates SSH keys, and deploys.
 #
 # Usage:
 #   nix --extra-experimental-features "nix-command flakes" \
@@ -11,15 +12,18 @@
 #     'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
 #
 # Flags:
-#   --host NAME        Host name (default: current hostname)
-#   --user NAME        Username (default: current user)
-#   --desktop gnome    Desktop environment (default: gnome)
-#   --push-url URL     Git push URL (default: git@gitlab.com:willisivali/...)
-#   --branch BRANCH    Git branch (default: main)
-#   --yes, -y          Non-interactive mode
-#   --tailnet-domain   Tailscale domain (default: codlet-trench.ts.net)
-#   --ssh-keys KEYS    Comma-separated SSH public keys
-#   --help, -h         Show this help
+#   --host NAME          Host name (default: current hostname)
+#   --user NAME          Username (default: current user)
+#   --desktop gnome      Desktop environment (default: gnome)
+#   --push-url URL       Git push URL
+#   --branch BRANCH      Git branch (default: main)
+#   --age-key-file PATH  Path to existing age key file (default: extract from sops-setup.sh)
+#   --ssh-email EMAIL    Email for SSH key comment (default: itsivali@outlook.com)
+#   --yes, -y            Non-interactive mode
+#   --tailnet-domain     Tailscale domain (default: codlet-trench.ts.net)
+#   --ssh-keys KEYS      Comma-separated SSH public keys
+#   --no-ssh-keys        Skip SSH key generation
+#   --help, -h           Show this help
 set -euo pipefail
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
@@ -36,31 +40,40 @@ DESKTOP="${DESKTOP:-gnome}"
 FEATURES="${FEATURES:-secrets,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh}"
 TAILNET_DOMAIN="${TAILNET_DOMAIN:-codlet-trench.ts.net}"
 SSH_KEYS="${SSH_KEYS:-}"
+AGE_KEY_FILE="${AGE_KEY_FILE:-}"
+SSH_EMAIL="${SSH_EMAIL:-itsivali@outlook.com}"
+NO_SSH_KEYS="${NO_SSH_KEYS:-false}"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --host)    HOST="$2";      shift 2 ;;
-    --user)    USER_NAME="$2"; shift 2 ;;
-    --repo)    REPO_DIR="$2";  shift 2 ;;
-    --desktop) DESKTOP="$2";   shift 2 ;;
-    --push-url) GIT_PUSH_URL="$2"; shift 2 ;;
-    --branch)  BRANCH="$2";    shift 2 ;;
-    --yes|-y)  YES="true";     shift ;;
-    --tailnet-domain) TAILNET_DOMAIN="$2"; shift 2 ;;
-    --ssh-keys) SSH_KEYS="$2"; shift 2 ;;
+    --host)            HOST="$2";      shift 2 ;;
+    --user)            USER_NAME="$2"; shift 2 ;;
+    --repo)            REPO_DIR="$2";  shift 2 ;;
+    --desktop)         DESKTOP="$2";   shift 2 ;;
+    --push-url)        GIT_PUSH_URL="$2"; shift 2 ;;
+    --branch)          BRANCH="$2";    shift 2 ;;
+    --age-key-file)    AGE_KEY_FILE="$2"; shift 2 ;;
+    --ssh-email)       SSH_EMAIL="$2"; shift 2 ;;
+    --yes|-y)          YES="true";     shift ;;
+    --tailnet-domain)  TAILNET_DOMAIN="$2"; shift 2 ;;
+    --ssh-keys)        SSH_KEYS="$2";  shift 2 ;;
+    --no-ssh-keys)     NO_SSH_KEYS="true"; shift ;;
     --help|-h)
       echo "Usage: install-fresh-nixos.sh [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --host NAME        Host name (default: current hostname)"
-      echo "  --user NAME        Username (default: current user)"
-      echo "  --desktop TYPE     Desktop: gnome (default)"
-      echo "  --push-url URL     Git push URL"
-      echo "  --branch BRANCH    Git branch (default: main)"
-      echo "  --yes, -y          Non-interactive mode"
-      echo "  --tailnet-domain   Tailscale domain"
-      echo "  --ssh-keys KEYS    Comma-separated SSH public keys"
-      echo "  --help, -h         Show this help"
+      echo "  --host NAME          Host name (default: current hostname)"
+      echo "  --user NAME          Username (default: current user)"
+      echo "  --desktop TYPE       Desktop: gnome (default)"
+      echo "  --push-url URL       Git push URL"
+      echo "  --branch BRANCH      Git branch (default: main)"
+      echo "  --age-key-file PATH  Path to existing age key file"
+      echo "  --ssh-email EMAIL    Email for SSH key comment"
+      echo "  --yes, -y            Non-interactive mode"
+      echo "  --tailnet-domain     Tailscale domain"
+      echo "  --ssh-keys KEYS      Comma-separated SSH public keys"
+      echo "  --no-ssh-keys        Skip SSH key generation"
+      echo "  --help, -h           Show this help"
       exit 0
       ;;
     *) echo "Unknown option: $1"; exit 1 ;;
@@ -160,12 +173,73 @@ detect_hardware() {
   log "Hardware config written to $dst"
 }
 
-# ── Step 6: Register host in hosts/hosts.nix ────────────────────────────────
+# ── Step 6: Install SOPS age key ─────────────────────────────────────────────
+setup_age_key() {
+  local key_dir="$HOME/.config/sops/age"
+  local key_file="$key_dir/keys.txt"
+
+  # Priority: --age-key-file > $AGE_KEY env > sops-setup.sh > prompt
+  if [[ -n "$AGE_KEY_FILE" ]]; then
+    log "Installing age key from --age-key-file: ${AGE_KEY_FILE}"
+    [[ -f "$AGE_KEY_FILE" ]] || die "Age key file not found: $AGE_KEY_FILE"
+    mkdir -p "$key_dir"
+    cp "$AGE_KEY_FILE" "$key_file"
+  elif [[ -n "${AGE_KEY:-}" ]]; then
+    log "Installing age key from AGE_KEY env var"
+    mkdir -p "$key_dir"
+    printf '%s\n' "$AGE_KEY" > "$key_file"
+  elif [[ -f "$REPO_DIR/scripts/sops-setup.sh" ]]; then
+    log "Installing age key from scripts/sops-setup.sh"
+    bash "$REPO_DIR/scripts/sops-setup.sh"
+    # sops-setup.sh has hardcoded /home/ivali — symlink if user differs
+    if [[ "$USER_NAME" != "ivali" ]]; then
+      mkdir -p "$key_dir"
+      ln -sf "/home/ivali/.config/sops/age/keys.txt" "$key_file"
+    fi
+    return
+  elif [[ "$YES" == "true" ]]; then
+    warn "Non-interactive mode and no age key source — skipping"
+    warn "Provide --age-key-file or AGE_KEY env var"
+    return
+  else
+    log "No age key source found — paste your existing age key"
+    log "Get it from: cat ~/.config/sops/age/keys.txt (on your old system)"
+    echo ""
+    mkdir -p "$key_dir"
+    echo "Paste the entire AGE-SECRET-KEY-... line, then press Ctrl+D:"
+    cat > "$key_file" || {
+      warn "No key entered — skipping age key setup"
+      rm -f "$key_file"
+      return
+    }
+    if [[ ! -s "$key_file" ]]; then
+      warn "Empty key — skipping"
+      rm -f "$key_file"
+      return
+    fi
+  fi
+
+  chmod 700 "$key_dir"
+  chmod 600 "$key_file"
+
+  # Verify it looks like an age key
+  if head -1 "$key_file" | grep -q 'AGE-SECRET-KEY-'; then
+    log "Age key installed at $key_file"
+    local pub
+    pub=$(age-keygen -y "$key_file" 2>/dev/null || true)
+    if [[ -n "$pub" ]]; then
+      log "Public key: ${pub}"
+    fi
+  else
+    warn "File does not look like a valid age key — check content"
+  fi
+}
+
+# ── Step 7: Register host in hosts/hosts.nix ────────────────────────────────
 register_host() {
   log "Registering host '$HOST' in hosts/hosts.nix"
 
   local registry="$REPO_DIR/hosts/hosts.nix"
-  local entry
 
   # Build feature flags
   local f_secrets="true" f_runner="true" f_bot="true"
@@ -219,14 +293,11 @@ ENTRY_EOF
   # Check if host already registered
   if grep -Eq "^\s+${HOST}\s*=" "$registry"; then
     log "Host '$HOST' already registered — updating registry entry"
-    # Remove existing entry (from the line with hostname to its closing };)
     if [[ "$YES" == "true" ]]; then
-      # Non-interactive: silently keep existing entry
       return 0
     fi
     read -p "Host '$HOST' already in registry. Overwrite? [y/N]: " overwrite
     [[ "${overwrite,,}" == "y" ]] || return 0
-    # Remove old entry using awk (from match line to closing };)
     local tmp
     tmp=$(mktemp)
     awk -v host="${HOST}" '
@@ -237,7 +308,6 @@ ENTRY_EOF
     mv "$tmp" "$registry"
   fi
 
-  # Insert new entry before the closing }
   local tmp
   tmp=$(mktemp)
   head -n -1 "$registry" > "$tmp"
@@ -248,7 +318,7 @@ ENTRY_EOF
   log "Host '$HOST' registered in hosts/hosts.nix"
 }
 
-# ── Step 7: Optimize BTRFS (single NVMe) ────────────────────────────────────
+# ── Step 8: Optimize BTRFS (single NVMe) ────────────────────────────────────
 optimize_btrfs() {
   log "Optimizing BTRFS filesystem"
   local devices
@@ -271,7 +341,7 @@ optimize_btrfs() {
   log "BTRFS optimization complete"
 }
 
-# ── Step 8: Install format hook ──────────────────────────────────────────────
+# ── Step 9: Install format hook ──────────────────────────────────────────────
 install_format_hook() {
   log "Installing pre-commit formatter hook"
   local hook_src="$REPO_DIR/hooks/pre-commit"
@@ -283,7 +353,7 @@ install_format_hook() {
   fi
 }
 
-# ── Step 9: Format and validate ──────────────────────────────────────────────
+# ── Step 10: Format and validate ─────────────────────────────────────────────
 format_and_validate() {
   log "Formatting Nix files"
   ( cd "$REPO_DIR" && nix_with_git fmt ) || warn "nix fmt failed — continuing"
@@ -300,7 +370,7 @@ format_and_validate() {
   log "Config evaluates cleanly → ${drv}"
 }
 
-# ── Step 10: Switch system ───────────────────────────────────────────────────
+# ── Step 11: Switch system ───────────────────────────────────────────────────
 switch_system() {
   log "Running nixos-rebuild switch → ${HOST}"
   sudo nixos-rebuild switch \
@@ -308,7 +378,74 @@ switch_system() {
     --flake "$REPO_DIR#${HOST}"
 }
 
-# ── Step 11: Post-install ────────────────────────────────────────────────────
+# ── Step 12: Validate SOPS secrets ──────────────────────────────────────────
+validate_sops() {
+  log "Validating SOPS secrets"
+
+  if [[ ! -d /run/secrets ]]; then
+    warn "/run/secrets/ does not exist — SOPS may not be configured"
+    return
+  fi
+
+  local secrets
+  secrets=$(ls -1 /run/secrets/ 2>/dev/null | wc -l) || secrets=0
+
+  if [[ "$secrets" -eq 0 ]]; then
+    warn "/run/secrets/ is empty — age key may be wrong or sops-nix config is broken"
+    warn "Check: systemctl status sops-nix"
+    warn "Check: cat ~/.config/sops/age/keys.txt (must be valid)"
+  else
+    log "SOPS secrets mounted at /run/secrets/ (${secrets} files)"
+    ls -la /run/secrets/
+  fi
+}
+
+# ── Step 13: Generate SSH keys ──────────────────────────────────────────────
+generate_ssh_keys() {
+  if [[ "$NO_SSH_KEYS" == "true" ]]; then
+    log "Skipping SSH key generation (--no-ssh-keys)"
+    return
+  fi
+
+  local key="$HOME/.ssh/id_ed25519"
+
+  log "Setting up SSH keys"
+
+  mkdir -p "$HOME/.ssh"
+  chmod 700 "$HOME/.ssh"
+
+  if [[ -f "$key" ]]; then
+    log "SSH key already exists: ${key}"
+  else
+    ssh-keygen -t ed25519 -C "$SSH_EMAIL" -f "$key" -N "" || {
+      warn "SSH key generation failed — check: ssh-keygen available?"
+      return
+    }
+    log "SSH key generated: ${key}"
+  fi
+
+  # Start ssh-agent if necessary
+  if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
+    eval "$(ssh-agent -s)" >/dev/null 2>&1 || true
+  fi
+  ssh-add "$key" >/dev/null 2>&1 || true
+
+  echo ""
+  echo "────────────────────────────────────────────"
+  echo "  SSH Public Key"
+  echo "────────────────────────────────────────────"
+  cat "${key}.pub"
+  echo ""
+  echo "────────────────────────────────────────────"
+  echo ""
+  echo "Add this key to:"
+  echo "  GitHub: https://github.com/settings/ssh/new"
+  echo "  GitLab: https://gitlab.com/-/user_settings/ssh_keys"
+  echo ""
+  log "SSH key setup complete"
+}
+
+# ── Step 14: Post-install ────────────────────────────────────────────────────
 post_install() {
   cat <<EOF
 
@@ -343,21 +480,22 @@ Next steps
              Vitals@CoreCoding.com,
              sound-output-device-chooser@kgshank.net
 
-5. Set up SOPS age key:
-     mkdir -p ~/.config/sops/age
-     # Copy your age key to ~/.config/sops/age/keys.txt
+5. Add your SSH public key to GitHub and GitLab:
+     GitHub: https://github.com/settings/ssh/new
+     GitLab: https://gitlab.com/-/user_settings/ssh_keys
 
-6. Commit and push generated files:
+6. Test SSH connections:
+     ssh -T git@github.com
+     ssh -T git@gitlab.com
+
+7. Verify the Telegram bot:
+     systemctl status ivali-bot
+
+8. Commit and push generated files:
      cd "$REPO_DIR"
      git add hosts/hardware-configuration.nix hosts/hosts.nix
      git commit -m "chore: add host configuration for $HOST"
      git push all main
-
-7. Test GitLab SSH:
-     ssh -T git@gitlab.com
-
-8. Verify the Telegram bot:
-     systemctl status ivali-bot
 
 EOF
 }
@@ -369,11 +507,14 @@ main() {
   enable_nix_features
   clone_or_update_repo
   detect_hardware
+  setup_age_key
   register_host
   optimize_btrfs
   install_format_hook
   format_and_validate
   switch_system
+  validate_sops
+  generate_ssh_keys
   post_install
 }
 

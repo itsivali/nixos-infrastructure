@@ -59,70 +59,62 @@ Usage: \`/metrics [category]\`
 
 _metrics_overview() {
   local chat="$1"
-  local out="📊 *System Metrics Overview*
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-"
+  local sep="━━━━━━━━━━━━━━━━━━━━━━"
 
   # CPU
   local cpu_idle
   cpu_idle=$(top -bn1 2>/dev/null | awk '/^%Cpu/{print $8}' || echo "0")
   local cpu_used=$(awk "BEGIN{printf \"%.1f\", 100 - ${cpu_idle:-0}}" 2>/dev/null || echo "0")
   local cpu_cores=$(nproc 2>/dev/null || echo "?")
-  out+="*CPU:* ${cpu_used}% (${cpu_cores} cores)
-"
 
   # Memory
-  local mem_info
-  mem_info=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%d%% used (%dMB/%dMB)", $3/$2*100, $3, $2}')
-  out+="*Memory:* ${mem_info:-unknown}
-"
+  local mem_pct=$(free -m 2>/dev/null | awk '/^Mem:/{printf "%.0f", ($3/$2)*100}')
+  local mem_used=$(free -m 2>/dev/null | awk '/^Mem:/{print $3}')
+  local mem_total=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
 
   # Disk
-  local disk_info
-  disk_info=$(df -h / 2>/dev/null | awk 'NR==2{printf "%s used / %s total (%s)", $3, $2, $5}')
-  out+="*Disk:* ${disk_info:-unknown}
-"
+  local disk_pct=$(df -h / 2>/dev/null | awk 'NR==2{print $5}' | tr -d '%')
+  local disk_used=$(df -h / 2>/dev/null | awk 'NR==2{print $3}')
+  local disk_total=$(df -h / 2>/dev/null | awk 'NR==2{print $2}')
 
   # Load
   local load_info
   load_info=$(uptime 2>/dev/null | awk -F'load average: ' '{print $2}')
-  out+="*Load:* ${load_info:-unknown}
-"
 
   # Uptime
   local uptime_info
   uptime_info=$(uptime 2>/dev/null | sed 's/.*up //; s/,.*//')
-  out+="*Uptime:* ${uptime_info:-unknown}
-"
 
   # Network
   local net_info
   net_info=$(ip -4 addr show 2>/dev/null | awk '/inet /{print $2 " on " $NF}' | head -2 | tr '\n' ', ' | sed 's/, $//')
-  out+="*Network:* ${net_info:-unknown}
-"
 
   # Tailscale
+  local ts_status_str="not installed"
   if command -v tailscale >/dev/null 2>&1; then
     local ts_ip
     ts_ip=$(tailscale ip -4 2>/dev/null || echo "disconnected")
-    out+="*Tailscale:* ${ts_ip}
-"
-
-    # Tailscale status
-    local ts_status
-    ts_status=$(tailscale status --json 2>/dev/null | jq -r '.Self.Online // false' 2>/dev/null || echo "false")
-    if [[ "$ts_status" == "true" ]]; then
-      out+="*Tailscale Status:* 🟢 Online
-"
+    local ts_online
+    ts_online=$(tailscale status --json 2>/dev/null | jq -r '.Self.Online // false' 2>/dev/null || echo "false")
+    if [[ "$ts_online" == "true" ]]; then
+      ts_status_str="🟢 ${ts_ip}"
     else
-      out+="*Tailscale Status:* 🔴 Offline
-"
+      ts_status_str="🔴 offline"
     fi
   fi
 
-  out+="
-━━━━━━━━━━━━━━━━━━━━━━━━━━
+  local out="📊 *${HOST}* — System Metrics
+${sep}
+
+💻 *CPU:*    \`$(progress_bar "${cpu_used%%.*}" 100)\` (${cpu_used}%, ${cpu_cores} cores)
+🧠 *Memory:* \`$(progress_bar "${mem_pct}" 100)\` (${mem_used}M/${mem_total}M)
+💾 *Disk:*   \`$(progress_bar "${disk_pct}" 100)\` (${disk_used}/${disk_total})
+
+📈 *Load:*  \`${load_info:-unknown}\`
+⏱ *Uptime:* \`${uptime_info:-unknown}\`
+🌐 *Net:*   \`${net_info:-unknown}\`
+📡 *VPN:*   \`${ts_status_str}\`
+${sep}
 Run \`/metrics cpu\` for detailed CPU info"
 
   send_msg "$chat" "$out"
@@ -130,45 +122,43 @@ Run \`/metrics cpu\` for detailed CPU info"
 
 _metrics_cpu() {
   local chat="$1"
-  local out="💻 *CPU Metrics*
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-"
+  local sep="━━━━━━━━━━━━━━━━━━━━━━"
 
   # CPU usage
-  local cpu_info
-  cpu_info=$(top -bn1 2>/dev/null | head -5)
-  out+="\`\`\`
-${cpu_info:-CPU info unavailable}
-\`\`\`
-"
+  local cpu_idle
+  cpu_idle=$(top -bn1 2>/dev/null | awk '/^%Cpu/{print $8}' || echo "0")
+  local cpu_used=$(awk "BEGIN{printf \"%.1f\", 100 - ${cpu_idle:-0}}" 2>/dev/null || echo "0")
+  local cpu_int=${cpu_used%%.*}
 
   # CPU cores
   local cores=$(nproc 2>/dev/null || echo "?")
-  out+="*Cores:* ${cores}
-"
 
   # CPU frequency
+  local freq_str="unknown"
   local freq_file="/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq"
   if [[ -f "$freq_file" ]]; then
     local freq=$(cat "$freq_file" 2>/dev/null)
     local freq_mhz=$(( freq / 1000 ))
-    local freq_ghz=$(awk "BEGIN{printf \"%.2f\", $freq_mhz/1000}")
-    out+="*Frequency:* ${freq_ghz} GHz
-"
+    freq_str="$(awk "BEGIN{printf \"%.2f\", $freq_mhz/1000}") GHz"
   fi
 
   # CPU temperature
+  local temp_str="unknown"
   local temp_file="/sys/class/thermal/thermal_zone0/temp"
   if [[ -f "$temp_file" ]]; then
     local temp=$(cat "$temp_file" 2>/dev/null)
-    local temp_c=$(( temp / 1000 ))
-    out+="*Temperature:* ${temp_c}°C
-"
+    temp_str="$(( temp / 1000 ))°C"
   fi
 
-  out+="
-━━━━━━━━━━━━━━━━━━━━━━━━━━
+  local out="💻 *${HOST}* — CPU Metrics
+${sep}
+
+*Usage:* \`$(progress_bar "${cpu_int}" 100)\` (${cpu_used}%)
+*Cores:* ${cores}
+*Freq:*  ${freq_str}
+*Temp:*  ${temp_str}
+
+${sep}
 *Top processes by CPU:*
 \`\`\`
 $(ps aux --sort=-%cpu 2>/dev/null | head -6 | awk '{printf "%-5s %-6s %s\n", $3"%", $2, $11}')
@@ -179,39 +169,38 @@ $(ps aux --sort=-%cpu 2>/dev/null | head -6 | awk '{printf "%-5s %-6s %s\n", $3"
 
 _metrics_memory() {
   local chat="$1"
-  local out="🧠 *Memory Metrics*
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-"
+  local sep="━━━━━━━━━━━━━━━━━━━━━━"
 
   # Memory usage
-  local mem_info
-  mem_info=$(free -h 2>/dev/null)
-  out+="\`\`\`
-${mem_info:-Memory info unavailable}
-\`\`\`
-"
-
-  # Detailed breakdown
   local mem_used=$(free -m 2>/dev/null | awk '/^Mem:/{print $3}')
   local mem_total=$(free -m 2>/dev/null | awk '/^Mem:/{print $2}')
   local mem_available=$(free -m 2>/dev/null | awk '/^Mem:/{print $7}')
-  local mem_percent=$((100 - (mem_available * 100 / mem_total)))
-
-  out+="*Used:* ${mem_used}MB / ${mem_total}MB (${mem_percent}%)
-*Available:* ${mem_available}MB
-"
+  local mem_pct=0
+  [[ "$mem_total" -gt 0 ]] 2>/dev/null && mem_pct=$(( mem_used * 100 / mem_total ))
 
   # Swap
   local swap_used=$(free -m 2>/dev/null | awk '/^Swap:/{print $3}')
   local swap_total=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
-  if [[ "$swap_total" -gt 0 ]]; then
+  local swap_pct=0
+  [[ "$swap_total" -gt 0 ]] 2>/dev/null && swap_pct=$(( swap_used * 100 / swap_total ))
+
+  local out="🧠 *${HOST}* — Memory Metrics
+${sep}
+
+*RAM:* \`$(progress_bar "${mem_pct}" 100)\`
+  Used: ${mem_used}MB / ${mem_total}MB
+  Available: ${mem_available}MB"
+
+  # Swap (only if present)
+  if [[ "$swap_total" -gt 0 ]] 2>/dev/null; then
     out+="
-*Swap:* ${swap_used}MB / ${swap_total}MB
-"
+${sep}
+*Swap:* \`$(progress_bar "${swap_pct}" 100)\`
+  Used: ${swap_used}MB / ${swap_total}MB"
   fi
 
   out+="
+${sep}
 *Top processes by memory:*
 \`\`\`
 $(ps aux --sort=-%mem 2>/dev/null | head -6 | awk '{printf "%-5s %-6s %s\n", $4"%", $2, $11}')
@@ -222,25 +211,29 @@ $(ps aux --sort=-%mem 2>/dev/null | head -6 | awk '{printf "%-5s %-6s %s\n", $4"
 
 _metrics_disk() {
   local chat="$1"
-  local out="💾 *Disk Metrics*
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-"
+  local sep="━━━━━━━━━━━━━━━━━━━━━━"
 
   # Disk usage
-  local disk_info
-  disk_info=$(df -h / 2>/dev/null | tail -1)
-  out+="*Root filesystem:*
-\`\`\`
-${disk_info:-Disk info unavailable}
-\`\`\`
-"
+  local disk_used_pct=$(df -h / 2>/dev/null | awk 'NR==2{print $5}' | tr -d '%')
+  local disk_used=$(df -h / 2>/dev/null | awk 'NR==2{print $3}')
+  local disk_total=$(df -h / 2>/dev/null | awk 'NR==2{print $2}')
+  local disk_avail=$(df -h / 2>/dev/null | awk 'NR==2{print $4}')
+
+  local out="💾 *${HOST}* — Disk Metrics
+${sep}
+
+*Root filesystem:*
+\`$(progress_bar "${disk_used_pct}" 100)\`
+  Used: ${disk_used} / ${disk_total}
+  Free: ${disk_avail}
+${sep}"
 
   # Disk I/O
   local io_info
-  io_info=$(iostat -d 2>/dev/null | head -10 || echo "iostat not available")
+  io_info=$(iostat -d -h 2>/dev/null | head -10 || echo "iostat not available")
   if [[ "$io_info" != "iostat not available" ]]; then
-    out+="*Disk I/O:*
+    out+="
+*Disk I/O:*
 \`\`\`
 ${io_info}
 \`\`\`
@@ -249,7 +242,8 @@ ${io_info}
 
   # Nix store size
   local nix_size=$(du -sh /nix/store 2>/dev/null | cut -f1 || echo "unknown")
-  out+="*Nix Store:* ${nix_size}
+  out+="
+*Nix Store:* ${nix_size}
 "
 
   # Inodes
@@ -317,13 +311,13 @@ ${ts_status}
 
 _metrics_services() {
   local chat="$1"
-  local out="🔧 *Service Metrics*
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-
+  local sep="━━━━━━━━━━━━━━━━━━━━━━"
+  local out="🔧 *${HOST}* — Service Metrics
+${sep}
 "
 
   # Critical services
-  local services=("tailscaled" "nginx" "prometheus" "grafana" "loki" "sshd" "network-manager")
+  local services=("tailscaled" "nginx" "prometheus" "grafana" "loki" "sshd" "network-manager" "ivali-bot")
   for svc in "${services[@]}"; do
     local status
     if systemctl is-active --quiet "$svc" 2>/dev/null; then

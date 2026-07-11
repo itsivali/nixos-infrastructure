@@ -36,6 +36,30 @@ app_add_alias "btop"      "btop"
 app_add_alias "htop"      "htop"
 app_add_alias "task"      "btop"
 
+# -- Media ---------------------
+app_add_alias "image"     "eog"
+app_add_alias "photo"     "eog"
+app_add_alias "picture"   "eog"
+app_add_alias "video"     "totem"
+app_add_alias "player"    "totem"
+app_add_alias "pdf"       "evince"
+app_add_alias "document"  "evince"
+app_add_alias "reader"    "evince"
+
+# -- GNOME Utilities -----------
+app_add_alias "calculator"    "gnome-calculator"
+app_add_alias "calc"          "gnome-calculator"
+app_add_alias "fonts"         "gnome-font-viewer"
+app_add_alias "maps"          "gnome-maps"
+app_add_alias "weather"       "gnome-weather"
+app_add_alias "screenshot"    "gnome-screenshot"
+app_add_alias "contacts"      "gnome-contacts"
+app_add_alias "logs"          "gnome-logs"
+app_add_alias "tweaks"        "gnome-tweaks"
+app_add_alias "extensions"    "gnome-extensions"
+app_add_alias "disk"          "gnome-disks"
+app_add_alias "disks"         "gnome-disks"
+
 # -- Network --------------------
 app_add_alias "localsend" "localsend_app"
 

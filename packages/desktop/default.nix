@@ -11,4 +11,7 @@ with pkgs; [
   libreoffice-fresh
   kodi-wayland
   brightnessctl
+  gnome-screenshot
+  xdg-utils
+  gnome-disk-utility
 ]

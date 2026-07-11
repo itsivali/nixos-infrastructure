@@ -216,6 +216,12 @@ _init_default_roles() {
   register_command_role "monitoroff" "user"
   register_command_role "monitoron" "user"
 
+  # New capabilities (user level)
+  register_command_role "pkg" "user"
+  register_command_role "speedtest" "user"
+  register_command_role "disk" "user"
+  register_command_role "top" "user"
+
   # Misc commands
   register_command_role "git" "user"
   register_command_role "github" "user"

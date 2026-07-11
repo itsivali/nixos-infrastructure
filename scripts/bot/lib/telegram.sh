@@ -370,3 +370,81 @@ format_relative_time() {
     echo "$(( diff / 86400 ))d ago"
   fi
 }
+
+# ── Enhanced UI helpers ─────────────────────────────────────────────────────
+
+# Generate a visual progress bar.
+# Usage: progress_bar 75 100    → ▓▓▓▓▓▓▓▓░░░░░░░░░░░░ 75%
+# Usage: progress_bar 75 100 20 → ▓▓▓▓▓▓▓▓░░░░░░░░░░░░ 75%
+progress_bar() {
+  local value="$1" max="${2:-100}" width="${3:-20}"
+  local pct=$(( value * 100 / max ))
+  (( pct > 100 )) && pct=100
+  (( pct < 0 )) && pct=0
+  local filled=$(( pct * width / 100 ))
+  local empty=$(( width - filled ))
+  local bar=""
+  local i
+  for ((i=0; i<filled; i++)); do bar+="▓"; done
+  for ((i=0; i<empty; i++)); do bar+="░"; done
+  echo "${bar} ${pct}%"
+}
+
+# Color-coded status indicator dot.
+# Usage: status_dot "active" → 🟢
+status_dot() {
+  case "$1" in
+    active|running|online|ok|success|connected|yes|true) echo "🟢" ;;
+    warning|degraded|warn|partial|limited)                echo "🟡" ;;
+    error|failed|offline|critical|no|false)               echo "🔴" ;;
+    inactive|disabled|unknown|off|none|not*)              echo "⚪" ;;
+    *)                                                    echo "🔵" ;;
+  esac
+}
+
+# Aligned key-value pair for clean tables.
+# Usage: kv_line "CPU" "45%" 12 → "CPU:          45%"
+kv_line() {
+  local key="$1" value="$2" width="${3:-16}"
+  printf "%-${width}s %s" "${key}:" "$value"
+}
+
+# Format seconds to human-readable duration.
+# Usage: format_duration 3661 → "1h 1m 1s"
+format_duration() {
+  local secs="$1"
+  local h=$(( secs / 3600 ))
+  local m=$(( (secs % 3600) / 60 ))
+  local s=$(( secs % 60 ))
+  if (( h > 0 )); then
+    echo "${h}h ${m}m ${s}s"
+  elif (( m > 0 )); then
+    echo "${m}m ${s}s"
+  else
+    echo "${s}s"
+  fi
+}
+
+# Color-coded percentage indicator.
+# Usage: color_pct 45 → "45%"
+color_pct() {
+  local val="$1"
+  if (( val < 60 )); then
+    echo "${val}%"
+  elif (( val < 80 )); then
+    echo "${val}%"
+  else
+    echo "${val}%"
+  fi
+}
+
+# Emoji for percentage level.
+# Usage: pct_emoji 45 → ""
+pct_emoji() {
+  local val="$1"
+  if (( val < 40 )); then echo ""
+  elif (( val < 70 )); then echo ""
+  elif (( val < 85 )); then echo ""
+  else echo ""
+  fi
+}

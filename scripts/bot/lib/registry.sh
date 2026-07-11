@@ -79,58 +79,65 @@ generate_menu() {
   local sep="━━━━━━━━━━━━━━━━━━━━━━"
   local menu="🛰 *${HOST}* — Control Plane
 ${sep}
-_NixOS GitOps bot · long-poll session active_
+_NixOS GitOps bot · Desktop control · Monitoring_
 ${sep}
 
 🚀 *Deployment*
-\`/deploy\`       Apply config — \`nixos-rebuild switch\`
-\`/update\`       Pull → flake update → push
-\`/rollback\`     Revert to previous generation
+  \`/deploy\`       Apply config — \`nixos-rebuild switch\`
+  \`/update\`       Pull → flake update → push
+  \`/rollback\`     Revert to previous generation
 
 📊 *Monitoring*
-\`/status\`       System snapshot (CPU, memory, disk, temp…)
-\`/health\`       Full deployment health check
-\`/log [n] [unit]\` Last n journal lines _(default 50)_
-\`/processes\`    List running GUI processes
+  \`/status\`       System snapshot with visual indicators
+  \`/health\`       Full deployment health check
+  \`/log [n] [unit]\` Last n journal lines _(default 50)_
+  \`/processes\`    List running GUI processes
 
 🧹 *Maintenance*
-\`/gc\`           Garbage‑collect the nix store
-\`/reboot\`       Reboot the host _(20s grace period)_
-\`/shutdown\`     Power off the host _(20s grace period)_
-\`/cancel\`       Abort a pending reboot/shutdown
+  \`/gc\`           Garbage‑collect the nix store
+  \`/reboot\`       Reboot the host _(20s grace period)_
+  \`/shutdown\`     Power off the host _(20s grace period)_
+  \`/cancel\`       Abort a pending reboot/shutdown
 
 🖥 *Applications*
-\`/open <app>\`   Launch any application, URL, or folder
-\`/firefox\`      Open Firefox
-\`/apps\`         List discovered applications
-\`/run <cmd>\`    Execute a shell command
+  \`/open <app>\`   Launch any application, URL, or folder
+  \`/firefox\`      Open Firefox
+  \`/apps\`         List discovered applications
+  \`/run <cmd>\`    Execute a shell command
 
 🎛 *Desktop*
-\`/screenshot\`   Capture desktop screenshot
-\`/clipboard\`    Read/set clipboard
-\`/volume\`       Volume info / set / mute / unmute
-\`/brightness\`   Brightness info / set
-\`/notify <msg>\` Send a desktop notification
-\`/windows\`      List open windows
-\`/focus <app>\`  Focus a window by title
-\`/close <app>\`  Close a window by title
-\`/workspace\`    Switch workspaces (next/prev/N)
-\`/lock\`         Lock screen
-\`/logout\`       Log out of desktop
-\`/suspend\`      Suspend to RAM
-\`/hibernate\`    Hibernate to disk
-\`/monitor-off\`  Turn displays off
-\`/monitor-on\`   Wake displays
+  \`/screenshot\`   Capture desktop screenshot
+  \`/clipboard\`    Read/set clipboard
+  \`/volume\`       Volume info / set / mute / unmute
+  \`/brightness\`   Brightness info / set
+  \`/notify <msg>\` Send a desktop notification
+  \`/windows\`      List open windows
+  \`/focus <app>\`  Focus a window by title
+  \`/close <app>\`  Close a window by title
+  \`/workspace\`    Switch workspaces (next/prev/N)
+  \`/lock\`         Lock screen
+  \`/logout\`       Log out of desktop
+  \`/suspend\`      Suspend to RAM
+  \`/hibernate\`    Hibernate to disk
+  \`/monitor-off\`  Turn displays off
+  \`/monitor-on\`   Wake displays
 
 🔧 *Raw Access*
-\`/git <cmd>\`    Run git in the infra repo
-\`/nix <cmd>\`    Run an arbitrary nix command
+  \`/git <cmd>\`    Run git in the infra repo
+  \`/nix <cmd>\`    Run an arbitrary nix command
+  \`/pkg search\`   Search Nix packages
 
 📦 *GitLab*
-\`/gitlab status\`     Project + latest pipeline
-\`/gitlab pipelines\`  Recent pipelines
-\`/gitlab trigger\`    Trigger a pipeline
-\`/gitlab mr\`         List merge requests
+  \`/gitlab status\`     Project + latest pipeline
+  \`/gitlab pipelines\`  Recent pipelines
+  \`/gitlab trigger\`    Trigger a pipeline
+  \`/gitlab mr\`         List merge requests
+
+🐙 *GitHub*
+  \`/github status\`     Repository + latest action
+  \`/github actions\`    Recent workflow runs
+  \`/github issues\`     Open issues
+  \`/github prs\`        Open pull requests
 
 ℹ️ \`/help\`  \`/menu\`  Show this menu
 ${sep}

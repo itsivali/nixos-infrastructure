@@ -325,3 +325,49 @@ require_gitlab_access() {
   fi
   return 0
 }
+
+# ── Formatting helpers ──────────────────────────────────────────────────────
+
+# Format seconds to human-readable duration.
+# Usage: format_duration 3661 → "1h 1m 1s"
+format_duration() {
+  local secs="$1"
+  local h=$(( secs / 3600 ))
+  local m=$(( (secs % 3600) / 60 ))
+  local s=$(( secs % 60 ))
+  if (( h > 0 )); then
+    echo "${h}h ${m}m ${s}s"
+  elif (( m > 0 )); then
+    echo "${m}m ${s}s"
+  else
+    echo "${s}s"
+  fi
+}
+
+# Color-coded percentage with indicator.
+# Usage: color_pct 45 → "45%"
+color_pct() {
+  local val="$1"
+  echo "${val}%"
+}
+
+# Human-readable bytes with unit.
+# Usage: human_bytes 1073741824 → "1.0G"
+human_bytes() {
+  local bytes=$1
+  if [[ $bytes -ge 1073741824 ]]; then
+    echo "$(awk "BEGIN{printf \"%.1f\", $bytes/1073741824}")G"
+  elif [[ $bytes -ge 1048576 ]]; then
+    echo "$(awk "BEGIN{printf \"%.1f\", $bytes/1048576}")M"
+  elif [[ $bytes -ge 1024 ]]; then
+    echo "$(awk "BEGIN{printf \"%.1f\", $bytes/1024}")K"
+  else
+    echo "${bytes}B"
+  fi
+}
+
+# Get current timestamp in ISO-8601.
+# Usage: now_iso → "2024-01-15T14:30:00+01:00"
+now_iso() {
+  date -Iseconds
+}

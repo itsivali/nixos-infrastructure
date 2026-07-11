@@ -30,10 +30,12 @@ with pkgs; [
   opencode
   openssl
   pciutils
+  python3
   ripgrep
   rsync
   sops
   starship
+  sysstat
   tree
   unzip
   usbutils

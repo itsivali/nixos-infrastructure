@@ -204,30 +204,10 @@ ${sep}
 }
 
 # Load the alias mappings.
+# These defaults are overridden by desktop/aliases.sh for GNOME environments.
 _load_aliases() {
-  app_add_alias "terminal" "kitty"
-  app_add_alias "term" "kitty"
-  app_add_alias "shell" "kitty"
-  app_add_alias "console" "kitty"
-
-  app_add_alias "files" "dolphin"
-  app_add_alias "file" "dolphin"
-  app_add_alias "dolphin" "dolphin"
-
-  app_add_alias "browser" "firefox"
-  app_add_alias "web" "firefox"
-
-  app_add_alias "editor" "zeditor"
-  app_add_alias "code" "zeditor"
-  app_add_alias "zed" "zeditor"
-
-  app_add_alias "settings" "gnome-control-center"
-  app_add_alias "monitor" "btop"
-  app_add_alias "disks" "gnome-disks"
-  app_add_alias "btop" "btop"
-  app_add_alias "htop" "htop"
-
-  app_add_alias "localsend" "localsend_app"
-
+  app_add_alias "btop"      "btop"
+  app_add_alias "htop"      "htop"
+  app_add_alias "vim"       "vim"
   app_add_alias "libreoffice" "libreoffice"
 }

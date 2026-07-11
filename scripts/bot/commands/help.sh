@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# commands/help.sh — /help — Show command menu with inline suggestions
+# commands/help.sh — /help — Show command menu with inline category navigation
 ##############################################################################
 
 _cmd_help() {
   local chat="$1" args="$2"
-  
+
   local subcmd="${args%% *}"
-  
+
   case "$subcmd" in
     deployment|deploy)
       _help_deployment "$chat"
@@ -33,77 +33,26 @@ _cmd_help() {
 }
 
 _help_main() {
-  local out="🛰 *${HOST}* — Control Plane
+  local out="🛰 *${HOST}* — Command Reference
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 _NixOS GitOps bot · long-poll session active_
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚀 *Deployment*
-\`/deploy\`       Apply config — \`nixos-rebuild switch\`
-\`/update\`       Pull → flake update → push
-\`/rollback\`     Revert to previous generation
+*Quick Access:*
+  \`/status\`  System snapshot     \`/open\`   Launch apps
+  \`/deploy\`  Apply config        \`/help\`   This menu
+  \`/health\`  Health check        \`/menu\`   Keyboard
 
-📊 *Monitoring*
-\`/status\`       System snapshot (CPU, memory, disk, temp…)
-\`/health\`       Full deployment health check
-\`/metrics\`      View system metrics (cpu/memory/disk/network)
-\`/log [n] [unit]\` Last n journal lines _(default 50)_
-\`/processes\`    List running GUI processes
+_Select a category below for detailed help:_"
 
-🧹 *Maintenance*
-\`/gc\`           Garbage‑collect the nix store
-\`/reboot\`       Reboot the host _(20s grace period)_
-\`/shutdown\`     Power off the host _(20s grace period)_
-\`/cancel\`       Abort a pending reboot/shutdown
-
-🖥 *Applications*
-\`/open <app>\`   Launch any application, URL, or folder
-\`/firefox\`      Open Firefox
-\`/apps\`         List discovered applications
-\`/run <cmd>\`    Execute a shell command
-
-🎛 *Desktop*
-\`/screenshot\`   Capture desktop screenshot
-\`/clipboard\`    Read/set clipboard
-\`/volume\`       Volume info / set / mute / unmute
-\`/brightness\`   Brightness info / set
-\`/notify <msg>\` Send a desktop notification
-\`/windows\`      List open windows
-\`/focus <app>\`  Focus a window by title
-\`/close <app>\`  Close a window by title
-\`/workspace\`    Switch workspaces (next/prev/N)
-\`/lock\`         Lock screen
-\`/logout\`       Log out of desktop
-\`/suspend\`      Suspend to RAM
-\`/hibernate\`    Hibernate to disk
-\`/monitoroff\`   Turn displays off
-\`/monitoron\`    Wake displays
-
-🔧 *Raw Access*
-\`/git <cmd>\`    Run git in the infra repo
-\`/nix <cmd>\`    Run an arbitrary nix command
-
-📦 *GitLab*
-\`/gitlab status\`     Project + latest pipeline
-\`/gitlab pipelines\`  Recent pipelines
-\`/gitlab trigger\`    Trigger a pipeline
-\`/gitlab mr\`         List merge requests
-
-🐙 *GitHub*
-\`/github status\`     Repository + latest action
-\`/github actions\`    Recent workflow runs
-\`/github issues\`     Open issues
-\`/github prs\`        Open pull requests
-
-ℹ️ \`/help\`  \`/menu\`  Show this menu
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-_Run \`/help <category>\` for detailed help_
-_Example: \`/help deployment\` or \`/help desktop\`_
-━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔒 Authorized chat only · replies may be split across messages"
-
-  send_keyboard "$chat" "$out" "/status" "/health" "/metrics" "/deploy" "/rollback" "/help" "/github"
+  send_inline_keyboard "$chat" "$out" \
+    "🚀 Deployment:help_deployment" \
+    "📊 Monitoring:help_monitoring" \
+    "🖥 Desktop:help_desktop" \
+    "🔧 System:help_system" \
+    "📦 GitLab:help_gitlab" \
+    "🐙 GitHub:help_github"
 }
 
 _help_deployment() {
@@ -113,33 +62,35 @@ _help_deployment() {
 \`/deploy\`
 Deploy the current NixOS configuration.
 This will:
-• Pull latest changes from Git
-• Build and activate new NixOS generation
-• May take several minutes to complete
-• Requires admin role
+  • Pull latest changes from Git
+  • Build and activate new NixOS generation
+  • May take several minutes to complete
+  _Requires admin role_
 
 \`/update\`
 Update flake inputs and push changes.
-This will:
-• Pull latest changes from Git
-• Run \`nix flake update\`
-• Commit and push changes
-• Requires admin role
+  • Pull latest changes from Git
+  • Run \`nix flake update\`
+  • Commit and push changes
+  _Requires admin role_
 
 \`/rollback\`
 Revert to the previous NixOS generation.
-This will:
-• Switch to the previous generation
-• Can be undone with \`/deploy\`
-• Requires admin role
+  • Switch to the previous generation
+  • Can be undone with \`/deploy\`
+  _Requires admin role_
 
 \`/generations\`
 List all NixOS generations with timestamps.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-_Run \`/help\` to see all categories_"
+_Select another category or_ \`/help\` _for main menu_"
 
-  send_msg "$chat" "$out"
+  send_inline_keyboard "$chat" "$out" \
+    "◀ Main Menu:help_main" \
+    "📊 Monitoring:help_monitoring" \
+    "🖥 Desktop:help_desktop" \
+    "🔧 System:help_system"
 }
 
 _help_monitoring() {
@@ -148,10 +99,10 @@ _help_monitoring() {
 
 \`/status\`
 Show comprehensive system status including:
-• CPU, memory, disk usage
-• Temperature and battery
-• Network and Tailscale status
-• NixOS generation
+  • CPU, memory, disk usage with progress bars
+  • Temperature and battery
+  • Network and Tailscale status
+  • NixOS generation
 
 \`/status quick\`
 Quick overview with essential metrics only.
@@ -160,17 +111,11 @@ Quick overview with essential metrics only.
 Detailed status including service health.
 
 \`/health\`
-Run full deployment health check with 11 checks:
-• NixOS generation
-• Systemd services
-• Disk and memory usage
-• Network connectivity
-• Tailscale status
-• Nginx, SSH, Prometheus, Grafana, Loki
+Run full deployment health check with 11 checks.
 
-\`/metrics\`
-View system metrics from Prometheus.
-Subcommands: \`cpu\`, \`memory\`, \`disk\`, \`network\`, \`services\`, \`tailscale\`, \`prometheus\`
+\`/metrics [category]\`
+View system metrics. Categories:
+  \`cpu\` \`memory\` \`disk\` \`network\` \`services\` \`tailscale\` \`prometheus\`
 
 \`/log [n] [unit]\`
 Show last n journal lines (default 50).
@@ -180,9 +125,13 @@ Example: \`/log 100 nginx\`
 List running GUI processes.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-_Run \`/help\` to see all categories_"
+_Select another category or_ \`/help\` _for main menu_"
 
-  send_msg "$chat" "$out"
+  send_inline_keyboard "$chat" "$out" \
+    "◀ Main Menu:help_main" \
+    "🚀 Deployment:help_deployment" \
+    "🖥 Desktop:help_desktop" \
+    "🔧 System:help_system"
 }
 
 _help_desktop() {
@@ -191,59 +140,48 @@ _help_desktop() {
 
 \`/open <app>\`
 Smart launcher with fuzzy matching:
-• URLs: \`/open github.com\`
-• Folders: \`/open downloads\`
-• Apps: \`/open firefox\` or \`/open terminal\`
+  • URLs: \`/open github.com\`
+  • Folders: \`/open downloads\`
+  • Apps: \`/open firefox\` or \`/open terminal\`
 
 \`/screenshot\`
 Capture desktop screenshot and send as photo.
 
-\`/clipboard\`
-Read current clipboard content.
+\`/clipboard\` / \`/clipboard set <text>\`
+Read or set clipboard content.
 
-\`/clipboard set <text>\`
-Set clipboard content.
+\`/volume\` / \`/volume <N>\` / \`/mute\` / \`/unmute\`
+Audio control (0-150%).
 
-\`/volume\`
-Show current volume level.
-
-\`/volume <N>\`
-Set volume to N% (0-150).
-
-\`/mute\` / \`/unmute\`
-Mute/unmute audio.
-
-\`/brightness\`
-Show current brightness level.
-
-\`/brightness <N>\`
-Set brightness to N% (0-100).
+\`/brightness\` / \`/brightness <N>\`
+Backlight control (0-100%).
 
 \`/notify <msg>\`
 Send a desktop notification.
 
 \`/windows\`
-List all open windows.
+List all open windows with workspace info.
 
-\`/focus <app>\`
-Focus a window by title.
-
-\`/close <app>\`
-Close a window by title.
+\`/focus <app>\` / \`/close <app>\`
+Focus or close a window by title.
 
 \`/workspace next\` / \`prev\` / \`<N>\`
-Switch workspaces.
+Switch GNOME workspaces.
 
-\`/lock\` / \`/logout\` / \`/suspend\` / \`/hibernate\`
+\`/lock\` \`/logout\` \`/suspend\` \`/hibernate\`
 Power management commands.
 
-\`/monitoroff\` / \`/monitoron\`
+\`/monitoroff\` \`/monitoron\`
 Control display power.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-_Run \`/help\` to see all categories_"
+_Select another category or_ \`/help\` _for main menu_"
 
-  send_msg "$chat" "$out"
+  send_inline_keyboard "$chat" "$out" \
+    "◀ Main Menu:help_main" \
+    "🚀 Deployment:help_deployment" \
+    "📊 Monitoring:help_monitoring" \
+    "🔧 System:help_system"
 }
 
 _help_system() {
@@ -252,7 +190,7 @@ _help_system() {
 
 \`/run <cmd>\`
 Execute arbitrary shell command on the host.
-⚠️ Requires admin role.
+  ⚠️ Requires admin role.
 
 \`/git <cmd>\`
 Run git command in the infra repo.
@@ -264,7 +202,7 @@ Example: \`/nix flake update\`, \`/nix store gc\`
 
 \`/gc\`
 Garbage collect the Nix store to free space.
-⚠️ Requires admin role.
+  ⚠️ Requires admin role.
 
 \`/store\`
 Show Nix store status (size, derivations).
@@ -272,19 +210,20 @@ Show Nix store status (size, derivations).
 \`/doctor\`
 Full repository health check.
 
-\`/scan\`
+\`/scan\` / \`/security\`
 Security scan of the system.
-
-\`/security\`
-Security scan report with details.
 
 \`/backup\`
 Show SOPS secrets backup status.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-_Run \`/help\` to see all categories_"
+_Select another category or_ \`/help\` _for main menu_"
 
-  send_msg "$chat" "$out"
+  send_inline_keyboard "$chat" "$out" \
+    "◀ Main Menu:help_main" \
+    "🚀 Deployment:help_deployment" \
+    "📊 Monitoring:help_monitoring" \
+    "🖥 Desktop:help_desktop"
 }
 
 _help_gitlab() {
@@ -299,15 +238,18 @@ List recent pipelines with status.
 
 \`/gitlab trigger\`
 Trigger a new pipeline on main branch.
-⚠️ Requires admin role.
+  ⚠️ Requires admin role.
 
 \`/gitlab mr\`
 List open merge requests.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-_Run \`/help\` to see all categories_"
+_Select another category or_ \`/help\` _for main menu_"
 
-  send_msg "$chat" "$out"
+  send_inline_keyboard "$chat" "$out" \
+    "◀ Main Menu:help_main" \
+    "🚀 Deployment:help_deployment" \
+    "🐙 GitHub:help_github"
 }
 
 _help_github() {
@@ -327,9 +269,12 @@ List open issues.
 List open pull requests.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━
-_Run \`/help\` to see all categories_"
+_Select another category or_ \`/help\` _for main menu_"
 
-  send_msg "$chat" "$out"
+  send_inline_keyboard "$chat" "$out" \
+    "◀ Main Menu:help_main" \
+    "📦 GitLab:help_gitlab" \
+    "🔧 System:help_system"
 }
 
 register_command "help" "_cmd_help" "📖 Show command menu and help"

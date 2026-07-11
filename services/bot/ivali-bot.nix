@@ -109,6 +109,13 @@ in
         # Clipboard (Wayland-native)
         wl-clipboard
 
+        # URL/file opening
+        xdg-utils
+        xdotool
+
+        # Python (for urlencode and scripting)
+        python3
+
         # Session management
         systemd
       ];

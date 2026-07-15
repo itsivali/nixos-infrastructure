@@ -10,13 +10,18 @@
 # ---------
 # programs.btop
 #
-# Future
-# ------
-# Theme and monitoring configuration
-#
 ##############################################################################
 
 { ... }:
 
 {
+  programs.btop = {
+    enable = true;
+    settings = {
+      theme_background = true;
+      truecolor = true;
+      proc_tree = true;
+      proc_sorting = "memory";
+    };
+  };
 }

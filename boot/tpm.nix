@@ -21,10 +21,6 @@
 
 { ... }:
 
-{
-  security.tpm2 = {
-    enable = true;
-    pkcs11.enable = true;
-    tctiEnvironment.enable = true;
-  };
-}
+# TPM 2.0 disabled — not used for LUKS, Secure Boot, or PKCS#11.
+# Eliminates ~180s boot delay from tpm0/tpmrm0 device waits.
+{ }

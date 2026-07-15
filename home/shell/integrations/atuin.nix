@@ -10,16 +10,18 @@
 # ---------
 # programs.atuin
 #
-# Responsibilities
-# ----------------
-# - History sync (future)
-# - Statistics (future)
-#
-# Even if unused today, the module boundary exists for future use.
-#
 ##############################################################################
 
 { ... }:
 
 {
+  programs.atuin = {
+    enable = true;
+    enableZshIntegration = true;
+    settings = {
+      auto_sync = false;
+      update_check = false;
+      style = "compact";
+    };
+  };
 }

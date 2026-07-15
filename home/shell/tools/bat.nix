@@ -10,13 +10,17 @@
 # ---------
 # programs.bat
 #
-# Future
-# ------
-# Themes and pager configuration
-#
 ##############################################################################
 
 { ... }:
 
 {
+  programs.bat = {
+    enable = true;
+    config = {
+      theme = "gruvbox-dark";
+      style = "numbers,changes,header,grid";
+      italic-text = "always";
+    };
+  };
 }

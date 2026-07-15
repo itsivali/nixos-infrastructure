@@ -27,7 +27,10 @@
       systemd-boot = {
         enable = true;
         configurationLimit = 10;
+        consoleMode = "max";
       };
+
+      timeout = 0;
 
       efi.canTouchEfiVariables = true;
       grub.enable = false;

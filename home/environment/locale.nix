@@ -6,18 +6,18 @@
 # -------
 # Configure language, locale and regional preferences.
 #
-# Future responsibilities
-# -----------------------
-# • LANG
-# • LC_ALL
-# • LC_TIME
-# • Timezone
-# • Keyboard locale
+# Ownership
+# ---------
+# home.sessionVariables (LANG, LC_ALL, TZ)
 #
 ##############################################################################
 
 { ... }:
 
 {
-
+  home.sessionVariables = {
+    LANG = "en_US.UTF-8";
+    LC_ALL = "en_US.UTF-8";
+    TZ = "Africa/Nairobi";
+  };
 }

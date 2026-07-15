@@ -36,8 +36,6 @@
 
     initrd.kernelModules = [
       "amdgpu"
-      "tpm_crb"
-      "tpm_tis"
     ];
 
     kernelModules = [
@@ -77,6 +75,13 @@
       "randomize_kstack_offset=on"
       "vsyscall=none"
       "pti=on"
+
+      ##########################################################
+      # Silent boot
+      ##########################################################
+      "consoleLogLevel=3"
+      "rd.udev.log_level=3"
+      "rd.systemd.show_status=auto"
 
       ##########################################################
       # Networking

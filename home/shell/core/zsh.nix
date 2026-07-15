@@ -38,8 +38,5 @@
     enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
-    envExtra = ''
-      export PATH="$HOME/.local/bin:$PATH"
-    '';
   };
 }

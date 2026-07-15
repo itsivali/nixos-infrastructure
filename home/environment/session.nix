@@ -1,19 +1,21 @@
 ##############################################################################
 #
-# Session Variables
+# Session Configuration
 #
 # Purpose
 # -------
-# User session environment configuration (placeholder for future use).
+# PATH additions and session-level configuration.
 #
 # Ownership
 # ---------
-# (future) home.sessionVariables
+# home.sessionPath
 #
 ##############################################################################
 
 { ... }:
 
 {
-
+  home.sessionPath = [
+    "$HOME/.local/bin"
+  ];
 }

@@ -1,24 +1,32 @@
 { config, lib, pkgs, ... }:
 
+let
+  cfg = config.ivali.desktop.gnome;
+in
 {
-  config = lib.mkIf config.ivali.desktop.gnome.enable {
+  config = lib.mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
-      # GNOME desktop tools
+      extension-manager
+      loupe
+      console
+      gnome-text-editor
+      papers
+      file-roller
+      mission-center
+      resources
       gnome-tweaks
-      gnome-shell-extensions
-      gnome-browser-connector
-
-      # Essential GNOME Shell extensions
-      gnomeExtensions.appindicator
-      gnomeExtensions.dash-to-dock
-      gnomeExtensions.blur-my-shell
-      gnomeExtensions.user-themes
-      gnomeExtensions.caffeine
-      gnomeExtensions.clipboard-indicator
-      gnomeExtensions.vitals
-      gnomeExtensions.sound-output-device-chooser
-
-      # Utilities for D-Bus and gsettings
+      impression
+      warehouse
+      decibels
+      dconf-editor
+      nautilus
+      gnome-calendar
+      gnome-clocks
+      gnome-contacts
+      gnome-weather
+      gnome-maps
+      gnome-screenshot
+      xdg-utils
       glib
     ];
   };

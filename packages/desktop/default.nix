@@ -9,7 +9,6 @@ with pkgs; [
   vlc
   firefox
   libreoffice-fresh
-  kodi-wayland
   brightnessctl
   gnome-screenshot
   xdg-utils

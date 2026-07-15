@@ -50,7 +50,7 @@
     tags = [ "tag:personal" ];
     tailnetDomain = null;
     gitlabRunnerTags = [ "nixos" "self-hosted" ];
-    sshAuthorizedKeys = [];
+    sshAuthorizedKeys = [ ];
     sopsKeyPath = "/home/user/.config/sops/age/keys.txt";
     features = {
       secrets = true;
@@ -60,42 +60,7 @@
       tailscaleExitNode = true;
       ssh = true;
     };
-    config = {};
-  };
-
-  ############################################################################
-  # EXISTING HOST: prague
-  # Migrated from hosts/laptop.nix
-  ############################################################################
-  prague = {
-    hostName = "prague";
-    userName = "ivali";
-    repoPath = "/home/ivali/nixos-infrastructure";
-    tags = [ "tag:admin" ];
-    tailnetDomain = "codlet-trench.ts.net";
-    gitlabRunnerTags = [ "nixos" "prague" "self-hosted" ];
-    sshAuthorizedKeys = [
-      # Key loaded from SOPS secret at runtime
-    ];
-    sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
-    features = {
-      secrets = true;
-      gitlabRunner = true;
-      bot = true;
-      tailscale = true;
-      tailscaleExitNode = true;
-      ssh = true;
-      bitwarden = true;
-    };
-    config = {
-      ivali.desktop.gnome.enable = true;
-
-      # Git config for root/CI access
-      environment.etc."gitconfig".text = ''
-        [safe]
-          directory = /home/ivali/nixos-infrastructure
-      '';
-    };
+    config = { };
   };
 
   ############################################################################
@@ -118,6 +83,37 @@
       tailscaleExitNode = false;
       ssh = true;
     };
-    config = {};
+    config = { };
+  };
+
+
+  prague = {
+    hostName = "prague";
+    userName = "ivali";
+    repoPath = "/home/ivali/nixos-infrastructure";
+    tags = [ "tag:personal" ];
+    tailnetDomain = "codlet-trench.ts.net";
+    gitlabRunnerTags = [ "nixos" "prague" "self-hosted" ];
+    sshAuthorizedKeys = [ ];
+    sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
+    features = {
+      secrets = true;
+      gitlabRunner = true;
+      bot = true;
+      tailscale = true;
+      tailscaleExitNode = true;
+      ssh = true;
+    };
+    config = {
+      ivali.desktop.gnome.enable = true;
+      # Disable observability stack until laptop upgrade
+      ivali.observability.enable = lib.mkForce false;
+
+      # Git config for root/CI access
+      environment.etc."gitconfig".text = ''
+        [safe]
+          directory = /home/ivali/nixos-infrastructure
+      '';
+    };
   };
 }

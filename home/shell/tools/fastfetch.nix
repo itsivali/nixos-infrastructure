@@ -10,13 +10,49 @@
 # ---------
 # programs.fastfetch
 #
-# Future
-# ------
-# Startup dashboard configuration
-#
 ##############################################################################
 
 { ... }:
 
 {
+  programs.fastfetch = {
+    enable = true;
+    settings = {
+      logo = {
+        padding = {
+          top = 1;
+          right = 2;
+        };
+      };
+      display = {
+        separator = " → ";
+      };
+      modules = [
+        "title"
+        "separator"
+        "os"
+        "kernel"
+        "uptime"
+        "packages"
+        "shell"
+        "terminal"
+        "de"
+        "wm"
+        "theme"
+        "icons"
+        "font"
+        "cursor"
+        "terminalfont"
+        "cpu"
+        "gpu"
+        "memory"
+        "swap"
+        "disk"
+        "battery"
+        "locale"
+        "break"
+        "datetime"
+      ];
+    };
+  };
 }

@@ -32,8 +32,6 @@
       ];
       development-tools = false;
       remember-mount-password = false;
-      development-tools = false;
-      remember-mount-password = false;
       welcome-dialog-last-shown-version = "999";
       favorite-apps = [
         "firefox.desktop"

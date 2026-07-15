@@ -31,6 +31,7 @@
     gc = "git commit";
     gcm = "git commit -m";
     gp = "git push";
+    gpall = "git push origin main && git push github main";
     gpl = "git pull";
     gd = "git diff";
     gl = "git log --graph --decorate --oneline";

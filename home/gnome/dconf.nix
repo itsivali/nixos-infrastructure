@@ -54,7 +54,7 @@
     };
 
     "org/gnome/desktop/wm/preferences" = {
-      button-layout = ":close,minimize,maximize,appmenu";
+      button-layout = ":minimize,maximize,close,appmenu";
       titlebar-font = "Inter Bold 11";
       titlebar-uses-system-font = false;
       auto-maximize = true;

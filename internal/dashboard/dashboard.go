@@ -56,6 +56,11 @@ type model struct {
 	lastAction  string
 	actionResult string
 
+	genCursor    int
+	genScrollOff int
+	generations  []genEntry
+	genConfirm   bool
+
 	modules []scanner.Module
 }
 
@@ -193,9 +198,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.activeTab == 1 && len(m.filteredModules()) > 0 {
 				m.showDetail = !m.showDetail
+			} else if m.activeTab == 5 && len(m.generations) > 0 {
+				if m.genConfirm {
+					gen := m.generations[m.genCursor]
+					m.genConfirm = false
+					m.lastAction = "rollback"
+					m.actionResult = fmt.Sprintf("Rolling back to generation %d...", gen.Number)
+					profilePath := fmt.Sprintf("/nix/var/nix/profiles/system-%d-link", gen.Number)
+					return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "switch", "--flake", m.repo.Root+"#prague", "--profile", profilePath), func(err error) tea.Msg {
+						if err != nil {
+							return actionResultMsg{action: fmt.Sprintf("rollback to gen %d", gen.Number), err: err}
+						}
+						return actionResultMsg{action: fmt.Sprintf("rollback to gen %d", gen.Number), err: nil}
+					})
+				} else {
+					m.genConfirm = true
+				}
 			}
 		case "esc":
 			m.showDetail = false
+			m.genConfirm = false
 			if m.filter != "" {
 				m.filter = ""
 				m.moduleCursor = 0
@@ -216,6 +238,13 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.moduleCursor >= flen && flen > 0 {
 					m.moduleCursor = flen - 1
 				}
+			} else if m.activeTab == 5 && !m.genConfirm {
+				if m.genCursor > 0 {
+					m.genCursor--
+				}
+				if m.genScrollOff > 0 {
+					m.genScrollOff--
+				}
 			}
 		case "down", "j":
 			if m.showDetail {
@@ -225,13 +254,23 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				flen := len(m.filteredModules())
 				if m.moduleCursor < flen-1 {
 					m.moduleCursor++
-					// Only advance scroll when cursor moves past visible window
 					contentHeight := m.height - 12
 					if contentHeight < 3 {
 						contentHeight = 3
 					}
 					if m.moduleCursor >= m.scrollOffset+contentHeight {
 						m.scrollOffset = m.moduleCursor - contentHeight + 1
+					}
+				}
+			} else if m.activeTab == 5 && !m.genConfirm {
+				if m.genCursor < len(m.generations)-1 {
+					m.genCursor++
+					contentHeight := m.height - 10
+					if contentHeight < 3 {
+						contentHeight = 3
+					}
+					if m.genCursor >= m.genScrollOff+contentHeight {
+						m.genScrollOff = m.genCursor - contentHeight + 1
 					}
 				}
 			}
@@ -1064,7 +1103,7 @@ func (m *model) renderGenerations() string {
 	}
 
 	genLines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	var gens []genEntry
+	m.generations = nil
 	for _, line := range genLines {
 		fields := strings.Fields(line)
 		if len(fields) < 3 {
@@ -1076,32 +1115,58 @@ func (m *model) renderGenerations() string {
 		}
 		date := fields[1] + " " + fields[2]
 		current := strings.Contains(line, "(current)")
-		gens = append(gens, genEntry{Number: num, Date: date, Current: current})
+		m.generations = append(m.generations, genEntry{Number: num, Date: date, Current: current})
 	}
 
-	if len(gens) == 0 {
+	if len(m.generations) == 0 {
 		b.WriteString("  " + m.term.Dim("No generations found."))
 		return b.String()
 	}
 
-	// Show last 15 generations (most recent last)
-	start := 0
-	if len(gens) > 15 {
-		start = len(gens) - 15
+	if m.genCursor >= len(m.generations) {
+		m.genCursor = len(m.generations) - 1
 	}
 
-	for _, g := range gens[start:] {
-		icon := ""
+	contentHeight := m.height - 10
+	if contentHeight < 3 {
+		contentHeight = 3
+	}
+
+	start := m.genScrollOff
+	end := start + contentHeight
+	if end > len(m.generations) {
+		end = len(m.generations)
+	}
+
+	for i, g := range m.generations[start:end] {
+		idx := start + i
+		icon := ""
 		color := m.term.Color.Gray
 		if g.Current {
-			icon = ""
+			icon = ""
 			color = m.term.Color.Purple
 		}
 
-		line := fmt.Sprintf("  %s  Gen %d  %s",
-			m.term.ColoredIcon(icon, color),
-			g.Number,
-			m.term.Dim(g.Date[:16]))
+		cursor := "  "
+		isSelected := idx == m.genCursor
+		if isSelected {
+			cursor = m.term.ColoredIcon("", m.term.Color.Purple) + " "
+		}
+
+		var line string
+		if isSelected {
+			line = fmt.Sprintf("%s%s  Gen %d  %s",
+				cursor,
+				m.term.ColoredIcon(icon, color),
+				g.Number,
+				m.term.Bold(g.Date[:16]))
+		} else {
+			line = fmt.Sprintf("%s%s  Gen %d  %s",
+				cursor,
+				m.term.ColoredIcon(icon, color),
+				g.Number,
+				m.term.Dim(g.Date[:16]))
+		}
 
 		if g.Current {
 			line += "  " + m.term.TagBg(" current ", m.term.Color.White, m.term.Color.Purple)
@@ -1111,7 +1176,12 @@ func (m *model) renderGenerations() string {
 	}
 
 	b.WriteString("\n")
-	b.WriteString(m.term.Dim("   r refresh"))
+	if m.genConfirm {
+		gen := m.generations[m.genCursor]
+		b.WriteString(m.term.Warn(fmt.Sprintf("  Rollback to generation %d? Enter to confirm, Esc to cancel.", gen.Number)) + "\n")
+	} else {
+		b.WriteString(m.term.Dim("  Enter: rollback  r: refresh  j/k: navigate") + "\n")
+	}
 
 	return b.String()
 }
@@ -1122,7 +1192,7 @@ func (m *model) renderHelpBar() string {
 		help += "\n" + m.term.Dim("    IVALI Dashboard — Control Plane for NixOS Infrastructure")
 		help += "\n" + m.term.Dim("    Tab / h,l: Switch panels (6 tabs)    Up/Down / j,k: Navigate")
 		help += "\n" + m.term.Dim("    /: Filter modules    Esc: Clear filter    Backspace: Delete char")
-		help += "\n" + m.term.Dim("    Enter: Toggle module detail    Esc: Back to list")
+		help += "\n" + m.term.Dim("    Enter: Module detail / Gen rollback    Esc: Back to list")
 		help += "\n" + m.term.Dim("    s: Cycle sort (none → category → type → name → lines)")
 		help += "\n" + m.term.Dim("    a: Toggle action mode    d: Rebuild system    x: Run doctor --fix")
 		help += "\n" + m.term.Dim("    r: Refresh all data    g: Top    G: Bottom    q/Ctrl+C: Quit")

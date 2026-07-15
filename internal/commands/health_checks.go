@@ -12,8 +12,16 @@ import (
 )
 
 func checkNixFormatting(root string) terminal.CheckItem {
-	cmd := exec.Command("git", "-C", root, "stash", "push", "-m", "format-check", "--", "*.nix")
-	cmd.Run()
+	hasUncommitted, _ := exec.Command("git", "-C", root, "diff", "--quiet", "--", "*.nix").Output()
+	hasStaged, _ := exec.Command("git", "-C", root, "diff", "--cached", "--quiet", "--", "*.nix").Output()
+
+	if hasUncommitted != nil || hasStaged != nil {
+		return terminal.CheckItem{
+			Label:  "Formatting",
+			Status: terminal.StatusWarn,
+			Detail: "skipped (uncommitted .nix changes present)",
+		}
+	}
 
 	nixFmt := exec.Command("nix", "fmt")
 	nixFmt.Dir = root
@@ -21,12 +29,12 @@ func checkNixFormatting(root string) terminal.CheckItem {
 
 	out, _ := exec.Command("git", "-C", root, "diff", "--stat", "--", "*.nix").Output()
 
-	exec.Command("git", "-C", root, "stash", "pop").Run()
-
-	diff := strings.TrimSpace(string(out))
-	if diff != "" {
+	if len(out) > 0 {
+		exec.Command("git", "-C", root, "checkout", "--", "*.nix").Run()
+		diff := strings.TrimSpace(string(out))
 		return terminal.CheckItem{Label: "Formatting", Status: terminal.StatusFail, Detail: diff}
 	}
+
 	return terminal.CheckItem{Label: "Formatting", Status: terminal.StatusPass, Detail: "all .nix files formatted"}
 }
 

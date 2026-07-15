@@ -72,7 +72,7 @@ let
     # If no favorites exist (first boot), set defaults
     if [ -z "$CURRENT" ] || [ "$CURRENT" = "@as []" ] || [ "$CURRENT" = "[]" ]; then
       echo "First boot: setting default favorites..."
-      $DCONF write /org/gnome/shell/favorite-apps "${builtins.toJSON defaultFavorites}"
+      $DCONF write /org/gnome/shell/favorite-apps "[${builtins.concatStringsSep ", " (map (x: "'${x}'") defaultFavorites)}]"
       exit 0
     fi
 

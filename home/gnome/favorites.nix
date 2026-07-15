@@ -65,12 +65,14 @@ let
   favoritesScript = pkgs.writeShellScript "manage-favorites" ''
     set -euo pipefail
 
-    CURRENT=$(dconf read /org/gnome/shell/favorite-apps 2>/dev/null || echo "")
+    DCONF="${pkgs.dconf}/bin/dconf"
+
+    CURRENT=$($DCONF read /org/gnome/shell/favorite-apps 2>/dev/null || echo "")
 
     # If no favorites exist (first boot), set defaults
     if [ -z "$CURRENT" ] || [ "$CURRENT" = "@as []" ] || [ "$CURRENT" = "[]" ]; then
       echo "First boot: setting default favorites..."
-      dconf write /org/gnome/shell/favorite-apps "${builtins.toJSON defaultFavorites}"
+      $DCONF write /org/gnome/shell/favorite-apps "${builtins.toJSON defaultFavorites}"
       exit 0
     fi
 
@@ -92,7 +94,7 @@ let
     DCONF_ARRAY="[$DCONF_ARRAY]"
 
     echo "Updating favorites: $DCONF_ARRAY"
-    dconf write /org/gnome/shell/favorite-apps "$DCONF_ARRAY"
+    $DCONF write /org/gnome/shell/favorite-apps "$DCONF_ARRAY"
   '';
 in
 {

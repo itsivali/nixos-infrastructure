@@ -51,6 +51,11 @@ type model struct {
 	sortField sortField
 	sortAsc   bool
 
+	actionMode  bool
+	actionCursor int
+	lastAction  string
+	actionResult string
+
 	modules []scanner.Module
 }
 
@@ -133,6 +138,35 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.refreshCmd()
 		case "?":
 			m.helpVisible = !m.helpVisible
+		case "a":
+			if !m.filtering && !m.showDetail {
+				m.actionMode = !m.actionMode
+				m.actionCursor = 0
+			}
+		case "d":
+			if m.actionMode {
+				m.lastAction = "rebuild"
+				m.actionResult = "Rebuilding system..."
+				m.actionMode = false
+				return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "switch", "--flake", m.repo.Root+"#prague"), func(err error) tea.Msg {
+					if err != nil {
+						return actionResultMsg{action: "rebuild", err: err}
+					}
+					return actionResultMsg{action: "rebuild", err: nil}
+				})
+			}
+		case "x":
+			if m.actionMode {
+				m.lastAction = "doctor"
+				m.actionResult = "Running ivali doctor --fix..."
+				m.actionMode = false
+				return m, tea.ExecProcess(exec.Command("ivali", "doctor", "--fix"), func(err error) tea.Msg {
+					if err != nil {
+						return actionResultMsg{action: "doctor", err: err}
+					}
+					return actionResultMsg{action: "doctor", err: nil}
+				})
+			}
 		case "/":
 			if m.activeTab == 1 && !m.showDetail {
 				m.filtering = true
@@ -191,10 +225,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				flen := len(m.filteredModules())
 				if m.moduleCursor < flen-1 {
 					m.moduleCursor++
-				}
-				m.scrollOffset++
-				if m.moduleCursor >= flen && flen > 0 {
-					m.moduleCursor = flen - 1
+					// Only advance scroll when cursor moves past visible window
+					contentHeight := m.height - 12
+					if contentHeight < 3 {
+						contentHeight = 3
+					}
+					if m.moduleCursor >= m.scrollOffset+contentHeight {
+						m.scrollOffset = m.moduleCursor - contentHeight + 1
+					}
 				}
 			}
 		case "g":
@@ -227,6 +265,17 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case spinnerTick:
 		return m, m.spinnerCmd()
+
+	case actionResultMsg:
+		if msg.err != nil {
+			m.actionResult = fmt.Sprintf("  ✗ %s failed: %s", msg.action, msg.err.Error())
+		} else {
+			m.actionResult = fmt.Sprintf("  ✓ %s completed successfully", msg.action)
+		}
+		return m, tea.Tick(5*time.Second, func(t time.Time) tea.Msg {
+			m.actionResult = ""
+			return nil
+		})
 	}
 
 	return m, nil
@@ -309,6 +358,16 @@ func (m *model) View() string {
 	b.WriteString("\n")
 	b.WriteString(m.renderHelpBar())
 
+	if m.actionMode {
+		b.WriteString("\n")
+		b.WriteString(m.renderActionMode())
+	}
+
+	if m.actionResult != "" {
+		b.WriteString("\n")
+		b.WriteString("  " + m.term.Bold(m.actionResult) + "\n")
+	}
+
 	return b.String()
 }
 
@@ -347,9 +406,15 @@ func (m *model) renderTabs() string {
 		icon := m.tabIcons[i]
 		label := fmt.Sprintf(" %s  %s ", icon, m.tabs[i])
 		if i < len(counts) && counts[i] > 0 {
-			if i == 2 && counts[i] > 0 {
-				label = fmt.Sprintf(" %s  %s ", icon, m.tabs[i])
-				label += m.term.ColoredIcon(fmt.Sprintf(" %d ", counts[i]), m.term.Color.Yellow)
+			if i == 2 {
+				// Health tab: green when 0 issues, red when >0
+				if counts[i] == 0 {
+					label = fmt.Sprintf(" %s  %s  ", icon, m.tabs[i])
+					label += m.term.ColoredIcon("✓", m.term.Color.Green)
+				} else {
+					label = fmt.Sprintf(" %s  %s  ", icon, m.tabs[i])
+					label += m.term.ColoredIcon(fmt.Sprintf(" %d ", counts[i]), m.term.Color.Red)
+				}
 			} else {
 				label = fmt.Sprintf(" %s  %s  %d ", icon, m.tabs[i], counts[i])
 			}
@@ -1052,19 +1117,54 @@ func (m *model) renderGenerations() string {
 }
 
 func (m *model) renderHelpBar() string {
-	help := m.term.Dim("   help  / tab   r  s sort  / filter   q quit")
+	help := m.term.Dim("  ? help  ←/→ tab  r refresh  s sort  / filter  a actions  q quit")
 	if m.helpVisible {
-		help += "\n" + m.term.Dim("    IVALI Dashboard — Bubbletea TUI for repository management")
-		help += "\n" + m.term.Dim("   Tab / h,l: Switch panels (6 tabs)   Up/Down / j,k: Navigate")
-		help += "\n" + m.term.Dim("   /: Filter modules   Esc: Clear filter   Backspace: Delete char")
-		help += "\n" + m.term.Dim("   Enter: Toggle module detail   Esc: Back to list")
-		help += "\n" + m.term.Dim("   s: Cycle sort (none → category → type → name → lines)")
-		help += "\n" + m.term.Dim("   r: Refresh all data  g: Top  G: Bottom   q/Ctrl+C: Quit")
+		help += "\n" + m.term.Dim("    IVALI Dashboard — Control Plane for NixOS Infrastructure")
+		help += "\n" + m.term.Dim("    Tab / h,l: Switch panels (6 tabs)    Up/Down / j,k: Navigate")
+		help += "\n" + m.term.Dim("    /: Filter modules    Esc: Clear filter    Backspace: Delete char")
+		help += "\n" + m.term.Dim("    Enter: Toggle module detail    Esc: Back to list")
+		help += "\n" + m.term.Dim("    s: Cycle sort (none → category → type → name → lines)")
+		help += "\n" + m.term.Dim("    a: Toggle action mode    d: Rebuild system    x: Run doctor --fix")
+		help += "\n" + m.term.Dim("    r: Refresh all data    g: Top    G: Bottom    q/Ctrl+C: Quit")
 	}
 	return help
+}
+
+func (m *model) renderActionMode() string {
+	actions := []struct {
+		icon  string
+		key   string
+		label string
+		color lipgloss.TerminalColor
+	}{
+		{"", "d", "Rebuild system (nixos-rebuild switch)", m.term.Color.Green},
+		{"", "x", "Run ivali doctor --fix", m.term.Color.Cyan},
+		{"", "Esc", "Cancel", m.term.Color.Gray},
+	}
+
+	var b strings.Builder
+	b.WriteString("  " + m.term.IconH1("⚡", "Actions") + "\n")
+
+	for i, action := range actions {
+		cursor := "  "
+		if i == m.actionCursor {
+			cursor = m.term.ColoredIcon("", m.term.Color.Purple) + " "
+		}
+		b.WriteString(fmt.Sprintf("  %s%s %s %s\n",
+			cursor,
+			m.term.ColoredIcon(action.icon, action.color),
+			m.term.Bold(action.key),
+			m.term.Dim(action.label)))
+	}
+
+	return b.String()
 }
 
 type errMsg error
 type refreshDone time.Time
 type refreshTick time.Time
 type spinnerTick time.Time
+type actionResultMsg struct {
+	action string
+	err    error
+}

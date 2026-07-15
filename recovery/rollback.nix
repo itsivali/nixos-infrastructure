@@ -4,25 +4,36 @@
 #
 # Purpose
 # -------
-# Auto-generated module description.
+# Self-heal service that runs on system health failure.
+# Rollback is handled by gitops-reconcile.sh when the health gate
+# fails post-deployment. This module exists as a safety net.
 #
 ##############################################################################
 
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
+let
+  cfg = config.fleet.deploymentHealth;
+in
 {
-  systemd.services.self-heal = {
-    description = "Rollback on failure";
+  options.fleet.deploymentHealth = {
+    enableRollback = lib.mkEnableOption "automatic rollback on health failure";
+  };
 
-    serviceConfig = {
-      Type = "oneshot";
-      User = "root";
+  config = lib.mkIf (cfg.enable or false) {
+    systemd.services.rollback-on-failure = {
+      description = "Rollback on deployment health failure";
+
+      serviceConfig = {
+        Type = "oneshot";
+        User = "root";
+      };
+
+      script = ''
+        if ! ${./../scripts/deployment-health.sh}; then
+          ${./../scripts/rollback.sh}
+        fi
+      '';
     };
-
-    script = ''
-      if ! ${./../scripts/deployment-health.sh}; then
-        ${./../scripts/rollback.sh}
-      fi
-    '';
   };
 }

@@ -298,13 +298,13 @@ func (t *Terminal) Table(header []string, rows [][]string) string {
 		sepParts[i] = strings.Repeat("─", w+2)
 	}
 	sep := lipgloss.NewStyle().Foreground(t.Color.Border).Render(" " + strings.Join(sepParts, "─") + " ")
-	_ = sep
 
 	headerCells := make([]string, cols)
 	for i, h := range header {
 		headerCells[i] = renderCell(h, widths[i], true)
 	}
 	b.WriteString("  " + strings.Join(headerCells, " ") + "\n")
+	b.WriteString("  " + sep + "\n")
 
 	for _, row := range rows {
 		cells := make([]string, cols)
@@ -621,20 +621,6 @@ func (t *Terminal) RenderSplash() string {
 	b.WriteString(bl.Render("  └"+line+"┘") + "\n")
 
 	return b.String()
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func IsInteractive() bool {

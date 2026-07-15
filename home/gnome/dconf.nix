@@ -33,13 +33,6 @@
       development-tools = false;
       remember-mount-password = false;
       welcome-dialog-last-shown-version = "999";
-      favorite-apps = [
-        "firefox.desktop"
-        "org.gnome.Console.desktop"
-        "org.gnome.Nautilus.desktop"
-        "org.gnome.TextEditor.desktop"
-        "org.gnome.Extensions.desktop"
-      ];
     };
 
     "org/gnome/desktop/interface" = {
@@ -61,7 +54,7 @@
     };
 
     "org/gnome/desktop/wm/preferences" = {
-      button-layout = "close:minimize,maximize,appmenu";
+      button-layout = ":close,minimize,maximize,appmenu";
       titlebar-font = "Inter Bold 11";
       titlebar-uses-system-font = false;
       auto-maximize = true;

@@ -22,8 +22,9 @@ pkgs.testers.nixosTest {
     services.xserver.enable = false;
     services.openssh.enable = false;
 
-    ivali.automation.gitops.enable = true;
-    ivali.recovery.health.enable = true;
+    fleet.gitops.repo = "https://gitlab.com/willisivali/nixos-infrastructure";
+    fleet.gitops.branch = "main";
+    fleet.deploymentHealth.enable = true;
 
     system.stateVersion = "26.11";
   };
@@ -38,6 +39,6 @@ pkgs.testers.nixosTest {
     machine.succeed("systemctl is-active deployment-health.timer")
 
     # Test gitops timer
-    machine.succeed("systemctl is-active gitops-reconcile.timer")
+    machine.succeed("systemctl is-active gitops-reconciler.timer")
   '';
 }

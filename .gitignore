@@ -1,18 +1,19 @@
-*.bak.*
-*.pre-repair
-*.pre-grafana-fix
-secrets/grafana-secret-key
-.direnv/
-result
 
-# Go
-/ivali
-/ivali.exe
-/result/bin/
-*.test
-*.out
-/vendor/
-/.cache/
-/cmd/ivali/ivali
+*.bak.*
 bw
 /bw-tui
+/.cache/
+/cmd/ivali/ivali
+.direnv/
+# Go
+/ivali
+ivali-bot
+/ivali.exe
+*.out
+*.pre-grafana-fix
+*.pre-repair
+result
+/result/bin/
+secrets/grafana-secret-key
+*.test
+/vendor/

@@ -1,28 +1,17 @@
 ##############################################################################
 #
-# Zsh Key Bindings
+# Zsh Key Bindings (Deprecated)
 #
 # Purpose
 # -------
-# Own Zsh key bindings.
+# This module is intentionally empty.
+# Key binding configuration lives in startup/30-keybindings.nix.
 #
-# Ownership
-# ---------
-# bindkey
-#
-# Responsibilities
-# ----------------
-# - Tab completion binding
-# - Up/down history search
-#
-# Does NOT Own
-# ------------
-# - Completion styles (shell/core/completion.nix)
-# - initContent — lives in shell/core/startup/30-keybindings.nix
+# This file exists only to preserve backwards compatibility with any
+# external references. It is no longer imported.
 #
 ##############################################################################
 
 { ... }:
 
-{
-}
+{ }

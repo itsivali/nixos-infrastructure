@@ -29,8 +29,6 @@
     ./bash.nix
     ./zsh.nix
     ./history.nix
-    ./completion.nix
-    ./keybindings.nix
     ./prompt.nix
     ./startup
   ];

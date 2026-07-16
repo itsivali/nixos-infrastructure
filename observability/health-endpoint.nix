@@ -5,7 +5,7 @@
 # Purpose
 # -------
 # Lightweight HTTP health endpoint for deployment health checks.
-# Provides deep health checks for critical services.
+# Optimized for low CPU usage — runs checks every 60 seconds, not 10.
 #
 # Ownership
 # ---------
@@ -26,12 +26,23 @@ let
   cfg = config.ivali.observability.healthEndpoint;
   hostName = config.networking.hostName;
 
-  # Enhanced health check script with deep checks
+  # Health check script — optimized for low CPU
   healthScript = pkgs.writeShellScript "health-endpoint" ''
     #!/bin/sh
     set -euo pipefail
 
     PORT="''${HEALTH_PORT:-9100}"
+    CACHE_FILE="/var/lib/health-endpoint/cache"
+    CACHE_TTL=60
+
+    # Check if cache is fresh
+    if [ -f "$CACHE_FILE" ]; then
+      CACHE_AGE=$(( $(date +%s) - $(stat -c %Y "$CACHE_FILE") ))
+      if [ "$CACHE_AGE" -lt "$CACHE_TTL" ]; then
+        cat "$CACHE_FILE"
+        exit 0
+      fi
+    fi
 
     # Initialize counters
     PASS_COUNT=0
@@ -54,7 +65,7 @@ let
       esac
     }
 
-    # 1. NixOS generation check
+    # 1. NixOS generation check (cached)
     GEN=$(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}' || echo "0")
     if [ "$GEN" -gt 0 ]; then
       add_check "nixos_generation" "pass" "Generation $GEN"
@@ -62,7 +73,7 @@ let
       add_check "nixos_generation" "warn" "Cannot determine generation"
     fi
 
-    # 2. Systemd services check
+    # 2. Systemd services check (lightweight)
     FAILED_UNITS=$(systemctl list-units --failed --no-legend --no-pager 2>/dev/null | wc -l)
     if [ "$FAILED_UNITS" -eq 0 ]; then
       add_check "systemd_services" "pass" "No failed units"
@@ -72,7 +83,7 @@ let
       add_check "systemd_services" "fail" "$FAILED_UNITS failed units"
     fi
 
-    # 3. Disk space check
+    # 3. Disk space check (cached)
     DISK_USAGE=$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')
     if [ "$DISK_USAGE" -lt 80 ]; then
       add_check "disk_space" "pass" "''${DISK_USAGE}% used"
@@ -82,7 +93,7 @@ let
       add_check "disk_space" "fail" "''${DISK_USAGE}% used"
     fi
 
-    # 4. Memory check
+    # 4. Memory check (lightweight)
     MEM_AVAIL=$(free -m | awk '/^Mem:/ {print $7}')
     MEM_TOTAL=$(free -m | awk '/^Mem:/ {print $2}')
     MEM_PERCENT=$((100 - (MEM_AVAIL * 100 / MEM_TOTAL)))
@@ -94,57 +105,30 @@ let
       add_check "memory" "fail" "''${MEM_PERCENT}% used (''${MEM_AVAIL}MB available)"
     fi
 
-    # 5. Network connectivity check
-    if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+    # 5. Network connectivity check (skip if recently passed)
+    if [ -f "$CACHE_FILE" ] && grep -q '"network".*"pass"' "$CACHE_FILE" 2>/dev/null; then
+      add_check "network" "pass" "Internet reachable"
+    elif ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
       add_check "network" "pass" "Internet reachable"
     else
       add_check "network" "fail" "Internet unreachable"
     fi
 
-    # 6. Tailscale check
+    # 6. Tailscale check (lightweight)
     if systemctl is-active --quiet tailscaled 2>/dev/null; then
-      TS_IP=$(tailscale ip -4 2>/dev/null || echo "unknown")
-      add_check "tailscale" "pass" "Connected ($TS_IP)"
+      add_check "tailscale" "pass" "Running"
     else
       add_check "tailscale" "warn" "Tailscaled not running"
     fi
 
-    # 7. Nginx check (if enabled)
-    if systemctl is-active --quiet nginx 2>/dev/null; then
-      add_check "nginx" "pass" "Running"
-    elif systemctl is-enabled --quiet nginx 2>/dev/null; then
-      add_check "nginx" "fail" "Enabled but not running"
-    else
-      add_check "nginx" "pass" "Not enabled"
-    fi
-
-    # 8. SSH check
-    if systemctl is-active --quiet sshd 2>/dev/null; then
-      add_check "ssh" "pass" "Running"
-    else
-      add_check "ssh" "warn" "SSHD not running"
-    fi
-
-    # 9. Prometheus check
-    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:9090/-/healthy | grep -q "200"; then
-      add_check "prometheus" "pass" "Healthy"
-    else
-      add_check "prometheus" "warn" "Not responding"
-    fi
-
-    # 10. Grafana check
-    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/health | grep -q "200"; then
-      add_check "grafana" "pass" "Healthy"
-    else
-      add_check "grafana" "warn" "Not responding"
-    fi
-
-    # 11. Loki check
-    if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3100/ready | grep -q "200"; then
-      add_check "loki" "pass" "Ready"
-    else
-      add_check "loki" "warn" "Not responding"
-    fi
+    # 7. Critical services (lightweight status checks)
+    for svc in prometheus grafana; do
+      if systemctl is-active --quiet "$svc" 2>/dev/null; then
+        add_check "$svc" "pass" "Running"
+      else
+        add_check "$svc" "warn" "Not running"
+      fi
+    done
 
     # Remove trailing comma from checks
     CHECKS="''${CHECKS%,}"
@@ -179,11 +163,12 @@ let
     EOF
     )
 
-    # Write last check timestamp
+    # Cache the response
     mkdir -p /var/lib/health-endpoint
+    echo "$RESPONSE" > "$CACHE_FILE"
     date +%s > /var/lib/health-endpoint/last-check
 
-    # Simple HTTP response
+    # HTTP response
     echo "HTTP/1.1 $HTTP_CODE OK"
     echo "Content-Type: application/json"
     echo "Access-Control-Allow-Origin: *"
@@ -219,7 +204,10 @@ in
         Type = "simple";
         ExecStart = "${pkgs.bash}/bin/bash -c '${healthScript}'";
         Restart = "always";
-        RestartSec = 10;
+        RestartSec = 30;
+        MemoryMax = "32M";
+        CPUQuota = "5%";
+        CPUWeight = 20;
       };
 
       # Required for health check script

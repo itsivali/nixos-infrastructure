@@ -5,6 +5,7 @@
 # Purpose
 # -------
 # Persistent journald logging with compression and rate limiting.
+# Optimized for low CPU usage.
 #
 # Ownership
 # ---------
@@ -20,8 +21,11 @@
     Compress=yes
     ForwardToSyslog=no
     RateLimitIntervalSec=30s
-    RateLimitBurst=10000
-    SystemMaxUse=100M
+    RateLimitBurst=5000
+    SystemMaxUse=50M
     MaxFileSec=1week
+    MaxRetentionSec=7day
+    Compress=yes
+    Seal=no
   '';
 }

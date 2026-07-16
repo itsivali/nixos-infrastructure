@@ -158,12 +158,6 @@
       dynamic-workspaces = true;
     };
 
-    "org/gnome/console" = {
-      theme-variant = "dark";
-      font-size = lib.gvariant.mkInt32 11;
-      audible-bell = false;
-    };
-
     "org/gnome/Console" = {
       theme-variant = "dark";
       font-size = lib.gvariant.mkInt32 11;

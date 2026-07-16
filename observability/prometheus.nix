@@ -5,6 +5,7 @@
 # Purpose
 # -------
 # Local Prometheus metrics collection and node exporter.
+# Optimized for low CPU usage on a laptop.
 #
 # Ownership
 # ---------
@@ -70,6 +71,7 @@ in
               };
             }
           ];
+          scrape_interval = "60s";
         }
         {
           job_name = "prometheus";
@@ -85,8 +87,39 @@ in
       ];
       exporters.node = {
         enable = true;
-        enabledCollectors = [ "systemd" "processes" ];
+        enabledCollectors = [
+          "systemd"
+          "processes"
+          "cpu"
+          "meminfo"
+          "diskstats"
+          "filesystem"
+          "loadavg"
+          "netdev"
+          "stat"
+          "time"
+          "uname"
+          "vmstat"
+        ];
         openFirewall = false;
+      };
+    };
+
+    # CPU limits for Prometheus
+    systemd.services.prometheus = {
+      serviceConfig = {
+        CPUQuota = "20%";
+        CPUWeight = 50;
+        # IO limits to prevent disk thrashing
+        IOWeight = 30;
+      };
+    };
+
+    # CPU limits for node exporter
+    systemd.services.prometheus-node-exporter = {
+      serviceConfig = {
+        CPUQuota = "10%";
+        CPUWeight = 30;
       };
     };
   };

@@ -1,9 +1,5 @@
 { ... }:
 
 {
-  imports = [
-    ./client.nix
-    ./options.nix
-    ./daemon.nix
-  ];
+  imports = import ../lib/auto-imports.nix ./.;
 }

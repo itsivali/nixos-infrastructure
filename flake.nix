@@ -20,10 +20,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-      sops-nix = {
-        url = "github:Mic92/sops-nix";
-        inputs.nixpkgs.follows = "nixpkgs";
-      };
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -44,49 +44,57 @@
       };
 
       # Generate nixosConfigurations for each host
-      nixosConfigurations = lib.mapAttrs (name: hostSpec:
-        lib.nixosSystem {
-          inherit system;
+      nixosConfigurations = lib.mapAttrs
+        (name: hostSpec:
+          lib.nixosSystem {
+            inherit system;
 
-          specialArgs = {
-            inherit self;
-            hostSpec = hostSpec;
-            defaultUsername = hostSpec.userName or defaultUsername;
-            username = hostSpec.userName or defaultUsername;
-            gitlabUrl = "https://gitlab.com/willisivali/nixos-infrastructure";
-          };
+            specialArgs = {
+              inherit self;
+              hostSpec = hostSpec;
+              defaultUsername = hostSpec.userName or defaultUsername;
+              username = hostSpec.userName or defaultUsername;
+              gitlabUrl = "https://gitlab.com/willisivali/nixos-infrastructure";
+            };
 
-          modules = [
-            sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
+            modules = [
+              sops-nix.nixosModules.sops
+              home-manager.nixosModules.home-manager
 
-            ./configuration.nix
+              ./configuration.nix
 
-            # Host-specific hardware configuration
-            ./hosts/hardware-configuration.nix
+              # Host-specific hardware configuration (per-host or fallback)
+              (
+                let
+                  hostHw = ./hosts + "/${name}/hardware-configuration.nix";
+                  fallbackHw = ./hosts/hardware-configuration.nix;
+                in
+                if builtins.pathExists hostHw then hostHw else fallbackHw
+              )
 
-            # Host-specific configuration from template
-            ./lib/host-templates/laptop.nix
+              # Host-specific configuration from template
+              ./lib/host-templates/laptop.nix
 
-            # Home Manager user configuration
-            {
-              home-manager = {
-                useGlobalPkgs = true;
-                useUserPackages = true;
+              # Home Manager user configuration
+              {
+                home-manager = {
+                  useGlobalPkgs = true;
+                  useUserPackages = true;
 
-                extraSpecialArgs = {
-                  inherit inputs hostSpec defaultUsername;
-                  hostName = hostSpec.hostName;
-                  username = hostSpec.userName or defaultUsername;
+                  extraSpecialArgs = {
+                    inherit inputs hostSpec defaultUsername;
+                    hostName = hostSpec.hostName;
+                    username = hostSpec.userName or defaultUsername;
+                  };
+
+                  users.${hostSpec.userName or defaultUsername} = import ./home/ivali.nix;
+                  backupFileExtension = "hm-backup";
                 };
-
-                users.${hostSpec.userName or defaultUsername} = import ./home/ivali.nix;
-                backupFileExtension = "hm-backup";
-              };
-            }
-          ];
-        }
-      ) hostsConfig;
+              }
+            ];
+          }
+        )
+        hostsConfig;
     in
     {
       # ─────────────────────────────────────────────
@@ -103,7 +111,7 @@
           paths =
             (import ./packages/cli { inherit pkgs; })
             ++ (import ./packages/desktop { inherit pkgs; })
-                  ++ [ self.packages.${system}.bw-tui ];
+            ++ [ self.packages.${system}.bw-tui ];
         };
 
         user = pkgs.buildEnv {
@@ -124,6 +132,18 @@
           subPackages = [ "cmd/bw-tui" ];
         };
 
+        ivali-bot = pkgs.buildGoModule {
+          name = "ivali-bot";
+          src = pkgs.lib.cleanSourceWith {
+            filter = name: type:
+              !(type == "directory" && builtins.baseNameOf name == "vendor")
+            ;
+            src = self;
+          };
+          vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+          subPackages = [ "cmd/ivali-bot" ];
+        };
+
         # FIX: required for `nix build` / CI default behavior
         default =
           self.nixosConfigurations.prague.config.system.build.toplevel;
@@ -137,5 +157,16 @@
       # NixOS configurations (generated above)
       # ─────────────────────────────────────────────
       inherit nixosConfigurations;
+
+      # ─────────────────────────────────────────────
+      # Checks (NixOS smoke tests for nix flake check)
+      # ─────────────────────────────────────────────
+      checks.${system} = {
+        laptop-smoke = import ./tests/laptop-smoke.nix { inherit pkgs; };
+        security-smoke = import ./tests/security-smoke.nix { inherit pkgs; };
+        observability-smoke = import ./tests/observability-smoke.nix { inherit pkgs; };
+        services-smoke = import ./tests/services-smoke.nix { inherit pkgs; };
+        home-manager-smoke = import ./tests/home-manager-smoke.nix { inherit pkgs; };
+      };
     };
 }

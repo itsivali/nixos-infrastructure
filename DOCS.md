@@ -1738,3 +1738,72 @@ Does NOT Own
 - Podman or other runtimes (N/A)
 #############################################################################
 
+## services/bot/ivali-bot-go.nix
+
+##############################################################################
+Go Telegram Bot Service
+Purpose
+-------
+Go-based Telegram bot for NixOS infrastructure management.
+This is the new Go implementation replacing the shell-based bot.
+Ownership
+---------
+systemd.services.ivali-bot-go
+Dependencies
+------------
+Requires fleet.bot options (declared in automation/options.nix).
+##############################################################################
+
+**Telegram Commands (47 total):**
+
+| Command | Description | Permission |
+|---------|-------------|------------|
+| /help | Show available commands | guest |
+| /status | Show system status | user |
+| /health | Show system health | user |
+| /disk | Show disk usage | user |
+| /processes | Show top processes | user |
+| /generations | Show NixOS generations | user |
+| /reboot | Reboot the system | admin |
+| /shutdown | Shut down the system | admin |
+| /deploy | Rebuild NixOS configuration | admin |
+| /rollback | Rollback to previous generation | admin |
+| /update | Update flake inputs | admin |
+| /scan | Scan repository modules | user |
+| /security | Show security status | user |
+| /doctor | Run system diagnostics | user |
+| /store | Show Nix store usage | user |
+| /gc | Run Nix garbage collection | admin |
+| /apps | List discovered applications | user |
+| /open | Launch any application | user |
+| /volume | Volume control | user |
+| /mute | Mute audio | user |
+| /unmute | Unmute audio | user |
+| /brightness | Brightness control | user |
+| /screenshot | Capture desktop | user |
+| /clipboard | Clipboard operations | user |
+| /desktop_power | Power options (suspend/lock) | user |
+| /firefox | Open Firefox | user |
+| /git | Git operations | user |
+| /github | GitHub operations | user |
+| /gitlab | GitLab operations | user |
+| /nix | Nix operations | admin |
+| /run | Execute shell command | admin |
+| /pkg | Package information | user |
+| /speedtest | Run speed test | user |
+| /top | Show system metrics | user |
+| /log | Show system logs | user |
+| /backup | Trigger backup | user |
+| /metrics | Show Prometheus metrics | user |
+| /cancel | Cancel pending operations | user |
+| /windows | Window management | user |
+| /workspace | Workspace management | user |
+| /users | List system users | owner |
+| /adduser | Add a system user | owner |
+| /rmuser | Remove a system user | owner |
+| /menu | Show main menu | guest |
+| /start | Show welcome message | guest |
+| /notify | Send notification | user |
+| /monitoron | Turn on monitor | user |
+
+

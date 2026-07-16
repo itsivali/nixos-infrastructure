@@ -9,5 +9,5 @@
 #   gnome/          ← GNOME desktop, GDM, extensions, audio, packages
 { ... }:
 {
-  imports = [ ./gnome ] ++ import ../lib/auto-imports.nix ./.;
+  imports = import ../lib/auto-imports.nix ./.;
 }

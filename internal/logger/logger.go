@@ -114,7 +114,7 @@ func New(level Level, opts ...Option) *Logger {
 
 	return &Logger{
 		inner:  ctx.Logger(),
-		level:  level,
+		level:  l.level,
 		caller: l.caller,
 	}
 }

@@ -5,6 +5,7 @@
 # Purpose
 # -------
 # Local Loki log aggregation service.
+# Optimized for low CPU usage on a laptop.
 #
 # Ownership
 # ---------
@@ -54,18 +55,39 @@ in
       limits_config = {
         allow_structured_metadata = false;
         retention_period = "48h";
-        ingestion_rate_mb = 4;
-        ingestion_burst_size_mb = 8;
-        max_streams_per_user = 0;
-        max_global_streams_per_user = 0;
+        ingestion_rate_mb = 2;
+        ingestion_burst_size_mb = 4;
+        max_streams_per_user = 1000;
+        max_global_streams_per_user = 1000;
         max_line_size = "256KB";
+        max_query_parallelism = 4;
+        split_queries_by_interval = "30m";
       };
       compactor = {
         working_directory = "/var/lib/loki/compactor";
         retention_enabled = true;
+        compaction_interval = "2h";
+        retention_delete_delay = "2h";
+        retention_delete_worker_count = 50;
         delete_request_store = "filesystem";
       };
+      chunk_store_config = {
+        chunk_cache_config = {
+          embedded_cache = {
+            enabled = true;
+            max_size_mb = 32;
+          };
+        };
+      };
       analytics.reporting_enabled = false;
+    };
+  };
+
+  # CPU limits for Loki
+  systemd.services.loki = lib.mkIf cfg.loki.enable {
+    serviceConfig = {
+      CPUQuota = "15%";
+      CPUWeight = 40;
     };
   };
 }

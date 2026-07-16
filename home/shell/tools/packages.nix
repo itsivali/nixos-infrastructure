@@ -1,46 +1,26 @@
 ##############################################################################
 #
-# Shell Packages
+# Shell Tool Configurations
 #
 # Purpose
 # -------
-# Own shell-related packages installed via Home Manager.
+# Home Manager configurations for shell tools.
+# Package installations live in packages/cli/default.nix (system-wide).
+# This module only configures tool behavior via Home Manager options.
 #
 # Ownership
 # ---------
-# home.packages entries for shell tools
-#
-# Responsibilities
-# ----------------
-# - fzf
-# - zoxide
-# - eza
-# - bat
-# - btop
-# - fastfetch
-# - (and other shell tool packages)
+# programs.* options for shell tools
 #
 # Does NOT Own
 # ------------
-# - Git packages (home/git/)
+# - Package installations (packages/cli/default.nix)
+# - Git tool configs (home/git/*.nix)
 # - Editor packages (home/editors/)
-# - Environment packages (home/environment/)
-# - Desktop packages (packages/desktop/)
-# - Developer packages (home/developer/)
+# - Environment packages (home/environment/packages.nix)
 #
 ##############################################################################
 
-{ pkgs, ... }:
+{ ... }:
 
-{
-  home.packages = with pkgs; [
-    bat
-    btop
-    eza
-    fastfetch
-    fd
-    fzf
-    ripgrep
-    zoxide
-  ];
-}
+{ }

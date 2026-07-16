@@ -5,6 +5,7 @@
 # Purpose
 # -------
 # Forward systemd journal logs to Loki.
+# Optimized for low CPU usage.
 #
 # Ownership
 # ---------
@@ -21,12 +22,20 @@ in
   environment.etc."alloy/config.alloy" = lib.mkIf (cfg.enable && cfg.alloy.enable) {
     text = ''
       logging {
-        level = "info"
+        level = "warn"
       }
 
       loki.write "default" {
         endpoint {
           url = "${cfg.lokiUrl}"
+          batch {
+            wait = "5s"
+            max_items = 500
+            max_entries_bytes = "1MB"
+          }
+          external_labels = {
+            host = "${config.networking.hostName}"
+          }
         }
       }
 
@@ -37,6 +46,17 @@ in
           host = "${config.networking.hostName}"
           job  = "systemd-journal"
         }
+
+        relabel_rules = [
+          {
+            source_labels = ["__journal_priority_keyword"]
+            target_label = "level"
+          },
+          {
+            source_labels = ["__journal__systemd_unit"]
+            target_label = "unit"
+          },
+        ]
       }
     '';
   };
@@ -49,7 +69,10 @@ in
     serviceConfig = {
       ExecStart = "${pkgs.grafana-alloy}/bin/alloy run /etc/alloy/config.alloy";
       Restart = "always";
-      RestartSec = "10s";
+      RestartSec = "30s";
+      MemoryMax = "64M";
+      CPUQuota = "10%";
+      CPUWeight = 30;
     };
   };
 }

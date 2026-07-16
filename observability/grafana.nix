@@ -5,6 +5,7 @@
 # Purpose
 # -------
 # Local Grafana dashboard server with provisioned data sources and dashboards.
+# Optimized for low CPU usage on a laptop.
 #
 # Ownership
 # ---------
@@ -54,6 +55,11 @@ in
       };
       users.allow_sign_up = false;
       log.mode = "console";
+      # Reduce Grafana CPU usage
+      log.level = "warn";
+      caching.enabled = true;
+      unified_alerting.enabled = false;
+      alerts.enabled = false;
     };
     provision = {
       enable = true;
@@ -87,7 +93,7 @@ in
             folder = "NixOS";
             type = "file";
             disableDeletion = false;
-            updateIntervalSeconds = 60;
+            updateIntervalSeconds = 120;
             options = {
               path = "/var/lib/grafana/dashboards/nixos";
             };
@@ -97,10 +103,14 @@ in
     };
   };
 
+  # CPU and memory limits for all observability services
   systemd.services.grafana = lib.mkIf cfg.enable {
     serviceConfig = {
       MemoryMax = "128M";
       MemoryHigh = "96M";
+      CPUQuota = "15%";
+      CPUWeight = 50;
+      IOWeight = 30;
     };
   };
 
@@ -108,6 +118,8 @@ in
     serviceConfig = {
       MemoryMax = "64M";
       MemoryHigh = "48M";
+      CPUQuota = "10%";
+      CPUWeight = 40;
     };
   };
 
@@ -115,12 +127,16 @@ in
     serviceConfig = {
       MemoryMax = "64M";
       MemoryHigh = "48M";
+      CPUQuota = "20%";
+      CPUWeight = 50;
     };
   };
 
   systemd.services."prometheus-node-exporter" = lib.mkIf cfg.enable {
     serviceConfig = {
       MemoryMax = "32M";
+      CPUQuota = "10%";
+      CPUWeight = 30;
     };
   };
 }

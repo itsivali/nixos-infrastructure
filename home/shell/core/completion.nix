@@ -1,28 +1,17 @@
 ##############################################################################
 #
-# Zsh Completion
+# Zsh Completion (Deprecated)
 #
 # Purpose
 # -------
-# Own Zsh completion configuration.
+# This module is intentionally empty.
+# Completion configuration lives in startup/20-completion.nix.
 #
-# Ownership
-# ---------
-# - compinit
-# - zstyle completion settings
-# - Completion colours
-# - Menu completion
-# - Completion behaviour
-#
-# Does NOT Own
-# ------------
-# - Key bindings (shell/core/keybindings.nix)
-# - FZF completion (shell/integrations/fzf.nix)
-# - initContent — lives in shell/core/startup/20-completion.nix
+# This file exists only to preserve backwards compatibility with any
+# external references. It is no longer imported.
 #
 ##############################################################################
 
 { ... }:
 
-{
-}
+{ }

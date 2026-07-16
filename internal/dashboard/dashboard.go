@@ -153,7 +153,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lastAction = "rebuild"
 				m.actionResult = "Rebuilding system..."
 				m.actionMode = false
-				return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "switch", "--flake", m.repo.Root+"#prague"), func(err error) tea.Msg {
+				return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "boot", "--flake", m.repo.Root+"#prague"), func(err error) tea.Msg {
 					if err != nil {
 						return actionResultMsg{action: "rebuild", err: err}
 					}
@@ -205,7 +205,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.lastAction = "rollback"
 					m.actionResult = fmt.Sprintf("Rolling back to generation %d...", gen.Number)
 					profilePath := fmt.Sprintf("/nix/var/nix/profiles/system-%d-link", gen.Number)
-					return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "switch", "--flake", m.repo.Root+"#prague", "--profile", profilePath), func(err error) tea.Msg {
+					return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "boot", "--flake", m.repo.Root+"#prague", "--profile", profilePath), func(err error) tea.Msg {
 						if err != nil {
 							return actionResultMsg{action: fmt.Sprintf("rollback to gen %d", gen.Number), err: err}
 						}
@@ -1207,7 +1207,7 @@ func (m *model) renderActionMode() string {
 		label string
 		color lipgloss.TerminalColor
 	}{
-		{"", "d", "Rebuild system (nixos-rebuild switch)", m.term.Color.Green},
+		{"", "d", "Rebuild system (nixos-rebuild boot)", m.term.Color.Green},
 		{"", "x", "Run ivali doctor --fix", m.term.Color.Cyan},
 		{"", "Esc", "Cancel", m.term.Color.Gray},
 	}

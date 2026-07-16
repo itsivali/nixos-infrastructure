@@ -31,10 +31,9 @@ let
     "org.gnome.TextEditor.desktop"
     "org.gnome.Extensions.desktop"
     "org.gnome.Settings.desktop"
-    "org.gnome.Screenshot.desktop"
-    "org.gnome.DiskUtility.desktop"
-    "localsend.desktop"
-    "us.zoom.Zoom.desktop"
+    "localsend_app.desktop"
+    "zeditor.desktop"
+    "zoom.desktop"
     "obsidian.desktop"
     "vlc.desktop"
     "org.libreoffice.LibreOffice.writer.desktop"
@@ -90,7 +89,7 @@ let
     done
 
     # Convert space-separated to dconf array format
-    DCONF_ARRAY=$(echo "$NEW_LIST" | tr ' ' '\n' | grep -v '^$' | sed "s/^/'/;s/$/'/" | paste -sd ', ')
+    DCONF_ARRAY=$(echo "$NEW_LIST" | tr ' ' '\n' | grep -v '^$' | sed "s/^/'/;s/$/'/" | paste -sd',' | sed 's/,/, /g')
     DCONF_ARRAY="[$DCONF_ARRAY]"
 
     echo "Updating favorites: $DCONF_ARRAY"

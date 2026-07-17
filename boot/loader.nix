@@ -30,7 +30,9 @@
         consoleMode = "max";
       };
 
-      timeout = 0;
+      # Non-zero so the previous-generation recovery entry is reachable
+      # without holding a key (critical for safe rollbacks).
+      timeout = 3;
 
       efi.canTouchEfiVariables = true;
       grub.enable = false;

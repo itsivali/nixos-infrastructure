@@ -120,6 +120,9 @@ in
 
         SyslogIdentifier = "gitops-reconciler";
 
+        # Confine via AppArmor (profile installed by security/apparmor.nix)
+        AppArmorProfile = "gitops-reconciler";
+
         ####################################################################
         ## HARDENING (slightly less strict than health checks)
         ####################################################################

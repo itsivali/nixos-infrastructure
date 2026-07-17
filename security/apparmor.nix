@@ -51,13 +51,21 @@ let
       # Bot runs as root and performs privileged ops; grant capabilities.
       capability,
 
-      # Nix store: read + execute (Go runtime libs, helpers). Immutable store.
-      /nix/store/** rmix,
+      # Nix store: read + mmap-exec (Go runtime libs). No execute here.
+      /nix/store/** rm,
+
+      # Any Nix store binary may be executed, unconfined. The bot process
+      # itself stays confined; its children (incl. nix/git/systemctl for
+      # rebuilds) run unconfined so they can write /nix/store and use SSH
+      # keys. AppArmor resolves execs to the real /nix/store target. A single
+      # exec modifier (ux) is used everywhere to avoid conflicting x modifiers.
+      /nix/store/*/bin/** ux,
+      /run/current-system/sw/bin/** ux,
+      /run/wrappers/bin/** ux,
 
       # System read-only access required by the Go runtime and helpers
       /etc/** r,
       /run/** r,
-      /run/wrappers/bin/** ix,
 
       # Repository (read/write — bot edits configs via /deploy)
       /home/ivali/nixos-infrastructure/** rw,
@@ -69,20 +77,6 @@ let
       # SOPS secrets (read-only)
       /run/secrets/ r,
       /run/secrets/* r,
-
-      # Privileged operations run unconfined — they must write to /nix/store,
-      # use SSH keys, and change system state. Real /nix/store paths are listed
-      # because AppArmor resolves the exec to the store target.
-      /nix/store/*/bin/nixos-rebuild ux,
-      /nix/store/*/bin/nix ux,
-      /nix/store/*/bin/nix-env ux,
-      /nix/store/*/bin/systemctl ux,
-      /nix/store/*/bin/git ux,
-      /run/current-system/sw/bin/nixos-rebuild ux,
-      /run/current-system/sw/bin/nix ux,
-      /run/current-system/sw/bin/nix-env ux,
-      /run/current-system/sw/bin/systemctl ux,
-      /run/current-system/sw/bin/git ux,
 
       # Network access
       network inet stream,
@@ -138,19 +132,13 @@ let
       #include <abstractions/base>
       #include <abstractions/nameservice>
 
-      # Nix store: read + execute (Go runtime libs, helpers). Immutable store.
-      /nix/store/** rmix,
+      # Nix store: read + mmap-exec. Store binaries exec unconfined.
+      /nix/store/** rm,
+      /nix/store/*/bin/** ux,
+      /run/current-system/sw/bin/** ux,
 
       # Repository (read-only)
       /home/ivali/nixos-infrastructure/** r,
-
-      # Privileged commands run unconfined (write /nix/store, SSH, network)
-      /nix/store/*/bin/{nix,nix-env,nixos-rebuild,systemctl,git} ux,
-      /run/current-system/sw/bin/{nix,nix-env,nixos-rebuild,systemctl,git} ux,
-
-      # Core utilities (execute, stay confined)
-      /nix/store/*/bin/{bash,sh,coreutils,findutils,grep,sed,awk,stat,date,uname} ix,
-      /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,stat,date,uname} ix,
 
       # Device access
       /dev/null rw,
@@ -194,25 +182,11 @@ let
 
       capability,
 
-      # Bash and Nix store: read + execute (Go runtime, libs). Immutable store.
-      /nix/store/** rmix,
-      /run/current-system/sw/bin/bash ix,
-
-      # Git commands (unconfined — needs SSH keys / network for fetch+push)
-      /nix/store/*/bin/git ux,
-      /run/current-system/sw/bin/git ux,
-
-      # Nix commands (unconfined — rebuilds must write to /nix/store)
-      /nix/store/*/bin/{nix,nix-env,nixos-rebuild} ux,
-      /run/current-system/sw/bin/{nix,nix-env,nixos-rebuild} ux,
-
-      # Core utilities (stay confined)
-      /nix/store/*/bin/{coreutils,findutils,grep,sed,awk,bash,sh} ix,
-      /run/current-system/sw/bin/{coreutils,findutils,grep,sed,awk} ix,
-
-      # systemctl / jq (unconfined — manage units, parse JSON)
-      /nix/store/*/bin/{systemctl,jq} ux,
-      /run/current-system/sw/bin/{systemctl,jq} ux,
+      # Nix store: read + mmap-exec. Store binaries exec unconfined (so nix
+      # can write /nix/store and git can use SSH keys for fetch+push).
+      /nix/store/** rm,
+      /nix/store/*/bin/** ux,
+      /run/current-system/sw/bin/** ux,
 
       # Build workspace (the reconciler builds the ivali CLI here)
       /build/ rw,

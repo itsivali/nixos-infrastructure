@@ -263,8 +263,8 @@ func TestAllCommandsImplementInterface(t *testing.T) {
 		NewMonitorOnCommand(config),
 		NewStatusCommand(config),
 		NewHealthCommand(config),
-		NewDiskCommand(),
-		NewProcessesCommand(),
+		NewDiskCommand(config),
+		NewProcessesCommand(config),
 		NewGenerationsCommand(config),
 		NewRebootCommand(config),
 		NewShutdownCommand(config),
@@ -272,9 +272,9 @@ func TestAllCommandsImplementInterface(t *testing.T) {
 		NewRollbackCommand(config),
 		NewUpdateCommand(config),
 		NewScanCommand(config),
-		NewSecurityCommand(),
+		NewSecurityCommand(config),
 		NewDoctorCommand(config),
-		NewStoreCommand(),
+		NewStoreCommand(config),
 		NewGCCommand(config),
 	}
 

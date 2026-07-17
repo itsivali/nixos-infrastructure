@@ -75,8 +75,8 @@ type DiskCommand struct {
 	api *telegram.API
 }
 
-func NewDiskCommand() *DiskCommand {
-	return &DiskCommand{}
+func NewDiskCommand(config *telegram.Config) *DiskCommand {
+	return &DiskCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
 func (c *DiskCommand) Name() string             { return "disk" }
@@ -85,17 +85,16 @@ func (c *DiskCommand) RequiredPermission() telegram.Role { return telegram.RoleU
 
 func (c *DiskCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	output := runCmd("df -h / /boot 2>/dev/null", 10)
-	if c.api == nil {
-		c.api = telegram.NewAPI("")
-	}
 	return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
 }
 
 // ProcessesCommand shows running processes.
-type ProcessesCommand struct{}
+type ProcessesCommand struct {
+	api *telegram.API
+}
 
-func NewProcessesCommand() *ProcessesCommand {
-	return &ProcessesCommand{}
+func NewProcessesCommand(config *telegram.Config) *ProcessesCommand {
+	return &ProcessesCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
 func (c *ProcessesCommand) Name() string             { return "processes" }
@@ -107,8 +106,7 @@ func (c *ProcessesCommand) Execute(ctx context.Context, msg *telegram.Message) e
 	if output == "" {
 		output = runCmd("ps aux | head -11", 5)
 	}
-	api := telegram.NewAPI("")
-	return api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
+	return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
 }
 
 // GenerationsCommand shows NixOS generations.
@@ -245,8 +243,8 @@ type SecurityCommand struct {
 	api *telegram.API
 }
 
-func NewSecurityCommand() *SecurityCommand {
-	return &SecurityCommand{}
+func NewSecurityCommand(config *telegram.Config) *SecurityCommand {
+	return &SecurityCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
 func (c *SecurityCommand) Name() string             { return "security" }
@@ -270,9 +268,6 @@ func (c *SecurityCommand) Execute(ctx context.Context, msg *telegram.Message) er
 	lines = append(lines, output)
 	lines = append(lines, "```")
 
-	if c.api == nil {
-		c.api = telegram.NewAPI("")
-	}
 	return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
 }
 
@@ -295,10 +290,12 @@ func (c *DoctorCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 }
 
 // StoreCommand shows Nix store usage.
-type StoreCommand struct{}
+type StoreCommand struct {
+	api *telegram.API
+}
 
-func NewStoreCommand() *StoreCommand {
-	return &StoreCommand{}
+func NewStoreCommand(config *telegram.Config) *StoreCommand {
+	return &StoreCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
 func (c *StoreCommand) Name() string             { return "store" }
@@ -308,8 +305,7 @@ func (c *StoreCommand) RequiredPermission() telegram.Role { return telegram.Role
 func (c *StoreCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	output := runCmd("nix-store -q --size-roots /nix/store 2>/dev/null || echo 'nix-store not available'", 30)
 	output2 := runCmd("du -sh /nix/store 2>/dev/null || echo 'unknown'", 30)
-	api := telegram.NewAPI("")
-	return api.SendMarkdown(msg.ChatID, fmt.Sprintf("*Nix Store*\n\nRoot links: `%s`\nDisk usage: `%s`", output, output2))
+	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("*Nix Store*\n\nRoot links: `%s`\nDisk usage: `%s`", output, output2))
 }
 
 // GCCommand runs Nix garbage collection.

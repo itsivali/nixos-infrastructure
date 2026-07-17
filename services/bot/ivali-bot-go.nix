@@ -17,21 +17,17 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, self ? null, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   cfg = config.fleet.bot;
 
-  botPackage =
-    if self != null && self.packages ? ${pkgs.system}
-    then self.packages.${pkgs.system}.ivali-bot
-    else
-      pkgs.buildGoModule {
-        name = "ivali-bot";
-        src = self.outPath or (pkgs.lib.cleanSource ./../../.);
-        vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
-        subPackages = [ "cmd/ivali-bot" ];
-      };
+  botPackage = pkgs.buildGoModule {
+    name = "ivali-bot";
+    src = pkgs.lib.cleanSource ./../../.;
+    vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+    subPackages = [ "cmd/ivali-bot" ];
+  };
 in
 {
   config = lib.mkIf cfg.enable {
@@ -74,6 +70,8 @@ in
         RestartSec = "10s";
         TimeoutStopSec = "30s";
         StandardOutput = "journal";
+        # Confine via AppArmor (profile installed by security/apparmor.nix)
+        AppArmorProfile = "ivali-bot";
         StandardError = "journal";
         SyslogIdentifier = "ivali-bot-go";
 

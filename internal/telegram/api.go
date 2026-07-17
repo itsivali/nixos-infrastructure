@@ -1,11 +1,15 @@
 package telegram
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime/multipart"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -112,6 +116,68 @@ func (a *API) SendLongMessage(chatID int64, text string, maxChars int) error {
 		return a.SendMarkdown(chatID, chunk)
 	}
 
+	return nil
+}
+
+// SendPhoto sends a local image file to the chat.
+func (a *API) SendPhoto(chatID int64, filePath string, caption string) error {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return fmt.Errorf("open photo: %w", err)
+	}
+	defer f.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("photo", filepath.Base(filePath))
+	if err != nil {
+		return fmt.Errorf("create form file: %w", err)
+	}
+	if _, err := io.Copy(part, f); err != nil {
+		return fmt.Errorf("copy photo: %w", err)
+	}
+	if err := writer.WriteField("chat_id", strconv.FormatInt(chatID, 10)); err != nil {
+		return err
+	}
+	if caption != "" {
+		if err := writer.WriteField("caption", caption); err != nil {
+			return err
+		}
+		if err := writer.WriteField("parse_mode", "Markdown"); err != nil {
+			return err
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", a.baseURL+"/sendPhoto", body)
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("telegram API sendPhoto: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read response: %w", err)
+	}
+
+	var result struct {
+		Ok          bool   `json:"ok"`
+		Description string `json:"description"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return fmt.Errorf("parse response: %w", err)
+	}
+	if !result.Ok {
+		return fmt.Errorf("telegram API sendPhoto: %s", result.Description)
+	}
 	return nil
 }
 

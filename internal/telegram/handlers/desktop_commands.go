@@ -143,8 +143,14 @@ func (c *ScreenshotCommand) RequiredPermission() telegram.Role { return telegram
 
 func (c *ScreenshotCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	_ = c.api.SendMarkdown(msg.ChatID, "Capturing screenshot...")
-	output := runCmd("gnome-screenshot -f /tmp/screenshot.png 2>/dev/null && echo 'Screenshot saved' || echo 'Screenshot failed'", 10)
-	return c.api.SendMarkdown(msg.ChatID, output)
+	output := runCmd("gnome-screenshot -f /tmp/screenshot.png 2>/dev/null && echo OK || echo FAIL", 10)
+	if strings.Contains(output, "OK") {
+		if err := c.api.SendPhoto(msg.ChatID, "/tmp/screenshot.png", "Desktop screenshot"); err != nil {
+			return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Screenshot captured but failed to send: `%s`", err))
+		}
+		return nil
+	}
+	return c.api.SendMarkdown(msg.ChatID, "Screenshot failed")
 }
 
 type ClipboardCommand struct {

@@ -260,13 +260,13 @@ func (c *MenuCommand) Execute(ctx context.Context, msg *telegram.Message) error 
 /status /health /metrics /disk /processes /top
 
 *Operations:*
-/deploy /rollback /reboot /shutdown /update
+/deploy /rollback /reboot /shutdown /update /cancel
 
 *Desktop:*
 /open /apps /screenshot /clipboard /volume /brightness
 
 *Development:*
-/git /github /gitlab /nix /scan /doctor
+/git /github /gitlab /nix /run /scan /doctor
 
 *Help:*
 /help /menu`

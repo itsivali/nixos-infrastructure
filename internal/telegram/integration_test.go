@@ -3,6 +3,7 @@ package telegram
 import (
 	"context"
 	"testing"
+	"time"
 )
 
 type mockLogger struct {
@@ -105,7 +106,7 @@ func TestRunnerIsRecent(t *testing.T) {
 	runner := &Runner{config: config}
 
 	// Use current timestamp (should be recent)
-	now := int64(1784228088) // July 2026
+	now := time.Now().Unix()
 	if !runner.isRecent(now) {
 		t.Error("expected current timestamp to be recent")
 	}

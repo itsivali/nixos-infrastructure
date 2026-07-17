@@ -9,13 +9,14 @@
 #
 ##############################################################################
 
-{ pkgs }:
+{ pkgs, sops-nix, home-manager }:
 
 let
   botScripts = ../scripts/bot;
   testScript = ./bot-desktop-smoke.sh;
 in
-pkgs.runCommand "bot-desktop-smoke" {
+pkgs.runCommand "bot-desktop-smoke"
+{
   buildInputs = with pkgs; [ bash coreutils python3 shellcheck ];
 } ''
   mkdir -p $out

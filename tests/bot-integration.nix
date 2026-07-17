@@ -9,13 +9,16 @@
 #
 ##############################################################################
 
-{ pkgs }:
+{ pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {
   name = "bot-integration";
 
   nodes.machine = { config, ... }: {
     imports = [
+      sops-nix.nixosModules.sops
+      ../automation
+      ../ci
       ../services/bot
     ];
 

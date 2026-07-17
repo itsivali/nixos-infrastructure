@@ -1,13 +1,13 @@
-{ pkgs }:
+{ pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {
   name = "home-manager-smoke";
 
   nodes.machine = { pkgs, ... }: {
     imports = [
+      home-manager.nixosModules.home-manager
       ../boot
       ../networking
-      ../system
     ];
 
     networking.hostName = "home-manager-smoke";
@@ -19,17 +19,20 @@ pkgs.testers.nixosTest {
       isNormalUser = true;
       home = "/home/testuser";
       shell = pkgs.zsh;
+      ignoreShellProgramCheck = true;
     };
 
     home-manager = {
       useGlobalPkgs = true;
       useUserPackages = true;
       users.testuser = {
+        home.username = "testuser";
+        home.homeDirectory = "/home/testuser";
         home.stateVersion = "26.11";
         programs.zsh.enable = true;
         programs.git.enable = true;
-        programs.git.userName = "Test User";
-        programs.git.userEmail = "test@example.com";
+        programs.git.settings.user.name = "Test User";
+        programs.git.settings.user.email = "test@example.com";
       };
     };
   };

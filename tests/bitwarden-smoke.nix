@@ -1,10 +1,11 @@
-{ pkgs }:
+{ pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {
   name = "bitwarden-smoke";
 
   nodes.machine = { ... }: {
     imports = [
+      sops-nix.nixosModules.sops
       ../boot
       ../networking
       ../security/sops.nix
@@ -23,8 +24,6 @@ pkgs.testers.nixosTest {
     # Enable SOPS
     ivali.secrets.enable = true;
     ivali.secrets.rotation.enable = false;
-
-    sops.age.keyFile = "/etc/sops/test-key.txt";
 
     # SOPS secret paths should exist
     sops.secrets.bitwarden_clientid = {

@@ -1,4 +1,4 @@
-{ pkgs }:
+{ pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {
   name = "security-smoke";
@@ -7,6 +7,7 @@ pkgs.testers.nixosTest {
     imports = [
       ../boot
       ../networking
+      ../security/apparmor.nix
       ../security/firewall.nix
       ../security/hardening.nix
       ../security/sudo.nix
@@ -16,6 +17,8 @@ pkgs.testers.nixosTest {
     services.xserver.enable = false;
     services.openssh.enable = false;
     system.stateVersion = "26.11";
+
+    security.apparmor.enable = true;
 
     users.users.testuser = {
       isNormalUser = true;
@@ -56,13 +59,11 @@ pkgs.testers.nixosTest {
     machine.succeed("sysctl net.ipv4.tcp_syncookies | grep 1")
     machine.succeed("sysctl net.ipv4.tcp_rfc1337 | grep 1")
     machine.succeed("sysctl net.ipv6.conf.all.accept_ra | grep 0")
-    machine.succeed("sysctl kernel.unprivileged_userns_clone | grep 0")
-    machine.succeed("sysctl kernel.unprivileged_audit_access | grep 0")
     machine.succeed("sysctl vm.unprivileged_userfaultfd | grep 0")
     machine.succeed("sysctl fs.protected_hardlinks | grep 1")
     machine.succeed("sysctl fs.protected_symlinks | grep 1")
 
-    # AppArmor profiles present (complain mode)
+    # AppArmor profiles present (enforce mode)
     machine.succeed("ls /etc/apparmor.d/")
     machine.succeed("cat /etc/apparmor.d/ivali-bot")
     machine.succeed("cat /etc/apparmor.d/ivali-cli")

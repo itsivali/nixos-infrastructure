@@ -8,7 +8,7 @@
 #
 ##############################################################################
 
-{ pkgs }:
+{ pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {
   name = "laptop-smoke";

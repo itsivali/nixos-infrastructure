@@ -8,7 +8,7 @@ BOT_SCRIPTS="${BOT_SCRIPTS:-${SCRIPT_DIR}/../scripts/bot}"
 export BOT_TOKEN="test-token"
 export CHAT_ID="test-chat"
 source "${BOT_SCRIPTS}/config.sh"
-source "${BOT_SCRIPTS}/lib/core.sh"
+
 source "${BOT_SCRIPTS}/lib/desktop.sh"
 
 PASS=0
@@ -49,7 +49,7 @@ except Exception as e:
 export BOT_TOKEN="test-token"
 export CHAT_ID="test-chat"
 source "${BOT_SCRIPTS}/config.sh"
-source "${BOT_SCRIPTS}/lib/core.sh"
+
 source "${BOT_SCRIPTS}/lib/desktop.sh"
 desktop::ensure_session_env && echo "OK" || echo "FAIL"
 EOF
@@ -73,7 +73,7 @@ test_session_env_missing() {
 export BOT_TOKEN="test-token"
 export CHAT_ID="test-chat"
 source "${BOT_SCRIPTS}/config.sh"
-source "${BOT_SCRIPTS}/lib/core.sh"
+
 source "${BOT_SCRIPTS}/lib/desktop.sh"
 desktop::ensure_session_env && echo "OK" || echo "FAIL"
 EOF
@@ -116,6 +116,10 @@ export BOT_TOKEN="test-token"
 export CHAT_ID="test-chat"
 source "${BOT_SCRIPTS}/config.sh"
 source "${BOT_SCRIPTS}/lib/desktop.sh"
+
+# Stub out removed shell-bot helpers so desktop bridge error paths resolve.
+send_msg() { :; }
+log() { :; }
 desktop::session_type
 EOF
   ) || true
@@ -140,7 +144,7 @@ test_resolve_binary() {
 export BOT_TOKEN="test-token"
 export CHAT_ID="test-chat"
 source "${BOT_SCRIPTS}/config.sh"
-source "${BOT_SCRIPTS}/lib/core.sh"
+
 source "${BOT_SCRIPTS}/lib/desktop.sh"
 desktop::resolve_binary "bash"
 EOF

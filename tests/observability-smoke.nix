@@ -1,12 +1,14 @@
-{ pkgs }:
+{ pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {
   name = "observability-smoke";
 
   nodes.machine = { ... }: {
     imports = [
+      sops-nix.nixosModules.sops
       ../boot
       ../networking
+      ../security/sops.nix
       ../observability
     ];
 
@@ -23,10 +25,14 @@ pkgs.testers.nixosTest {
       healthEndpoint.enable = true;
     };
 
+    # Keep SOPS secrets from being declared in this test (no key material present)
+    ivali.secrets.enable = false;
+    sops.defaultSopsFile = /tmp/test-sops.yaml;
+
     services.prometheus = {
       enable = true;
       port = 9090;
-      scrapeConfigs = [];
+      scrapeConfigs = [ ];
     };
 
     services.grafana = {

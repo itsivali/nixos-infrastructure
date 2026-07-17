@@ -97,6 +97,11 @@ scripts/gitops-reconcile.sh     # Pull + rebuild + verify
 ```
 
 ### Telegram Bot
+
+Implemented by the Go bot (`services/bot/ivali-bot-go.nix`,
+`ivali-bot-go.service`). The previous shell bot was removed; only the
+desktop-bridge helpers (`scripts/bot/lib/desktop.sh`) remain for the smoke test.
+
 ```
 /status    /health    /deploy    /rollback
 /update    /reboot    /shutdown  /cancel
@@ -117,11 +122,18 @@ Runtime secrets are at `/run/secrets/` (symlinked by sops-nix).
 
 ## CI/CD
 
-GitLab CI pipeline (`.gitlab-ci.yml`):
-1. **test** — Go tests, nix flake check
-2. **build** — NixOS toplevel, Home Manager activation
-3. **deploy** — Manual trigger, runs `ci-deploy.service`
-4. **notify** — Sends Telegram + email notification
+**GitLab is the single source of truth; GitHub is a push mirror** (no code
+originates on GitHub). Deployment is driven by the GitOps reconciler, not CI:
+
+- **GitLab** — hosts the canonical repo and push-mirrors to GitHub.
+- **GitHub Actions** (`.github/workflows/ci.yml`) — validates the mirror
+  (Go lint/test/build, shellcheck, `nix fmt`, `nix flake check`, gitleaks) and
+  posts the commit status back to GitLab via the GitLab API. No GitLab CI
+  minutes are consumed (`.gitlab-ci.yml` was removed).
+- **GitOps reconciler** (`fleet.gitopsReconciler`, enabled on prague) — every
+  15 min: `git pull --ff-only → nix flake check → nix build →
+  nixos-rebuild switch → health check`. On failure, `deployment-health`
+  triggers `scripts/rollback.sh`.
 
 ## Conventions
 

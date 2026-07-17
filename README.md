@@ -1,6 +1,5 @@
 # nixos-infrastructure
 
-[![GitLab CI](https://img.shields.io/gitlab/pipeline/status/willisivali/nixos-infrastructure?branch=main&label=GitLab+CI)](https://gitlab.com/willisivali/nixos-infrastructure/-/pipelines)
 [![GitHub Actions](https://img.shields.io/github/actions/workflow/status/itsivali/nixos-infrastructure/ci.yml?branch=main&label=GitHub+Actions)](https://github.com/itsivali/nixos-infrastructure/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -41,7 +40,7 @@ all wired together through a zero-touch auto-import module system.
 | **Go CLI** | `ivali` — repository management, health checks, dashboard, bootstrapping |
 | **Secrets** | SOPS-encrypted with age (Tailscale, Telegram, SMTP, Grafana, GitLab) |
 | **Home Manager** | Zsh + Powerlevel10k, FZF, zoxide, direnv, Zed editor, Bitwarden, Nerd Fonts |
-| **CI/CD** | GitLab pipeline (self-hosted runner) + GitHub Actions mirror |
+| **CI/CD** | GitLab source of truth + GitHub Actions mirror (validates, posts status to GitLab); deploy via GitOps reconciler |
 | **Storage** | BTRFS, encrypted swap, aggressive zRAM |
 | **Packages** | Separate CLI and desktop package sets |
 
@@ -127,8 +126,7 @@ deployment-health.timer (every 5 min)
 
 ```
 .
-├── .github/workflows/ci.yml        # GitHub Actions CI mirror
-├── .gitlab-ci.yml                   # GitLab CI pipeline (self-hosted runner)
+├── .github/workflows/ci.yml        # GitHub Actions: validates mirror, posts status to GitLab
 ├── .sops.yaml                       # SOPS age configuration
 ├── AGENTS.md                        # AI agent context
 ├── DOCS.md                          # Auto-generated module docs (112 modules)

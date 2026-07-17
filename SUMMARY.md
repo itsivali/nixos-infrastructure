@@ -99,9 +99,9 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 | `ivali extract` | Extract documentation |
 | `ivali update` | Update flake inputs |
 
-### 3. Telegram Bot (37 Commands)
+### 3. Telegram Bot (Go)
 
-**Location:** `scripts/bot/commands/`
+**Location:** `services/bot/ivali-bot-go.nix` (`cmd/ivali-bot`)
 
 | Category | Commands |
 |----------|----------|
@@ -277,20 +277,20 @@ deployment-health.timer (every 5 min)
 
 ### 13. CI/CD Pipeline
 
-**Location:** `.gitlab-ci.yml`
+**Location:** `.github/workflows/ci.yml`
+
+GitLab is the single source of truth and push-mirrors to GitHub. GitHub
+Actions validates the mirror and posts the commit status back to GitLab;
+deployment is driven by the GitOps reconciler, not CI.
 
 | Stage | Job | Description |
 |-------|-----|-------------|
-| **test** | `go-test` | Go unit tests |
-| **test** | `go-build` | Build Go binary |
-| **test** | `nix-check` | `nix flake check --no-build` |
-| **test** | `nixos-dry-run` | Validate NixOS config without switching |
-| **test** | `security-scan` | Run `ivali doctor` with artifact report |
-| **build** | `nix-build` | Build Home Manager activation |
-| **build** | `nixos-build` | Build NixOS system |
-| **build** | `nixos-build-testvm` | Build testvm configuration |
-| **deploy** | `deploy` | Manual deploy via tagged runner |
-| **notify** | `notify` | Telegram + email notification |
+| **test** | `go-lint`, `go-test`, `go-build` | Go lint/test/build |
+| **test** | `shell-lint` | ShellCheck scripts |
+| **build** | `nix-format`, `nix-flake-check` | `nix fmt --check`, `nix flake check` |
+| **security** | `secret-scan` | gitleaks |
+| **validate** | `nixos-build` | Build NixOS toplevel + Home Manager (self-hosted) |
+| **status** | `gitlab-status` | Posts commit status to GitLab |
 
 ### 14. Testing
 
@@ -348,8 +348,7 @@ nixos-infrastructure/
 ├── secrets/                     # SOPS-encrypted secrets
 ├── AGENTS.md                    # AI context file
 ├── DOCS.md                      # Generated documentation
-├── ivali                        # Compiled Go binary
-└── .gitlab-ci.yml               # CI/CD pipeline
+└── ivali                        # Compiled Go binary
 ```
 
 ---
@@ -516,7 +515,7 @@ d675c20 feat: fill in service stubs (nginx, postgres, redis)
 5. **Zero-Touch:** GitOps reconciliation keeps system in sync with Git
 6. **Observable:** Full metrics, logs, and dashboards out of the box
 7. **Secure:** Defense in depth with 10+ security layers
-8. **Controllable:** 37 Telegram commands for remote management
+8. **Controllable:** Telegram bot (Go) for remote management
 9. **Auditable:** Every change tracked in Git with full history
 10. **Portable:** Bootstrap script works on any fresh NixOS installation
 
@@ -527,7 +526,7 @@ d675c20 feat: fill in service stubs (nginx, postgres, redis)
 ### Completed
 - ✅ Multi-host flake architecture
 - ✅ Go CLI with 21 commands
-- ✅ Telegram bot with 37 commands
+- ✅ Telegram bot (Go) for remote management
 - ✅ Full observability stack
 - ✅ Security hardening
 - ✅ Self-healing recovery

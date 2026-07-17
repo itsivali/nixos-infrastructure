@@ -8,11 +8,11 @@
 sudo nixos-rebuild switch --flake .#prague
 ```
 
-### 2. GitLab CI/CD
+### 2. GitHub Actions Mirror + GitOps
 
-1. Push to `main` branch
-2. CI pipeline runs: test → build
-3. Manual deploy trigger: `sudo systemctl start ci-deploy.service`
+- GitLab is the source of truth and push-mirrors to GitHub.
+- GitHub Actions validates the mirror and posts status back to GitLab.
+- Deployment is automatic via the GitOps reconciler (no manual CI deploy step).
 
 ### 3. GitOps Reconciler
 
@@ -39,7 +39,7 @@ ivali deploy --host prague
 
 ```
 ┌─────────────┐    ┌──────────────┐    ┌──────────────┐
-│  Code Push  │ →  │  CI Build    │ →  │  Deploy      │
+│  Code Push  │ →  │ GH Actions   │ →  │  Deploy      │
 │  (git push) │    │  (nix build) │    │  (rebuild)   │
 └─────────────┘    └──────────────┘    └──────┬───────┘
                                               │
@@ -83,19 +83,20 @@ sudo nixos-rebuild switch --rollback
 
 ## CI Pipeline
 
-`.gitlab-ci.yml` stages:
-1. **test** — Go tests, nix flake check, YAML lint
-2. **build** — NixOS toplevel, Home Manager activation
-3. **deploy** — Manual trigger, runs `ci-deploy.service`
-4. **notify** — Telegram + email notification
+GitHub Actions (`.github/workflows/ci.yml`), run on the GitLab→GitHub mirror:
+1. **test** — Go lint/test/build, shell lint
+2. **build** — `nix fmt --check`, `nix flake check`, gitleaks
+3. **validate** — build NixOS toplevel + Home Manager (self-hosted)
+4. **status** — posts commit status back to GitLab via the GitLab API
+
+Deployment is performed by the GitOps reconciler, not by CI.
 
 ## Secrets in CI
 
-GitLab CI uses SOPS-decrypted secrets:
-- `GITLAB_TOKEN` — API access
-- `TELEGRAM_BOT_TOKEN` — Bot notifications
-- `TELEGRAM_CHAT_ID` — Chat target
-- `NOTIFY_EMAIL` — Email notifications
+GitHub Actions uses repository secrets:
+- `GITLAB_TOKEN` — posts commit status back to GitLab (source of truth)
+- `GITHUB_TOKEN` — checkout / artifact upload
+- (Telegram/email notifications are sent by the running host, not CI)
 
 ## Generation Tracking
 

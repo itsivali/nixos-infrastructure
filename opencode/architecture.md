@@ -96,7 +96,9 @@ from `specialArgs` and generates the full configuration:
 
 ### Deployment Flow
 ```
-git push → GitLab CI → nix build → nixos-rebuild switch → health check
+git push (GitLab, source of truth) → GitHub mirror → GitHub Actions validate
+  → posts status to GitLab → GitOps reconciler: pull → flake check → build
+  → nixos-rebuild switch → health check
 ```
 
 ### Self-Heal Flow

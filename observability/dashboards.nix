@@ -36,7 +36,7 @@ let
       };
     };
     options = {
-      reduceOptions = { calcs = ["lastNotNull"]; fields = ""; values = false; };
+      reduceOptions = { calcs = [ "lastNotNull" ]; fields = ""; values = false; };
       colorMode = "background";
       graphMode = "area";
       justifyMode = "auto";
@@ -80,8 +80,8 @@ let
     version = 1;
     refresh = "10s";
     time = { from = "now-1h"; to = "now"; };
-    templating = { list = []; };
-    annotations = { list = []; };
+    templating = { list = [ ]; };
+    annotations = { list = [ ]; };
     panels = [
       # Row 1: Key metrics
       (statPanel "CPU Usage" "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)" "percent")
@@ -136,8 +136,8 @@ let
     version = 1;
     refresh = "30s";
     time = { from = "now-6h"; to = "now"; };
-    templating = { list = []; };
-    annotations = { list = []; };
+    templating = { list = [ ]; };
+    annotations = { list = [ ]; };
     panels = [
       (statPanel "Active Services" "count(node_systemd_unit_state{state=\"active\"})" "short")
       (statPanel "Failed Services" "count(node_systemd_unit_state{state=\"failed\"})" "short")
@@ -153,8 +153,8 @@ let
           RefId = "A";
         }];
         fieldConfig = {
-          defaults = {};
-          overrides = [];
+          defaults = { };
+          overrides = [ ];
         };
         options = {
           showHeader = true;
@@ -164,7 +164,7 @@ let
       }
 
       (tsPanel "Service Uptime" [
-        { expr = "node_systemd_unit_state{name=~\"prometheus.service|grafana.service|loki.service|nginx.service|alloy.service|ivali-bot.service|tailscaled.service\", state=\"active\"}"; legendFormat = "{{ name }}"; }
+        { expr = "node_systemd_unit_state{name=~\"prometheus.service|grafana.service|loki.service|nginx.service|alloy.service|ivali-bot-go.service|tailscaled.service\", state=\"active\"}"; legendFormat = "{{ name }}"; }
       ] "short")
 
       {
@@ -176,7 +176,7 @@ let
           { expr = "node_systemd_unit_state{name=\"loki.service\", state=\"active\"}"; legendFormat = "Loki"; RefId = "C"; }
           { expr = "node_systemd_unit_state{name=\"nginx.service\", state=\"active\"}"; legendFormat = "Nginx"; RefId = "D"; }
           { expr = "node_systemd_unit_state{name=\"alloy.service\", state=\"active\"}"; legendFormat = "Alloy"; RefId = "E"; }
-          { expr = "node_systemd_unit_state{name=\"ivali-bot.service\", state=\"active\"}"; legendFormat = "Bot"; RefId = "F"; }
+          { expr = "node_systemd_unit_state{name=\"ivali-bot-go.service\", state=\"active\"}"; legendFormat = "Bot"; RefId = "F"; }
           { expr = "node_systemd_unit_state{name=\"tailscaled.service\", state=\"active\"}"; legendFormat = "Tailscale"; RefId = "G"; }
         ];
         fieldConfig = {
@@ -193,7 +193,7 @@ let
           };
         };
         options = {
-          reduceOptions = { calcs = ["lastNotNull"]; fields = ""; values = false; };
+          reduceOptions = { calcs = [ "lastNotNull" ]; fields = ""; values = false; };
           colorMode = "background";
           graphMode = "none";
           justifyMode = "auto";
@@ -215,8 +215,8 @@ let
     version = 1;
     refresh = "30s";
     time = { from = "now-1h"; to = "now"; };
-    templating = { list = []; };
-    annotations = { list = []; };
+    templating = { list = [ ]; };
+    annotations = { list = [ ]; };
     panels = [
       (tsPanel "Network Traffic" [
         { expr = "rate(node_network_receive_bytes_total{device!~\"lo|tailscale.*\"}[5m]) * 8"; legendFormat = "{{ device }} RX bps"; }
@@ -268,8 +268,8 @@ let
     version = 1;
     refresh = "30s";
     time = { from = "now-1h"; to = "now"; };
-    templating = { list = []; };
-    annotations = { list = []; };
+    templating = { list = [ ]; };
+    annotations = { list = [ ]; };
     panels = [
       {
         title = "All Journal Entries";
@@ -295,7 +295,7 @@ let
         title = "Bot Logs";
         type = "logs";
         targets = [{
-          expr = "{job=\"systemd-journal\", unit=\"ivali-bot.service\"}";
+          expr = "{job=\"systemd-journal\", unit=\"ivali-bot-go.service\"}";
           refId = "A";
         }];
         gridPos = { h = 8; w = 12; x = 12; y = 12; };

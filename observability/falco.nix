@@ -182,13 +182,13 @@ in
         RestartSec = "10s";
 
         # Hardening
-        NoNewPrivileges = false;  # Falco needs privileges for BPF
+        NoNewPrivileges = false; # Falco needs privileges for BPF
         PrivateTmp = true;
         ProtectHome = true;
         ProtectSystem = "strict";
         ReadOnlyPaths = [ "/nix/store" "/proc" "/sys" ];
         CapabilityBoundingSet = "CAP_SYS_ADMIN CAP_NET_ADMIN CAP_SYS_PTRACE";
-        AmbiantCapabilities = "CAP_SYS_ADMIN CAP_NET_ADMIN CAP_SYS_PTRACE";
+        AmbientCapabilities = "CAP_SYS_ADMIN CAP_NET_ADMIN CAP_SYS_PTRACE";
       };
     };
   };

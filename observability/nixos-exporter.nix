@@ -24,13 +24,11 @@ let
         #!/bin/sh
         set -euo pipefail
 
-        PORT="''${NIXOS_EXPORTER_PORT:-9101}"
         CACHE_FILE="/var/cache/nixos-exporter/metrics"
         METRICS_FILE=$(mktemp /tmp/nixos-exporter-XXXXXX)
         trap 'rm -f "$METRICS_FILE"' EXIT
 
-        while true; do
-          cat > "$METRICS_FILE" << EOF
+        cat > "$METRICS_FILE" << EOF
     # HELP nixos_generation_current Current NixOS generation number
     # TYPE nixos_generation_current gauge
     nixos_generation_current $(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}' || echo 0)
@@ -66,8 +64,6 @@ let
           echo "Content-Type: text/plain; version=0.0.4"
           echo ""
           cat "$METRICS_FILE"
-          sleep 300
-        done
   '';
 
 in
@@ -88,18 +84,28 @@ in
       after = [ "network.target" ];
       wantedBy = [ "multi-user.target" ];
 
+      path = with pkgs; [
+        bash
+        coreutils
+        findutils
+        gawk
+        git
+        jq
+        nix
+        util-linux
+      ];
+
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${pkgs.bash}/bin/bash -c '${nixosExporterScript} | ${pkgs.coreutils}/bin/tee /dev/null'";
+        ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString cfg.port},fork,reuseaddr,bind=127.0.0.1 SYSTEM:'${nixosExporterScript}'";
         Restart = "always";
-        RestartSec = 60;
+        RestartSec = 5;
         MemoryMax = "64M";
         CPUQuota = "5%";
         CPUWeight = 20;
-      };
 
-      # Hardening
-      serviceConfig = {
+        # Hardening
+        CacheDirectory = "nixos-exporter";
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectHome = true;
@@ -114,6 +120,7 @@ in
       serviceConfig = {
         Type = "oneshot";
         ExecStart = cacheUpdateScript;
+        CacheDirectory = "nixos-exporter";
         CPUQuota = "10%";
         CPUWeight = 30;
       };

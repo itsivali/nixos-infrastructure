@@ -202,12 +202,21 @@ in
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${pkgs.bash}/bin/bash -c '${healthScript}'";
+        # Serve the health script over HTTP on cfg.port (one fork per connection).
+        ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString cfg.port},fork,reuseaddr,bind=127.0.0.1 SYSTEM:'${healthScript}'";
         Restart = "always";
-        RestartSec = 30;
+        RestartSec = 5;
         MemoryMax = "32M";
         CPUQuota = "5%";
         CPUWeight = 20;
+
+        # Hardening
+        StateDirectory = "health-endpoint";
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectHome = true;
+        ProtectSystem = "strict";
+        ReadOnlyPaths = [ "/nix/store" "/proc" "/sys" ];
       };
 
       # Required for health check script
@@ -225,16 +234,8 @@ in
         util-linux
         git
         nix
+        socat
       ];
-
-      # Hardening
-      serviceConfig = {
-        NoNewPrivileges = true;
-        PrivateTmp = true;
-        ProtectHome = true;
-        ProtectSystem = "strict";
-        ReadOnlyPaths = [ "/nix/store" "/proc" "/sys" ];
-      };
     };
 
     networking.firewall.allowedTCPPorts = [ cfg.port ];

@@ -12,14 +12,14 @@
 let
   hostName = hostSpec.hostName;
   userName = hostSpec.userName;
-  tags = hostSpec.tags or [];
+  tags = hostSpec.tags or [ ];
   tailnetDomain = hostSpec.tailnetDomain or null;
-  gitlabRunnerTags = hostSpec.gitlabRunnerTags or [];
-  sshAuthorizedKeys = hostSpec.sshAuthorizedKeys or [];
+  gitlabRunnerTags = hostSpec.gitlabRunnerTags or [ ];
+  sshAuthorizedKeys = hostSpec.sshAuthorizedKeys or [ ];
   sopsKeyPath = hostSpec.sopsKeyPath or "/home/${userName}/.config/sops/age/keys.txt";
-  features = hostSpec.features or {};
+  features = hostSpec.features or { };
   repoPath = hostSpec.repoPath or "/home/${userName}/nixos-infrastructure";
-  extraConfig = hostSpec.config or {};
+  extraConfig = hostSpec.config or { };
 
   hasSecrets = features.secrets or false;
   hasGitLabRunner = features.gitlabRunner or false;
@@ -35,7 +35,7 @@ let
 in
 {
   # Merge per-host extra config (defined in hosts/hosts.nix or host-specific files)
-  imports = lib.optional (extraConfig != {}) { config = extraConfig; };
+  imports = lib.optional (extraConfig != { }) { config = extraConfig; };
 
   ############################################################################
   # SOPS SECRETS DEFINITIONS
@@ -83,27 +83,37 @@ in
         users = [ "gitlab-runner" ];
         commands = [
           {
-            command = "/run/current-system/sw/bin/systemctl";
+            command = "/run/current-system/sw/bin/systemctl start ci-deploy.service";
+            options = [ "NOPASSWD" ];
+          }
+          {
+            command = "/run/current-system/sw/bin/systemctl start ci-notify.service";
             options = [ "NOPASSWD" ];
           }
         ];
       }
     ] ++ [
+      # Passwordless for a few frequent, low-risk admin commands only.
       {
         users = [ userName ];
         commands = [
-          {
-            command = "ALL";
-            options = [ "NOPASSWD" ];
-          }
+          { command = "/run/current-system/sw/bin/nixos-rebuild"; options = [ "NOPASSWD" ]; }
+          { command = "/run/current-system/sw/bin/systemctl status ivali-bot-go*"; options = [ "NOPASSWD" ]; }
+          { command = "/run/current-system/sw/bin/systemctl restart ivali-bot-go*"; options = [ "NOPASSWD" ]; }
+          { command = "/run/current-system/sw/bin/systemctl start gitops-reconciler*"; options = [ "NOPASSWD" ]; }
         ];
       }
-    ] ++ (extraConfig.security.sudo.extraRules or []);
+      # General sudo still requires a password.
+      {
+        users = [ userName ];
+        commands = [{ command = "ALL"; }];
+      }
+    ] ++ (extraConfig.security.sudo.extraRules or [ ]);
 
   ############################################################################
   # GIT CONFIGURATION
   ############################################################################
-  environment.etc."gitconfig".text = ''
+  environment.etc."gitconfig".text = lib.mkDefault ''
     [safe]
       directory = ${repoPath}
   '';
@@ -188,4 +198,9 @@ in
   # SECURITY SCANNING
   ############################################################################
   ivali.security.scanning.enable = true;
+
+  ############################################################################
+  # FAIL2BAN (brute-force protection)
+  ############################################################################
+  ivali.security.fail2ban.enable = true;
 }

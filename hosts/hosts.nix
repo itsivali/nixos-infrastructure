@@ -108,12 +108,9 @@
       ivali.desktop.gnome.enable = true;
       # Disable observability stack until laptop upgrade
       ivali.observability.enable = lib.mkForce false;
-
-      # Git config for root/CI access
-      environment.etc."gitconfig".text = ''
-        [safe]
-          directory = /home/ivali/nixos-infrastructure
-      '';
+      # GitLab is the source of truth; the reconciler applies validated
+      # commits (GitHub Actions validates the mirror and reports back).
+      fleet.gitopsReconciler.enable = true;
     };
   };
 }

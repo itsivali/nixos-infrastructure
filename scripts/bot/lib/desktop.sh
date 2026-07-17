@@ -77,7 +77,7 @@ desktop::gnome_shell_json() {
   local result
   result="$(desktop::gnome_shell_eval "$code")" || return 1
   # Result format: (true, '"[...json...]"') or (false, '...')
-  if [[ "$result" == (true,\ * ]]; then
+  if [[ "$result" == \(true,\ * ]]; then
     local json
     json="$(echo "$result" | sed "s/^(true, //" | sed "s/)$//" | xargs echo)"
     echo "$json"

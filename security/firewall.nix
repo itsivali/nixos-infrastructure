@@ -51,12 +51,14 @@ let
   allEgressDomains = defaultEgressDomains ++ cfg.allowedEgressDomains;
 in
 {
+  imports = [ ./tailscale.nix ];
+
   options.ivali.security.firewall = {
     enable = lib.mkEnableOption "firewall with egress filtering";
 
     allowedEgressDomains = lib.mkOption {
       type = lib.types.listOf lib.types.str;
-      default = [];
+      default = [ ];
       example = [ "example.com" "api.example.com" ];
       description = ''
         Additional domains to allow in egress filtering.

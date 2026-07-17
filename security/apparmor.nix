@@ -20,14 +20,19 @@
 #
 # Profiles
 # --------
-# - ivali-bot: Telegram bot process
-# - ivali-cli: Go CLI binary
+# - ivali-bot: Telegram bot process (root, runs rebuilds/desktop automation)
+# - ivali-cli: Go CLI binary (defined but NOT auto-attached; see note below)
 # - gitops-reconciler: GitOps reconciliation service
 #
-# All profiles start in complain mode for safe deployment.
-# To enforce a profile after validation:
-#   aa-enforce /etc/apparmor.d/<profile>
+# Enforcement
+# -----------
+# All profiles are enforced. Privileged subprocesses (nix/git/systemctl) run
+# unconfined (ux) because they must write to /nix/store and use SSH keys.
 #
+# NOTE: ivali-cli is intentionally NOT attached to a path glob. Attaching it to
+# /nix/store/**/bin/ivali would confine EVERY `ivali` invocation system-wide
+# (shell, cron, bot, doctor) and break legitimate use. It is enforced only when
+# a service explicitly sets AppArmorProfile = "ivali-cli".
 ##############################################################################
 
 { pkgs, lib, ... }:
@@ -37,17 +42,25 @@ let
   ivali-bot-profile = pkgs.writeText "ivali-bot" ''
     #include <tunables/global>
 
-    profile ivali-bot /run/current-system/sw/bin/bash flags=(complain) {
+    profile ivali-bot /nix/store/*/bin/ivali-bot flags=(enforce) {
       #include <abstractions/base>
       #include <abstractions/nameservice>
       #include <abstractions/ssl_certs>
+      #include <abstractions/dbus-session>
 
-      # Bot entrypoint and core scripts
-      /run/current-system/sw/bin/bash r,
-      /nix/store/** r,
+      # Bot runs as root and performs privileged ops; grant capabilities.
+      capability,
 
-      # Repository (read-only)
-      /home/ivali/nixos-infrastructure/** r,
+      # Nix store: read + execute (Go runtime libs, helpers). Immutable store.
+      /nix/store/** rmix,
+
+      # System read-only access required by the Go runtime and helpers
+      /etc/** r,
+      /run/** r,
+      /run/wrappers/bin/** ix,
+
+      # Repository (read/write — bot edits configs via /deploy)
+      /home/ivali/nixos-infrastructure/** rw,
 
       # State directory (read/write)
       /var/lib/ivali-bot/ rw,
@@ -57,25 +70,33 @@ let
       /run/secrets/ r,
       /run/secrets/* r,
 
-      # NixOS commands (execute)
-      /run/current-system/sw/bin/nixos-rebuild ix,
-      /run/current-system/sw/bin/nix ix,
-      /run/current-system/sw/bin/systemctl ix,
-      /run/current-system/sw/bin/git ix,
-
-      # Core utilities (execute)
-      /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,curl,jq,timeout} ix,
+      # Privileged operations run unconfined — they must write to /nix/store,
+      # use SSH keys, and change system state. Real /nix/store paths are listed
+      # because AppArmor resolves the exec to the store target.
+      /nix/store/*/bin/nixos-rebuild ux,
+      /nix/store/*/bin/nix ux,
+      /nix/store/*/bin/nix-env ux,
+      /nix/store/*/bin/systemctl ux,
+      /nix/store/*/bin/git ux,
+      /run/current-system/sw/bin/nixos-rebuild ux,
+      /run/current-system/sw/bin/nix ux,
+      /run/current-system/sw/bin/nix-env ux,
+      /run/current-system/sw/bin/systemctl ux,
+      /run/current-system/sw/bin/git ux,
 
       # Network access
       network inet stream,
       network inet6 stream,
       network inet dgram,
       network unix stream,
+      network unix dgram,
 
-      # Device access
+      # Device access (screenshot, brightness, audio, input)
       /dev/null rw,
       /dev/zero r,
       /dev/urandom r,
+      /dev/input/** r,
+      /dev/dri/** rw,
 
       # Proc and sys (read-only)
       /proc/ r,
@@ -96,6 +117,7 @@ let
       # Logs
       /var/log/ivali-bot/ rw,
       /var/log/ivali-bot/** rw,
+      /var/log/** r,
 
       # Deny
       deny /etc/shadow r,
@@ -109,23 +131,26 @@ let
   ivali-cli-profile = pkgs.writeText "ivali-cli" ''
     #include <tunables/global>
 
-    profile ivali-cli /nix/store/**/bin/ivali flags=(complain) {
+    # No attachment glob: ivali-cli is enforced only when a service explicitly
+    # sets AppArmorProfile = "ivali-cli". Attaching to /nix/store/**/bin/ivali
+    # would confine every `ivali` invocation system-wide and break usage.
+    profile ivali-cli flags=(enforce) {
       #include <abstractions/base>
       #include <abstractions/nameservice>
 
-      # Binary itself (read-only)
-      /nix/store/** r,
+      # Nix store: read + execute (Go runtime libs, helpers). Immutable store.
+      /nix/store/** rmix,
 
       # Repository (read-only)
       /home/ivali/nixos-infrastructure/** r,
 
-      # Nix commands (execute)
-      /run/current-system/sw/bin/nix ix,
-      /run/current-system/sw/bin/nix-env ix,
-      /run/current-system/sw/bin/nixos-rebuild ix,
+      # Privileged commands run unconfined (write /nix/store, SSH, network)
+      /nix/store/*/bin/{nix,nix-env,nixos-rebuild,systemctl,git} ux,
+      /run/current-system/sw/bin/{nix,nix-env,nixos-rebuild,systemctl,git} ux,
 
-      # Core utilities (execute)
-      /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,git,stat,date,uname} ix,
+      # Core utilities (execute, stay confined)
+      /nix/store/*/bin/{bash,sh,coreutils,findutils,grep,sed,awk,stat,date,uname} ix,
+      /run/current-system/sw/bin/{bash,sh,coreutils,findutils,grep,sed,awk,stat,date,uname} ix,
 
       # Device access
       /dev/null rw,
@@ -159,27 +184,49 @@ let
   gitops-reconciler-profile = pkgs.writeText "gitops-reconciler" ''
     #include <tunables/global>
 
-    profile gitops-reconciler /nix/store/**/bin/bash flags=(complain) {
+    # No attachment glob: this profile is applied explicitly to the
+    # gitops-reconciler systemd service via AppArmorProfile=. Attaching it to
+    # /nix/store/**/bin/bash would enforce it on EVERY bash script on the
+    # system (incl. boot/activation scripts) and break boot.
+    profile gitops-reconciler flags=(enforce) {
       #include <abstractions/base>
       #include <abstractions/nameservice>
 
-      # Bash and Nix store
-      /nix/store/** r,
+      capability,
+
+      # Bash and Nix store: read + execute (Go runtime, libs). Immutable store.
+      /nix/store/** rmix,
       /run/current-system/sw/bin/bash ix,
 
-      # Git commands
-      /run/current-system/sw/bin/git ix,
+      # Git commands (unconfined — needs SSH keys / network for fetch+push)
+      /nix/store/*/bin/git ux,
+      /run/current-system/sw/bin/git ux,
 
-      # Nix commands
-      /run/current-system/sw/bin/nix ix,
-      /run/current-system/sw/bin/nix-env ix,
-      /run/current-system/sw/bin/nixos-rebuild ix,
+      # Nix commands (unconfined — rebuilds must write to /nix/store)
+      /nix/store/*/bin/{nix,nix-env,nixos-rebuild} ux,
+      /run/current-system/sw/bin/{nix,nix-env,nixos-rebuild} ux,
 
-      # Core utilities
-      /run/current-system/sw/bin/{coreutils,findutils,grep,sed,awk,systemctl,jq} ix,
+      # Core utilities (stay confined)
+      /nix/store/*/bin/{coreutils,findutils,grep,sed,awk,bash,sh} ix,
+      /run/current-system/sw/bin/{coreutils,findutils,grep,sed,awk} ix,
 
-      # Repository (read-only)
-      /home/ivali/nixos-infrastructure/** r,
+      # systemctl / jq (unconfined — manage units, parse JSON)
+      /nix/store/*/bin/{systemctl,jq} ux,
+      /run/current-system/sw/bin/{systemctl,jq} ux,
+
+      # Build workspace (the reconciler builds the ivali CLI here)
+      /build/ rw,
+      /build/** rw,
+
+      # Repository (read/write — reconciles the flake)
+      /home/ivali/nixos-infrastructure/ rw,
+      /home/ivali/nixos-infrastructure/** rw,
+
+      # Go build cache
+      /home/ivali/go/ rw,
+      /home/ivali/go/** rw,
+      /root/go/ rw,
+      /root/go/** rw,
 
       # GitOps worktree (read/write)
       /var/lib/gitops/ r,
@@ -188,6 +235,11 @@ let
       # State files
       /var/lib/gitops/.git/** rw,
       /tmp/deployment-health-last-ok rw,
+      /tmp/** rw,
+
+      # Broad runtime state
+      /var/** rw,
+      /run/** rw,
 
       # Device access
       /dev/null rw,
@@ -216,8 +268,6 @@ let
       # Deny
       deny /home/*/.ssh/** rw,
       deny /home/*/.gnupg/** rw,
-      deny /home/*/.config/** rw,
-      deny /run/secrets/** rw,
       deny /etc/shadow r,
     }
   '';
@@ -240,15 +290,15 @@ in
   security.apparmor.policies = {
     "ivali-bot" = {
       path = ivali-bot-profile;
-      state = "complain";
+      state = "enforce";
     };
     "ivali-cli" = {
       path = ivali-cli-profile;
-      state = "complain";
+      state = "enforce";
     };
     "gitops-reconciler" = {
       path = gitops-reconciler-profile;
-      state = "complain";
+      state = "enforce";
     };
   };
 }

@@ -71,6 +71,7 @@
       # Security
       ##########################################################
       "page_alloc.shuffle=1"
+      "init_on_alloc=1"
       "slab_nomerge"
       "randomize_kstack_offset=on"
       "vsyscall=none"

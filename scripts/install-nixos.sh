@@ -589,7 +589,7 @@ post_install() {
        ssh -T git@gitlab.com
 
   7. Verify the Telegram bot:
-       systemctl status ivali-bot
+        systemctl status ivali-bot-go
 
   8. Commit and push generated files:
        cd "$REPO_DIR"

@@ -14,7 +14,7 @@
 # Does NOT Own
 # ------------
 # - Time zone (networking/time.nix)
-# - SSH server (networking/ssh-server.nix)
+# - SSH server (ssh/daemon.nix)
 # - Email relay (services/msmtp/)
 #
 ##############################################################################

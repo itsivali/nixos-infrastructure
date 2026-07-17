@@ -52,7 +52,7 @@ in
         # Check if already unlocked
         if [ -n "$BW_SESSION" ]; then
           local check_status
-          check_status=$(echo "$BW_SESSION" | bw status 2>/dev/null | ${pkgs.jq}/bin/jq -r '.status' 2>/dev/null || echo "unknown")
+          check_status=$(echo "$BW_SESSION" | ${pkgs.bitwarden-cli}/bin/bw status 2>/dev/null | ${pkgs.jq}/bin/jq -r '.status' 2>/dev/null || echo "unknown")
           if [ "$check_status" = "unlocked" ]; then
             echo "Vault already unlocked."
             bw_update_activity
@@ -82,7 +82,7 @@ in
 
         # Check current login status
         local bw_status
-        bw_status=$(bw status 2>/dev/null | ${pkgs.jq}/bin/jq -r '.status' 2>/dev/null || echo "unknown")
+        bw_status=$(${pkgs.bitwarden-cli}/bin/bw status 2>/dev/null | ${pkgs.jq}/bin/jq -r '.status' 2>/dev/null || echo "unknown")
 
         case "$bw_status" in
           "unlocked")
@@ -93,8 +93,8 @@ in
               return 0
             fi
             ;;
-          "unauthenticated")
-            bw login --apikey > /dev/null 2>&1 || true
+           "unauthenticated")
+            ${pkgs.bitwarden-cli}/bin/bw login --apikey > /dev/null 2>&1 || true
             ;;
           "locked")
             # Already logged in, just need to unlock

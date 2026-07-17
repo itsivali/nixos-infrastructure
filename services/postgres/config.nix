@@ -27,9 +27,9 @@ in
   config = lib.mkIf cfg.enable {
     services.postgresql = {
       enable = true;
-      port = cfg.port;
 
       settings = {
+        port = cfg.port;
         shared_buffers = "256MB";
         effective_cache_size = "768MB";
         work_mem = "4MB";

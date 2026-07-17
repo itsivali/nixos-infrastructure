@@ -117,7 +117,7 @@
         user = pkgs.buildEnv {
           name = "ivali-user-packages";
           paths = (import ./packages/user { inherit pkgs; })
-            ++ [ self.packages.${system}.bw-tui ];
+            ++ [ self.packages.${system}.bw-tui self.packages.${system}.ivali ];
         };
 
         bw-tui = pkgs.buildGoModule {
@@ -144,6 +144,18 @@
           subPackages = [ "cmd/ivali-bot" ];
         };
 
+        ivali = pkgs.buildGoModule {
+          name = "ivali";
+          src = pkgs.lib.cleanSourceWith {
+            filter = name: type:
+              !(type == "directory" && builtins.baseNameOf name == "vendor")
+            ;
+            src = self;
+          };
+          vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+          subPackages = [ "cmd/ivali" ];
+        };
+
         # FIX: required for `nix build` / CI default behavior
         default =
           self.nixosConfigurations.prague.config.system.build.toplevel;
@@ -162,11 +174,15 @@
       # Checks (NixOS smoke tests for nix flake check)
       # ─────────────────────────────────────────────
       checks.${system} = {
-        laptop-smoke = import ./tests/laptop-smoke.nix { inherit pkgs; };
-        security-smoke = import ./tests/security-smoke.nix { inherit pkgs; };
-        observability-smoke = import ./tests/observability-smoke.nix { inherit pkgs; };
-        services-smoke = import ./tests/services-smoke.nix { inherit pkgs; };
-        home-manager-smoke = import ./tests/home-manager-smoke.nix { inherit pkgs; };
+        laptop-smoke = import ./tests/laptop-smoke.nix { inherit pkgs sops-nix home-manager; };
+        security-smoke = import ./tests/security-smoke.nix { inherit pkgs sops-nix home-manager; };
+        observability-smoke = import ./tests/observability-smoke.nix { inherit pkgs sops-nix home-manager; };
+        services-smoke = import ./tests/services-smoke.nix { inherit pkgs sops-nix home-manager; };
+        home-manager-smoke = import ./tests/home-manager-smoke.nix { inherit pkgs sops-nix home-manager; };
+        bot-integration = import ./tests/bot-integration.nix { inherit pkgs sops-nix home-manager; };
+        automation-smoke = import ./tests/automation-smoke.nix { inherit pkgs sops-nix home-manager; };
+        bitwarden-smoke = import ./tests/bitwarden-smoke.nix { inherit pkgs sops-nix home-manager; };
+        bot-desktop-smoke = import ./tests/bot-desktop-smoke.nix { inherit pkgs sops-nix home-manager; };
       };
     };
 }

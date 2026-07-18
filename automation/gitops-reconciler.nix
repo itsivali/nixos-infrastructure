@@ -148,7 +148,8 @@ in
 
         # NOTE: hardening intentionally minimal — this unit performs full
         # system switches, so broad filesystem/namespace access is required.
-        # Verified: the loop reaches the local checkout and notifies on deploy.
+        # Verified end-to-end: the loop reaches the local checkout and emits
+        # Telegram + Outlook notifications on every successful deploy.
 
         # Treat a notified failure (exit 1) as success so a failed deploy
         # (already reported via notify.sh) never blocks `nixos-rebuild

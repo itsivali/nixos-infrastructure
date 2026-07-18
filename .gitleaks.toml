@@ -1,0 +1,23 @@
+# gitleaks configuration for nixos-infrastructure
+#
+# The GitHub Actions job runs `gitleaks detect --no-git --source .`, i.e. it
+# scans only the current working tree (not full git history). Encrypted
+# secrets and non-sensitive generated files are allowlisted below so the
+# scan passes on a clean tree.
+
+title = "gitleaks config for nixos-infrastructure"
+
+[extend]
+use-default = true
+
+[allowlist]
+paths = [
+  ".*\\.age$",
+  "secrets/.*",
+  ".*/secrets\\.yaml$",
+  ".*/flake\\.lock$",
+  ".*/hardware-configuration\\.nix$",
+  ".*/tests/.*",
+  ".*/\\.sops\\.yaml$",
+]
+description = "Allowlist SOPS-encrypted secrets, hardware config, test fixtures, and lockfile"

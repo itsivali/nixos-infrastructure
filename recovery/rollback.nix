@@ -4,9 +4,13 @@
 #
 # Purpose
 # -------
-# Self-heal service that runs on system health failure.
-# Rollback is handled by gitops-reconcile.sh when the health gate
-# fails post-deployment. This module exists as a safety net.
+# Self-heal service triggered by deployment-health.service (OnFailure) when a
+# critical service is down. It re-runs the health check in OBSERVER mode
+# (STRICT_HEALTH=false): connectivity / GitLab / bot-API failures are only
+# WARN there, so a transient network blip does NOT roll back. A genuine
+# service regression (e.g. ivali-bot-go stopped) still FAILs and rolls back.
+#
+# The post-deploy gate in gitops-reconcile.sh is the primary rollback path.
 #
 ##############################################################################
 
@@ -20,13 +24,35 @@ in
     enableRollback = lib.mkEnableOption "automatic rollback on health failure";
   };
 
-  config = lib.mkIf (cfg.enable or false) {
+  config = lib.mkIf (cfg.enableRollback or false) {
     systemd.services.rollback-on-failure = {
       description = "Rollback on deployment health failure";
+
+      path = with pkgs; [
+        bash
+        coreutils
+        curl
+        gnugrep
+        gnused
+        gawk
+        iputils
+        systemd
+        git
+        nix
+        findutils
+      ];
 
       serviceConfig = {
         Type = "oneshot";
         User = "root";
+
+        # Re-check in observer mode so a network blip does not trigger a rollback.
+        Environment = "STRICT_HEALTH=false";
+
+        TimeoutStartSec = "120s";
+        StandardOutput = "journal";
+        StandardError = "journal";
+        SyslogIdentifier = "rollback-on-failure";
       };
 
       script = ''

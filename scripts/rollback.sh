@@ -9,7 +9,7 @@ set -Eeuo pipefail
 REPO_DIR="/home/ivali/nixos-infrastructure"
 NOTIFY="${REPO_DIR}/scripts/notify.sh"
 HEALTH="${REPO_DIR}/scripts/deployment-health.sh"
-IVALI="${REPO_DIR}/result/bin/ivali"
+IVALI="$(command -v ivali 2>/dev/null || echo "${REPO_DIR}/result/bin/ivali")"
 
 HOST="prague"
 

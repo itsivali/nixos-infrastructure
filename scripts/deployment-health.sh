@@ -37,6 +37,22 @@ GITOPS_WORKTREE="${GITOPS_WORKTREE:-/var/lib/gitops}"
 GIT_TIMEOUT="${GIT_TIMEOUT:-10}"
 NIX_TIMEOUT="${NIX_TIMEOUT:-20}"
 
+# STRICT_HEALTH=true  → connectivity/GitLab/bot-API failures FAIL the check.
+#                       Used as the post-deploy gate by gitops-reconcile.sh, so a
+#                       deploy that breaks networking is rolled back.
+# STRICT_HEALTH=false → those same checks only WARN, while down critical services
+#                       still FAIL. Used by the periodic observer via
+#                       rollback-on-failure.service so a transient network blip does
+#                       NOT trigger a (harmful, looping) rollback.
+STRICT_HEALTH="${STRICT_HEALTH:-true}"
+gate() {
+  if [[ "$STRICT_HEALTH" == "true" ]]; then
+    fail "$1"
+  else
+    warn "$1 (observer mode: not gating)"
+  fi
+}
+
 ################################################################################
 # Stats
 ################################################################################
@@ -97,7 +113,7 @@ if ping_out="$(ping -c 1 -W 2 1.1.1.1 2>&1)"; then
   rtt="$(sed -n 's/.*time=\([0-9.]*\).*/\1/p' <<< "$ping_out" | head -1)"
   ok "Internet reachable (1.1.1.1${rtt:+, ${rtt}ms})"
 else
-  fail "No internet connectivity"
+  gate "No internet connectivity"
 fi
 
 if command -v dig >/dev/null; then
@@ -105,7 +121,7 @@ if command -v dig >/dev/null; then
   if [[ -n "$resolved" ]]; then
     ok "DNS resolution working (gitlab.com → ${resolved})"
   else
-    fail "DNS failure for gitlab.com"
+    gate "DNS failure for gitlab.com"
   fi
 else
   warn "dig not available"
@@ -124,7 +140,7 @@ resp_time="${curl_out##*|}"
 if [[ "$http_code" =~ ^[23] ]]; then
   ok "GitLab reachable (HTTP ${http_code}, ${resp_time}s)"
 else
-  fail "GitLab unreachable${http_code:+ (HTTP ${http_code})}"
+  gate "GitLab unreachable${http_code:+ (HTTP ${http_code})}"
 fi
 
 ################################################################################
@@ -219,6 +235,65 @@ if command -v timedatectl >/dev/null 2>&1; then
   fi
 else
   warn "timedatectl not available"
+fi
+
+################################################################################
+# 7. Critical service units (always gates — a down unit is a real regression)
+################################################################################
+
+section "🔧" "Critical Services"
+
+check_unit() {
+  local unit="$1" label="$2"
+  if ! systemctl list-unit-files "${unit}" >/dev/null 2>&1; then
+    warn "not installed on this host: ${label}"
+    return
+  fi
+  if systemctl is-active --quiet "${unit}"; then
+    ok "${label} active"
+  else
+    fail "${label} is NOT running"
+  fi
+}
+
+check_unit "ivali-bot-go.service" "Telegram bot (ivali-bot-go)"
+check_unit "sshd.service" "SSH daemon (sshd)"
+check_unit "NetworkManager.service" "NetworkManager"
+check_unit "tailscaled.service" "Tailscale (tailscaled)"
+
+# nginx only matters if it is actually installed on this host
+if systemctl list-unit-files "nginx.service" >/dev/null 2>&1; then
+  check_unit "nginx.service" "nginx"
+fi
+
+# Graphical session is relevant on a workstation host
+if systemctl is-active --quiet graphical.target; then
+  ok "graphical session active"
+else
+  warn "graphical session not active (headless or display down)"
+fi
+
+################################################################################
+# 8. Bot reachability (Telegram API round-trip) — gated by STRICT_HEALTH
+################################################################################
+
+section "🤖" "Bot Reachability"
+
+BOT_TOKEN_FILE="/run/secrets/telegram_bot_token"
+if [[ -r "$BOT_TOKEN_FILE" ]]; then
+  bt="$(tr -d '[:space:]' < "$BOT_TOKEN_FILE" 2>/dev/null || true)"
+  if [[ -n "$bt" ]]; then
+    resp="$(curl -s --max-time 8 "https://api.telegram.org/bot${bt}/getMe" 2>/dev/null || true)"
+    if [[ "$resp" == *'"ok":true'* || "$resp" == *'"ok": true'* ]]; then
+      ok "Bot token valid + can reach Telegram API"
+    else
+      gate "Bot cannot reach Telegram API (invalid token or network down)"
+    fi
+  else
+    warn "Bot token file empty"
+  fi
+else
+  warn "Bot token not available at ${BOT_TOKEN_FILE} — skipping bot ping"
 fi
 
 ################################################################################

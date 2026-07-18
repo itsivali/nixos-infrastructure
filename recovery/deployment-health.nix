@@ -7,7 +7,10 @@
 #
 # It is a READ-ONLY observer.
 #
-# If it fails → gitops-reconciler.service is triggered.
+# If it fails (a critical service is down) → rollback-on-failure.service is
+# triggered, which re-checks in observer mode (STRICT_HEALTH=false, so a
+# transient network blip does not roll back) and rolls back only on a genuine
+# service regression.
 #
 # =============================================================================
 
@@ -105,6 +108,10 @@ in
         GITOPS_BRANCH = gitops.branch;
 
         GITOPS_WORKTREE = "/var/lib/gitops";
+
+        # Periodic observer: connectivity blips must NOT trip the FAIL/rollback
+        # path. Critical-service-down still FAILs and triggers rollback-on-failure.
+        STRICT_HEALTH = "false";
       };
 
       ######################################################################
@@ -165,11 +172,11 @@ in
       };
 
       ######################################################################
-      ## FAILURE → RECOVERY PIPELINE
+      ## FAILURE → ROLLBACK-ON-FAILURE
       ######################################################################
 
       onFailure = [
-        "gitops-reconciler.service"
+        "rollback-on-failure.service"
       ];
     };
 

@@ -29,7 +29,7 @@ all wired together through a zero-touch auto-import module system.
 | Area | What's Included |
 |------|----------------|
 | **Desktop** | Lean GNOME on Wayland, GDM, AMD GPU acceleration, power management, Bluetooth |
-| **Kernel** | `linuxPackages_latest`, custom sysctl hardening, zRAM with zstd compression |
+| **Kernel** | `linuxPackages_6_18` (6.18 LTS — pinned for RTL8821CE wifi), custom sysctl hardening, zRAM with zstd compression |
 | **Security** | nftables firewall, AppArmor, fail2ban, Tailscale-only SSH, kernel hardening |
 | **Networking** | NetworkManager, systemd-resolved (DoT), Tailscale with exit node, BBR |
 | **SSH** | Passwordless, Tailscale-only, ShellFish-compatible |
@@ -151,7 +151,7 @@ deployment-health.timer (every 5 min)
 │       └── laptop.nix               # Generates full NixOS config from hostSpec
 │
 ├── boot/
-│   ├── kernel.nix                   # Linux latest, kernel params, AMD-specific
+│   ├── kernel.nix                   # Linux 6.18 (LTS, pinned for RTL8821CE wifi), kernel params, AMD-specific
 │   ├── loader.nix                   # systemd-boot configuration
 │   ├── sysctl.nix                   # Kernel hardening (slab_nomerge, pti, etc.)
 │   ├── zram.nix                     # zRAM with zstd (100% memory)
@@ -615,19 +615,25 @@ A Go-based Telegram bot (`ivali-bot`) for full remote control of the system.
 
 ## CI/CD
 
-### GitLab Pipeline (self-hosted runner)
+### CI model
 
-| Stage | Jobs |
-|-------|------|
-| **validate** | Validate CI syntax |
-| **test** | Go tests, `nix flake check`, NixOS dry-run, security scan |
-| **build** | NixOS toplevel, Home Manager activation, test VM |
-| **deploy** | `ci-deploy.service` (manual trigger) |
-| **notify** | Telegram + email |
+GitLab is the single source of truth and push-mirrors to GitHub — no code
+originates on GitHub. Deployment is driven by the GitOps reconciler, **not** CI.
+GitHub Actions only validates the mirror and reports back to GitLab.
 
-### GitHub Actions (mirror)
+### GitHub Actions (mirror validator)
 
-Portable checks only: `nix flake check`, Go tests, Go build.
+Runs on portable GitHub-hosted runners (`ubuntu-latest`) via the Nix installer
+action — no self-hosted GitLab runner required. Jobs:
+
+| Job | What it does |
+|-----|--------------|
+| `secret-scan` | gitleaks `detect` (no-git source scan); fails on committed secrets; allowlists `.age`/`secrets`/`hardware-configuration`/`flake.lock` |
+| `go-build` | `CGO_ENABLED=0 go build ./...` (cross-compiles without a C toolchain) |
+| `go-test` | `CGO_ENABLED=1 go test -race ./...` |
+| `nix-format` | `nix fmt` then `git diff --exit-code` (avoids the buggy `nix fmt --check`) |
+| `nixos-checks` | `nix build` of every `nixosConfigurations` (dry build; `continue-on-error`) |
+| `gitlab-status` | posts the combined status back to GitLab via the GitLab API (only when `GITLAB_TOKEN` is set) |
 
 ---
 
@@ -718,3 +724,7 @@ config = lib.mkIf cfg.enable { services.<name> = { ... }; };
 - GitOps reconciler uses a lock file — avoid manual `nixos-rebuild` during reconciliation
 - SOPS secrets fail closed — features requiring secrets won't activate until age key is installed
 - The Telegram bot requires role configuration with `/adduser` after initial setup
+
+## License
+
+MIT — see [LICENSE](LICENSE).

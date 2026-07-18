@@ -111,6 +111,9 @@
       # GitLab is the source of truth; the reconciler applies validated
       # commits (GitHub Actions validates the mirror and reports back).
       fleet.gitopsReconciler.enable = true;
+      # Periodic health observer + auto-rollback on genuine service regression.
+      fleet.deploymentHealth.enable = true;
+      fleet.deploymentHealth.enableRollback = true;
     };
   };
 }

@@ -178,7 +178,7 @@ Prometheus ─→ node exporter ──────────┘
 
 | Feature | Configuration |
 |---------|---------------|
-| **Kernel** | `linuxPackages_latest` |
+| **Kernel** | `linuxPackages_6_18` (6.18 LTS — pinned for RTL8821CE wifi) |
 | **Bootloader** | systemd-boot (10 generation limit) |
 | **zRAM** | Enabled, zstd compression, 100% RAM |
 | **Swappiness** | 180 (aggressive) |

@@ -17,7 +17,7 @@ SCRIPTS_DIR="${REPO_DIR}/scripts"
 NOTIFY="${SCRIPTS_DIR}/notify.sh"
 HEALTH="${SCRIPTS_DIR}/deployment-health.sh"
 ROLLBACK="${SCRIPTS_DIR}/rollback.sh"
-IVALI="${REPO_DIR}/result/bin/ivali"
+IVALI="$(command -v ivali 2>/dev/null || echo "${REPO_DIR}/result/bin/ivali")"
 
 HOST="prague"
 BRANCH="main"
@@ -220,7 +220,8 @@ fi
 step_ok
 
 ###########################################################################
-# Health gate — use ivali doctor when available, fall back to legacy script
+# Health gate — prefer runtime service health (deployment-health.sh); fall
+# back to ivali doctor (config quality) only if the runtime check is absent.
 ###########################################################################
 
 step "Health check"
@@ -228,14 +229,14 @@ step "Health check"
 health_passed=false
 health_output=""
 
-if [[ "$USE_IVALI" == "true" && -x "$IVALI" ]]; then
-  log "Using ivali doctor for health check..."
-  if health_output="$("$IVALI" doctor 2>&1)"; then
+if [[ -x "$HEALTH" ]]; then
+  log "Using runtime service health check (deployment-health.sh)..."
+  if health_output="$("$HEALTH" 2>&1)"; then
     health_passed=true
   fi
-elif [[ -x "$HEALTH" ]]; then
-  log "Using legacy deployment-health.sh..."
-  if health_output="$("$HEALTH" 2>&1)"; then
+elif [[ "$USE_IVALI" == "true" && -x "$IVALI" ]]; then
+  log "Using ivali doctor for health check..."
+  if health_output="$("$IVALI" doctor 2>&1)"; then
     health_passed=true
   fi
 else

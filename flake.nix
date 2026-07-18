@@ -130,6 +130,7 @@
           };
           vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
           subPackages = [ "cmd/bw-tui" ];
+          preBuild = "export CGO_ENABLED=0";
         };
 
         ivali-bot = pkgs.buildGoModule {
@@ -142,6 +143,10 @@
           };
           vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
           subPackages = [ "cmd/ivali-bot" ];
+          # Static pure-Go binary: avoids linking libresolv.so.2, whose
+          # PROT_EXEC mmap is denied by the ivali-bot AppArmor profile
+          # (caused the bot to exit 127 on every start).
+          preBuild = "export CGO_ENABLED=0";
         };
 
         ivali = pkgs.buildGoModule {
@@ -154,6 +159,7 @@
           };
           vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
           subPackages = [ "cmd/ivali" ];
+          preBuild = "export CGO_ENABLED=0";
         };
 
         # FIX: required for `nix build` / CI default behavior

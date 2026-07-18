@@ -12,7 +12,7 @@ set -Eeuo pipefail
 # Config
 ###########################################################################
 
-REPO_DIR="/home/ivali/nixos-infrastructure"
+REPO_DIR="${GITOPS_REPO:-/home/ivali/nixos-infrastructure}"
 SCRIPTS_DIR="${REPO_DIR}/scripts"
 NOTIFY="${SCRIPTS_DIR}/notify.sh"
 HEALTH="${SCRIPTS_DIR}/deployment-health.sh"

@@ -133,35 +133,23 @@ in
         AppArmorProfile = "unconfined";
 
         ####################################################################
-        ## HARDENING (slightly less strict than health checks)
+        ## HARDENING
+        ## A GitOps deploy loop drives `nixos-rebuild switch`, so it must
+        ## write to /nix/store, /boot and /etc and spawn nix build sandboxes
+        ## (bwrap/user namespaces). The strict filesystem/namespace sandboxing
+        ## is therefore disabled; the service stays root but runs unconfined
+        ## for AppArmor (shared-lib loading) and keeps a minimal safe subset.
         ####################################################################
 
         NoNewPrivileges = true;
         PrivateTmp = true;
-        PrivateDevices = true;
-
-        ProtectHome = true;
-        ProtectHostname = true;
-
-        ProtectKernelLogs = true;
-        ProtectKernelModules = true;
-        ProtectKernelTunables = true;
-        ProtectControlGroups = true;
-
-        ProtectSystem = "strict";
-
         LockPersonality = true;
-        MemoryDenyWriteExecute = true;
-
-        RestrictNamespaces = true;
-        RestrictRealtime = true;
-        RestrictSUIDSGID = true;
-
-        RemoveIPC = true;
-
-        SystemCallArchitectures = "native";
-
         UMask = "0077";
+
+        # Treat a notified failure (exit 1) as success so a failed deploy
+        # (already reported via notify.sh) never blocks `nixos-rebuild
+        # switch` with exit 4.
+        SuccessExitStatus = "1";
       };
     };
 

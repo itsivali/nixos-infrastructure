@@ -53,7 +53,9 @@
       port = 587;
       user = "itsivali@outlook.com";
       passwordeval = "cat /run/secrets/smtp_password";
-      from = "gitops@prague";
+      # Office365 rejects a From that is not the authenticated user, so send
+      # as the owner's Outlook address (delivered back to the same mailbox).
+      from = "itsivali@outlook.com";
     };
   };
 

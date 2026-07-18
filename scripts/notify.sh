@@ -56,15 +56,18 @@ send_telegram() {
 ###########################################################################
 
 send_email() {
+  # Recipient: env override (NOTIFY_TO) > SOPS secret (/run/secrets/notify_email)
+  # > owner Outlook address. Defaults to itsivali@outlook.com so GitOps mail is
+  # always delivered to the owner.
   local email_file="/run/secrets/notify_email"
+  local to="${NOTIFY_TO:-}"
 
-  if [[ ! -f "$email_file" ]]; then
-    echo "notify.sh: notify_email secret missing" >&2
-    return 0
+  if [[ -z "$to" && -f "$email_file" ]]; then
+    to="$(cat "$email_file")"
   fi
+  to="${to:-itsivali@outlook.com}"
 
-  local to subject
-  to="$(cat "$email_file")"
+  local subject
   subject="$(echo "${MESSAGE}" | head -1 | tr -d '\200-\377' | cut -c1-80)"
 
   {

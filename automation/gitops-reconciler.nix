@@ -87,6 +87,10 @@ in
         gawk
         systemd
         findutils
+        util-linux # flock (deploy lock)
+        inetutils # hostname (notify.sh)
+        nixos-rebuild # activation step
+        msmtp # sendmail (notify.sh email)
       ];
 
       ######################################################################

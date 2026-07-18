@@ -36,9 +36,11 @@ in
         gnused
         gawk
         iputils
+        inetutils
         systemd
         git
         nix
+        nixos-rebuild
         findutils
       ];
 

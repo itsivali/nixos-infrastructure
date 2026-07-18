@@ -53,6 +53,14 @@ gate() {
   fi
 }
 
+# softfail: ALWAYS warn, never fail. For checks that are about EXTERNAL
+# reachability (GitLab, the GitOps remote), not about this host's health. A
+# flaky GitLab or a transient git fetch must NEVER roll the system back — a
+# rollback cannot fix an upstream outage and would only churn generations.
+softfail() {
+  warn "$1 (external dependency — not gating)"
+}
+
 ################################################################################
 # Stats
 ################################################################################
@@ -140,7 +148,7 @@ resp_time="${curl_out##*|}"
 if [[ "$http_code" =~ ^[23] ]]; then
   ok "GitLab reachable (HTTP ${http_code}, ${resp_time}s)"
 else
-  gate "GitLab unreachable${http_code:+ (HTTP ${http_code})}"
+  softfail "GitLab unreachable${http_code:+ (HTTP ${http_code})}"
 fi
 
 ################################################################################
@@ -150,7 +158,7 @@ fi
 section "📦" "GitOps Repository"
 
 if [[ -z "$GITOPS_REPO" ]]; then
-  fail "GITOPS_REPO not set"
+  softfail "GITOPS_REPO not set"
 else
   log "  Repo    : $GITOPS_REPO"
   log "  Branch  : $GITOPS_BRANCH"
@@ -160,7 +168,7 @@ else
     remote_hash="${remote_ref:0:7}"
     ok "Repository reachable + branch exists (HEAD ${remote_hash})"
   else
-    fail "Cannot reach GitOps repo or branch missing (${GIT_TIMEOUT}s timeout)"
+    softfail "Cannot reach GitOps repo or branch missing (${GIT_TIMEOUT}s timeout)"
   fi
 fi
 

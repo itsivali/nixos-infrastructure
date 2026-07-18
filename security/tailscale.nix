@@ -53,10 +53,15 @@ in
 
     acceptDns = lib.mkOption {
       type = lib.types.bool;
-      default = false;
+      default = true;
       description = ''
-        Allow Tailscale to manage DNS.
-        Disabled by default to avoid accidental internet disruptions.
+        Allow Tailscale to manage DNS (MagicDNS split-DNS).
+
+        When enabled, Tailscale registers its MagicDNS resolver
+        (100.100.100.100) with systemd-resolved for the tailnet domain only,
+        so `<host>.<tailnetDomain>` names resolve without overriding the
+        system's global DNS. Safe to leave on; do not use the custom
+        tailscale-split-dns service, which fights Tailscale and never applies.
       '';
     };
 
@@ -191,56 +196,14 @@ in
     #########################################################
     # Split DNS
     #########################################################
-
-    systemd.services.tailscale-split-dns =
-      lib.mkIf (cfg.tailnetDomain != null) {
-
-        description = "Configure Tailscale split DNS";
-
-        after = [
-          "tailscaled.service"
-          "systemd-resolved.service"
-        ];
-
-        wants = [
-          "tailscaled.service"
-          "systemd-resolved.service"
-        ];
-
-        wantedBy = [
-          "multi-user.target"
-        ];
-
-        serviceConfig = {
-          Type = "oneshot";
-          RemainAfterExit = true;
-        };
-
-        script = ''
-          set -euo pipefail
-
-          if ${pkgs.iproute2}/bin/ip link show tailscale0 >/dev/null 2>&1; then
-            ${pkgs.systemd}/bin/resolvectl dns tailscale0 100.100.100.100
-
-            ${pkgs.systemd}/bin/resolvectl domain tailscale0 \
-              "~${cfg.tailnetDomain}"
-
-            ${pkgs.systemd}/bin/resolvectl default-route tailscale0 false
-          fi
-        '';
-      };
-
-    systemd.timers.tailscale-split-dns =
-      lib.mkIf (cfg.tailnetDomain != null) {
-
-        wantedBy = [ "timers.target" ];
-
-        timerConfig = {
-          OnBootSec = "30s";
-          OnUnitActiveSec = "5m";
-          Unit = "tailscale-split-dns.service";
-        };
-      };
+    #
+    # MagicDNS is handled by Tailscale itself: with `acceptDns = true` the
+    # tailscaled binary registers its resolver (100.100.100.100) with
+    # systemd-resolved for the tailnet routing domain. A previous custom
+    # `tailscale-split-dns` service tried to do this with `resolvectl` but
+    # never applied (Tailscale reset the link) and left `tailscale0` with no
+    # DNS, so `.ts.net` queries fell through to the upstream resolver. It has
+    # been removed; do not reintroduce manual split-DNS here.
 
     #########################################################
     # Key Expiry Monitoring
@@ -300,18 +263,17 @@ in
     #########################################################
 
     systemd.services.tailscale-magicdns-check = lib.mkIf (cfg.tailnetDomain != null) {
-      # Disabled: the check fails because systemd-resolved never routes the
-      # tailnet domain to Tailscale's MagicDNS resolver. Tailscale's own DNS
-      # management (services.tailscale.enable) overrides the custom
-      # tailscale-split-dns resolvectl settings, so `.ts.net` queries hit the
-      # upstream resolver (1.1.1.1) and return NXDOMAIN. The check is
-      # non-critical (bot/SSH/Tailscale all work) and only makes every
-      # `nixos-rebuild switch` report exit 4. Re-enable once split-DNS is
-      # actually wired (see tailscale-split-dns + services.tailscale DNS mgmt).
+      # Intentionally disabled. MagicDNS now resolves correctly because
+      # Tailscale manages DNS (`acceptDns = true` registers 100.100.100.100 as
+      # the resolver for the tailnet routing domain via systemd-resolved).
+      # This check is kept off so a transient Tailscale-down during a
+      # `nixos-rebuild switch` cannot make the switch report exit 4. MagicDNS
+      # health is still monitored continuously by tailscale-metrics
+      # (tailscale_magicdns_status).
       enable = false;
       description = "Check MagicDNS resolution";
 
-      after = [ "tailscaled.service" "tailscale-split-dns.service" ];
+      after = [ "tailscaled.service" ];
       wants = [ "tailscaled.service" ];
 
       serviceConfig = {
@@ -391,10 +353,13 @@ in
             KEY_EXPIRY_DAYS=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
           fi
 
-          # MagicDNS check status
+          # MagicDNS check status — resolve this node's own MagicDNS name
+          # (e.g. prague-1.codlet-trench.ts.net), which is what MagicDNS
+          # actually serves. The bare tailnet domain does not resolve.
+          DNSNAME=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
           MAGICDNS_STATUS=1
-          if [ -n "${toString cfg.tailnetDomain}" ]; then
-            if ! ${pkgs.host}/bin/host "${toString cfg.tailnetDomain}" >/dev/null 2>&1; then
+          if [ -n "$DNSNAME" ]; then
+            if ! ${pkgs.host}/bin/host "$DNSNAME" >/dev/null 2>&1; then
               MAGICDNS_STATUS=0
             fi
           fi

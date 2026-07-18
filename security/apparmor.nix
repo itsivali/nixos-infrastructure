@@ -199,4 +199,16 @@ in
       state = "enforce";
     };
   };
+
+  # The stock NixOS AppArmor ExecReload also runs `aa-remove-unknown`, which
+  # fails on this system: apparmor-utils 5.0.0 expects rc.apparmor.functions
+  # under apparmor-parser 5.0.0, but that file is only shipped by 4.1.7 (a
+  # Nixpkgs packaging mismatch). The failing step marked every reload as
+  # failed, so `nixos-rebuild switch` reported "Failed to reload apparmor".
+  # Our profiles are static, so stale-profile removal is unnecessary; reload
+  # only the enabled profile files.
+  systemd.services.apparmor.serviceConfig.ExecReload = lib.mkForce [
+    "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-bot-profile}"
+    "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-cli-profile}"
+  ];
 }

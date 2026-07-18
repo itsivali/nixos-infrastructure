@@ -28,6 +28,17 @@ let
     vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
     subPackages = [ "cmd/ivali-bot" ];
   };
+
+  # The bot runs shell commands via `sh -c` (helpers.go runCmd) and the
+  # /doctor command invokes `ivali doctor`, so both `sh` and the ivali CLI
+  # must be on its restricted PATH.
+  ivaliCli = pkgs.buildGoModule {
+    name = "ivali";
+    src = pkgs.lib.cleanSource ./../../.;
+    vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+    subPackages = [ "cmd/ivali" ];
+    preBuild = "export CGO_ENABLED=0";
+  };
 in
 {
   config = lib.mkIf cfg.enable {
@@ -45,8 +56,10 @@ in
       wantedBy = [ "graphical.target" ];
 
       path = with pkgs; [
+        bash
         coreutils
         git
+        ivaliCli
         nix
         nixos-rebuild
         systemd

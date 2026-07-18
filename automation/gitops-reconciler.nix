@@ -146,6 +146,9 @@ in
         LockPersonality = true;
         UMask = "0077";
 
+        # NOTE: hardening intentionally minimal — this unit performs full
+        # system switches, so broad filesystem/namespace access is required.
+
         # Treat a notified failure (exit 1) as success so a failed deploy
         # (already reported via notify.sh) never blocks `nixos-rebuild
         # switch` with exit 4.

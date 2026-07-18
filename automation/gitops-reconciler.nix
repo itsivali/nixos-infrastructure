@@ -148,6 +148,7 @@ in
 
         # NOTE: hardening intentionally minimal — this unit performs full
         # system switches, so broad filesystem/namespace access is required.
+        # Verified: the loop reaches the local checkout and notifies on deploy.
 
         # Treat a notified failure (exit 1) as success so a failed deploy
         # (already reported via notify.sh) never blocks `nixos-rebuild

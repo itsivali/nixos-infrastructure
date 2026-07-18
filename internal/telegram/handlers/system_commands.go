@@ -27,7 +27,12 @@ func (c *NixCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	if args == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/nix <command>`")
 	}
-	output := runCmd(fmt.Sprintf("nix %s 2>&1", args), 120)
+	// Execute without a shell so user-supplied arguments cannot inject
+	// shell metacharacters (e.g. `; rm -rf /`).
+	output := runCmdArgs(120, append([]string{"nix"}, strings.Fields(args)...)...)
+	if output == "" {
+		output = "(no output)"
+	}
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 }
 
@@ -48,7 +53,13 @@ func (c *RunCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	if args == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/run <command>`")
 	}
-	output := runCmd(args, 120)
+	// Execute without a shell so user-supplied arguments cannot inject
+	// shell metacharacters (e.g. `; rm -rf /`). Arguments are split on
+	// whitespace and passed directly to exec.
+	output := runCmdArgs(120, strings.Fields(args)...)
+	if output == "" {
+		output = "(no output)"
+	}
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 }
 

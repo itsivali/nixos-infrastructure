@@ -7,7 +7,7 @@ bw
 .direnv/
 # Go
 /ivali
-ivali-bot
+/ivali-bot
 /ivali.exe
 *.out
 *.pre-grafana-fix

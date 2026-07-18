@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/willisivali/nixos-infrastructure/internal/telegram"
 	"github.com/willisivali/nixos-infrastructure/internal/telegram/handlers"
@@ -79,7 +80,15 @@ func main() {
 		handlers.NewStartCommand(config),
 		handlers.NewNotifyCommand(config),
 		handlers.NewMonitorOnCommand(config),
+		handlers.NewAuthStatusCommand(bot.Auth(), bot.API()),
+		handlers.NewGrantCommand(bot.Auth(), bot.API()),
+		handlers.NewRevokeCommand(bot.Auth(), bot.API()),
+		handlers.NewUsersListCommand(bot.Auth(), bot.API()),
 	)
+
+	// Register inline-keyboard callback handlers.
+	bot.RegisterCallback("confirm:", &confirmHandler{bot: bot})
+	bot.RegisterCallback("cancel", &confirmHandler{bot: bot})
 
 	// Run the bot
 	ctx := context.Background()
@@ -87,4 +96,49 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Bot error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+// confirmHandler routes inline-keyboard "confirm:<action>" / "cancel" payloads
+// to the corresponding registered command. The originating command decides
+// whether the payload is the actual confirmation (msg.IsCallback &&
+// CallbackData == "confirm:<action>") or just a request to show the prompt.
+type confirmHandler struct {
+	bot *telegram.Bot
+}
+
+func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string) error {
+	api := h.bot.API()
+
+	if data == "cancel" {
+		return api.AnswerCallback(queryID, "Cancelled")
+	}
+
+	if !strings.HasPrefix(data, "confirm:") {
+		return api.AnswerCallback(queryID, "Unknown action")
+	}
+
+	action := strings.TrimPrefix(data, "confirm:")
+	cmd, ok := h.bot.CommandByName(action)
+	if !ok {
+		return api.AnswerCallback(queryID, "Unknown action: "+action)
+	}
+
+	// Re-check permissions for the user who pressed the button.
+	if !h.bot.Auth().GetUserRole(userID).HasPermission(cmd.RequiredPermission()) {
+		return api.AnswerCallback(queryID, "Permission denied")
+	}
+
+	msg := &telegram.Message{
+		ChatID:       chatID,
+		UserID:       userID,
+		IsCallback:    true,
+		CallbackPayload: data,
+		CallbackID:   queryID,
+	}
+
+	if err := cmd.Execute(ctx, msg); err != nil {
+		_ = api.AnswerCallback(queryID, "Error")
+		return err
+	}
+	return api.AnswerCallback(queryID, "Done")
 }

@@ -65,6 +65,7 @@ type Message struct {
 	Date     int64
 	IsCallback bool
 	CallbackID string
+	CallbackPayload string
 	MessageID  int
 }
 
@@ -110,7 +111,7 @@ func (c *CommandFunc) Execute(ctx context.Context, msg *Message) error {
 
 // CallbackHandler handles inline keyboard callback queries.
 type CallbackHandler interface {
-	HandleCallback(ctx context.Context, queryID string, chatID int64, data string) error
+	HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string) error
 }
 
 // Bot is the main Telegram bot controller.
@@ -171,6 +172,17 @@ func (b *Bot) API() *API {
 	return b.api
 }
 
+// Auth returns the authentication manager.
+func (b *Bot) Auth() *Auth {
+	return b.auth
+}
+
+// CommandByName returns a registered command by name.
+func (b *Bot) CommandByName(name string) (Command, bool) {
+	cmd, ok := b.commands[name]
+	return cmd, ok
+}
+
 // Dispatch processes an incoming message and routes it to the appropriate handler.
 func (b *Bot) Dispatch(ctx context.Context, msg *Message) error {
 	// Handle callback queries
@@ -217,7 +229,7 @@ func (b *Bot) Dispatch(ctx context.Context, msg *Message) error {
 func (b *Bot) dispatchCallback(ctx context.Context, msg *Message) error {
 	for prefix, handler := range b.callbacks {
 		if strings.HasPrefix(msg.CallbackData(), prefix) {
-			return handler.HandleCallback(ctx, msg.CallbackID, msg.ChatID, msg.CallbackData())
+			return handler.HandleCallback(ctx, msg.CallbackID, msg.ChatID, msg.UserID, msg.CallbackData())
 		}
 	}
 
@@ -225,8 +237,7 @@ func (b *Bot) dispatchCallback(ctx context.Context, msg *Message) error {
 	return b.api.AnswerCallback(msg.CallbackID, "")
 }
 
-// Message is extended with callback data
+// CallbackData returns the inline-keyboard callback payload, if any.
 func (m *Message) CallbackData() string {
-	// This would be set during message parsing
-	return ""
+	return m.CallbackPayload
 }

@@ -127,6 +127,17 @@ func (c *GenerationsCommand) Execute(ctx context.Context, msg *telegram.Message)
 	return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
 }
 
+// sendConfirm asks the user to confirm a destructive action via an inline
+// keyboard. The buttons carry CallbackData "confirm:<action>" / "cancel",
+// which are routed by the bot's callback handler.
+func sendConfirm(api *telegram.API, chatID int64, action, text string) error {
+	buttons := []telegram.InlineButton{
+		{Text: "✅ Confirm", CallbackData: "confirm:" + action},
+		{Text: "❌ Cancel", CallbackData: "cancel"},
+	}
+	return api.SendInlineKeyboard(chatID, text, buttons)
+}
+
 // RebootCommand reboots the system.
 type RebootCommand struct {
 	api *telegram.API
@@ -141,8 +152,12 @@ func (c *RebootCommand) Description() string       { return "Reboot the system" 
 func (c *RebootCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *RebootCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	_ = runCmd("sudo reboot", 5)
-	return c.api.SendMarkdown(msg.ChatID, "Rebooting...")
+	if msg.IsCallback && msg.CallbackData() == "confirm:reboot" {
+		_ = runCmd("sudo reboot", 5)
+		return c.api.SendMarkdown(msg.ChatID, "Rebooting...")
+	}
+	return sendConfirm(c.api, msg.ChatID, "reboot",
+		"*Confirm reboot?*\n\nThe system will reboot immediately.")
 }
 
 // ShutdownCommand shuts down the system.
@@ -159,8 +174,12 @@ func (c *ShutdownCommand) Description() string       { return "Shut down the sys
 func (c *ShutdownCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *ShutdownCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	_ = runCmd("sudo shutdown -h now", 5)
-	return c.api.SendMarkdown(msg.ChatID, "Shutting down...")
+	if msg.IsCallback && msg.CallbackData() == "confirm:shutdown" {
+		_ = runCmd("sudo shutdown -h now", 5)
+		return c.api.SendMarkdown(msg.ChatID, "Shutting down...")
+	}
+	return sendConfirm(c.api, msg.ChatID, "shutdown",
+		"*Confirm shutdown?*\n\nThe system will power off immediately.")
 }
 
 // DeployCommand triggers a NixOS rebuild.
@@ -177,9 +196,13 @@ func (c *DeployCommand) Description() string       { return "Rebuild NixOS confi
 func (c *DeployCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *DeployCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	_ = c.api.SendMarkdown(msg.ChatID, "Starting NixOS rebuild...")
-	output := runCmd("sudo nixos-rebuild switch --flake /home/ivali/nixos-infrastructure#prague 2>&1", 600)
-	return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
+	if msg.IsCallback && msg.CallbackData() == "confirm:deploy" {
+		_ = c.api.SendMarkdown(msg.ChatID, "Starting NixOS rebuild...")
+		output := runCmd("sudo nixos-rebuild switch --flake /home/ivali/nixos-infrastructure#prague 2>&1", 600)
+		return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
+	}
+	return sendConfirm(c.api, msg.ChatID, "deploy",
+		"*Confirm deploy?*\n\nThis runs `nixos-rebuild switch --flake .#prague`.")
 }
 
 // RollbackCommand rolls back to the previous generation.
@@ -196,9 +219,13 @@ func (c *RollbackCommand) Description() string       { return "Rollback to previ
 func (c *RollbackCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *RollbackCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	_ = c.api.SendMarkdown(msg.ChatID, "Rolling back...")
-	output := runCmd("sudo nixos-rebuild switch --rollback 2>&1", 300)
-	return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
+	if msg.IsCallback && msg.CallbackData() == "confirm:rollback" {
+		_ = c.api.SendMarkdown(msg.ChatID, "Rolling back...")
+		output := runCmd("sudo nixos-rebuild switch --rollback 2>&1", 300)
+		return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
+	}
+	return sendConfirm(c.api, msg.ChatID, "rollback",
+		"*Confirm rollback?*\n\nThis activates the previous NixOS generation.")
 }
 
 // UpdateCommand pulls and updates flake inputs.
@@ -256,17 +283,37 @@ func (c *SecurityCommand) Execute(ctx context.Context, msg *telegram.Message) er
 	lines = append(lines, "*Security Status*")
 	lines = append(lines, "")
 
-	output := runCmd("nft list ruleset 2>/dev/null | head -5 || echo 'nft not available'", 10)
-	lines = append(lines, "*Firewall:*")
-	lines = append(lines, "```")
-	lines = append(lines, output)
-	lines = append(lines, "```")
+	fw := runCmd("nft list ruleset >/dev/null 2>&1 && echo enabled || echo 'nft not available'", 10)
+	lines = append(lines, fmt.Sprintf("*Firewall (nftables):* `%s`", strings.TrimSpace(fw)))
 
-	output = runCmd("aa-status 2>/dev/null | head -10 || echo 'apparmor not available'", 10)
-	lines = append(lines, "*AppArmor:*")
-	lines = append(lines, "```")
-	lines = append(lines, output)
-	lines = append(lines, "```")
+	aa := runCmd("aa-status --enabled >/dev/null 2>&1 && echo enforced || echo 'not enforced'", 10)
+	lines = append(lines, fmt.Sprintf("*AppArmor:* `%s`", strings.TrimSpace(aa)))
+
+	// Kernel hardening flags from the boot command line.
+	hardening := []string{"slab_nomerge", "init_on_alloc=1", "init_on_free=1", "pti=on", "vsyscall=none", "randomize_kstack_offset=on"}
+	var enabled []string
+	var missing []string
+	for _, flag := range hardening {
+		// The flag may appear as "flag" or "flag=1".
+		if runCmd(fmt.Sprintf("grep -qw '\\(%s\\|%s=1\\)' /proc/cmdline 2>/dev/null && echo yes || echo no", flag, flag), 5) == "yes" {
+			enabled = append(enabled, flag)
+		} else {
+			missing = append(missing, flag)
+		}
+	}
+	lines = append(lines, fmt.Sprintf("*Kernel hardening:* `%s`", strings.Join(enabled, ", ")))
+	if len(missing) > 0 {
+		lines = append(lines, fmt.Sprintf("  ⚠ _missing:_ `%s`", strings.Join(missing, ", ")))
+	}
+
+	ssh := runCmd("systemctl is-active sshd >/dev/null 2>&1 && echo active || echo inactive", 5)
+	lines = append(lines, fmt.Sprintf("*SSH daemon:* `%s`", strings.TrimSpace(ssh)))
+
+	f2b := runCmd("systemctl is-active fail2ban >/dev/null 2>&1 && echo active || echo inactive", 5)
+	lines = append(lines, fmt.Sprintf("*Fail2ban:* `%s`", strings.TrimSpace(f2b)))
+
+	tail := runCmd("systemctl is-active tailscaled >/dev/null 2>&1 && echo active || echo inactive", 5)
+	lines = append(lines, fmt.Sprintf("*Tailscale:* `%s`", strings.TrimSpace(tail)))
 
 	return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
 }

@@ -12,7 +12,11 @@ set -Eeuo pipefail
 # Config
 ###########################################################################
 
-REPO_DIR="${GITOPS_REPO:-/home/ivali/nixos-infrastructure}"
+# Local checkout the loop operates on. NOTE: GITOPS_REPO (config.fleet.gitops.repo)
+# is a remote *URL* (https://gitlab.com/...), not a local path, so it cannot be
+# used here. The intended GITOPS_WORKTREE (/var/lib/gitops) is never provisioned,
+# so we use the operator's existing checkout.
+REPO_DIR="/home/ivali/nixos-infrastructure"
 SCRIPTS_DIR="${REPO_DIR}/scripts"
 NOTIFY="${SCRIPTS_DIR}/notify.sh"
 HEALTH="${SCRIPTS_DIR}/deployment-health.sh"

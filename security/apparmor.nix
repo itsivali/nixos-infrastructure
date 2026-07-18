@@ -22,7 +22,10 @@
 # --------
 # - ivali-bot: Telegram bot process (root, runs rebuilds/desktop automation)
 # - ivali-cli: Go CLI binary (defined but NOT auto-attached; see note below)
-# - gitops-reconciler: GitOps reconciliation service
+#
+# NOTE: the gitops-reconciler service runs UNCONFINED (see
+# automation/gitops-reconciler.nix) — confining bash broke the deploy loop
+# (shared-lib exec-mmap denied), so AppArmor confinement is not applied there.
 #
 # Enforcement
 # -----------
@@ -169,82 +172,7 @@ let
     }
   '';
 
-  gitops-reconciler-profile = pkgs.writeText "gitops-reconciler" ''
-    #include <tunables/global>
 
-    # No attachment glob: this profile is applied explicitly to the
-    # gitops-reconciler systemd service via AppArmorProfile=. Attaching it to
-    # /nix/store/**/bin/bash would enforce it on EVERY bash script on the
-    # system (incl. boot/activation scripts) and break boot.
-    profile gitops-reconciler flags=(enforce) {
-      #include <abstractions/base>
-      #include <abstractions/nameservice>
-
-      capability,
-
-      # Nix store: read + mmap-exec. Store binaries exec unconfined (so nix
-      # can write /nix/store and git can use SSH keys for fetch+push).
-      /nix/store/** rm,
-      /nix/store/*/bin/** ux,
-      /run/current-system/sw/bin/** ux,
-
-      # Build workspace (the reconciler builds the ivali CLI here)
-      /build/ rw,
-      /build/** rw,
-
-      # Repository (read/write — reconciles the flake)
-      /home/ivali/nixos-infrastructure/ rw,
-      /home/ivali/nixos-infrastructure/** rw,
-
-      # Go build cache
-      /home/ivali/go/ rw,
-      /home/ivali/go/** rw,
-      /root/go/ rw,
-      /root/go/** rw,
-
-      # GitOps worktree (read/write)
-      /var/lib/gitops/ r,
-      /var/lib/gitops/** rw,
-
-      # State files
-      /var/lib/gitops/.git/** rw,
-      /tmp/deployment-health-last-ok rw,
-      /tmp/** rw,
-
-      # Broad runtime state
-      /var/** rw,
-      /run/** rw,
-
-      # Device access
-      /dev/null rw,
-      /dev/zero r,
-      /dev/urandom r,
-
-      # Proc and sys (read-only)
-      /proc/ r,
-      /proc/[0-9]*/ r,
-      /proc/[0-9]*/** r,
-      /proc/sys/kernel/hostname r,
-      /proc/cpuinfo r,
-      /proc/meminfo r,
-      /sys/ r,
-      /sys/** r,
-
-      # Network (for git fetch/push)
-      network inet stream,
-      network inet6 stream,
-      network inet dgram,
-      network unix stream,
-
-      # Logs
-      /var/log/ r,
-
-      # Deny
-      deny /home/*/.ssh/** rw,
-      deny /home/*/.gnupg/** rw,
-      deny /etc/shadow r,
-    }
-  '';
 in
 {
   security.apparmor = {
@@ -268,10 +196,6 @@ in
     };
     "ivali-cli" = {
       path = ivali-cli-profile;
-      state = "enforce";
-    };
-    "gitops-reconciler" = {
-      path = gitops-reconciler-profile;
       state = "enforce";
     };
   };

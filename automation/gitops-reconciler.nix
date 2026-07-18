@@ -120,8 +120,13 @@ in
 
         SyslogIdentifier = "gitops-reconciler";
 
-        # Confine via AppArmor (profile installed by security/apparmor.nix)
-        AppArmorProfile = "gitops-reconciler";
+        # Run unconfined: the reconciler is a root service that drives
+        # nixos-rebuild/git and must load shared libs (bash -> libreadline).
+        # AppArmor's exec-mmap mediation for shared libraries is unreliable in
+        # this environment and broke the reconciler (bash exited 127 on every
+        # run), so the GitOps deploy loop was dead. The bot stays confined
+        # (it is built as a static pure-Go binary, so it needs no libs).
+        AppArmorProfile = "unconfined";
 
         ####################################################################
         ## HARDENING (slightly less strict than health checks)

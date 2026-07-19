@@ -120,6 +120,18 @@
       # here. One-time `sudo oauth2ms --email=itsivali@outlook.com
       # --client-id=<id> --tenant=consumers authorize` caches the token.
       fleet.notifications.oauthClientId = "PASTE_ENTRA_CLIENT_ID_HERE";
+
+      # ── Proposed features enabled 2026-07-19 (#4, #5, #6) ──────────
+      # #4 Lite observability: /proc collector + Telegram/email alerts.
+      #    Writes /var/lib/observability/state.json (read by `ivali status`).
+      fleet.observability.lite.enable = true;
+      # #5 Bot dead-man's-switch: alert if the bot stops polling.
+      fleet.bot.watchdog.enable = true;
+      fleet.bot.watchdog.thresholdSec = 300;
+      # #6 Canary gate: run a NixOS VM smoke test before activating a new
+      #    generation. CPU/disk heavy on every deploy — set
+      #    fleet.gitopsReconciler.canary = false to deploy directly.
+      fleet.gitopsReconciler.canary = true;
     };
   };
 }

@@ -3,9 +3,13 @@
 let
   cfg = config.ivali.desktop.gnome;
 
+  # Curated, non-overlapping extension set.
+  # - dash-to-panel replaces dash-to-dock + window-list (top-bar dock + taskbar)
+  # - forge owns tiling; auto-move-windows removed (overlap)
+  # - night-theme-switcher removed (static prefer-dark already set)
   extensions = [
     pkgs.gnomeExtensions.blur-my-shell
-    pkgs.gnomeExtensions.dash-to-dock
+    pkgs.gnomeExtensions.dash-to-panel
     pkgs.gnomeExtensions.user-themes
     pkgs.gnomeExtensions.caffeine
     pkgs.gnomeExtensions.clipboard-indicator
@@ -22,11 +26,8 @@ let
     pkgs.gnomeExtensions.color-picker
     pkgs.gnomeExtensions.weather-oclock
     pkgs.gnomeExtensions.forge
-    pkgs.gnomeExtensions.night-theme-switcher
-    pkgs.gnomeExtensions.auto-move-windows
     pkgs.gnomeExtensions.workspace-indicator
     pkgs.gnomeExtensions.quick-settings-tweaker
-    pkgs.gnomeExtensions.window-list
     pkgs.gnomeExtensions.focus-changer
   ];
 in

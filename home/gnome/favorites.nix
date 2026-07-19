@@ -23,7 +23,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  # Default favorites for first boot
+  # Single source of truth for pinned apps (uses live .desktop IDs)
   defaultFavorites = [
     "firefox.desktop"
     "org.gnome.Console.desktop"
@@ -31,9 +31,9 @@ let
     "org.gnome.TextEditor.desktop"
     "org.gnome.Extensions.desktop"
     "org.gnome.Settings.desktop"
-    "localsend_app.desktop"
+    "LocalSend.desktop"
     "zeditor.desktop"
-    "zoom.desktop"
+    "Zoom.desktop"
     "obsidian.desktop"
     "vlc.desktop"
     "org.libreoffice.LibreOffice.writer.desktop"
@@ -42,24 +42,8 @@ let
   ];
 
   # Apps that should always be in favorites (installed desktop GUI apps)
-  # Format: .desktop file ID
-  managedApps = [
-    "firefox.desktop"
-    "org.gnome.Console.desktop"
-    "org.gnome.Nautilus.desktop"
-    "org.gnome.TextEditor.desktop"
-    "org.gnome.Extensions.desktop"
-    "org.gnome.Settings.desktop"
-    "org.gnome.Screenshot.desktop"
-    "org.gnome.DiskUtility.desktop"
-    "localsend.desktop"
-    "us.zoom.Zoom.desktop"
-    "obsidian.desktop"
-    "vlc.desktop"
-    "org.libreoffice.LibreOffice.writer.desktop"
-    "org.libreoffice.LibreOffice.calc.desktop"
-    "org.libreoffice.LibreOffice.impress.desktop"
-  ];
+  # Format: .desktop file ID — kept identical to defaultFavorites to avoid drift
+  managedApps = defaultFavorites;
 
   favoritesScript = pkgs.writeShellScript "manage-favorites" ''
     set -euo pipefail
@@ -100,4 +84,20 @@ in
   home.activation.favorites = lib.mkAfter ''
     ${favoritesScript}
   '';
+
+  # Auto-start LocalSend on login (minimized to tray)
+  home.file.".config/autostart/localsend-autostart.desktop" = {
+    text = ''
+      [Desktop Entry]
+      Type=Application
+      Name=LocalSend
+      Comment=Local file sharing
+      Exec=${pkgs.localsend}/bin/localsend
+      Icon=localsend
+      Terminal=false
+      X-GNOME-Autostart-enabled=true
+      X-GNOME-Autostart-Delay=5
+      NoDisplay=true
+    '';
+  };
 }

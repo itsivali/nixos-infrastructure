@@ -2,11 +2,16 @@
 
 {
   dconf.settings = {
+    # Custom Waybar-style shell theme (see ~/.local/share/themes/gruvbox-waybar)
+    "org/gnome/shell/extensions/user-theme" = {
+      name = "gruvbox-waybar";
+    };
+
     "org/gnome/shell" = {
       disable-user-extensions = false;
       enabled-extensions = [
         "blur-my-shell@aunetx"
-        "dash-to-dock@micxgx.gmail.com"
+        "dash-to-panel@juliabelle.com"
         "user-theme@gnome-shell-extensions.gcampax.github.com"
         "caffeine@patapon.info"
         "clipboard-indicator@tudmotu.com"
@@ -23,11 +28,8 @@
         "color-picker@tuberry"
         "weather-oclock@nathanielw"
         "forge@gnome-shell-extensions.gcampax.github.com"
-        "nightthemeswitcher@romainvigier.fr"
-        "auto-move-windows@gnome-shell-extensions.gcampax.github.com"
         "workspace-indicator@gnome-shell-extensions.gcampax.github.com"
         "quick-settings-tweaker@qwreey"
-        "window-list@gnome-shell-extensions.gcampax.github.com"
         "focus-changer@hushml"
       ];
       development-tools = false;
@@ -164,36 +166,28 @@
       audible-bell = false;
     };
 
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dock-position = "BOTTOM";
+    # Dash to Panel — slim Waybar-style top bar (Gruvbox)
+    "org/gnome/shell/extensions/dash-to-panel" = {
+      panel-position = "TOP";
+      panel-size = lib.gvariant.mkInt32 32;
       dock-fixed = true;
-      autohide = false;
       intellihide = false;
-      extend-area = true;
-      dash-max-icon-size = lib.gvariant.mkInt32 22;
-      custom-theme-shrink = false;
       transparency-mode = "FIXED";
-      background-opacity = 1.0;
+      background-opacity = 0.55;
       background-color = "#282828";
       custom-background-color = true;
-      running-indicator-style = "DOTS";
-      running-indicator-color = "#fe8019";
-      apply-custom-theme = true;
-      show-trash = false;
-      show-show-apps-button = false;
-      show-dock = true;
-      show-icons = true;
-      show-windows-preview = true;
-      hide-overview-on-startup = true;
-      multi-monitor = false;
-      preferred-monitor = lib.gvariant.mkInt32 (-2);
+      show-running-apps = true;
+      show-appmenu = true;
+      show-window-title = true;
+      show-apps-button = true;
+      show-activities-button = false;
+      running-indicator-style = "LINE";
+      running-indicator-position = "BOTTOM";
+      click-action = "focus-or-previews";
       hot-keys = false;
-      click-action = "previews";
-      scroll-action = "switch-workspace";
-      shift-click-action = "launch";
-      shift-scroll-action = "switch-workspace";
-      height-fraction = 0.9;
-      max-height = lib.gvariant.mkInt32 0;
+      multi-monitor = false;
+      appicon-margin = lib.gvariant.mkInt32 4;
+      appicon-padding = lib.gvariant.mkInt32 4;
     };
 
     "org/gnome/shell/extensions/blur-my-shell" = {
@@ -209,11 +203,6 @@
     "org/gnome/shell/extensions/blur-my-shell/overview" = {
       sigma = lib.gvariant.mkInt32 40;
       brightness = 0.5;
-    };
-
-    "org/gnome/shell/extensions/blur-my-shell/dash-to-dock" = {
-      sigma = lib.gvariant.mkInt32 30;
-      brightness = 0.6;
     };
 
     "org/gnome/shell/extensions/blur-my-shell/appfolder-dialogs" = {
@@ -255,10 +244,6 @@
       show-power = true;
       use-fahrenheit = false;
       position-in-panel = lib.gvariant.mkInt32 0;
-    };
-
-    "org/gnome/shell/extensions/night-theme-switcher" = {
-      enabled = true;
     };
 
     "org/gnome/shell/extensions/rounded-window-corners" = {

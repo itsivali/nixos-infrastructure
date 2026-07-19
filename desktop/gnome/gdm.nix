@@ -10,6 +10,14 @@ in
       autoSuspend = false;
     };
 
+    # GDM runs as the 'gdm' user and only sees system packages, so the
+    # cursor/icon/GTK theme packages must live in the system profile.
+    environment.systemPackages = [
+      pkgs.bibata-cursors
+      pkgs.tela-icon-theme
+      pkgs.adw-gtk3
+    ];
+
     programs.dconf.profiles.gdm.databases = [{
       settings = {
         "org/gnome/desktop/interface" = {

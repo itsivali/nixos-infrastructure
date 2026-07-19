@@ -26,5 +26,6 @@
   imports = [
     ./dconf.nix
     ./favorites.nix
+    ./shell-theme.nix
   ];
 }

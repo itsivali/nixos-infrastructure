@@ -27,7 +27,7 @@ in
 
 {
   programs.zsh.shellAliases = {
-    rebuild = "sudo nixos-rebuild switch --flake ${repoDir}#prague";
+    rebuild = "git -C ${repoDir} pull && sudo nixos-rebuild switch --flake ${repoDir}#prague";
     rebuildn = "sudo nixos-rebuild switch --flake ${repoDir}#prague --no-build";
     test = "sudo nixos-rebuild test --flake ${repoDir}#prague";
     boot = "sudo nixos-rebuild boot --flake ${repoDir}#prague";

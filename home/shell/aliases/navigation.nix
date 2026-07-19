@@ -31,7 +31,9 @@ in
     "...." = "cd ../../..";
     home = "cd ~";
     cfg = "cd ${repoDir}";
+    dots = "cd ${repoDir}";
     edit = "zeditor ${repoDir}";
+    z = "zeditor";
 
     # Listing
     ls = "eza";
@@ -39,6 +41,7 @@ in
     la = "eza -a";
     lt = "eza --tree";
     l = "eza -lh";
+    tree = "eza --tree";
     cat = "bat";
   };
 }

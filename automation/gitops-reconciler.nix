@@ -126,7 +126,8 @@ in
       serviceConfig = {
         Type = "oneshot";
         User = "ivali";
-        Group = "ivali";
+        # Group omitted: systemd uses ivali's primary group (no dedicated
+        # 'ivali' group is declared; referencing it breaks the spawn step).
 
         ExecStart = reconcileScript;
 

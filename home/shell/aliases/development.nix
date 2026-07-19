@@ -31,5 +31,9 @@
     rg = "rg";
     f = "fd";
     reload = "exec zsh";
+    py = "python";
+    serve = "python -m http.server";
+    json = "jq";
+    tldr = "tldr";
   };
 }

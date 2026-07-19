@@ -81,7 +81,7 @@ in
         libnotify # notify-send
         wmctrl
         glib # gdbus
-        xorg.xset # xset
+        xset # xset
         firefox
       ];
 

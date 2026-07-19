@@ -72,7 +72,7 @@ retry() {
   shift
 
   while true; do
-    if "$@" 2>/dev/null; then
+    if "$@" 2>&1; then
       return 0
     fi
     if [[ "$attempt" -ge "$MAX_RETRIES" ]]; then
@@ -239,8 +239,8 @@ step_ok
 # Activate
 ###########################################################################
 
-step "Activate (nixos-rebuild switch)"
-if ! nixos-rebuild switch --flake ".#${HOST}" --show-trace; then
+step "Activate (sudo nixos-rebuild switch)"
+if ! sudo nixos-rebuild switch --flake ".#${HOST}" --show-trace; then
   notify "❌ Activation failed on ${HOST} (${SHORT_SHA})"
   step_fail
   exit 1

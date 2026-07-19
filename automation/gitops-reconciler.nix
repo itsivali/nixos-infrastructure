@@ -104,8 +104,6 @@ in
         GITOPS_REPO = gitops.repo;
         GITOPS_BRANCH = gitops.branch;
 
-        GITOPS_WORKTREE = "/var/lib/gitops";
-
         GITOPS_MAX_RETRIES = builtins.toString cfg.maxRetries;
         GITOPS_RETRY_DELAY = builtins.toString cfg.retryDelay;
         GITOPS_USE_IVALI_DOCTOR = if cfg.useIvaliDoctor then "true" else "false";
@@ -116,18 +114,19 @@ in
         # Optional: pick a lighter check (all checks are VM-based).
         # CANARY_CHECK = "automation-smoke";
 
-        # The reconciler runs as root, which has no SSH agent or key of its
-        # own, so git fetch/pull over git@gitlab.com cannot authenticate.
-        # Reuse the operator's passphrase-less deploy key; root can read it and
-        # its known_hosts. (For stricter isolation, provision a dedicated
-        # read-only GitLab deploy key instead.)
+        # The reconciler runs as the operator user (ivali), who owns the
+        # passphrase-less deploy key, so OpenSSH accepts it for git
+        # fetch/pull over git@gitlab.com. The nixos-rebuild switch step
+        # escalates to root via `sudo` (NOPASSWD for ivali). For stricter
+        # isolation you could instead provision a dedicated root-owned GitLab
+        # deploy key.
         GIT_SSH_COMMAND = "ssh -i /home/ivali/.ssh/id_ed25519 -o UserKnownHostsFile=/home/ivali/.ssh/known_hosts -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes";
       };
 
       serviceConfig = {
         Type = "oneshot";
-        User = "root";
-        Group = "root";
+        User = "ivali";
+        Group = "ivali";
 
         ExecStart = reconcileScript;
 

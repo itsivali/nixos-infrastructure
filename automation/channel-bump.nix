@@ -80,31 +80,24 @@ in
 
   config = lib.mkIf cfg.enable {
     sops.secrets.gitlab_api_token = {
-      sopsFile = ../../secrets/gitlab.yaml;
+      sopsFile = ../secrets/gitlab.yaml;
       owner = "root";
       mode = "0400";
-    };
-
-    environment = {
-      # Reuse the operator's passphrase-less deploy key, like the reconciler.
-      GIT_SSH_COMMAND = "ssh -i /home/ivali/.ssh/id_ed25519 -o UserKnownHostsFile=/home/ivali/.ssh/known_hosts -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes";
     };
 
     environment.systemPackages = [ pkgs.git pkgs.curl pkgs.nix ];
 
     systemd.services.channel-bump = {
       description = "Bump nixpkgs and open a GitLab MR";
+      # Reuse the operator's passphrase-less deploy key, like the reconciler.
+      environment.GIT_SSH_COMMAND = "ssh -i /home/ivali/.ssh/id_ed25519 -o UserKnownHostsFile=/home/ivali/.ssh/known_hosts -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes";
       serviceConfig = {
         Type = "oneshot";
         User = "root";
         TimeoutStartSec = "300s";
       };
       path = with pkgs; [ bash coreutils git curl nix openssh util-linux inetutils ];
-      environment = {
-        GIT_SSH_COMMAND = config.systemd.services.channel-bump.environment.GIT_SSH_COMMAND;
-      };
       script = ''
-        export GIT_SSH_COMMAND="${config.environment.GIT_SSH_COMMAND}"
         exec ${bumpScript}
       '';
     };

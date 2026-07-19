@@ -22,6 +22,7 @@ in
 
     ./fonts.nix
     ./theming.nix
+    ./firefox
   ]
   ++ (if gnomeEnabled then [ ./gnome ] else [ ])
   ++ [

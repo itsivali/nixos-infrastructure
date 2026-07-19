@@ -51,6 +51,19 @@
       options = [ "fmask=0077" "dmask=0077" ];
     };
 
+  # Dedicated btrfs subvolume for the Firefox profile. Kept as a SIBLING of
+  # the home subvolume so logged-in sessions/cookies survive even if /home is
+  # wiped on reinstall. One-time creation (run on the live host):
+  #   sudo mount /dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c /mnt/btrfs
+  #   sudo btrfs subvolume create /mnt/btrfs/firefox-ivali
+  #   sudo umount /mnt/btrfs
+  fileSystems."/home/ivali/.mozilla/firefox/ivali" =
+    {
+      device = "/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c";
+      fsType = "btrfs";
+      options = [ "subvol=firefox-ivali" "compress-force=zstd:3" "noatime" ];
+    };
+
   swapDevices =
     [{ device = "/dev/disk/by-uuid/e6685d2c-1195-45bf-adfd-7c0470156d2a"; }];
 

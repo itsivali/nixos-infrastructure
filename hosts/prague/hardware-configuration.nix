@@ -53,15 +53,60 @@
 
   # Dedicated btrfs subvolume for the Firefox profile. Kept as a SIBLING of
   # the home subvolume so logged-in sessions/cookies survive even if /home is
-  # wiped on reinstall. One-time creation (run on the live host):
-  #   sudo mount /dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c /mnt/btrfs
-  #   sudo btrfs subvolume create /mnt/btrfs/firefox-ivali
-  #   sudo umount /mnt/btrfs
+  # wiped on reinstall. Creation is now automatic (see the systemd oneshot
+  # below) so a fresh install needs no manual btrfs step — the subvolume is
+  # created at first boot / first `nixos-rebuild switch` before this mount
+  # unit runs. Manual fallback if ever needed:
+  #   sudo btrfs subvolume create /firefox-ivali
   fileSystems."/home/ivali/.mozilla/firefox/ivali" =
     {
       device = "/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c";
       fsType = "btrfs";
       options = [ "subvol=firefox-ivali" "compress-force=zstd:3" "noatime" ];
+    };
+
+  # ── Idempotent creation of the firefox-ivali btrfs subvolume ──────────────
+  # Runs before the mount unit above. Mounts the btrfs top-level transiently,
+  # creates the sibling subvolume if absent, then unmounts. Safe to run on
+  # every boot; no-ops once the subvolume exists. This removes the one-time
+  # manual step after a full reinstall.
+  systemd.services.create-firefox-subvol =
+    {
+      description = "Create firefox-ivali btrfs subvolume if missing";
+      wantedBy = [ "local-fs.target" ];
+      before = [ "home-ivali-.mozilla-firefox-ivali.mount" ];
+      serviceConfig =
+        {
+          Type = "oneshot";
+          RemainAfterExit = true;
+        };
+      script = ''
+        DEV=/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c
+        MP=/run/btrfs-root-firefox
+        BTRFS=${pkgs.btrfs-progs}/bin/btrfs
+        MOUNT=${pkgs.util-linux}/bin/mount
+        UMOUNT=${pkgs.util-linux}/bin/umount
+        FINDMNT=${pkgs.util-linux}/bin/findmnt
+
+        mkdir -p /home/ivali/.mozilla/firefox/ivali
+
+        # Already a mounted subvolume at the target: nothing to do.
+        if [ -d /home/ivali/.mozilla/firefox/ivali ] \
+           && $BTRFS subvolume show /home/ivali/.mozilla/firefox/ivali >/dev/null 2>&1; then
+          exit 0
+        fi
+
+        mkdir -p "$MP"
+        if ! $FINDMNT -n "$MP" >/dev/null; then
+          $MOUNT "$DEV" "$MP" || exit 0
+        fi
+
+        if ! $BTRFS subvolume show "$MP/firefox-ivali" >/dev/null 2>&1; then
+          $BTRFS subvolume create "$MP/firefox-ivali"
+        fi
+
+        $UMOUNT "$MP" 2>/dev/null || true
+      '';
     };
 
   swapDevices =

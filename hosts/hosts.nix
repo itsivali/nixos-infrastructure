@@ -114,6 +114,12 @@
       # Periodic health observer + auto-rollback on genuine service regression.
       fleet.deploymentHealth.enable = true;
       fleet.deploymentHealth.enableRollback = true;
+      # Outlook/Office365 SMTP OAuth2: register an Entra ID *public* client
+      # app (Mobile & desktop), grant delegated `SMTP.Send` for
+      # https://outlook.office365.com, then paste its Application (client) ID
+      # here. One-time `sudo oauth2ms --email=itsivali@outlook.com
+      # --client-id=<id> --tenant=consumers authorize` caches the token.
+      fleet.notifications.oauthClientId = "PASTE_ENTRA_CLIENT_ID_HERE";
     };
   };
 }

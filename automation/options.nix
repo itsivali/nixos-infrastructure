@@ -88,6 +88,29 @@ with lib;
         '';
       };
 
+      oauthClientId = mkOption {
+        type = types.str;
+        default = "";
+        example = "00000000-0000-0000-0000-000000000000";
+        description = ''
+          Entra ID (Azure AD) public-client application (client) ID used for
+          Outlook/Office365 SMTP OAuth2 via oauth2ms. Register a public
+          "Mobile & desktop" app and grant the delegated `SMTP.Send`
+          permission for `https://outlook.office365.com`.
+        '';
+      };
+
+      oauthTenant = mkOption {
+        type = types.str;
+        default = "consumers";
+        example = "consumers";
+        description = ''
+          Entra ID tenant for the OAuth2 device-code flow. Use `consumers`
+          for a personal @outlook.com account, or your organization tenant
+          ID / `organizations` for Microsoft 365.
+        '';
+      };
+
       telegram = {
 
         chatId = mkOption {

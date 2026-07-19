@@ -65,6 +65,24 @@ in
         systemd
         procps
         sudo
+
+        # Desktop / session automation (run as DEFAULT_USER via sudo)
+        gnugrep
+        findutils
+        curl
+        jq
+        glibc.bin # getent (system users)
+        nftables # nft (security)
+        apparmor-utils # aa-status (security)
+        wireplumber # wpctl (volume/mute)
+        brightnessctl
+        gnome-screenshot
+        wl-clipboard # wl-copy / wl-paste
+        libnotify # notify-send
+        wmctrl
+        glib # gdbus
+        xorg.xset # xset
+        firefox
       ];
 
       environment = {

@@ -18,17 +18,17 @@ func NewGitCommand(config *telegram.Config) *GitCommand {
 	return &GitCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *GitCommand) Name() string             { return "git" }
-func (c *GitCommand) Description() string       { return "Git operations" }
+func (c *GitCommand) Name() string                      { return "git" }
+func (c *GitCommand) Description() string               { return "Git operations" }
 func (c *GitCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *GitCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	args := strings.TrimSpace(msg.Args)
 	if args == "" {
-		output := runCmd("cd /home/ivali/nixos-infrastructure && git status --short 2>/dev/null", 10)
+		output := runCmdAsUser("cd /home/ivali/nixos-infrastructure && git status --short 2>/dev/null", 10)
 		return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 	}
-	output := runCmd(fmt.Sprintf("cd /home/ivali/nixos-infrastructure && git %s 2>&1", args), 30)
+	output := runCmdAsUser(fmt.Sprintf("cd /home/ivali/nixos-infrastructure && git %s 2>&1", args), 30)
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 }
 
@@ -40,8 +40,8 @@ func NewGithubCommand(config *telegram.Config) *GithubCommand {
 	return &GithubCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *GithubCommand) Name() string             { return "github" }
-func (c *GithubCommand) Description() string       { return "GitHub operations" }
+func (c *GithubCommand) Name() string                      { return "github" }
+func (c *GithubCommand) Description() string               { return "GitHub operations" }
 func (c *GithubCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *GithubCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -57,8 +57,8 @@ func NewGitlabCommand(config *telegram.Config) *GitlabCommand {
 	return &GitlabCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *GitlabCommand) Name() string             { return "gitlab" }
-func (c *GitlabCommand) Description() string       { return "GitLab operations" }
+func (c *GitlabCommand) Name() string                      { return "gitlab" }
+func (c *GitlabCommand) Description() string               { return "GitLab operations" }
 func (c *GitlabCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *GitlabCommand) Execute(ctx context.Context, msg *telegram.Message) error {

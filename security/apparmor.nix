@@ -120,7 +120,12 @@ let
       deny /etc/shadow r,
       deny /etc/passwd w,
       deny /root/** rw,
-      deny /home/*/.ssh/** rw,
+      # Read-only to the operator's deploy key + known_hosts so the bot
+      # can run `git` as the user (sudo -u ivali). All other
+      # writes under .ssh/.gnupg stay denied.
+      owner /home/ivali/.ssh/id_ed25519 r,
+      owner /home/ivali/.ssh/known_hosts r,
+      deny /home/*/.ssh/** w,
       deny /home/*/.gnupg/** rw,
     }
   '';

@@ -29,7 +29,7 @@ func runCmd(command string, timeoutSecs int) string {
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return "Command timed out after " + string(rune(timeoutSecs)) + "s"
+		return fmt.Sprintf("Command timed out after %ds", timeoutSecs)
 	}
 
 	if err != nil && output == "" {

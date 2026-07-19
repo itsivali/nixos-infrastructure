@@ -18,12 +18,12 @@ func NewAppsCommand(config *telegram.Config) *AppsCommand {
 	return &AppsCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *AppsCommand) Name() string             { return "apps" }
-func (c *AppsCommand) Description() string       { return "List discovered applications" }
+func (c *AppsCommand) Name() string                      { return "apps" }
+func (c *AppsCommand) Description() string               { return "List discovered applications" }
 func (c *AppsCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *AppsCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("find /run/current-system/sw/share/applications /usr/share/applications -name '*.desktop' 2>/dev/null | head -30 || echo 'No applications found'", 10)
+	output := runCmdAsUser("find /run/current-system/sw/share/applications /usr/share/applications -name '*.desktop' 2>/dev/null | head -30 || echo 'No applications found'", 10)
 	return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
 }
 
@@ -35,8 +35,8 @@ func NewOpenCommand(config *telegram.Config) *OpenCommand {
 	return &OpenCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *OpenCommand) Name() string             { return "open" }
-func (c *OpenCommand) Description() string       { return "Launch any application" }
+func (c *OpenCommand) Name() string                      { return "open" }
+func (c *OpenCommand) Description() string               { return "Launch any application" }
 func (c *OpenCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *OpenCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -44,7 +44,7 @@ func (c *OpenCommand) Execute(ctx context.Context, msg *telegram.Message) error 
 	if args == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/open <application|url>`")
 	}
-	output := runCmd(fmt.Sprintf("nohup %s &>/dev/null &", args), 5)
+	output := runCmdAsUser(fmt.Sprintf("nohup %s &>/dev/null &", args), 5)
 	_ = output
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Launched: `%s`", args))
 }
@@ -57,17 +57,17 @@ func NewVolumeCommand(config *telegram.Config) *VolumeCommand {
 	return &VolumeCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *VolumeCommand) Name() string             { return "volume" }
-func (c *VolumeCommand) Description() string       { return "Volume control" }
+func (c *VolumeCommand) Name() string                      { return "volume" }
+func (c *VolumeCommand) Description() string               { return "Volume control" }
 func (c *VolumeCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *VolumeCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	args := strings.TrimSpace(msg.Args)
 	if args == "" {
-		output := runCmd("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo 'wpctl not available'", 5)
+		output := runCmdAsUser("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo 'wpctl not available'", 5)
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔊 %s", output))
 	}
-	output := runCmd(fmt.Sprintf("wpctl set-volume @DEFAULT_AUDIO_SINK@ %s 2>/dev/null", args), 5)
+	output := runCmdAsUser(fmt.Sprintf("wpctl set-volume @DEFAULT_AUDIO_SINK@ %s 2>/dev/null", args), 5)
 	_ = output
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔊 Volume set to %s", args))
 }
@@ -80,12 +80,12 @@ func NewMuteCommand(config *telegram.Config) *MuteCommand {
 	return &MuteCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *MuteCommand) Name() string             { return "mute" }
-func (c *MuteCommand) Description() string       { return "Mute audio" }
+func (c *MuteCommand) Name() string                      { return "mute" }
+func (c *MuteCommand) Description() string               { return "Mute audio" }
 func (c *MuteCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *MuteCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	runCmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ 1 2>/dev/null", 5)
+	runCmdAsUser("wpctl set-mute @DEFAULT_AUDIO_SINK@ 1 2>/dev/null", 5)
 	return c.api.SendMarkdown(msg.ChatID, "🔇 Muted")
 }
 
@@ -97,12 +97,12 @@ func NewUnmuteCommand(config *telegram.Config) *UnmuteCommand {
 	return &UnmuteCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *UnmuteCommand) Name() string             { return "unmute" }
-func (c *UnmuteCommand) Description() string       { return "Unmute audio" }
+func (c *UnmuteCommand) Name() string                      { return "unmute" }
+func (c *UnmuteCommand) Description() string               { return "Unmute audio" }
 func (c *UnmuteCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *UnmuteCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	runCmd("wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 2>/dev/null", 5)
+	runCmdAsUser("wpctl set-mute @DEFAULT_AUDIO_SINK@ 0 2>/dev/null", 5)
 	return c.api.SendMarkdown(msg.ChatID, "🔊 Unmuted")
 }
 
@@ -114,17 +114,17 @@ func NewBrightnessCommand(config *telegram.Config) *BrightnessCommand {
 	return &BrightnessCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *BrightnessCommand) Name() string             { return "brightness" }
-func (c *BrightnessCommand) Description() string       { return "Brightness control" }
+func (c *BrightnessCommand) Name() string                      { return "brightness" }
+func (c *BrightnessCommand) Description() string               { return "Brightness control" }
 func (c *BrightnessCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *BrightnessCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	args := strings.TrimSpace(msg.Args)
 	if args == "" {
-		output := runCmd("brightnessctl info 2>/dev/null | grep -oP '\\d+%' | head -1 || echo 'unknown'", 5)
+		output := runCmdAsUser("brightnessctl info 2>/dev/null | grep -oP '\\d+%' | head -1 || echo 'unknown'", 5)
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔆 Brightness: %s", output))
 	}
-	output := runCmd(fmt.Sprintf("brightnessctl set %s 2>/dev/null", args), 5)
+	output := runCmdAsUser(fmt.Sprintf("brightnessctl set %s 2>/dev/null", args), 5)
 	_ = output
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔆 Brightness set to %s", args))
 }
@@ -137,13 +137,13 @@ func NewScreenshotCommand(config *telegram.Config) *ScreenshotCommand {
 	return &ScreenshotCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *ScreenshotCommand) Name() string             { return "screenshot" }
-func (c *ScreenshotCommand) Description() string       { return "Capture desktop" }
+func (c *ScreenshotCommand) Name() string                      { return "screenshot" }
+func (c *ScreenshotCommand) Description() string               { return "Capture desktop" }
 func (c *ScreenshotCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *ScreenshotCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	_ = c.api.SendMarkdown(msg.ChatID, "Capturing screenshot...")
-	output := runCmd("gnome-screenshot -f /tmp/screenshot.png 2>/dev/null && echo OK || echo FAIL", 10)
+	output := runCmdAsUser("gnome-screenshot -f /tmp/screenshot.png 2>/dev/null && echo OK || echo FAIL", 10)
 	if strings.Contains(output, "OK") {
 		if err := c.api.SendPhoto(msg.ChatID, "/tmp/screenshot.png", "Desktop screenshot"); err != nil {
 			return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Screenshot captured but failed to send: `%s`", err))
@@ -161,18 +161,18 @@ func NewClipboardCommand(config *telegram.Config) *ClipboardCommand {
 	return &ClipboardCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *ClipboardCommand) Name() string             { return "clipboard" }
-func (c *ClipboardCommand) Description() string       { return "Clipboard operations" }
+func (c *ClipboardCommand) Name() string                      { return "clipboard" }
+func (c *ClipboardCommand) Description() string               { return "Clipboard operations" }
 func (c *ClipboardCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *ClipboardCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	args := strings.TrimSpace(msg.Args)
 	if strings.HasPrefix(args, "set ") {
 		content := strings.TrimPrefix(args, "set ")
-		runCmd(fmt.Sprintf("echo -n '%s' | wl-copy 2>/dev/null", content), 5)
+		runCmdAsUser(fmt.Sprintf("echo -n '%s' | wl-copy 2>/dev/null", content), 5)
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("📋 Clipboard set to: `%s`", content))
 	}
-	output := runCmd("wl-paste 2>/dev/null || echo 'Clipboard empty'", 5)
+	output := runCmdAsUser("wl-paste 2>/dev/null || echo 'Clipboard empty'", 5)
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("📋 *Clipboard:*\n```\n%s\n```", output), 3500)
 }
 
@@ -184,8 +184,8 @@ func NewDesktopPowerCommand(config *telegram.Config) *DesktopPowerCommand {
 	return &DesktopPowerCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *DesktopPowerCommand) Name() string             { return "desktop_power" }
-func (c *DesktopPowerCommand) Description() string       { return "Power options (suspend/lock)" }
+func (c *DesktopPowerCommand) Name() string                      { return "desktop_power" }
+func (c *DesktopPowerCommand) Description() string               { return "Power options (suspend/lock)" }
 func (c *DesktopPowerCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *DesktopPowerCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -195,7 +195,7 @@ func (c *DesktopPowerCommand) Execute(ctx context.Context, msg *telegram.Message
 		runCmd("systemctl suspend", 5)
 		return c.api.SendMarkdown(msg.ChatID, "Suspended")
 	case "lock":
-		runCmd("gnome-screensaver-command -l 2>/dev/null || loginctl lock-session", 5)
+		runCmdAsUser("gnome-screensaver-command -l 2>/dev/null || loginctl lock-session", 5)
 		return c.api.SendMarkdown(msg.ChatID, "Locked")
 	default:
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/desktop_power suspend|lock`")
@@ -210,12 +210,12 @@ func NewFirefoxCommand(config *telegram.Config) *FirefoxCommand {
 	return &FirefoxCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *FirefoxCommand) Name() string             { return "firefox" }
-func (c *FirefoxCommand) Description() string       { return "Open Firefox" }
+func (c *FirefoxCommand) Name() string                      { return "firefox" }
+func (c *FirefoxCommand) Description() string               { return "Open Firefox" }
 func (c *FirefoxCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *FirefoxCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	runCmd("nohup firefox &>/dev/null &", 5)
+	runCmdAsUser("nohup firefox &>/dev/null &", 5)
 	return c.api.SendMarkdown(msg.ChatID, "Opening Firefox...")
 }
 
@@ -227,12 +227,12 @@ func NewWindowsCommand(config *telegram.Config) *WindowsCommand {
 	return &WindowsCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *WindowsCommand) Name() string             { return "windows" }
-func (c *WindowsCommand) Description() string       { return "Window management" }
+func (c *WindowsCommand) Name() string                      { return "windows" }
+func (c *WindowsCommand) Description() string               { return "Window management" }
 func (c *WindowsCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *WindowsCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("wmctrl -l 2>/dev/null || echo 'wmctrl not available'", 5)
+	output := runCmdAsUser("wmctrl -l 2>/dev/null || echo 'wmctrl not available'", 5)
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 }
 
@@ -244,12 +244,12 @@ func NewWorkspaceCommand(config *telegram.Config) *WorkspaceCommand {
 	return &WorkspaceCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *WorkspaceCommand) Name() string             { return "workspace" }
-func (c *WorkspaceCommand) Description() string       { return "Workspace management" }
+func (c *WorkspaceCommand) Name() string                      { return "workspace" }
+func (c *WorkspaceCommand) Description() string               { return "Workspace management" }
 func (c *WorkspaceCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *WorkspaceCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'global.workspace_manager.get_n_workspaces()' 2>/dev/null || echo 'GNOME not available'", 5)
+	output := runCmdAsUser("gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'global.workspace_manager.get_n_workspaces()' 2>/dev/null || echo 'GNOME not available'", 5)
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Workspaces: %s", output))
 }
 
@@ -261,11 +261,11 @@ func NewMonitorOnCommand(config *telegram.Config) *MonitorOnCommand {
 	return &MonitorOnCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *MonitorOnCommand) Name() string             { return "monitoron" }
-func (c *MonitorOnCommand) Description() string       { return "Turn on monitor" }
+func (c *MonitorOnCommand) Name() string                      { return "monitoron" }
+func (c *MonitorOnCommand) Description() string               { return "Turn on monitor" }
 func (c *MonitorOnCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *MonitorOnCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	runCmd("xset dpms force on 2>/dev/null || true", 5)
+	runCmdAsUser("xset dpms force on 2>/dev/null || true", 5)
 	return c.api.SendMarkdown(msg.ChatID, "Monitor turned on")
 }

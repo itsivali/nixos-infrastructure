@@ -17,9 +17,9 @@ import (
 
 // API handles communication with the Telegram Bot API.
 type API struct {
-	token    string
-	baseURL  string
-	client   *http.Client
+	token   string
+	baseURL string
+	client  *http.Client
 }
 
 // NewAPI creates a new Telegram API client.
@@ -188,7 +188,7 @@ func (a *API) EditMessage(chatID int64, messageID int, text string, parseMode st
 	params := url.Values{
 		"chat_id":    {strconv.FormatInt(chatID, 10)},
 		"message_id": {strconv.Itoa(messageID)},
-		"text":        {text},
+		"text":       {text},
 	}
 	if parseMode != "" {
 		params.Set("parse_mode", parseMode)
@@ -211,10 +211,10 @@ func (a *API) AnswerCallback(callbackQueryID string, text string) error {
 func (a *API) SendInlineKeyboard(chatID int64, text string, buttons []InlineButton) error {
 	keyboard := buildInlineKeyboard(buttons)
 	params := url.Values{
-		"chat_id":      {strconv.FormatInt(chatID, 10)},
-		"text":         {text},
-		"parse_mode":   {"Markdown"},
-		"reply_markup": {keyboard},
+		"chat_id":                  {strconv.FormatInt(chatID, 10)},
+		"text":                     {text},
+		"parse_mode":               {"Markdown"},
+		"reply_markup":             {keyboard},
 		"disable_web_page_preview": {"true"},
 	}
 	return a.post("sendMessage", params)
@@ -224,6 +224,47 @@ func (a *API) SendInlineKeyboard(chatID int64, text string, buttons []InlineButt
 type InlineButton struct {
 	Text         string
 	CallbackData string
+}
+
+// KeyboardButton represents a reply-keyboard button.
+type KeyboardButton struct {
+	Text string `json:"text"`
+}
+
+// SendReplyKeyboard sends a message with a persistent reply keyboard
+// (the main menu). Buttons are grouped into rows; each cell is a
+// label such as "🖥 /status".
+func (a *API) SendReplyKeyboard(chatID int64, text string, rows [][]string) error {
+	keyboard := buildReplyKeyboard(rows)
+	params := url.Values{
+		"chat_id":                  {strconv.FormatInt(chatID, 10)},
+		"text":                     {text},
+		"parse_mode":               {"Markdown"},
+		"reply_markup":             {keyboard},
+		"disable_web_page_preview": {"true"},
+		"resize_keyboard":          {"true"},
+	}
+	return a.post("sendMessage", params)
+}
+
+func buildReplyKeyboard(rows [][]string) string {
+	if len(rows) == 0 {
+		return ""
+	}
+	kbd := make([][]KeyboardButton, 0, len(rows))
+	for _, r := range rows {
+		row := make([]KeyboardButton, 0, len(r))
+		for _, label := range r {
+			row = append(row, KeyboardButton{Text: label})
+		}
+		kbd = append(kbd, row)
+	}
+	data, _ := json.Marshal(map[string]any{
+		"keyboard":          kbd,
+		"resize_keyboard":   true,
+		"one_time_keyboard": false,
+	})
+	return string(data)
 }
 
 func buildInlineKeyboard(buttons []InlineButton) string {
@@ -322,10 +363,10 @@ type UpdateMessage struct {
 
 // CallbackQuery represents a callback query.
 type CallbackQuery struct {
-	ID   string       `json:"id"`
-	From *User        `json:"from"`
-	Chat *Chat        `json:"chat,omitempty"`
-	Data string       `json:"data"`
+	ID      string         `json:"id"`
+	From    *User          `json:"from"`
+	Chat    *Chat          `json:"chat,omitempty"`
+	Data    string         `json:"data"`
 	Message *UpdateMessage `json:"message,omitempty"`
 }
 

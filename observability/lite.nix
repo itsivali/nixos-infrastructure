@@ -25,12 +25,14 @@
 let
   cfg = config.fleet.observability.lite;
 
+  notifyScript = pkgs.writeScriptBin "notify" (builtins.readFile ../scripts/notify.sh);
+
   collector = pkgs.writeShellScript "observability-lite" ''
     #!/bin/sh
     set -eu
 
     OUT=/var/lib/observability/state.json
-    NOTIFY=/home/ivali/nixos-infrastructure/scripts/notify.sh
+    NOTIFY="''${NOTIFY:-$(command -v notify 2>/dev/null || echo /run/current-system/sw/bin/notify)}"
 
     GEN="$(readlink -f /run/current-system | sed 's#.*/\([0-9]*\)-link#\1#')"
     HOST="$(hostname)"
@@ -49,17 +51,17 @@ let
 
     diskTh=${toString cfg.thresholds.disk}
     memTh=${toString cfg.thresholds.mem}
-    loadTh="$(awk "BEGIN{printf \"%.1f\", ${nproc} * ${toString cfg.thresholds.load}}")"
+    loadTh="$(awk "BEGIN{printf \"%.1f\", ''${nproc} * ${toString cfg.thresholds.load}}")"
 
     alerts=""
-    if [ "$diskRoot" -ge "$diskTh" ]; then alerts="''${alerts}disk_root=''${diskRoot}''% "; fi
+    if [ "$diskRoot" -ge "$diskTh" ]; then alerts="''${alerts}disk_root=''${diskRoot}% "; fi
     if [ "$
     memPct " -ge "$
-    memTh " ]; then alerts=" ''${alerts}mem=''${memPct}''% "; fi
+    memTh " ]; then alerts=" ''${alerts}mem=''${memPct}% "; fi
     if awk "
     BEGIN
     {
-      exit !($l1 > $loadTh)}"; then alerts="''${alerts}load1=''${l1}'' "; fi
+      exit !($l1 > $loadTh)}"; then alerts="''${alerts}load1=''${l1} "; fi
 
     cat > "$OUT" <<JSON
     {"host":"$HOST","gen":"$GEN","ts":$ts,"uptime":$up,"load":[$l1,$l5,$l15],"memPct":$memPct,"diskRootPct":$diskRoot,"bot":"$svc_bot","net":"$svc_net","alerts":"$alerts"}
@@ -69,56 +71,63 @@ let
       "$NOTIFY" "⚠️ ''${HOST} health alert: ''${alerts}"
     fi
   '';
-      in
-      {
-      options.fleet.observability.lite = {
-        enable = lib.mkEnableOption "lite /proc-based health collector";
+in
+{
+  options.fleet.observability.lite = {
+    enable = lib.mkEnableOption "lite /proc-based health collector";
 
-        interval = lib.mkOption {
-          type = lib.types.int;
-          default = 60;
-          description = "Seconds between metric collections.";
-        };
+    interval = lib.mkOption {
+      type = lib.types.int;
+      default = 60;
+      description = "Seconds between metric collections.";
+    };
 
-        thresholds = {
-          disk = lib.mkOption {
-            type = lib.types.int;
-            default = 85;
-            description = "Root filesystem used%% that triggers an alert.";
-          };
-          mem = lib.mkOption {
-            type = lib.types.int;
-            default = 90;
-            description = "Memory used%% that triggers an alert.";
-          };
-          load = lib.mkOption {
-            type = lib.types.float;
-            default = 2.0;
-            description = "load1 multiplier over (nproc) that triggers an alert.";
-          };
-        };
+    thresholds = {
+      disk = lib.mkOption {
+        type = lib.types.int;
+        default = 85;
+        description = "Root filesystem used%% that triggers an alert.";
       };
-
-      config = lib.mkIf cfg.enable {
-        environment.systemPackages = [ pkgs.gawk pkgs.procps ];
-
-        systemd.services.observability-lite = {
-          description = "Lite observability collector";
-          serviceConfig = {
-            Type = "oneshot";
-            Nice = 19;
-            IOSchedulingClass = "idle";
-            StateDirectory = "observability";
-            ExecStart = "${collector}";
-          };
-        };
-
-        systemd.timers.observability-lite = {
-          wantedBy = [ "timers.target" ];
-          timerConfig = {
-            OnUnitActiveSec = "${toString cfg.interval}s";
-            Persistent = true;
-          };
-        };
+      mem = lib.mkOption {
+        type = lib.types.int;
+        default = 90;
+        description = "Memory used%% that triggers an alert.";
       };
-    }
+      load = lib.mkOption {
+        type = lib.types.float;
+        default = 2.0;
+        description = "load1 multiplier over (nproc) that triggers an alert.";
+      };
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    environment.systemPackages = [ pkgs.gawk pkgs.procps ];
+
+    systemd.services.observability-lite = {
+      description = "Lite observability collector";
+      serviceConfig = {
+        Type = "oneshot";
+        Nice = 19;
+        IOSchedulingClass = "idle";
+        StateDirectory = "observability";
+        path = [
+          notifyScript
+          pkgs.coreutils
+          pkgs.curl
+          pkgs.gawk
+          pkgs.procps
+        ];
+        ExecStart = "${collector}";
+      };
+    };
+
+    systemd.timers.observability-lite = {
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnUnitActiveSec = "${toString cfg.interval}s";
+        Persistent = true;
+      };
+    };
+  };
+}

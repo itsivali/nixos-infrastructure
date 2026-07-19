@@ -42,6 +42,9 @@ in
         nix
         nixos-rebuild
         findutils
+        # Include the system bin so the `sendmail` symlink (programs.msmtp)
+        # resolves when notify.sh runs from this service.
+        "/run/current-system/sw/bin"
       ];
 
       serviceConfig = {

@@ -264,7 +264,28 @@ check_unit() {
   fi
 }
 
-check_unit "ivali-bot-go.service" "Telegram bot (ivali-bot-go)"
+# Like check_unit, but tolerates a brief restart (e.g. a service coming back
+# up right after a `nixos-rebuild switch`). A hard FAIL only after <attempts>
+# probes spaced <interval>s apart. Used for the bot, which always restarts
+# during a deploy and would otherwise spuriously trip rollback-on-failure.
+check_unit_retry() {
+  local unit="$1" label="$2" attempts="${3:-6}" interval="${4:-5}"
+  local i
+  for ((i = 1; i <= attempts; i++)); do
+    if systemctl list-unit-files "${unit}" >/dev/null 2>&1 && \
+       systemctl is-active --quiet "${unit}"; then
+      ok "${label} active"
+      return
+    fi
+    if (( i < attempts )); then
+      log "  … ${label} not yet active, retrying (${i}/${attempts})"
+      sleep "$interval"
+    fi
+  done
+  fail "${label} is NOT running"
+}
+
+check_unit_retry "ivali-bot-go.service" "Telegram bot (ivali-bot-go)" 6 5
 check_unit "sshd.service" "SSH daemon (sshd)"
 check_unit "NetworkManager.service" "NetworkManager"
 check_unit "tailscaled.service" "Tailscale (tailscaled)"

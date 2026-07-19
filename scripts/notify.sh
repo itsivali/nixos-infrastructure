@@ -70,6 +70,11 @@ send_email() {
   local subject
   subject="$(echo "${MESSAGE}" | head -1 | tr -d '\200-\377' | cut -c1-80)"
 
+  if ! command -v sendmail >/dev/null 2>&1; then
+    echo "notify.sh: sendmail not available, skipping email" >&2
+    return 0
+  fi
+
   {
     echo "To: ${to}"
     echo "From: gitops@${HOST}"

@@ -33,7 +33,10 @@ log "Rolling back from generation ${CURRENT_GEN}..."
 # Roll back
 ###########################################################################
 
-if ! nixos-rebuild switch --rollback; then
+# Roll back to the previous generation. Use flake mode so nixos-rebuild does
+# not fall back to the legacy `<nixpkgs/nixos>` NIX_PATH lookup (this host is
+# flake-only and has no nixpkgs channel in NIX_PATH).
+if ! nixos-rebuild --flake "${REPO_DIR}#${HOST}" rollback; then
   notify "❌ Rollback command FAILED on ${HOST} — manual intervention required"
   log "nixos-rebuild --rollback failed."
   exit 1

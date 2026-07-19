@@ -71,6 +71,16 @@ with lib;
         '';
       };
 
+      canary = mkOption {
+        type = types.bool;
+        default = false;
+        description = ''
+          Run a NixOS VM smoke test (canary) before activating a new
+          generation. Adds a full VM build + boot to every deploy; set to
+          false to deploy directly after flake check + build.
+        '';
+      };
+
     };
 
     ############################################################

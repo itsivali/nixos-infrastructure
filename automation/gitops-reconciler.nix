@@ -110,6 +110,12 @@ in
         GITOPS_RETRY_DELAY = builtins.toString cfg.retryDelay;
         GITOPS_USE_IVALI_DOCTOR = if cfg.useIvaliDoctor then "true" else "false";
 
+        # #6 Canary gate: when "1", gitops-reconcile.sh boots a NixOS VM
+        # and runs a smoke test before activating the new generation.
+        GITOPS_CANARY = if cfg.canary then "1" else "0";
+        # Optional: pick a lighter check (all checks are VM-based).
+        # CANARY_CHECK = "automation-smoke";
+
         # The reconciler runs as root, which has no SSH agent or key of its
         # own, so git fetch/pull over git@gitlab.com cannot authenticate.
         # Reuse the operator's passphrase-less deploy key; root can read it and

@@ -24,13 +24,15 @@
 let
   cfg = config.fleet.bot.watchdog;
 
+  notifyScript = pkgs.writeScriptBin "notify" (builtins.readFile ../scripts/notify.sh);
+
   watchdog = pkgs.writeShellScript "ivali-bot-watchdog" ''
     #!/bin/sh
     set -eu
 
     HB=/run/ivali-bot/heartbeat
     TH="$1"
-    NOTIFY=/home/ivali/nixos-infrastructure/scripts/notify.sh
+    NOTIFY="''${NOTIFY:-$(command -v notify 2>/dev/null || echo /run/current-system/sw/bin/notify)}"
 
     if [ ! -e "$HB" ]; then
       if [ -x "$NOTIFY" ]; then
@@ -66,12 +68,19 @@ in
 
   config = lib.mkIf cfg.enable {
     # Ensure the bot has a place to write its heartbeat.
-    systemd.tmpfiles.settings."d /run/ivali-bot 0755 root root" = "";
+    systemd.tmpfiles.settings."d /run/ivali-bot 0755 root root" = { };
 
     systemd.services.ivali-bot-watchdog = {
       description = "Check ivali-bot heartbeat";
       serviceConfig = {
         Type = "oneshot";
+        path = [
+          notifyScript
+          pkgs.coreutils
+          pkgs.curl
+          pkgs.msmtp
+          pkgs.inetutils
+        ];
         ExecStart = "${watchdog} ${builtins.toString cfg.thresholdSec}";
       };
     };

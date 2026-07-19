@@ -15,6 +15,8 @@ pkgs.testers.nixosTest {
 
   nodes.machine = { ... }: {
     imports = [
+      sops-nix.nixosModules.sops
+      ../security/sops.nix
       ../automation
       ../recovery
     ];

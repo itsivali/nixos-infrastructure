@@ -94,14 +94,15 @@
         MOUNT=${pkgs.util-linux}/bin/mount
         UMOUNT=${pkgs.util-linux}/bin/umount
         FINDMNT=${pkgs.util-linux}/bin/findmnt
+        USER=ivali
+        GROUP=users
 
-        mkdir -p /home/ivali/.mozilla/firefox/ivali
-
-        # Already a mounted subvolume at the target: nothing to do.
-        if [ -d /home/ivali/.mozilla/firefox/ivali ] \
-           && $BTRFS subvolume show /home/ivali/.mozilla/firefox/ivali >/dev/null 2>&1; then
-          exit 0
-        fi
+        # Create the mountpoint parent tree and hand it to the user. Home
+        # Manager runs as ivali and must be able to write the Firefox profile
+        # and sibling dirs (e.g. native-messaging-hosts). The subvolume itself
+        # is created as root further down, so we chown it to the user too.
+        mkdir -p /home/ivali/.mozilla/firefox
+        chown -R "$USER:$GROUP" /home/ivali/.mozilla
 
         mkdir -p "$MP"
         if ! $FINDMNT -n "$MP" >/dev/null; then
@@ -111,6 +112,10 @@
         if ! $BTRFS subvolume show "$MP/firefox-ivali" >/dev/null 2>&1; then
           $BTRFS subvolume create "$MP/firefox-ivali"
         fi
+
+        # The subvolume is created as root; give it to the user so Home Manager
+        # can populate the profile on activation.
+        chown -R "$USER:$GROUP" "$MP/firefox-ivali"
 
         $UMOUNT "$MP" 2>/dev/null || true
       '';

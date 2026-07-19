@@ -212,6 +212,30 @@ fi
 step_ok
 
 ###########################################################################
+# Canary gate (optional) — validate the NixOS VM test derivation
+# builds before we touch bare metal. Set GITOPS_CANARY=1 to enable.
+# A full headless boot-run needs KVM+QEMU; building the test
+# derivation below catches the majority of config regressions
+# (broken module imports, bad options) cheaply, before `switch`.
+# (tests/laptop-smoke.nix must exist for the .vm attr to resolve.)
+###########################################################################
+step "Canary VM test"
+if [[ "${GITOPS_CANARY:-0}" == "1" ]]; then
+  if command -v nixos-rebuild >/dev/null 2>&1; then
+    if ! nix build ".#nixosConfigurations.${HOST}.config.system.build.vm" --show-trace; then
+      notify "🚨 Canary VM build failed on ${HOST} — aborting deploy"
+      step_fail
+      exit 1
+    fi
+  else
+    log "Canary: nixos-rebuild unavailable, skipping VM derivation build."
+  fi
+else
+  log "Canary disabled (GITOPS_CANARY=1 to gate deploys behind a VM test)."
+fi
+step_ok
+
+###########################################################################
 # Activate
 ###########################################################################
 

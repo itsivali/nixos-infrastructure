@@ -78,6 +78,12 @@ func (r *Runner) Run(ctx context.Context) error {
 			continue
 		}
 
+		// Heartbeat for the dead-man's-switch watchdog (#5): the bot
+		// writes a timestamp on every successful poll so the watchdog
+		// can alert if polling ever stops.
+		_ = os.WriteFile("/run/ivali-bot/heartbeat",
+			[]byte(strconv.FormatInt(time.Now().Unix(), 10)), 0o644)
+
 		for _, update := range updates {
 			r.handleUpdate(ctx, &update)
 			offset = update.UpdateID + 1

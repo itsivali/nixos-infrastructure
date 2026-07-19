@@ -81,8 +81,12 @@ let
   '';
 in
 {
+  # dconf write needs a D-Bus session bus. HM activation runs as a systemd
+  # service without a session (no $DISPLAY), so wrap in dbus-run-session to
+  # spawn a transient bus — otherwise `dconf write` fails with
+  # "Cannot autolaunch D-Bus without X11 $DISPLAY".
   home.activation.favorites = lib.mkAfter ''
-    ${favoritesScript}
+    ${pkgs.dbus}/bin/dbus-run-session -- ${favoritesScript}
   '';
 
   # Auto-start LocalSend on login (minimized to tray)

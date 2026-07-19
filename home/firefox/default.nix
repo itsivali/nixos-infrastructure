@@ -43,7 +43,10 @@ in
     profiles.ivali = {
       # Lives on a dedicated btrfs subvolume (see hosts/prague/
       # hardware-configuration.nix) so cookies/logins survive a reinstall.
-      path = "/home/ivali/.mozilla/firefox/ivali";
+      # Path is RELATIVE to ~/.mozilla/firefox: Home Manager writes this as
+      # `Path=ivali` with `IsRelative=1` (valid), and drops profile files into
+      # the mounted subvolume. An absolute path here breaks both.
+      path = "ivali";
 
       settings = {
         # ── Privacy / telemetry off (Arkenfox-lite) ──────────────
@@ -52,6 +55,11 @@ in
         "datareporting.healthreport.uploadEnabled" = false;
         "datareporting.policy.dataSubmissionEnabled" = false;
         "browser.shell.checkDefaultBrowser" = false;
+
+        # Auto-enable declarative extensions (uBlock, Bitwarden, Dark Reader,
+        # Sidebery) instead of leaving them installed-but-disabled.
+        "extensions.autoDisableScopes" = 0;
+
         "browser.pocket.enabled" = false;
         "extensions.pocket.enabled" = false;
         "browser.newtabpage.activity-stream.feeds.section.topstories" = false;

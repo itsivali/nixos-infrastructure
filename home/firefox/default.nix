@@ -40,6 +40,13 @@ in
     enable = true;
     package = pkgs.firefox;
 
+    # This Home Manager / nixpkgs combo defaults configPath to
+    # ~/.config/mozilla/firefox, but the nixpkgs Firefox binary actually
+    # stores its profiles under ~/.mozilla/firefox (where the firefox-ivali
+    # subvolume is mounted). Override so HM-managed profiles.ini + the ivali
+    # profile land where Firefox reads them.
+    configPath = ".mozilla/firefox";
+
     profiles.ivali = {
       # Lives on a dedicated btrfs subvolume (see hosts/prague/
       # hardware-configuration.nix) so cookies/logins survive a reinstall.

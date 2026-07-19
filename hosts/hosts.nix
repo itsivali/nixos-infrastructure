@@ -129,9 +129,9 @@
       fleet.bot.watchdog.enable = true;
       fleet.bot.watchdog.thresholdSec = 300;
       # #6 Canary gate: run a NixOS VM smoke test before activating a new
-      #    generation. CPU/disk heavy on every deploy — set
-      #    fleet.gitopsReconciler.canary = false to deploy directly.
-      fleet.gitopsReconciler.canary = true;
+      #    generation. CPU/disk heavy on every deploy — disabled while
+      #    iterating on the GNOME/Hyprland setup; flip back to true when done.
+      fleet.gitopsReconciler.canary = false;
     };
   };
 }

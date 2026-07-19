@@ -11,7 +11,7 @@
       disable-user-extensions = false;
       enabled-extensions = [
         "blur-my-shell@aunetx"
-        "dash-to-panel@juliabelle.com"
+        "dash-to-panel@jderose9.github.com"
         "user-theme@gnome-shell-extensions.gcampax.github.com"
         "caffeine@patapon.info"
         "clipboard-indicator@tudmotu.com"
@@ -27,7 +27,7 @@
         "bluetooth-quick-connect@bjarosze.gmail.com"
         "color-picker@tuberry"
         "weather-oclock@nathanielw"
-        "forge@gnome-shell-extensions.gcampax.github.com"
+        "forge@jmmaranan.com"
         "workspace-indicator@gnome-shell-extensions.gcampax.github.com"
         "quick-settings-tweaker@qwreey"
         "focus-changer@hushml"

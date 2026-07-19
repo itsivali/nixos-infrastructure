@@ -82,43 +82,62 @@ in
 
   config = lib.mkMerge [
     (lib.mkIf cfg.impermanence {
-      boot.impermanence = true;
-
-      # Review this list carefully before enabling. These paths survive
-      # reboot; everything else is wiped by the tmpfs root.
-      environment.persistence."${persist}" = {
-        hideMounts = true;
-        directories = [
-          "/etc"
-          "/var/log"
-          "/var/cache"
-          "/var/lib/systemd"
-          "/var/lib/NetworkManager"
-          "/var/lib/nixos"
-          "/var/lib/bluetooth"
-          "/var/lib/iwd"
-          "/var/lib/accounts"
-          "/var/lib/alsa"
-          "/var/lib/colord"
-          "/var/lib/dhcpcd"
-          "/var/lib/boltd"
-          "/var/lib/upower"
-          "/var/lib/flatpak"
-          "/var/lib/portables"
-          "/var/lib/snapd"
-          "/var/lib/logrotate"
-          "/var/lib/usermetrics"
-          "/root"
-        ];
-        users.default = {
-          home = "/home/ivali";
-          directories = [ ".config" ".local/share" ".ssh" ".gnupg" ".cache" ];
-        };
-        files = [
-          "/etc/machine-id"
-          "/etc/nixos" # actually a dir; kept via /etc above
-        ];
-      };
+      # Root on tmpfs — wiped on every boot.
+      # Root on tmpfs + bind-mounted persistence from the real
+      # ${persist} volume. Prerequisites (manual, destructive):
+      #   * a real partition mounted at ${persist}
+      #   * the directories below created under ${persist}
+      #   * the fileSystems."/" definition REMOVED from
+      #     hardware-configuration.nix (this module overrides it)
+      # Everything not listed here is wiped each boot.
+      fileSystems = lib.mkMerge [
+        {
+          "/" = {
+            device = "none";
+            fsType = "tmpfs";
+            options = [ "defaults" "size=2G" "mode=755" ];
+            neededForBoot = true;
+          };
+        }
+        (map
+          (p: {
+            "${p}" = {
+              device = "${persist}${p}";
+              options = [ "bind" ];
+              neededForBoot = true;
+            };
+          })
+          [
+            "/etc"
+            "/var/log"
+            "/var/cache"
+            "/var/lib/systemd"
+            "/var/lib/NetworkManager"
+            "/var/lib/nixos"
+            "/var/lib/bluetooth"
+            "/var/lib/iwd"
+            "/var/lib/accounts"
+            "/var/lib/alsa"
+            "/var/lib/colord"
+            "/var/lib/dhcpcd"
+            "/var/lib/boltd"
+            "/var/lib/upower"
+            "/var/lib/flatpak"
+            "/var/lib/portables"
+            "/var/lib/snapd"
+            "/var/lib/logrotate"
+            "/var/lib/usermetrics"
+            "/root"
+            "/home/ivali"
+          ])
+        {
+          "/etc/machine-id" = {
+            device = "${persist}/etc/machine-id";
+            options = [ "bind" ];
+            neededForBoot = true;
+          };
+        }
+      ];
 
       # sops-nix regenerates /run/secrets at boot; nothing to persist.
       # Age key lives in /home/ivali/.config/sops (persisted above).

@@ -190,6 +190,18 @@
       appicon-padding = lib.gvariant.mkInt32 4;
     };
 
+    # Forge — tiling (Hyprland/i3-like) + Gruvbox focus accent
+    "org/gnome/shell/extensions/forge" = {
+      tiling-mode-enabled = true;
+      primary-layout-mode = "tiling";
+      window-gap-size = lib.gvariant.mkUint32 12;
+      window-gap-hidden-on-single = false;
+      focus-border-size = lib.gvariant.mkUint32 3;
+      focus-border-color = "rgba(254, 128, 25, 1)";
+      split-border-color = "rgba(104, 157, 106, 1)";
+      focus-on-hover-enabled = true;
+    };
+
     "org/gnome/shell/extensions/blur-my-shell" = {
       sigma = lib.gvariant.mkInt32 30;
       brightness = 0.6;

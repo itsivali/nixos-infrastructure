@@ -28,7 +28,9 @@ func NewAPI(token string) *API {
 		token:   token,
 		baseURL: fmt.Sprintf("https://api.telegram.org/bot%s", token),
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			// Must exceed the getUpdates long-poll timeout (60s); otherwise
+			// idle polls are cancelled by the client before Telegram returns.
+			Timeout: 90 * time.Second,
 		},
 	}
 }

@@ -91,6 +91,7 @@ in
         inetutils # hostname (notify.sh)
         nixos-rebuild # activation step
         msmtp # sendmail (notify.sh email)
+        openssh # ssh transport for git fetch/pull over git@gitlab.com
       ];
 
       ######################################################################
@@ -108,6 +109,13 @@ in
         GITOPS_MAX_RETRIES = builtins.toString cfg.maxRetries;
         GITOPS_RETRY_DELAY = builtins.toString cfg.retryDelay;
         GITOPS_USE_IVALI_DOCTOR = if cfg.useIvaliDoctor then "true" else "false";
+
+        # The reconciler runs as root, which has no SSH agent or key of its
+        # own, so git fetch/pull over git@gitlab.com cannot authenticate.
+        # Reuse the operator's passphrase-less deploy key; root can read it and
+        # its known_hosts. (For stricter isolation, provision a dedicated
+        # read-only GitLab deploy key instead.)
+        GIT_SSH_COMMAND = "ssh -i /home/ivali/.ssh/id_ed25519 -o UserKnownHostsFile=/home/ivali/.ssh/known_hosts -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes";
       };
 
       serviceConfig = {

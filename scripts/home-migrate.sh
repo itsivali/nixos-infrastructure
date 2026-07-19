@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 #
 # bootstrap-home-structure.sh

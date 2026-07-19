@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # lib/desktop.sh — Desktop session bridging, GNOME Shell D-Bus abstraction layer
 #
 # Dependencies: lib/core.sh (log), lib/telegram.sh (send_msg)

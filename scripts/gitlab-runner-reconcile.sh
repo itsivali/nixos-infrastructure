@@ -39,7 +39,7 @@ fi
 
 FAILURES=0
 
-do() {
+run_step() {
   local desc="$1"
   shift
   log "  → ${desc}..."
@@ -69,8 +69,8 @@ fi
 
 log "[2/5] Service recovery"
 
-do "Enabling gitlab-runner" systemctl enable gitlab-runner.service
-do "Restarting gitlab-runner" systemctl restart gitlab-runner.service
+run_step "Enabling gitlab-runner" systemctl enable gitlab-runner.service
+run_step "Restarting gitlab-runner" systemctl restart gitlab-runner.service
 
 sleep 2
 
@@ -84,8 +84,8 @@ else
     TOKEN="$(grep -oP '(?<=CI_SERVER_TOKEN=)\S+' "$TOKEN_FILE" || echo)"
     URL="$(grep -oP '(?<=CI_SERVER_URL=)\S+' "$TOKEN_FILE" || echo "$SERVER")"
     if [[ -n "$TOKEN" ]]; then
-      do "Removing stale config" rm -f "$CONFIG"
-      do "Re-registering runner" gitlab-runner register \
+      run_step "Removing stale config" rm -f "$CONFIG"
+      run_step "Re-registering runner" gitlab-runner register \
         --non-interactive \
         --url "$URL" \
         --registration-token "$TOKEN" \
@@ -93,7 +93,7 @@ else
         --tag-list "nixos,prague,self-hosted" \
         --run-untagged="true" \
         --locked="false"
-      do "Restarting after registration" systemctl restart gitlab-runner.service
+      run_step "Restarting after registration" systemctl restart gitlab-runner.service
     else
       log "  ✗ Token file is empty — cannot register"
       FAILURES=$((FAILURES + 1))
@@ -150,7 +150,7 @@ if [[ -d "$WORKTREE" ]]; then
 else
   log "  ⚠ Worktree missing — creating"
   mkdir -p "$WORKTREE"
-  do "Cloning repository" git clone \
+  run_step "Cloning repository" git clone \
     "$SERVER/willisivali/nixos-infrastructure.git" \
     "$WORKTREE"
 fi

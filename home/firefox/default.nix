@@ -71,9 +71,15 @@ in
         "beacon.enabled" = false;
         "browser.send_pings" = false;
 
-        # ── Keep logins: reject 3rd-party only, keep 1st-party ────
+        # ── Keep logins + sessions: reject 3rd-party only, keep 1st-party ─
+        # The whole `ivali` profile (cookies, key4.db, logins.json,
+        # signedInUser.json for the Firefox Account, cache2) lives on the
+        # persistent firefox-ivali subvolume, so site sessions AND the Firefox
+        # Account sign-in survive a full reinstall. Do NOT sanitize on shutdown.
         "network.cookie.cookieBehavior" = 1;
         "network.cookie.cookieBehavior.notify" = false;
+        "network.cookie.lifetimePolicy" = 0;
+        "privacy.sanitize.sanitizeOnShutdown" = false;
         "signon.rememberSignons" = true;
         "signon.management.overlay.enabled" = true;
 

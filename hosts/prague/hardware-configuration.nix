@@ -66,20 +66,27 @@
     };
 
   # ── Idempotent creation of the firefox-ivali btrfs subvolume ──────────────
-  # Runs before the mount unit above. Mounts the btrfs top-level transiently,
-  # creates the sibling subvolume if absent, then unmounts. Safe to run on
-  # every boot; no-ops once the subvolume exists. This removes the one-time
-  # manual step after a full reinstall.
+  # Runs immediately before the mount unit above (the mount pulls this service
+  # in via `wantedBy`, NOT `local-fs.target`, to avoid an ordering cycle that
+  # would force systemd to drop systemd-tmpfiles-setup and break /run/opengl-driver).
+  # Mounts the btrfs top-level transiently, creates the sibling subvolume if
+  # absent, then unmounts. Safe to run on every boot; no-ops once present.
   systemd.services.create-firefox-subvol =
     {
       description = "Create firefox-ivali btrfs subvolume if missing";
-      wantedBy = [ "local-fs.target" ];
+      # The mount unit pulls this in and orders it first. DefaultDependencies
+      # are off so this oneshot does not depend back on local-fs.target (which
+      # would create a cycle and delete tmpfiles-setup).
+      wantedBy = [ "home-ivali-.mozilla-firefox-ivali.mount" ];
       before = [ "home-ivali-.mozilla-firefox-ivali.mount" ];
+      unitConfig.DefaultDependencies = false;
       serviceConfig =
         {
           Type = "oneshot";
           RemainAfterExit = true;
         };
+      # Run only after block devices (by-uuid symlink) are available.
+      after = [ "local-fs-pre.target" ];
       script = ''
         DEV=/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c
         MP=/run/btrfs-root-firefox

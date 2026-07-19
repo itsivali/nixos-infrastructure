@@ -98,13 +98,13 @@ in
     environment.systemPackages = [ pkgs.restic pkgs.rclone ];
 
     sops.secrets.restic_password = {
-      sopsFile = ../../secrets/restic.yaml;
+      sopsFile = ../secrets/restic.yaml;
       owner = "root";
       mode = "0400";
     };
 
     sops.secrets.restic_rclone = lib.mkIf cfg.useRclone {
-      sopsFile = ../../secrets/rclone.yaml;
+      sopsFile = ../secrets/rclone.yaml;
       owner = "root";
       mode = "0400";
     };

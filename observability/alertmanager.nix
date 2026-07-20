@@ -69,17 +69,19 @@ in
     let
       alertCfg = cfg.alertmanager;
       hasTelegram = alertCfg.telegramBotTokenFile != null && (alertCfg.telegramChatIdFile != null || alertCfg.telegramChatId != null);
-      chatIdAttrs = if alertCfg.telegramChatIdFile != null then {
-        chat_id_file = alertCfg.telegramChatIdFile;
-      } else {
-        chat_id = alertCfg.telegramChatId;
-      };
+      chatIdAttrs =
+        if alertCfg.telegramChatIdFile != null then {
+          chat_id_file = alertCfg.telegramChatIdFile;
+        } else {
+          chat_id = alertCfg.telegramChatId;
+        };
       mkTelegramConfig = msg: (chatIdAttrs // {
         bot_token = "{{ .Env.TELEGRAM_BOT_TOKEN }}";
         parse_mode = "HTML";
         message = msg;
       });
-    in {
+    in
+    {
       services.prometheus.alertmanager = {
         enable = true;
         listenAddress = "127.0.0.1";

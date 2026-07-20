@@ -73,7 +73,7 @@ in
     ./desktop
     ./packages/system
   ]
-    # ── Auto-discovered domain modules ──────────────────────────────────────
-    ++ domainModules;
+  # ── Auto-discovered domain modules ──────────────────────────────────────
+  ++ domainModules;
 
 }

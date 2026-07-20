@@ -35,7 +35,8 @@ in
       otelExporters = [ "otlp" ] ++ lib.optional cfg.otel.enableLoggingExporter "debug";
       otelMetricsExporters = [ "otlp" ] ++ lib.optional cfg.otel.enablePrometheusForwarding "prometheusremotewrite"
         ++ lib.optional cfg.otel.enableLoggingExporter "debug";
-    in {
+    in
+    {
       environment.etc."otelcol/config.yaml" = {
         source = yamlFormat.generate "otelcol-config.yaml" {
           receivers = {
@@ -145,47 +146,48 @@ in
         };
       };
 
-    systemd.services.opentelemetry-collector = {
-      description = "OpenTelemetry collector";
-      wantedBy = [ "multi-user.target" ];
-      after = [ "network-online.target" ];
-      wants = [ "network-online.target" ];
-      serviceConfig = {
-        ExecStart =
-          "${pkgs.opentelemetry-collector-contrib}/bin/otelcol-contrib --config=/etc/otelcol/config.yaml";
-        Restart = "always";
-        RestartSec = "10s";
+      systemd.services.opentelemetry-collector = {
+        description = "OpenTelemetry collector";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "network-online.target" ];
+        wants = [ "network-online.target" ];
+        serviceConfig = {
+          ExecStart =
+            "${pkgs.opentelemetry-collector-contrib}/bin/otelcol-contrib --config=/etc/otelcol/config.yaml";
+          Restart = "always";
+          RestartSec = "10s";
 
-        # Hardening
-        MemoryMax = "256M";
-        MemoryHigh = "192M";
-        NoNewPrivileges = true;
-        PrivateTmp = true;
-        ProtectHome = true;
-        ProtectSystem = "strict";
-        ReadOnlyPaths = [ "/nix/store" "/proc" "/sys" ];
-        CapabilityBoundingSet = "";
-        AmbientCapabilities = "";
+          # Hardening
+          MemoryMax = "256M";
+          MemoryHigh = "192M";
+          NoNewPrivileges = true;
+          PrivateTmp = true;
+          ProtectHome = true;
+          ProtectSystem = "strict";
+          ReadOnlyPaths = [ "/nix/store" "/proc" "/sys" ];
+          CapabilityBoundingSet = "";
+          AmbientCapabilities = "";
+        };
       };
-    };
 
-    # Expose OTel metrics endpoint
-    networking.firewall.allowedTCPPorts = [ 8888 ];
+      # Expose OTel metrics endpoint
+      networking.firewall.allowedTCPPorts = [ 8888 ];
 
-    # Add OTel to Prometheus scrape targets
-    services.prometheus.scrapeConfigs = [
-      {
-        job_name = "otelcol";
-        static_configs = [
-          {
-            targets = [ "127.0.0.1:8888" ];
-            labels = {
-              host = hostName;
-            };
-          }
-        ];
-        scrape_interval = "60s";
-      }
-    ];
-    });
+      # Add OTel to Prometheus scrape targets
+      services.prometheus.scrapeConfigs = [
+        {
+          job_name = "otelcol";
+          static_configs = [
+            {
+              targets = [ "127.0.0.1:8888" ];
+              labels = {
+                host = hostName;
+              };
+            }
+          ];
+          scrape_interval = "60s";
+        }
+      ];
+    }
+  );
 }

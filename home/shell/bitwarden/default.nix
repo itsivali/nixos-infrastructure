@@ -138,12 +138,12 @@ in
     };
 
     programs.zsh.shellAliases = lib.mkIf cfg.enableAliases {
-      bwu   = "bw-tui unlock";
-      bwl   = "bw-tui lock";
-      bws   = "bw-tui status";
-      bwsy  = "bw-tui sync";
-      bwlo  = "bw-tui logout";
-      bwf   = "bwfind";
+      bwu = "bw-tui unlock";
+      bwl = "bw-tui lock";
+      bws = "bw-tui status";
+      bwsy = "bw-tui sync";
+      bwlo = "bw-tui logout";
+      bwf = "bwfind";
     };
 
     programs.zsh.initContent = lib.mkBefore ''

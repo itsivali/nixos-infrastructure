@@ -19,20 +19,20 @@
     enable = lib.mkEnableOption "SSH daemon";
 
     allowedUsers = lib.mkOption {
-      type    = lib.types.listOf lib.types.str;
-      default = [];
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
       description = "Users permitted to log in via SSH (sets AllowUsers).";
     };
 
     authorizedKeys = lib.mkOption {
-      type    = lib.types.listOf lib.types.str;
-      default = [];
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
       description = "Public keys injected into every allowedUser's authorized_keys.";
-      example  = [ "ssh-rsa AAAAB3..." ];
+      example = [ "ssh-rsa AAAAB3..." ];
     };
 
     tailscaleOnly = lib.mkOption {
-      type    = lib.types.bool;
+      type = lib.types.bool;
       default = true;
       description = ''
         When true, port 22 is opened only on the tailscale0 interface and
@@ -42,7 +42,7 @@
     };
 
     port = lib.mkOption {
-      type    = lib.types.port;
+      type = lib.types.port;
       default = 22;
       description = "Port the SSH daemon listens on.";
     };

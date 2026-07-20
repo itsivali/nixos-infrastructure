@@ -122,7 +122,7 @@ in
       createHome = false;
     };
 
-    users.groups.valkey = {};
+    users.groups.valkey = { };
 
     # Redis compatibility aliases
     environment.etc."valkey/redis.conf".source = valkeyConf;

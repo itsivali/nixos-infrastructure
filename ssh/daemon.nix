@@ -28,15 +28,15 @@ in
   config = lib.mkIf cfg.enable {
     services.openssh = {
       enable = true;
-      ports  = [ cfg.port ];
+      ports = [ cfg.port ];
 
       settings = {
         PasswordAuthentication = false;
-        PermitRootLogin        = "no";
-        AllowUsers             = cfg.allowedUsers;
+        PermitRootLogin = "no";
+        AllowUsers = cfg.allowedUsers;
 
         # Harden defaults
-        X11Forwarding          = false;
+        X11Forwarding = false;
         KbdInteractiveAuthentication = false;
       };
     };

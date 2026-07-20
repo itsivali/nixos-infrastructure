@@ -131,8 +131,8 @@ type tuiModel struct {
 	list   listModel
 	detail *detailModel
 
-	client  *Client
-	env     *Env
+	client *Client
+	env    *Env
 
 	cacheFile     string
 	cacheTimeFile string
@@ -155,14 +155,6 @@ type Env struct {
 }
 
 func DefaultEnv() *Env {
-	rtDir := os.Getenv("BW_RT_DIR")
-	if rtDir == "" {
-		xdgRun := os.Getenv("XDG_RUNTIME_DIR")
-		if xdgRun == "" {
-			xdgRun = "/run/user/1000"
-		}
-		rtDir = xdgRun + "/bitwarden"
-	}
 	return &Env{
 		BwPath:        FindBwPath(),
 		Session:       "",
@@ -775,9 +767,9 @@ func (m *tuiModel) renderDetail() string {
 	// Status message
 	if m.detail.status != "" && time.Since(m.detail.statusAt) < 3*time.Second {
 		if strings.HasPrefix(m.detail.status, "✓") {
-			b.WriteString(styleCopied.Render(" " + m.detail.status) + "\n\n")
+			b.WriteString(styleCopied.Render(" "+m.detail.status) + "\n\n")
 		} else {
-			b.WriteString(styleRed(" " + m.detail.status) + "\n\n")
+			b.WriteString(styleRed(" "+m.detail.status) + "\n\n")
 		}
 	}
 
@@ -829,5 +821,3 @@ func min(a, b int) int {
 	}
 	return b
 }
-
-

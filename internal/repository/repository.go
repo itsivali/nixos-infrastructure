@@ -16,22 +16,22 @@ import (
 )
 
 type Repository struct {
-	Root      string `json:"root"`
-	ScanTime  time.Time `json:"scan_time"`
-	FileHash  string `json:"file_hash"`
-
-	Result    *scanner.ScanResult    `json:"-"`
-	Parsed    map[string]*parser.ModuleInfo `json:"-"`
-
-	mu        sync.RWMutex
-	cached    bool
-}
-
-type RepoCache struct {
 	Root     string    `json:"root"`
 	ScanTime time.Time `json:"scan_time"`
 	FileHash string    `json:"file_hash"`
-	ScanJSON []byte    `json:"scan_json"`
+
+	Result *scanner.ScanResult           `json:"-"`
+	Parsed map[string]*parser.ModuleInfo `json:"-"`
+
+	mu     sync.RWMutex
+	cached bool
+}
+
+type RepoCache struct {
+	Root     string                        `json:"root"`
+	ScanTime time.Time                     `json:"scan_time"`
+	FileHash string                        `json:"file_hash"`
+	ScanJSON []byte                        `json:"scan_json"`
 	ParseMap map[string]*parser.ModuleInfo `json:"parse_map"`
 }
 

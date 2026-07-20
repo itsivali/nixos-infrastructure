@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/willisivali/nixos-infrastructure/internal/terminal"
 )
@@ -283,7 +283,7 @@ func (m *hostModel) renderTextInput(title, prompt, current string, optional bool
 		b.WriteString("  " + dimStyle.Render("▎") + "\n")
 	}
 	if optional {
-		b.WriteString("\n  " + dimStyle.Render("Leave empty for default: " + m.userName))
+		b.WriteString("\n  " + dimStyle.Render("Leave empty for default: "+m.userName))
 	}
 	return b.String()
 }
@@ -368,9 +368,9 @@ func (m *hostModel) renderDone() string {
 	b.WriteString("\n\n")
 	b.WriteString("  " + goodStyle.Render("") + boldStyle.Render("  Host configuration generated!") + "\n\n")
 	b.WriteString("  " + dimStyle.Render("Files created:") + "\n")
-	b.WriteString("  " + dimStyle.Render("  hosts/" + m.hostName + "/" + m.hostName + ".nix") + "\n")
-	b.WriteString("  " + dimStyle.Render("  hosts/" + m.hostName + "/hardware-configuration.nix") + "\n")
-	b.WriteString("  " + dimStyle.Render("  secrets/hosts/" + m.hostName + ".yaml") + "\n\n")
+	b.WriteString("  " + dimStyle.Render("  hosts/"+m.hostName+"/"+m.hostName+".nix") + "\n")
+	b.WriteString("  " + dimStyle.Render("  hosts/"+m.hostName+"/hardware-configuration.nix") + "\n")
+	b.WriteString("  " + dimStyle.Render("  secrets/hosts/"+m.hostName+".yaml") + "\n\n")
 	b.WriteString("  " + dimStyle.Render("Next steps:") + "\n")
 	b.WriteString("  " + dimStyle.Render("  1. Run: sudo nixos-generate-config --show-hardware-config > hosts/"+m.hostName+"/hardware-configuration.nix") + "\n")
 	b.WriteString("  " + dimStyle.Render("  2. Run: ivali scan") + "\n")

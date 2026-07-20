@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbletea"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/willisivali/nixos-infrastructure/internal/repository"
 	"github.com/willisivali/nixos-infrastructure/internal/scanner"
@@ -27,16 +27,16 @@ const (
 )
 
 type model struct {
-	repo   *repository.Repository
-	term   *terminal.Terminal
-	ready  bool
-	err    error
+	repo  *repository.Repository
+	term  *terminal.Terminal
+	ready bool
+	err   error
 
-	tabs         []string
-	tabIcons     []string
-	activeTab    int
-	width        int
-	height       int
+	tabs      []string
+	tabIcons  []string
+	activeTab int
+	width     int
+	height    int
 
 	moduleCursor int
 	scrollOffset int
@@ -51,9 +51,9 @@ type model struct {
 	sortField sortField
 	sortAsc   bool
 
-	actionMode  bool
+	actionMode   bool
 	actionCursor int
-	lastAction  string
+	lastAction   string
 	actionResult string
 
 	genCursor    int
@@ -476,7 +476,7 @@ func (m *model) renderTabs() string {
 	mins := int(elapsed.Minutes())
 	secs := int(elapsed.Seconds()) % 60
 	if m.lastRefresh.IsZero() {
-		b.WriteString(m.term.Dim(fmt.Sprintf("   --:--")))
+		b.WriteString(m.term.Dim("   --:--"))
 	} else {
 		b.WriteString(m.term.Dim(fmt.Sprintf("   %dm%ds ago", mins, secs)))
 	}
@@ -839,14 +839,14 @@ func (m *model) renderModuleDetail(mod scanner.Module) string {
 		if len(info.Owns) > 0 {
 			b.WriteString("\n" + m.term.IconH2("", "Ownership") + "\n")
 			for _, o := range info.Owns {
-				b.WriteString(m.term.Dim("  " + o) + "\n")
+				b.WriteString(m.term.Dim("  "+o) + "\n")
 			}
 		}
 		if len(info.Imports) > 0 {
 			b.WriteString("\n" + m.term.IconH2("", "Imports") + "\n")
 			maxShow := min(len(info.Imports), 10)
 			for _, imp := range info.Imports[:maxShow] {
-				b.WriteString(m.term.Dim("  " + imp) + "\n")
+				b.WriteString(m.term.Dim("  "+imp) + "\n")
 			}
 			if len(info.Imports) > maxShow {
 				b.WriteString(m.term.Dim(fmt.Sprintf("  … +%d more\n", len(info.Imports)-maxShow)))

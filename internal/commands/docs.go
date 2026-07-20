@@ -197,4 +197,3 @@ func writeCodexModules(t *terminal.Terminal, r *repository.Repository) error {
 	fmt.Println()
 	return nil
 }
-

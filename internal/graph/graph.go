@@ -28,11 +28,11 @@ const (
 )
 
 type Node struct {
-	ID       string   `json:"id"`
-	Label    string   `json:"label"`
-	Type     NodeType `json:"type"`
-	Path     string   `json:"path"`
-	Weight   int      `json:"weight"`
+	ID       string                 `json:"id"`
+	Label    string                 `json:"label"`
+	Type     NodeType               `json:"type"`
+	Path     string                 `json:"path"`
+	Weight   int                    `json:"weight"`
 	Category scanner.ModuleCategory `json:"category,omitempty"`
 }
 

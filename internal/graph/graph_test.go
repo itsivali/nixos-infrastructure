@@ -11,7 +11,7 @@ import (
 
 type mockTerminal struct{}
 
-func (m mockTerminal) Dim(s string) string { return s }
+func (m mockTerminal) Dim(s string) string  { return s }
 func (m mockTerminal) Bold(s string) string { return s }
 func (m mockTerminal) Code(s string) string { return s }
 
@@ -102,9 +102,9 @@ func TestBuild_AutoImportSkipped(t *testing.T) {
 	}
 	parsed := map[string]*parser.ModuleInfo{
 		"/dir/a.nix": {
-			Path:       "/dir/a.nix",
-			RelPath:    "dir/a.nix",
-			Imports:    []string{"<auto-imports>", "./self.nix"},
+			Path:         "/dir/a.nix",
+			RelPath:      "dir/a.nix",
+			Imports:      []string{"<auto-imports>", "./self.nix"},
 			IsAutoImport: true,
 		},
 	}

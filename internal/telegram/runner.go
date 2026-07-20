@@ -147,11 +147,11 @@ func (r *Runner) handleCallback(ctx context.Context, query *CallbackQuery) {
 	}
 
 	botMsg := &Message{
-		ChatID:      query.Chat.ID,
-		UserID:      query.From.ID,
-		Username:    query.From.Username,
-		IsCallback:  true,
-		CallbackID:  query.ID,
+		ChatID:          query.Chat.ID,
+		UserID:          query.From.ID,
+		Username:        query.From.Username,
+		IsCallback:      true,
+		CallbackID:      query.ID,
 		CallbackPayload: query.Data,
 	}
 

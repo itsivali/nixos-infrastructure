@@ -55,18 +55,18 @@ func (r Role) HasPermission(required Role) bool {
 
 // Message represents an incoming Telegram message.
 type Message struct {
-	UpdateID int
-	ChatID   int64
-	UserID   int
-	Username string
-	Text     string
-	Command  string
-	Args     string
-	Date     int64
-	IsCallback bool
-	CallbackID string
+	UpdateID        int
+	ChatID          int64
+	UserID          int
+	Username        string
+	Text            string
+	Command         string
+	Args            string
+	Date            int64
+	IsCallback      bool
+	CallbackID      string
 	CallbackPayload string
-	MessageID  int
+	MessageID       int
 }
 
 // Command defines a bot command handler.
@@ -102,9 +102,9 @@ func NewCommandFunc(name, description string, permission Role, handler func(ctx 
 	}
 }
 
-func (c *CommandFunc) Name() string                { return c.name }
-func (c *CommandFunc) Description() string          { return c.description }
-func (c *CommandFunc) RequiredPermission() Role     { return c.permission }
+func (c *CommandFunc) Name() string             { return c.name }
+func (c *CommandFunc) Description() string      { return c.description }
+func (c *CommandFunc) RequiredPermission() Role { return c.permission }
 func (c *CommandFunc) Execute(ctx context.Context, msg *Message) error {
 	return c.handler(ctx, msg)
 }

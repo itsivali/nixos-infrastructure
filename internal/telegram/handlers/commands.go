@@ -17,8 +17,8 @@ func NewHelpCommand(bot *telegram.Bot) *HelpCommand {
 	return &HelpCommand{bot: bot}
 }
 
-func (c *HelpCommand) Name() string             { return "help" }
-func (c *HelpCommand) Description() string       { return "Show available commands" }
+func (c *HelpCommand) Name() string                      { return "help" }
+func (c *HelpCommand) Description() string               { return "Show available commands" }
 func (c *HelpCommand) RequiredPermission() telegram.Role { return telegram.RoleGuest }
 
 func (c *HelpCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -43,8 +43,8 @@ func NewStatusCommand(config *telegram.Config) *StatusCommand {
 	return &StatusCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *StatusCommand) Name() string             { return "status" }
-func (c *StatusCommand) Description() string       { return "Show system status" }
+func (c *StatusCommand) Name() string                      { return "status" }
+func (c *StatusCommand) Description() string               { return "Show system status" }
 func (c *StatusCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *StatusCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -61,8 +61,8 @@ func NewHealthCommand(config *telegram.Config) *HealthCommand {
 	return &HealthCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *HealthCommand) Name() string             { return "health" }
-func (c *HealthCommand) Description() string       { return "Show system health" }
+func (c *HealthCommand) Name() string                      { return "health" }
+func (c *HealthCommand) Description() string               { return "Show system health" }
 func (c *HealthCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *HealthCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -79,8 +79,8 @@ func NewDiskCommand(config *telegram.Config) *DiskCommand {
 	return &DiskCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *DiskCommand) Name() string             { return "disk" }
-func (c *DiskCommand) Description() string       { return "Show disk usage" }
+func (c *DiskCommand) Name() string                      { return "disk" }
+func (c *DiskCommand) Description() string               { return "Show disk usage" }
 func (c *DiskCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *DiskCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -97,8 +97,8 @@ func NewProcessesCommand(config *telegram.Config) *ProcessesCommand {
 	return &ProcessesCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *ProcessesCommand) Name() string             { return "processes" }
-func (c *ProcessesCommand) Description() string       { return "Show top processes" }
+func (c *ProcessesCommand) Name() string                      { return "processes" }
+func (c *ProcessesCommand) Description() string               { return "Show top processes" }
 func (c *ProcessesCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *ProcessesCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -118,8 +118,8 @@ func NewGenerationsCommand(config *telegram.Config) *GenerationsCommand {
 	return &GenerationsCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *GenerationsCommand) Name() string             { return "generations" }
-func (c *GenerationsCommand) Description() string       { return "Show NixOS generations" }
+func (c *GenerationsCommand) Name() string                      { return "generations" }
+func (c *GenerationsCommand) Description() string               { return "Show NixOS generations" }
 func (c *GenerationsCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *GenerationsCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -147,8 +147,8 @@ func NewRebootCommand(config *telegram.Config) *RebootCommand {
 	return &RebootCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *RebootCommand) Name() string             { return "reboot" }
-func (c *RebootCommand) Description() string       { return "Reboot the system" }
+func (c *RebootCommand) Name() string                      { return "reboot" }
+func (c *RebootCommand) Description() string               { return "Reboot the system" }
 func (c *RebootCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *RebootCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -169,8 +169,8 @@ func NewShutdownCommand(config *telegram.Config) *ShutdownCommand {
 	return &ShutdownCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *ShutdownCommand) Name() string             { return "shutdown" }
-func (c *ShutdownCommand) Description() string       { return "Shut down the system" }
+func (c *ShutdownCommand) Name() string                      { return "shutdown" }
+func (c *ShutdownCommand) Description() string               { return "Shut down the system" }
 func (c *ShutdownCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *ShutdownCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -191,8 +191,8 @@ func NewDeployCommand(config *telegram.Config) *DeployCommand {
 	return &DeployCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *DeployCommand) Name() string             { return "deploy" }
-func (c *DeployCommand) Description() string       { return "Rebuild NixOS configuration" }
+func (c *DeployCommand) Name() string                      { return "deploy" }
+func (c *DeployCommand) Description() string               { return "Rebuild NixOS configuration" }
 func (c *DeployCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *DeployCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -214,8 +214,8 @@ func NewRollbackCommand(config *telegram.Config) *RollbackCommand {
 	return &RollbackCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *RollbackCommand) Name() string             { return "rollback" }
-func (c *RollbackCommand) Description() string       { return "Rollback to previous generation" }
+func (c *RollbackCommand) Name() string                      { return "rollback" }
+func (c *RollbackCommand) Description() string               { return "Rollback to previous generation" }
 func (c *RollbackCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *RollbackCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -237,8 +237,8 @@ func NewUpdateCommand(config *telegram.Config) *UpdateCommand {
 	return &UpdateCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *UpdateCommand) Name() string             { return "update" }
-func (c *UpdateCommand) Description() string       { return "Update flake inputs" }
+func (c *UpdateCommand) Name() string                      { return "update" }
+func (c *UpdateCommand) Description() string               { return "Update flake inputs" }
 func (c *UpdateCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *UpdateCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -256,8 +256,8 @@ func NewScanCommand(config *telegram.Config) *ScanCommand {
 	return &ScanCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *ScanCommand) Name() string             { return "scan" }
-func (c *ScanCommand) Description() string       { return "Scan repository modules" }
+func (c *ScanCommand) Name() string                      { return "scan" }
+func (c *ScanCommand) Description() string               { return "Scan repository modules" }
 func (c *ScanCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *ScanCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -274,8 +274,8 @@ func NewSecurityCommand(config *telegram.Config) *SecurityCommand {
 	return &SecurityCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *SecurityCommand) Name() string             { return "security" }
-func (c *SecurityCommand) Description() string       { return "Show security status" }
+func (c *SecurityCommand) Name() string                      { return "security" }
+func (c *SecurityCommand) Description() string               { return "Show security status" }
 func (c *SecurityCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *SecurityCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -327,8 +327,8 @@ func NewDoctorCommand(config *telegram.Config) *DoctorCommand {
 	return &DoctorCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *DoctorCommand) Name() string             { return "doctor" }
-func (c *DoctorCommand) Description() string       { return "Run system diagnostics" }
+func (c *DoctorCommand) Name() string                      { return "doctor" }
+func (c *DoctorCommand) Description() string               { return "Run system diagnostics" }
 func (c *DoctorCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *DoctorCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -345,8 +345,8 @@ func NewStoreCommand(config *telegram.Config) *StoreCommand {
 	return &StoreCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *StoreCommand) Name() string             { return "store" }
-func (c *StoreCommand) Description() string       { return "Show Nix store usage" }
+func (c *StoreCommand) Name() string                      { return "store" }
+func (c *StoreCommand) Description() string               { return "Show Nix store usage" }
 func (c *StoreCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *StoreCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -364,8 +364,8 @@ func NewGCCommand(config *telegram.Config) *GCCommand {
 	return &GCCommand{api: telegram.NewAPI(config.BotToken)}
 }
 
-func (c *GCCommand) Name() string             { return "gc" }
-func (c *GCCommand) Description() string       { return "Run Nix garbage collection" }
+func (c *GCCommand) Name() string                      { return "gc" }
+func (c *GCCommand) Description() string               { return "Run Nix garbage collection" }
 func (c *GCCommand) RequiredPermission() telegram.Role { return telegram.RoleAdmin }
 
 func (c *GCCommand) Execute(ctx context.Context, msg *telegram.Message) error {

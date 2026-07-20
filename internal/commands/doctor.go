@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/willisivali/nixos-infrastructure/internal/app"
 	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"golang.org/x/text/cases"
 )
 
 func CmdDoctor(a *app.App) *cobra.Command {
@@ -314,7 +315,7 @@ func docTitle(path string) string {
 	stem := strings.TrimSuffix(base, filepath.Ext(base))
 	stem = strings.ReplaceAll(stem, "-", " ")
 	stem = strings.ReplaceAll(stem, "_", " ")
-	return strings.Title(stem)
+	return cases.Title(cases.NoLower).String(stem)
 }
 
 func runCheck(name, root string, args ...string) terminal.CheckStatus {

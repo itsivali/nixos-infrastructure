@@ -96,11 +96,6 @@ func (a *API) SendLongMessage(chatID int64, text string, maxChars int) error {
 			if err := a.SendMarkdown(chatID, chunk); err != nil {
 				return err
 			}
-			if inCodeBlock {
-				chunk = "```"
-			} else {
-				chunk = ""
-			}
 			candidate = line
 		}
 

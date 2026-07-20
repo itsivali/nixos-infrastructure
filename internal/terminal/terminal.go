@@ -272,12 +272,6 @@ func (t *Terminal) Table(header []string, rows [][]string) string {
 		}
 	}
 
-	totalWidth := 0
-	for _, w := range widths {
-		totalWidth += w + 3
-	}
-	totalWidth = min(totalWidth+1, t.Width-4)
-
 	var b strings.Builder
 
 	renderCell := func(cell string, width int, isHeader bool) string {

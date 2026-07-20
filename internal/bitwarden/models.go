@@ -1,15 +1,15 @@
 package bitwarden
 
 type VaultItem struct {
-	ID         string     `json:"id"`
-	Name       string     `json:"name"`
-	Type       int        `json:"type"`
-	Login      *Login     `json:"login,omitempty"`
-	Notes      string     `json:"notes,omitempty"`
-	Favorite   bool       `json:"favorite"`
-	Fields     []Field    `json:"fields,omitempty"`
-	Card       *Card      `json:"card,omitempty"`
-	Identity   *Identity  `json:"identity,omitempty"`
+	ID         string      `json:"id"`
+	Name       string      `json:"name"`
+	Type       int         `json:"type"`
+	Login      *Login      `json:"login,omitempty"`
+	Notes      string      `json:"notes,omitempty"`
+	Favorite   bool        `json:"favorite"`
+	Fields     []Field     `json:"fields,omitempty"`
+	Card       *Card       `json:"card,omitempty"`
+	Identity   *Identity   `json:"identity,omitempty"`
 	SecureNote *SecureNote `json:"secureNote,omitempty"`
 }
 

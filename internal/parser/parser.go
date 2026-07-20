@@ -8,22 +8,22 @@ import (
 )
 
 type ModuleInfo struct {
-	Path        string   `json:"path"`
-	RelPath     string   `json:"rel_path"`
-	DocHeader   string   `json:"doc_header,omitempty"`
-	Purpose     string   `json:"purpose,omitempty"`
-	Owns        []string `json:"owns,omitempty"`
-	Imports     []string `json:"imports,omitempty"`
-	HasOptions  bool     `json:"has_options"`
-	IsAutoImport bool    `json:"is_auto_import"`
+	Path         string   `json:"path"`
+	RelPath      string   `json:"rel_path"`
+	DocHeader    string   `json:"doc_header,omitempty"`
+	Purpose      string   `json:"purpose,omitempty"`
+	Owns         []string `json:"owns,omitempty"`
+	Imports      []string `json:"imports,omitempty"`
+	HasOptions   bool     `json:"has_options"`
+	IsAutoImport bool     `json:"is_auto_import"`
 }
 
 var (
-	autoImportRe  = regexp.MustCompile(`import\s+(?:\.\./)*lib/auto-imports\.nix`)
-	optionDeclRe  = regexp.MustCompile(`options\s*=\s*\{`)
+	autoImportRe   = regexp.MustCompile(`import\s+(?:\.\./)*lib/auto-imports\.nix`)
+	optionDeclRe   = regexp.MustCompile(`options\s*=\s*\{`)
 	commentBlockRe = regexp.MustCompile(`(?s)#{3,}.*?#{3,}`)
-	purposeRe     = regexp.MustCompile(`(?i)Purpose\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
-	ownsRe        = regexp.MustCompile(`(?i)(?:Owns?|Ownership)\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
+	purposeRe      = regexp.MustCompile(`(?i)Purpose\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
+	ownsRe         = regexp.MustCompile(`(?i)(?:Owns?|Ownership)\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
 )
 
 func Parse(path string) (*ModuleInfo, error) {

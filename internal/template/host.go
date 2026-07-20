@@ -8,15 +8,15 @@ import (
 )
 
 type HostSpec struct {
-	HostName           string
-	UserName           string
-	RepoPath           string
-	Tags               []string
-	TailnetDomain      string
-	GitLabRunnerTags   []string
-	SSHAuthorizedKeys  []string
-	Features           map[string]bool
-	Config             map[string]interface{}
+	HostName          string
+	UserName          string
+	RepoPath          string
+	Tags              []string
+	TailnetDomain     string
+	GitLabRunnerTags  []string
+	SSHAuthorizedKeys []string
+	Features          map[string]bool
+	Config            map[string]interface{}
 }
 
 func (g *Generator) HostConfig(spec HostSpec, force bool) ([]FileSpec, error) {
@@ -281,7 +281,7 @@ func (g *Generator) hostConfigNix(spec HostSpec) string {
 
 	// SSH
 	if spec.Features["ssh"] {
-		keys := strings.Join(spec.SSHAuthorizedKeys, `", "` + "\n        ")
+		keys := strings.Join(spec.SSHAuthorizedKeys, `", "`+"\n        ")
 		if keys != "" {
 			keys = "\n        " + keys + "\n      "
 		}

@@ -26,9 +26,9 @@ func TestIntegrationDispatchAllCommands(t *testing.T) {
 	}))
 
 	tests := []struct {
-		name    string
-		text    string
-		wantCmd string
+		name     string
+		text     string
+		wantCmd  string
 		wantArgs string
 	}{
 		{"simple command", "/test", "test", ""},

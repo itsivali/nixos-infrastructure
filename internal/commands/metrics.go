@@ -12,11 +12,11 @@ import (
 )
 
 type MetricsReport struct {
-	Timestamp   time.Time         `json:"timestamp"`
-	Repository  MetricsRepository `json:"repository"`
-	Modules     MetricsModules    `json:"modules"`
-	Health      MetricsHealth     `json:"health"`
-	Documentation MetricsDoc      `json:"documentation"`
+	Timestamp     time.Time         `json:"timestamp"`
+	Repository    MetricsRepository `json:"repository"`
+	Modules       MetricsModules    `json:"modules"`
+	Health        MetricsHealth     `json:"health"`
+	Documentation MetricsDoc        `json:"documentation"`
 }
 
 type MetricsRepository struct {
@@ -36,16 +36,16 @@ type MetricsModules struct {
 }
 
 type MetricsHealth struct {
-	Duplicates     int `json:"duplicates"`
-	Orphans        int `json:"orphans"`
-	MissingDocs    int `json:"missing_docs"`
-	Score          int `json:"score"`
+	Duplicates  int `json:"duplicates"`
+	Orphans     int `json:"orphans"`
+	MissingDocs int `json:"missing_docs"`
+	Score       int `json:"score"`
 }
 
 type MetricsDoc struct {
-	TotalModules   int     `json:"total_modules"`
-	Documented     int     `json:"documented"`
-	MissingHeaders int     `json:"missing_headers"`
+	TotalModules    int     `json:"total_modules"`
+	Documented      int     `json:"documented"`
+	MissingHeaders  int     `json:"missing_headers"`
 	CoveragePercent float64 `json:"coverage_percent"`
 }
 

@@ -22,8 +22,8 @@ func NewAuthStatusCommand(auth *telegram.Auth, api *telegram.API) *AuthStatusCom
 	return &AuthStatusCommand{auth: auth, api: api}
 }
 
-func (c *AuthStatusCommand) Name() string             { return "auth" }
-func (c *AuthStatusCommand) Description() string       { return "Show authentication status" }
+func (c *AuthStatusCommand) Name() string                      { return "auth" }
+func (c *AuthStatusCommand) Description() string               { return "Show authentication status" }
 func (c *AuthStatusCommand) RequiredPermission() telegram.Role { return telegram.RoleGuest }
 
 func (c *AuthStatusCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -55,8 +55,8 @@ func NewGrantCommand(auth *telegram.Auth, api *telegram.API) *GrantCommand {
 	return &GrantCommand{auth: auth, api: api}
 }
 
-func (c *GrantCommand) Name() string             { return "grant" }
-func (c *GrantCommand) Description() string       { return "Grant a user a role" }
+func (c *GrantCommand) Name() string                      { return "grant" }
+func (c *GrantCommand) Description() string               { return "Grant a user a role" }
 func (c *GrantCommand) RequiredPermission() telegram.Role { return telegram.RoleOwner }
 
 func (c *GrantCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -99,8 +99,8 @@ func NewRevokeCommand(auth *telegram.Auth, api *telegram.API) *RevokeCommand {
 	return &RevokeCommand{auth: auth, api: api}
 }
 
-func (c *RevokeCommand) Name() string             { return "revoke" }
-func (c *RevokeCommand) Description() string       { return "Revoke a user's access" }
+func (c *RevokeCommand) Name() string                      { return "revoke" }
+func (c *RevokeCommand) Description() string               { return "Revoke a user's access" }
 func (c *RevokeCommand) RequiredPermission() telegram.Role { return telegram.RoleOwner }
 
 func (c *RevokeCommand) Execute(ctx context.Context, msg *telegram.Message) error {
@@ -126,8 +126,8 @@ func NewUsersListCommand(auth *telegram.Auth, api *telegram.API) *UsersListComma
 	return &UsersListCommand{auth: auth, api: api}
 }
 
-func (c *UsersListCommand) Name() string             { return "users" }
-func (c *UsersListCommand) Description() string       { return "List registered users" }
+func (c *UsersListCommand) Name() string                      { return "users" }
+func (c *UsersListCommand) Description() string               { return "List registered users" }
 func (c *UsersListCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *UsersListCommand) Execute(ctx context.Context, msg *telegram.Message) error {

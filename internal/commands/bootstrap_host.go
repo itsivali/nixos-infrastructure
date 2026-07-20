@@ -15,16 +15,16 @@ import (
 
 func CmdBootstrapHost(a *app.App) *cobra.Command {
 	var (
-		hostName       string
-		userName       string
-		repoPath       string
-		tags           []string
-		tailnetDomain  string
+		hostName         string
+		userName         string
+		repoPath         string
+		tags             []string
+		tailnetDomain    string
 		gitlabRunnerTags []string
-		sshKeys        []string
-		features       []string
-		interactive    bool
-		force          bool
+		sshKeys          []string
+		features         []string
+		interactive      bool
+		force            bool
 	)
 
 	cmd := &cobra.Command{
@@ -122,14 +122,14 @@ func runHostBootstrap(a *app.App, hostName, userName, repoPath string, tags []st
 
 	// Build host spec
 	spec := template.HostSpec{
-		HostName:        hostName,
-		UserName:        userName,
-		RepoPath:        repoPath,
-		Tags:            tags,
-		TailnetDomain:   tailnetDomain,
-		GitLabRunnerTags: gitlabRunnerTags,
+		HostName:          hostName,
+		UserName:          userName,
+		RepoPath:          repoPath,
+		Tags:              tags,
+		TailnetDomain:     tailnetDomain,
+		GitLabRunnerTags:  gitlabRunnerTags,
 		SSHAuthorizedKeys: sshKeys,
-		Features:        featureMap,
+		Features:          featureMap,
 	}
 
 	fmt.Println()

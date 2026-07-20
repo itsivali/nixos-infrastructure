@@ -38,7 +38,7 @@ a beautiful interactive terminal experience.`,
 			fmt.Println(a.Term.RenderSplash())
 			return nil
 		},
-		SilenceUsage: false,
+		SilenceUsage:  false,
 		SilenceErrors: false,
 	}
 

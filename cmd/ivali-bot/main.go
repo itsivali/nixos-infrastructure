@@ -129,11 +129,11 @@ func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, cha
 	}
 
 	msg := &telegram.Message{
-		ChatID:       chatID,
-		UserID:       userID,
-		IsCallback:    true,
+		ChatID:          chatID,
+		UserID:          userID,
+		IsCallback:      true,
 		CallbackPayload: data,
-		CallbackID:   queryID,
+		CallbackID:      queryID,
 	}
 
 	if err := cmd.Execute(ctx, msg); err != nil {

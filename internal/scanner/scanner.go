@@ -10,63 +10,63 @@ import (
 type ModuleCategory string
 
 const (
-	CatNixOS      ModuleCategory = "nixos"
+	CatNixOS       ModuleCategory = "nixos"
 	CatHomeManager ModuleCategory = "home-manager"
-	CatHost       ModuleCategory = "host"
-	CatPackage    ModuleCategory = "package"
-	CatLibrary    ModuleCategory = "library"
-	CatConfig     ModuleCategory = "config"
-	CatScript     ModuleCategory = "script"
-	CatSecret     ModuleCategory = "secret"
-	CatTest       ModuleCategory = "test"
+	CatHost        ModuleCategory = "host"
+	CatPackage     ModuleCategory = "package"
+	CatLibrary     ModuleCategory = "library"
+	CatConfig      ModuleCategory = "config"
+	CatScript      ModuleCategory = "script"
+	CatSecret      ModuleCategory = "secret"
+	CatTest        ModuleCategory = "test"
 )
 
 type ModuleType string
 
 const (
-	TypeEntry    ModuleType = "entry"     // default.nix
-	TypeOptions  ModuleType = "options"   // options.nix, *-options.nix
-	TypeRegular  ModuleType = "regular"   // *.nix
-	TypePrivate  ModuleType = "private"   // _*.nix
-	TypeSubdir   ModuleType = "subdir"    // dir/default.nix
+	TypeEntry   ModuleType = "entry"   // default.nix
+	TypeOptions ModuleType = "options" // options.nix, *-options.nix
+	TypeRegular ModuleType = "regular" // *.nix
+	TypePrivate ModuleType = "private" // _*.nix
+	TypeSubdir  ModuleType = "subdir"  // dir/default.nix
 )
 
 type Module struct {
-	Path        string        `json:"path"`
-	RelPath     string        `json:"rel_path"`
-	Domain      string        `json:"domain"`
-	Category    ModuleCategory `json:"category"`
-	Type        ModuleType    `json:"type"`
-	HasDefault  bool          `json:"has_default"`
-	FileCount   int           `json:"file_count"`
-	LineCount   int           `json:"line_count"`
-	IsDir       bool          `json:"is_dir"`
-	Submodules  []Module      `json:"submodules,omitempty"`
+	Path       string         `json:"path"`
+	RelPath    string         `json:"rel_path"`
+	Domain     string         `json:"domain"`
+	Category   ModuleCategory `json:"category"`
+	Type       ModuleType     `json:"type"`
+	HasDefault bool           `json:"has_default"`
+	FileCount  int            `json:"file_count"`
+	LineCount  int            `json:"line_count"`
+	IsDir      bool           `json:"is_dir"`
+	Submodules []Module       `json:"submodules,omitempty"`
 }
 
 type Domain struct {
-	Name     string   `json:"name"`
-	Path     string   `json:"path"`
-	RelPath  string   `json:"rel_path"`
-	Category ModuleCategory `json:"category"`
-	Modules  []Module `json:"modules"`
-	FileCount int     `json:"file_count"`
+	Name      string         `json:"name"`
+	Path      string         `json:"path"`
+	RelPath   string         `json:"rel_path"`
+	Category  ModuleCategory `json:"category"`
+	Modules   []Module       `json:"modules"`
+	FileCount int            `json:"file_count"`
 }
 
 type ScanResult struct {
-	Root        string            `json:"root"`
-	Domains     []Domain          `json:"domains"`
-	AllModules  []Module          `json:"all_modules"`
-	Hosts       []Module          `json:"hosts"`
-	Packages    []Domain          `json:"packages"`
-	HomeModules []Domain          `json:"home_modules"`
-	LibModules  []Module          `json:"lib_modules"`
-	ConfigFiles []Module          `json:"config_files"`
-	Scripts     []Module          `json:"scripts"`
-	Secrets     []Module          `json:"secrets"`
-	Tests       []Module          `json:"tests"`
-	TotalFiles  int               `json:"total_files"`
-	TotalLines  int               `json:"total_lines"`
+	Root        string   `json:"root"`
+	Domains     []Domain `json:"domains"`
+	AllModules  []Module `json:"all_modules"`
+	Hosts       []Module `json:"hosts"`
+	Packages    []Domain `json:"packages"`
+	HomeModules []Domain `json:"home_modules"`
+	LibModules  []Module `json:"lib_modules"`
+	ConfigFiles []Module `json:"config_files"`
+	Scripts     []Module `json:"scripts"`
+	Secrets     []Module `json:"secrets"`
+	Tests       []Module `json:"tests"`
+	TotalFiles  int      `json:"total_files"`
+	TotalLines  int      `json:"total_lines"`
 }
 
 type Scanner struct {
@@ -78,9 +78,9 @@ func New(root string) *Scanner {
 	return &Scanner{
 		root: root,
 		excluded: map[string]bool{
-			".git":    true,
-			"result":  true,
-			".direnv": true,
+			".git":         true,
+			"result":       true,
+			".direnv":      true,
 			"node_modules": true,
 		},
 	}
@@ -100,10 +100,10 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 				_, _ = entry.Info()
 				lines := countLines(filepath.Join(s.root, entry.Name()))
 				mod := Module{
-					Path:   filepath.Join(s.root, entry.Name()),
-					RelPath: entry.Name(),
-					Type:   moduleType(entry.Name()),
-					Category: configCategory(entry.Name()),
+					Path:      filepath.Join(s.root, entry.Name()),
+					RelPath:   entry.Name(),
+					Type:      moduleType(entry.Name()),
+					Category:  configCategory(entry.Name()),
 					LineCount: lines,
 				}
 				result.ConfigFiles = append(result.ConfigFiles, mod)
@@ -161,7 +161,7 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 			for _, e := range entries {
 				if !e.IsDir() && strings.HasSuffix(e.Name(), ".sh") {
 					result.Scripts = append(result.Scripts, Module{
-						Path:   filepath.Join(dirPath, e.Name()),
+						Path:    filepath.Join(dirPath, e.Name()),
 						RelPath: "scripts/" + e.Name(),
 					})
 				}
@@ -172,7 +172,7 @@ func (s *Scanner) Scan() (*ScanResult, error) {
 			for _, e := range entries {
 				if !e.IsDir() {
 					result.Secrets = append(result.Secrets, Module{
-						Path:   filepath.Join(dirPath, e.Name()),
+						Path:    filepath.Join(dirPath, e.Name()),
 						RelPath: "secrets/" + e.Name(),
 					})
 				}

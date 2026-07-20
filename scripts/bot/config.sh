@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # config.sh — Configuration constants for the bot control plane
 #
 # All configuration lives here. No business logic.

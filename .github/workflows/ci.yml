@@ -34,6 +34,10 @@ jobs:
           # Pin to a v1 release: `latest` now resolves to golangci-lint v2,
           # which rejects this repo's v1-format .golangci.yml and fails CI.
           version: "v1.61.0"
+          # Build golangci-lint from source with the repo's Go toolchain
+          # (go 1.26.x). The prebuilt binary is compiled with an older Go and
+          # refuses to run against a newer go.mod (`go 1.26.4`).
+          install-mode: goinstall
           args: --timeout=5m
 
   go-test:
@@ -99,7 +103,10 @@ jobs:
             experimental-features = nix-command flakes
       # `nix fmt -- --check` is unreliable (returns non-zero even when
       # formatted), so format then assert no diff via git instead.
-      - run: nix fmt
+      # Invoke the flake's pinned formatter explicitly: the runner's bundled
+      # `nix fmt` resolves a newer nixpkgs-fmt that formats `{}` as `{ }`,
+      # which would never match the committed (pinned) formatting.
+      - run: nix run .#formatter.x86_64-linux -- -w .
       - run: git diff --exit-code
 
   nix-flake-check:
@@ -150,9 +157,9 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
       - name: Evaluate NixOS toplevel (dry build)
-        run: nix build .#nixosConfigurations.prague.config.system.build.toplevel --dry-build --print-build-logs
+        run: nix build .#nixosConfigurations.prague.config.system.build.toplevel --dry-run
       - name: Evaluate Home Manager activation (dry build)
-        run: nix build .#hm-activate --dry-build --print-build-logs
+        run: nix build .#hm-activate --dry-run
 
   nixos-testvm:
     name: NixOS Test VM (dry)
@@ -165,7 +172,7 @@ jobs:
           extra_nix_config: |
             experimental-features = nix-command flakes
       - name: Evaluate test VM (dry build)
-        run: nix build .#nixosConfigurations.testvm.config.system.build.toplevel --dry-build --print-build-logs
+        run: nix build .#nixosConfigurations.testvm.config.system.build.toplevel --dry-run
 
   # ─────────────────────────────────────────────────
   # Tier 5: Report status back to GitLab (source of truth)

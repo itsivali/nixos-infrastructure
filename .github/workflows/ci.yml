@@ -31,9 +31,11 @@ jobs:
           cache: true
       - uses: golangci/golangci-lint-action@v6
         with:
-          # Pin to a v1 release: `latest` now resolves to golangci-lint v2,
-          # which rejects this repo's v1-format .golangci.yml and fails CI.
-          version: "v1.61.0"
+          # Pin to the newest v1.x release: `latest` now resolves to
+          # golangci-lint v2, which rejects this repo's v1-format .golangci.yml
+          # and fails CI. v1.64.8 is the last v1.x and compiles under the repo's
+          # go 1.26.4 toolchain (older v1.x fails to build via goinstall).
+          version: "v1.64.8"
           # Build golangci-lint from source with the repo's Go toolchain
           # (go 1.26.x). The prebuilt binary is compiled with an older Go and
           # refuses to run against a newer go.mod (`go 1.26.4`).
@@ -106,7 +108,7 @@ jobs:
       # Invoke the flake's pinned formatter explicitly: the runner's bundled
       # `nix fmt` resolves a newer nixpkgs-fmt that formats `{}` as `{ }`,
       # which would never match the committed (pinned) formatting.
-      - run: nix run .#formatter.x86_64-linux -- -w .
+      - run: nix run .#formatter.x86_64-linux -- .
       - run: git diff --exit-code
 
   nix-flake-check:
@@ -130,12 +132,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gitleaks/gitleaks-action@v2
-        with:
-          # Scan only the working tree (--no-git) using our allowlist so
-          # SOPS-encrypted secrets, hardware config, and test fixtures pass.
-          config-path: .gitleaks.toml
-          args: detect --no-git --source .
+      - name: Install gitleaks
+        run: |
+          curl -sSL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          chmod +x gitleaks
+      - name: Scan working tree for secrets
+        # Scan the working tree (--no-git) so a shallow checkout's missing
+        # base commit can't break a git-range scan. .gitleaks.toml's allowlist
+        # lets SOPS-encrypted secrets, hardware config, and test fixtures pass.
+        run: ./gitleaks detect --source . --no-git --redact --config .gitleaks.toml --exit-code=1
 
   # ─────────────────────────────────────────────────
   # Tier 4: Integration (portable runner, best-effort)

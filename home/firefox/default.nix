@@ -22,17 +22,22 @@
 
 let
   # Pinned Firefox extensions (hashes resolved from AMO latest xpi).
-  mkAddon = name: url: sha256: pkgs.fetchFirefoxAddon { inherit name url sha256; };
+  #
+  # nixpkgs' fetchFirefoxAddon emits a single <id>.xpi at the package root
+  # (id == "nixos@<name>", also baked into the addon's gecko id). HM's
+  # programs.firefox.extensions.packages expects a
+  # share/mozilla/extensions/{uuid}/ layout this nixpkgs no longer produces,
+  # so we install each xpi directly into the profile's extensions/ dir
+  # (Firefox loads any <id>.xpi whose name matches the addon's gecko id).
+  mkAddon = name: url: sha256:
+    let pkg = pkgs.fetchFirefoxAddon { inherit name url sha256; };
+    in { inherit pkg; id = pkg.extid; };
 
-  extensions = {
-    # Force-install even if the AMO target Firefox version differs slightly.
-    force = true;
-    packages = [
-      (mkAddon "ublock-origin" "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi" "40c315b0da7871868155ecfae7a50a58dfa0920aebd865e008214986f1b7c578")
-      (mkAddon "bitwarden-password-manager" "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi" "7ba16c3d422ab287db17b014a4683bace36341e471e4d4fd58ac2b616c6ac17d")
-      (mkAddon "darkreader" "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi" "f4f047fe08e420b6d29617738ea00a7b784892b2262b7e6f38dd09b8ee958a44")
-      (mkAddon "sidebery" "https://addons.mozilla.org/firefox/downloads/latest/sidebery/latest.xpi" "e8a0a4b556ab7dd536897c1816af9d0918030223068ea6683a04376103a6caf2")
-    ];
+  addons = {
+    ublock-origin = mkAddon "ublock-origin" "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi" "40c315b0da7871868155ecfae7a50a58dfa0920aebd865e008214986f1b7c578";
+    bitwarden-password-manager = mkAddon "bitwarden-password-manager" "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi" "7ba16c3d422ab287db17b014a4683bace36341e471e4d4fd58ac2b616c6ac17d";
+    darkreader = mkAddon "darkreader" "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi" "f4f047fe08e420b6d29617738ea00a7b784892b2262b7e6f38dd09b8ee958a44";
+    sidebery = mkAddon "sidebery" "https://addons.mozilla.org/firefox/downloads/latest/sidebery/latest.xpi" "e8a0a4b556ab7dd536897c1816af9d0918030223068ea6683a04376103a6caf2";
   };
 in
 {
@@ -153,8 +158,19 @@ in
           color: var(--gruvbox-fg) !important;
         }
       '';
-
-      extensions = extensions;
     };
   };
+
+  # Install extensions directly into the persistent ivali profile. Each xpi is
+  # named by its gecko id ("nixos@<name>"), which is what Firefox expects in
+  # <profile>/extensions/. extensions.autoDisableScopes=0 (above) keeps them
+  # enabled on first launch.
+  home.file = lib.mkMerge (lib.mapAttrsToList
+    (n: a: {
+      ".mozilla/firefox/ivali/extensions/${a.id}.xpi" = {
+        source = "${a.pkg}/${a.id}.xpi";
+        force = true;
+      };
+    })
+    addons);
 }

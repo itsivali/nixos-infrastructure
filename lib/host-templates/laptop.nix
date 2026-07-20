@@ -130,6 +130,14 @@ in
   };
 
   ############################################################################
+  # GO BINARY CACHE
+  # Caches ivali / bw-tui / ivali-bot (and any future Go tool) in a local
+  # binary cache so switching generations restores them in seconds instead
+  # of recompiling from scratch.
+  ############################################################################
+  goBinaryCache.enable = true;
+
+  ############################################################################
   # GITLAB RUNNER
   ############################################################################
   fleet.gitlabRunner = lib.mkIf (hasGitLabRunner && hasSecrets) {

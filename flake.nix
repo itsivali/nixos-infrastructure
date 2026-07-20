@@ -43,6 +43,11 @@
         config.allowUnfree = true;
       };
 
+      # Hermetic source for the Go tools: only Go source + go.mod/go.sum.
+      # Keeps the buildGoModule src hash stable across unrelated repo edits so
+      # ivali / bw-tui / ivali-bot are not rebuilt from scratch every switch.
+      goSrc = import ./lib/go-src.nix { src = self; lib = lib; };
+
       # Generate nixosConfigurations for each host
       nixosConfigurations = lib.mapAttrs
         (name: hostSpec:
@@ -51,6 +56,7 @@
 
             specialArgs = {
               inherit self;
+              flake = self;
               hostSpec = hostSpec;
               defaultUsername = hostSpec.userName or defaultUsername;
               username = hostSpec.userName or defaultUsername;
@@ -74,6 +80,17 @@
 
               # Host-specific configuration from template
               ./lib/host-templates/laptop.nix
+
+              # Feed the Go-built tools into the local binary cache module.
+              # (Done here rather than via specialArgs so the caching module
+              # stays usable under nixosTest, which does not forward them.)
+              {
+                goBinaryCache.packages = [
+                  self.packages.${system}.ivali
+                  self.packages.${system}.bw-tui
+                  self.packages.${system}.ivali-bot
+                ];
+              }
 
               # Home Manager user configuration
               {
@@ -122,12 +139,7 @@
 
         bw-tui = pkgs.buildGoModule {
           name = "bw-tui";
-          src = pkgs.lib.cleanSourceWith {
-            filter = name: type:
-              !(type == "directory" && builtins.baseNameOf name == "vendor")
-            ;
-            src = self;
-          };
+          src = goSrc;
           vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
           subPackages = [ "cmd/bw-tui" ];
           preBuild = "export CGO_ENABLED=0";
@@ -135,12 +147,7 @@
 
         ivali-bot = pkgs.buildGoModule {
           name = "ivali-bot";
-          src = pkgs.lib.cleanSourceWith {
-            filter = name: type:
-              !(type == "directory" && builtins.baseNameOf name == "vendor")
-            ;
-            src = self;
-          };
+          src = goSrc;
           vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
           subPackages = [ "cmd/ivali-bot" ];
           # Static pure-Go binary: avoids linking libresolv.so.2, whose
@@ -151,12 +158,7 @@
 
         ivali = pkgs.buildGoModule {
           name = "ivali";
-          src = pkgs.lib.cleanSourceWith {
-            filter = name: type:
-              !(type == "directory" && builtins.baseNameOf name == "vendor")
-            ;
-            src = self;
-          };
+          src = goSrc;
           vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
           subPackages = [ "cmd/ivali" ];
           preBuild = "export CGO_ENABLED=0";

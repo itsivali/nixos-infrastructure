@@ -22,11 +22,20 @@
 let
   cfg = config.fleet.bot;
 
+  # Hermetic Go source (only Go + go.mod/go.sum). Using the same filter and
+  # the same build attributes as the definitions in flake.nix means Nix
+  # de-duplicates this build with self.packages.<system>.ivali / ivali-bot,
+  # so the bot does not trigger a second, full recompile.
+  goSrc = import ../../lib/go-src.nix { src = ./../..; lib = lib; };
+
   botPackage = pkgs.buildGoModule {
     name = "ivali-bot";
-    src = pkgs.lib.cleanSource ./../../.;
+    src = goSrc;
     vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
     subPackages = [ "cmd/ivali-bot" ];
+    # Static pure-Go binary: avoids linking libresolv.so.2, whose PROT_EXEC
+    # mmap is denied by the ivali-bot AppArmor profile.
+    preBuild = "export CGO_ENABLED=0";
   };
 
   # The bot runs shell commands via `sh -c` (helpers.go runCmd) and the
@@ -34,7 +43,7 @@ let
   # must be on its restricted PATH.
   ivaliCli = pkgs.buildGoModule {
     name = "ivali";
-    src = pkgs.lib.cleanSource ./../../.;
+    src = goSrc;
     vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
     subPackages = [ "cmd/ivali" ];
     preBuild = "export CGO_ENABLED=0";

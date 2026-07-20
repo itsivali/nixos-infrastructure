@@ -13,4 +13,7 @@ with pkgs; [
   gnome-screenshot
   xdg-utils
   gnome-disk-utility
+  gnome-terminal
+  gnome-system-monitor
+  notion-app-enhanced
 ]

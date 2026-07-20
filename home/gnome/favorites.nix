@@ -29,13 +29,12 @@ let
     "org.gnome.Console.desktop"
     "org.gnome.Nautilus.desktop"
     "org.gnome.TextEditor.desktop"
-    "org.gnome.Extensions.desktop"
     "org.gnome.Settings.desktop"
     "LocalSend.desktop"
     "zeditor.desktop"
-    "Zoom.desktop"
+    "us.zoom.Zoom.desktop"
     "obsidian.desktop"
-    "vlc.desktop"
+    "notion-app-enhanced.desktop"
     "org.libreoffice.LibreOffice.writer.desktop"
     "org.libreoffice.LibreOffice.calc.desktop"
     "org.libreoffice.LibreOffice.impress.desktop"
@@ -44,6 +43,15 @@ let
   # Apps that should always be in favorites (installed desktop GUI apps)
   # Format: .desktop file ID — kept identical to defaultFavorites to avoid drift
   managedApps = defaultFavorites;
+
+  # Apps that should be removed from favorites if present (e.g. pulled in by
+  # an earlier default set, or pinned manually). Removal is enforced on every
+  # activation, unlike the add-only managedApps logic.
+  removeFavorites = [
+    "org.gnome.Extensions.desktop" # GNOME Extensions app
+    "org.gnome.DiskUtility.desktop" # Disks
+    "vlc.desktop"
+  ];
 
   favoritesScript = pkgs.writeShellScript "manage-favorites" ''
     set -euo pipefail
@@ -72,6 +80,14 @@ let
       fi
     done
 
+    # Remove any apps explicitly flagged for removal
+    for app in ${builtins.concatStringsSep " " removeFavorites}; do
+      if echo "$NEW_LIST" | grep -qw "$app"; then
+        echo "Removing from favorites: $app"
+        NEW_LIST=$(echo "$NEW_LIST" | tr ' ' '\n' | grep -vw "$app" | tr '\n' ' ')
+      fi
+    done
+
     # Convert space-separated to dconf array format
     DCONF_ARRAY=$(echo "$NEW_LIST" | tr ' ' '\n' | grep -v '^$' | sed "s/^/'/;s/$/'/" | paste -sd',' | sed 's/,/, /g')
     DCONF_ARRAY="[$DCONF_ARRAY]"
@@ -86,7 +102,7 @@ in
   # spawn a transient bus — otherwise `dconf write` fails with
   # "Cannot autolaunch D-Bus without X11 $DISPLAY".
   home.activation.favorites = lib.mkAfter ''
-    ${pkgs.dbus}/bin/dbus-run-session --dbus-daemon=${pkgs.dbus}/bin/dbus-daemon -- ${favoritesScript}
+    ${pkgs.dbus}/bin/dbus-run-session --dbus-daemon=${pkgs.dbus}/bin/dbus-daemon -- ${favoritesScript}/bin/manage-favorites
   '';
 
   # Auto-start LocalSend on login (minimized to tray)

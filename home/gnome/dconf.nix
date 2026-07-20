@@ -279,7 +279,7 @@
     };
 
     "org/gnome/desktop/applications/terminal" = {
-      exec = "gnome-console";
+      exec = "gnome-terminal";
     };
 
     "org/gnome/desktop/applications/browser" = {
@@ -288,6 +288,64 @@
 
     "org/gnome/desktop/applications/file-manager" = {
       exec = "nautilus";
+    };
+
+    # ── Custom launcher / action keybindings ─────────────────────────────
+    # Global shortcuts managed by gnome-settings-daemon. These launch apps /
+    # actions regardless of focus. NOTE: a global binding (e.g. <Control>t)
+    # overrides an app's own shortcut with the same keys while that app is
+    # focused (so <Control>t wins over Firefox's "new tab").
+    "org/gnome/settings-daemon/plugins/media-keys" = {
+      custom-keybindings = [
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom3/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom4/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom5/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom6/"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom7/"
+      ];
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
+      name = "Open Terminal (Ctrl+T)";
+      command = "gnome-terminal";
+      binding = "<Control>t";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
+      name = "Open Terminal (Super+Enter)";
+      command = "gnome-terminal";
+      binding = "<Super>Return";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom2" = {
+      name = "Open Files";
+      command = "nautilus";
+      binding = "<Super>e";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom3" = {
+      name = "Open Browser";
+      command = "firefox";
+      binding = "<Super>b";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom4" = {
+      name = "Screenshot (interactive)";
+      command = "gnome-screenshot --interactive";
+      binding = "<Super>s";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom5" = {
+      name = "Screenshot (area)";
+      command = "gnome-screenshot -a";
+      binding = "<Super><Shift>s";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom6" = {
+      name = "Lock screen";
+      command = "loginctl lock-session";
+      binding = "<Super>l";
+    };
+    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom7" = {
+      name = "Open Notion";
+      command = "notion-app-enhanced";
+      binding = "<Super>n";
     };
   };
 }

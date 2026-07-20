@@ -178,13 +178,9 @@ jobs:
     name: Report status to GitLab
     runs-on: ubuntu-latest
     needs: [go-lint, go-test, go-build, shell-lint, nix-format, nix-flake-check, secret-scan]
-    # Only attempt when a GitLab token is configured; otherwise skip silently.
-    # NOTE: `secrets` is NOT a valid context inside `if:`, so we
-    # map it to a job-level env var and gate on that instead.
-    env:
-      GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-    if: ${{ env.GITLAB_TOKEN != '' }}
     # Never fail the PR if the GitLab status post hiccups (e.g. API error).
+    # When no GITLAB_TOKEN secret is configured, the step below skips
+    # gracefully (a job-level `if` cannot reference `env`/`secrets`).
     continue-on-error: true
     steps:
       - name: Compute status
@@ -209,6 +205,11 @@ jobs:
           GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
           GITLAB_PROJECT: "willisivali/nixos-infrastructure"
         run: |
+          # Skip gracefully when no GitLab token is configured (e.g. forks/PRs).
+          if [ -z "${GITLAB_TOKEN:-}" ]; then
+            echo "GITLAB_TOKEN not set; skipping GitLab status post."
+            exit 0
+          fi
           # On pull_request, github.sha is GitHub's merge commit and does not
           # exist in the GitLab mirror -> 404. Use the PR head commit instead.
           SHA="${{ github.sha }}"
@@ -216,13 +217,15 @@ jobs:
             SHA="${{ github.event.pull_request.head.sha }}"
           fi
           PROJECT=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$GITLAB_PROJECT")
+          # Never fail the job if the GitLab API post fails (404, auth, etc.).
           curl -s -X POST \
             "https://gitlab.com/api/v4/projects/${PROJECT}/statuses/${SHA}" \
             --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
             --form "state=${{ steps.status.outputs.state }}" \
             --form "description=${{ steps.status.outputs.desc }}" \
             --form "name=github-actions" \
-            --form "target_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            --form "target_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            || echo "warn: failed to post status to GitLab (continuing)"
 
   # ─────────────────────────────────────────────────
   # Summary

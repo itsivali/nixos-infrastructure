@@ -130,6 +130,10 @@ originates on GitHub). Deployment is driven by the GitOps reconciler, not CI:
   (Go lint/test/build, shellcheck, `nix fmt`, `nix flake check`, gitleaks) and
   posts the commit status back to GitLab via the GitLab API. No GitLab CI
   minutes are consumed (`.gitlab-ci.yml` was removed).
+- **Push workflow** — commit and `git push origin` (GitLab) **only**. A
+  GitLab→GitHub push mirror (SSH deploy key, write access) auto-propagates every
+  push to GitHub and triggers GitHub Actions. Never run `git push github` (or the
+  `gpall`/`gph` aliases) directly — that bypasses the mirror and is redundant.
 - **GitOps reconciler** (`fleet.gitopsReconciler`, enabled on prague) — every
   15 min: `git pull --ff-only → nix flake check → nix build →
   nixos-rebuild switch → health check`. On failure, `deployment-health`

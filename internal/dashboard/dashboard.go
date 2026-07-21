@@ -11,6 +11,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+
 	"github.com/willisivali/nixos-infrastructure/internal/repository"
 	"github.com/willisivali/nixos-infrastructure/internal/scanner"
 	"github.com/willisivali/nixos-infrastructure/internal/terminal"
@@ -981,13 +982,6 @@ func (m *model) renderDomains() string {
 	}
 
 	return b.String()
-}
-
-type gitLogEntry struct {
-	Hash    string
-	Author  string
-	Date    string
-	Message string
 }
 
 func (m *model) renderGitLog() string {

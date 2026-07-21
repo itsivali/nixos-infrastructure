@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/willisivali/nixos-infrastructure/internal/bitwarden"
 )
 

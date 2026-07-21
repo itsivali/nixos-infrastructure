@@ -30,7 +30,7 @@ func checkNixFormatting(root string) terminal.CheckItem {
 	out, _ := exec.Command("git", "-C", root, "diff", "--stat", "--", "*.nix").Output()
 
 	if len(out) > 0 {
-		exec.Command("git", "-C", root, "checkout", "--", "*.nix").Run()
+		_ = exec.Command("git", "-C", root, "checkout", "--", "*.nix").Run()
 		diff := strings.TrimSpace(string(out))
 		return terminal.CheckItem{Label: "Formatting", Status: terminal.StatusFail, Detail: diff}
 	}
@@ -121,10 +121,10 @@ func checkMemory() terminal.CheckItem {
 	var total, avail uint64
 	for _, line := range strings.Split(string(data), "\n") {
 		if strings.HasPrefix(line, "MemTotal:") {
-			fmt.Sscanf(line, "MemTotal: %d", &total)
+			_, _ = fmt.Sscanf(line, "MemTotal: %d", &total)
 		}
 		if strings.HasPrefix(line, "MemAvailable:") {
-			fmt.Sscanf(line, "MemAvailable: %d", &avail)
+			_, _ = fmt.Sscanf(line, "MemAvailable: %d", &avail)
 		}
 	}
 

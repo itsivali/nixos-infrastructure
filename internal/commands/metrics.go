@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
+
 	"github.com/willisivali/nixos-infrastructure/internal/app"
 )
 
@@ -187,19 +187,4 @@ Use --output to write to a file.`,
 	cmd.Flags().StringVarP(&outputFile, "output", "o", "", "Write output to file")
 
 	return cmd
-}
-
-// writeMetricsToOpencode writes metrics to opencode/metrics.json for tracking
-func writeMetricsToOpencode(root string, report MetricsReport) error {
-	opencodeDir := filepath.Join(root, "opencode")
-	if err := os.MkdirAll(opencodeDir, 0755); err != nil {
-		return err
-	}
-
-	data, err := json.MarshalIndent(report, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	return os.WriteFile(filepath.Join(opencodeDir, "metrics.json"), data, 0644)
 }

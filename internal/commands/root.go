@@ -5,13 +5,9 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
 	"github.com/willisivali/nixos-infrastructure/internal/app"
 )
-
-type category struct {
-	Name     string
-	Commands []string
-}
 
 func Root(a *app.App) *cobra.Command {
 	var verbose bool

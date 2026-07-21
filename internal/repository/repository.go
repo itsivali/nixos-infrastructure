@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
+
 	"github.com/willisivali/nixos-infrastructure/internal/parser"
 	"github.com/willisivali/nixos-infrastructure/internal/scanner"
 )

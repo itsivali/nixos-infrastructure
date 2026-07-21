@@ -114,10 +114,6 @@ func (t *Terminal) adaptBg(light, dark string) lipgloss.TerminalColor {
 	return lipgloss.Color(dark)
 }
 
-func (t *Terminal) styleFromPalette(c lipgloss.TerminalColor) lipgloss.Style {
-	return lipgloss.NewStyle().Foreground(c)
-}
-
 func (t *Terminal) Header(text string) string {
 	return lipgloss.NewStyle().
 		Bold(true).

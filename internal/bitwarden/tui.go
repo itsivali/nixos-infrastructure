@@ -14,18 +14,12 @@ import (
 // ── Styling ──────────────────────────────────────────────
 
 var (
-	clrBorder   = lipgloss.Color("#585b70")
-	clrDim      = lipgloss.Color("#6c7086")
-	clrAccent   = lipgloss.Color("#89b4fa")
-	clrGreen    = lipgloss.Color("#a6e3a1")
-	clrYellow   = lipgloss.Color("#f9e2af")
-	clrRed      = lipgloss.Color("#f38ba8")
-	clrWhite    = lipgloss.Color("#cdd6f4")
-	clrSurface  = lipgloss.Color("#313244")
-	styleHeader = lipgloss.NewStyle().
-			Foreground(clrAccent).
-			Bold(true).
-			Padding(0, 1)
+	clrDim     = lipgloss.Color("#6c7086")
+	clrAccent  = lipgloss.Color("#89b4fa")
+	clrGreen   = lipgloss.Color("#a6e3a1")
+	clrRed     = lipgloss.Color("#f38ba8")
+	clrWhite   = lipgloss.Color("#cdd6f4")
+	clrSurface = lipgloss.Color("#313244")
 
 	styleItem = lipgloss.NewStyle().
 			Padding(0, 2)
@@ -37,10 +31,6 @@ var (
 	styleDim = lipgloss.NewStyle().
 			Foreground(clrDim).
 			Padding(0, 2)
-
-	styleFooter = lipgloss.NewStyle().
-			Foreground(clrDim).
-			Padding(0, 1)
 
 	styleDetailLabel = lipgloss.NewStyle().
 				Foreground(clrDim).
@@ -810,13 +800,6 @@ func styleRed(s string) string {
 
 func max(a, b int) int {
 	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
 		return a
 	}
 	return b

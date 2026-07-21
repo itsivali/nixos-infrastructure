@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
 	"github.com/willisivali/nixos-infrastructure/internal/app"
 	"github.com/willisivali/nixos-infrastructure/internal/template"
 	"github.com/willisivali/nixos-infrastructure/internal/terminal"

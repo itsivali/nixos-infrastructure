@@ -19,7 +19,7 @@ func confirmAction(t *terminal.Terminal, message string) bool {
 		message,
 		t.Dim("[y/N]"))
 	var response string
-	fmt.Scanln(&response)
+	_, _ = fmt.Scanln(&response)
 	response = strings.TrimSpace(strings.ToLower(response))
 	return response == "y" || response == "yes"
 }

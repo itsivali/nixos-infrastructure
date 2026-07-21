@@ -8,10 +8,11 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/willisivali/nixos-infrastructure/internal/app"
+	"github.com/willisivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdDoctor(a *app.App) *cobra.Command {

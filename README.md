@@ -1,6 +1,6 @@
 # nixos-infrastructure
 
-[![GitHub Actions](https://img.shields.io/github/actions/workflow/status/itsivali/nixos-infrastructure/ci.yml?branch=main&label=GitHub+Actions)](https://github.com/itsivali/nixos-infrastructure/actions)
+[![GitHub Actions](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Autonomous NixOS infrastructure for a single-user laptop — declarative, reproducible,

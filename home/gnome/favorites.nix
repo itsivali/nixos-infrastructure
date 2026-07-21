@@ -102,7 +102,7 @@ in
   # spawn a transient bus — otherwise `dconf write` fails with
   # "Cannot autolaunch D-Bus without X11 $DISPLAY".
   home.activation.favorites = lib.mkAfter ''
-    ${pkgs.dbus}/bin/dbus-run-session --dbus-daemon=${pkgs.dbus}/bin/dbus-daemon -- ${favoritesScript}/bin/manage-favorites
+    ${pkgs.dbus}/bin/dbus-run-session --dbus-daemon=${pkgs.dbus}/bin/dbus-daemon -- ${favoritesScript}
   '';
 
   # Auto-start LocalSend on login (minimized to tray)

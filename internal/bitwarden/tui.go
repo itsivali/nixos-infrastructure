@@ -284,9 +284,6 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		if !m.ready() {
-			m.ready()
-		}
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)

@@ -131,6 +131,6 @@ func (a *Auth) save() {
 	}
 
 	dir := filepath.Dir(a.filePath)
-	os.MkdirAll(dir, 0o755)
-	os.WriteFile(a.filePath, data, 0o600)
+	_ = os.MkdirAll(dir, 0o755)
+	_ = os.WriteFile(a.filePath, data, 0o600)
 }

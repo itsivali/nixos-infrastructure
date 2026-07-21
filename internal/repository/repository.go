@@ -264,7 +264,7 @@ func (r *Repository) RemoveDuplicateImportLines() int {
 		}
 		newContent := strings.Join(newLines, "\n")
 		if newContent != string(data) {
-			os.WriteFile(path, []byte(newContent), 0644)
+			_ = os.WriteFile(path, []byte(newContent), 0644)
 		}
 	}
 	return removed

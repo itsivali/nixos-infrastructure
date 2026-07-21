@@ -181,7 +181,7 @@ func runHealthWatch(t *terminal.Terminal, r *repository.Repository) error {
 			fmt.Println()
 			return nil
 		case <-ticker.C:
-			r.EnsureScanned()
+			_ = r.EnsureScanned()
 			fmt.Print("\033[2J\033[H")
 			renderHealth(t, r)
 			fmt.Println("  " + t.Dim(" Watching... refresh every 3s  (Ctrl+C to stop)"))

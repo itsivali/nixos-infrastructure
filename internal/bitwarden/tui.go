@@ -259,8 +259,8 @@ func (m *tuiModel) loadItems() tea.Cmd {
 		}
 		// Write back to cache for next startup
 		if m.cacheFile != "" {
-			WriteCache(m.cacheFile, items)
-			WriteCacheTime(m.cacheTimeFile)
+			_ = WriteCache(m.cacheFile, items)
+			_ = WriteCacheTime(m.cacheTimeFile)
 		}
 		m.state = "unlocked"
 		return itemsLoadedMsg{items: items}

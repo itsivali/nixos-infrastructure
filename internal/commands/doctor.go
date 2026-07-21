@@ -102,7 +102,7 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 						fmt.Println(t.CheckList([]terminal.CheckItem{
 							{Label: fmt.Sprintf("Removed %d duplicate import line(s)", removedDups), Status: terminal.StatusPass},
 						}))
-						fixFormatting(r.Root, t)
+						_ = fixFormatting(r.Root, t)
 					} else {
 						fmt.Println(t.CheckList([]terminal.CheckItem{
 							{Label: "No duplicate imports to remove", Status: terminal.StatusPass},

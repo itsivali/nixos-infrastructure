@@ -214,7 +214,7 @@ func promptName(kind string, t *terminal.Terminal) string {
 	}
 	fmt.Printf("  %s %s name: ", t.ColoredIcon("", t.Color.Yellow), kind)
 	var name string
-	fmt.Scanln(&name)
+	_, _ = fmt.Scanln(&name)
 	return name
 }
 

@@ -126,7 +126,7 @@ func TestCommandFunc(t *testing.T) {
 	}
 
 	msg := &Message{}
-	cmd.Execute(context.Background(), msg)
+	_ = cmd.Execute(context.Background(), msg)
 
 	if !called {
 		t.Error("expected handler to be called")

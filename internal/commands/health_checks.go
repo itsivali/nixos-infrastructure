@@ -25,7 +25,7 @@ func checkNixFormatting(root string) terminal.CheckItem {
 
 	nixFmt := exec.Command("nix", "fmt")
 	nixFmt.Dir = root
-	nixFmt.Run()
+	_ = nixFmt.Run()
 
 	out, _ := exec.Command("git", "-C", root, "diff", "--stat", "--", "*.nix").Output()
 

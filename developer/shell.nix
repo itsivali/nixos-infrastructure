@@ -7,15 +7,15 @@
 # System-level shell defaults for the developer workstation.
 # Home Manager owns the interactive shell configuration.
 #
-# Note: programs.zsh.enable is intentionally NOT set here. The NixOS-level
-# zsh init runs `promptinit && prompt suse` which interferes with the
+# Note: programs.zsh.promptInit is set to "" to disable the NixOS-level
+# prompt setup (promptinit && prompt suse) which interferes with the
 # Home Manager starship prompt, causing a double prompt. Home Manager
 # handles all interactive zsh config including prompt, completion, and
 # plugins.
 #
 # Ownership
 # ---------
-# users.defaultUserShell, programs.bash.completion
+# users.defaultUserShell, programs.zsh.enable, programs.bash.completion
 #
 # Does NOT Own
 # ------------
@@ -29,5 +29,7 @@
 
 {
   users.defaultUserShell = pkgs.zsh;
+  programs.zsh.enable = true;
+  programs.zsh.promptInit = "";
   programs.bash.completion.enable = true;
 }

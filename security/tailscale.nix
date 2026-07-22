@@ -1,3 +1,27 @@
+##############################################################################
+#
+# Security Tailscale
+#
+# Purpose
+# -------
+# Configures the Tailscale zero-trust networking daemon with optional exit
+# node advertising, MagicDNS, Tailscale SSH, key expiry monitoring, and
+# Prometheus metrics collection.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Enable and configure Tailscale with auth key, tags, and routing features
+# - Manage exit node routing (IP forwarding sysctl)
+# - Monitor key expiry via daily systemd timer
+# - Export Prometheus metrics (connection status, key expiry, MagicDNS)
+# - Validate tag format at build time via assertions
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

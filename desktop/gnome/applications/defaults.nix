@@ -1,3 +1,24 @@
+##############################################################################
+#
+# Desktop GNOME Applications Defaults
+#
+# Purpose
+# -------
+# Configures GNOME default application preferences for terminal, browser,
+# and file manager via dconf.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Set default terminal to gnome-console
+# - Set default browser to firefox
+# - Set default file manager to nautilus
+#
+##############################################################################
+
 { config, lib, ... }:
 
 let

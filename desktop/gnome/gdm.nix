@@ -1,3 +1,24 @@
+##############################################################################
+#
+# Desktop GNOME GDM
+#
+# Purpose
+# -------
+# Configures the GNOME Display Manager (GDM) with dark theme, cursor, and
+# background settings applied to the login screen.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Enable GDM with auto-suspend disabled
+# - Install theme/cursor/icon packages for the GDM user profile
+# - Configure GDM dconf database with dark GTK theme, cursor, and background
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

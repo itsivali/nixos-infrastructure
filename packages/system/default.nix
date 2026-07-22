@@ -1,4 +1,23 @@
-# packages/system/default.nix
+##############################################################################
+#
+# Packages System
+#
+# Purpose
+# -------
+# Aggregates CLI and desktop packages into environment.systemPackages and
+# adds the ivali CLI and Bitwarden TUI from flake packages.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Combine CLI and desktop package sets into environment.systemPackages
+# - Install ivali and bw-tui from flake self.packages
+#
+##############################################################################
+
 # System-wide packages — adds CLI + desktop to environment.systemPackages.
 { config, lib, pkgs, self, ... }:
 {

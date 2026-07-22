@@ -1,20 +1,24 @@
+##############################################################################
 #
-# ==============================================================================
-# Fleet GitOps Reconciler
-# ==============================================================================
+# Automation GitOps Reconciler
 #
-# This service is the ACTUATOR in the fleet control loop.
+# Purpose
+# -------
+# Defines the GitOps reconciliation service and timer that pulls configuration
+# changes from GitLab and applies them via nixos-rebuild switch.
 #
-# It is triggered by:
+# Ownership
+# ---------
+# Willis Ivali <ivali>
 #
-#   • deployment-health.service (OnFailure)
-#   • gitlab-runner-health.service (OnFailure)
-#   • scheduled timer (periodic reconciliation)
+# Responsibilities
+# ----------------
+# - Configure the gitops-reconciler systemd service with git, nix, and SSH paths
+# - Set up a periodic timer for automated reconciliation (default: every 15 min)
+# - Pass GitOps context (repo, branch, host) as environment variables to the reconciler
+# - Provide hardened service settings (NoNewPrivileges, PrivateTmp, LockPersonality)
 #
-# It performs system correction ONLY when required.
-#
-# ==============================================================================
-#
+##############################################################################
 
 { config, lib, pkgs, ... }:
 

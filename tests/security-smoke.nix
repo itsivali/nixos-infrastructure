@@ -1,3 +1,27 @@
+##############################################################################
+#
+# Tests Security Smoke
+#
+# Purpose
+# -------
+# NixOS VM smoke test that validates kernel hardening, sysctl settings,
+# AppArmor profiles, firewall rules, fail2ban filters, and core dump
+# restrictions.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Verify kernel command-line hardening (slab_nomerge, init_on_alloc)
+# - Verify sysctl security settings (kptr_restrict, dmesg_restrict, etc.)
+# - Verify AppArmor profiles are present for bot, CLI, and reconciler
+# - Verify firewall default drop policy
+# - Verify fail2ban Telegram webhook filter is installed
+#
+##############################################################################
+
 { pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {

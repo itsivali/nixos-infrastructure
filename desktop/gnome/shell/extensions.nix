@@ -1,3 +1,23 @@
+##############################################################################
+#
+# Desktop GNOME Shell Extensions
+#
+# Purpose
+# -------
+# Installs the curated set of GNOME Shell extensions (Dash to Panel, Forge,
+# Blur My Shell, Caffeine, etc.) and supporting packages.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Install curated GNOME extensions as system packages
+# - Include gnome-tweaks, gnome-shell-extensions, and glib for extension support
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

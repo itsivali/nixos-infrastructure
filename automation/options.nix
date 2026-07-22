@@ -1,13 +1,24 @@
-# automation/options.nix
+##############################################################################
 #
-# Fleet Automation Module Options
+# Automation Options
 #
-# This module declares all configuration options consumed by the
-# automation module. These options become available as:
+# Purpose
+# -------
+# Declares all configuration options consumed by the automation modules,
+# including GitOps, reconciler, notifications, and Telegram bot settings.
 #
-#   config.fleet.gitops.*
-#   config.fleet.notifications.*
+# Ownership
+# ---------
+# Willis Ivali <ivali>
 #
+# Responsibilities
+# ----------------
+# - Declare fleet.gitops options (repo URL, branch)
+# - Declare fleet.gitopsReconciler options (retries, doctor, canary)
+# - Declare fleet.notifications options (email, OAuth2, Telegram chat ID)
+# - Declare fleet.bot options (enable, GitLab URL, default user)
+#
+##############################################################################
 
 { lib
 , ...

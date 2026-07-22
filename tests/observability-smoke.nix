@@ -1,3 +1,25 @@
+##############################################################################
+#
+# Tests Observability Smoke
+#
+# Purpose
+# -------
+# NixOS VM smoke test that validates the observability stack including
+# Prometheus, Grafana, the health endpoint, and the NixOS exporter.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Verify Prometheus service is running
+# - Verify Grafana service is running
+# - Verify health endpoint responds on port 9100
+# - Verify NixOS exporter port 9101 is open
+#
+##############################################################################
+
 { pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {

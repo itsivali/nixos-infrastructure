@@ -1,7 +1,24 @@
-# home/fonts.nix
+##############################################################################
 #
-# Font configuration for development terminal (P10k), 
-# Microsoft Office compatibility (LibreOffice), and system-wide use.
+# Home Fonts
+#
+# Purpose
+# -------
+# Installs development, Microsoft Office compatibility, and general system
+# fonts into the user Home Manager profile with fontconfig enabled.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Install Nerd Fonts (Meslo LG, Fira Code, JetBrains Mono) for terminals
+# - Install Microsoft Office compatibility fonts (corefonts, vista-fonts, Liberation)
+# - Install general typography (Noto, Font Awesome, emoji)
+# - Enable fontconfig for font registration and caching
+#
+##############################################################################
 
 { config, lib, pkgs, ... }:
 

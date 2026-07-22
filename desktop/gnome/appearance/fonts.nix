@@ -1,3 +1,23 @@
+##############################################################################
+#
+# Desktop GNOME Appearance Fonts
+#
+# Purpose
+# -------
+# Installs and configures the GNOME font stack including Inter, Cantarell,
+# JetBrains Mono, and Liberation, with fontconfig defaults.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Install system fonts (Inter, Cantarell, JetBrains Mono, Liberation)
+# - Configure fontconfig default sans-serif, serif, and monospace families
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

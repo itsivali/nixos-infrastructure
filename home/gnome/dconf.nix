@@ -1,3 +1,28 @@
+##############################################################################
+#
+# Home GNOME dconf
+#
+# Purpose
+# -------
+# Applies the full GNOME desktop dconf configuration including shell theme,
+# extensions, keybindings, appearance, and per-extension settings via Home
+# Manager.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Enable and configure GNOME shell extensions
+# - Set desktop interface theme, fonts, and clock preferences
+# - Configure window manager keybindings and workspace behavior
+# - Set wallpapers, lock screen, and power management
+# - Configure per-extension settings (Dash to Panel, Forge, Blur My Shell, etc.)
+# - Define custom application launcher keybindings
+#
+##############################################################################
+
 { config, lib, ... }:
 
 {

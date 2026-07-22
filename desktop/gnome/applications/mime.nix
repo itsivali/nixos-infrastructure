@@ -1,3 +1,23 @@
+##############################################################################
+#
+# Desktop GNOME Applications MIME
+#
+# Purpose
+# -------
+# Configures GNOME default applications for various MIME types and handlers
+# via dconf settings.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Set terminal, browser, file manager, and office default applications
+# - Define Evolution mail and Epiphany web stubs
+#
+##############################################################################
+
 { config, lib, ... }:
 
 let

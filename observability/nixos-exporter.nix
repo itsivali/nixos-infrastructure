@@ -1,3 +1,26 @@
+##############################################################################
+#
+# Observability NixOS Exporter
+#
+# Purpose
+# -------
+# Provides a Prometheus exporter that exposes NixOS-specific metrics
+# (generation count, store size, uptime, git status, deployment health)
+# via a socat-based HTTP endpoint on port 9101.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Generate and serve NixOS metrics (generations, uptime, git status, etc.)
+# - Maintain a cache updated every 15 minutes for heavy metrics (store size)
+# - Register as a Prometheus scrape target
+# - Expose the exporter port in the firewall
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

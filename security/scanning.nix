@@ -1,3 +1,27 @@
+##############################################################################
+#
+# Security Scanning
+#
+# Purpose
+# -------
+# Provides a scheduled security scanner that audits NixOS configuration,
+# systemd services, AppArmor, fail2ban, Tailscale, and open ports, then
+# exposes results as Prometheus metrics.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Run a comprehensive security scan script (config, services, ports, etc.)
+# - Output Prometheus-compatible metrics (scan status, failed units, etc.)
+# - Expose metrics via a dedicated HTTP endpoint for Prometheus scraping
+# - Schedule scans via systemd timer (default: daily)
+# - Enforce hardening on the scan service itself
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

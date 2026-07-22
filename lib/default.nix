@@ -1,8 +1,21 @@
-# lib/default.nix
+##############################################################################
 #
-# Nix helper functions for the repository.
-# This file is excluded from auto-import by configuration.nix.
-# Import individual files directly as needed.
+# Lib
+#
+# Purpose
+# -------
+# Barrel module for repository-level Nix helper functions (host templates,
+# hardware detection, auto-imports). Not auto-imported; import directly.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Re-export hostTemplates, hardwareDetection, and autoImports helpers
+#
+##############################################################################
 
 {
   hostTemplates = import ./host-templates;

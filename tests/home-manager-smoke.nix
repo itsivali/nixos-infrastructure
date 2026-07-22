@@ -1,3 +1,24 @@
+##############################################################################
+#
+# Tests Home Manager Smoke
+#
+# Purpose
+# -------
+# NixOS VM smoke test that validates Home Manager integration, verifying
+# that user packages (zsh, git) are installed and configured correctly.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Verify zsh is installed for the test user
+# - Verify git user.name and user.email are configured via Home Manager
+# - Verify home directory and .zshrc exist
+#
+##############################################################################
+
 { pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {

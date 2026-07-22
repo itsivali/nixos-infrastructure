@@ -1,12 +1,23 @@
-# desktop/default.nix
+##############################################################################
 #
-# Domain entry-point for desktop environment modules.
-# Automatically imports every *.nix file placed in this directory.
+# Desktop
 #
-# Current modules:
-#   common/         ← Shared theming, colors, fonts
-#   gpu.nix         ← AMD GPU acceleration
-#   gnome/          ← GNOME desktop, GDM, extensions, audio, packages
+# Purpose
+# -------
+# Domain entry-point for desktop environment modules. Auto-imports all
+# sub-modules via lib/auto-imports.nix.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Serve as the barrel module for the desktop domain
+# - Auto-import all *.nix files in this directory tree
+#
+##############################################################################
+
 { ... }:
 {
   imports = import ../lib/auto-imports.nix ./.;

@@ -1,3 +1,27 @@
+##############################################################################
+#
+# Desktop GNOME
+#
+# Purpose
+# -------
+# Main GNOME desktop environment module. Imports all GNOME sub-modules,
+# declares the ivali.desktop.gnome.enable option, and configures core
+# desktop services, session variables, and logind behavior.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Import audio, GDM, appearance, shell, applications, and tweaks modules
+# - Declare the ivali.desktop.gnome.enable option
+# - Enable GNOME desktop manager, polkit, gvfs, udisks2, upower
+# - Set Wayland session variables (NIXOS_OZONE_WL, MOZ_ENABLE_WAYLAND)
+# - Configure logind lid/power key handling
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

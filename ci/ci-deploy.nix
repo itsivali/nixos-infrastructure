@@ -1,3 +1,25 @@
+##############################################################################
+#
+# CI Deploy
+#
+# Purpose
+# -------
+# Defines a systemd service for CI-triggered NixOS deployments that applies
+# system configuration changes from the local repository checkout.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Configure the ci-deploy oneshot systemd service
+# - Provide nix, nixos-rebuild, and coreutils in the service PATH
+# - Pass host name and repo directory as environment variables
+# - Enforce hardening (NoNewPrivileges, PrivateTmp)
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

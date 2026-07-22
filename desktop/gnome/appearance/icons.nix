@@ -1,3 +1,21 @@
+##############################################################################
+#
+# Desktop GNOME Appearance Icons
+#
+# Purpose
+# -------
+# Installs the Tela icon theme for the GNOME desktop.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Install tela-icon-theme system package
+#
+##############################################################################
+
 { config, lib, pkgs, ... }:
 
 let

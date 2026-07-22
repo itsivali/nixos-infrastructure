@@ -1,19 +1,25 @@
-# lib/auto-imports.nix
+##############################################################################
 #
-# Automatically imports modules from a directory.
+# Lib Auto-Imports
 #
-# Import order:
-#   1. Root-level option files
-#        options.nix
-#        *-options.nix
-#   2. Other root-level .nix modules
-#   3. Subdirectories containing default.nix
+# Purpose
+# -------
+# Provides a function that automatically discovers and imports NixOS modules
+# from a directory, with deterministic ordering (options first, then modules,
+# then subdirectories).
 #
-# Skips:
-#   - default.nix
-#   - _*.nix helpers
-#   - _* directories
+# Ownership
+# ---------
+# Willis Ivali <ivali>
 #
+# Responsibilities
+# ----------------
+# - Scan a directory for .nix files and subdirectories with default.nix
+# - Import options.nix and *-options.nix files first, then other modules
+# - Skip private files (prefixed with _) and default.nix itself
+# - Return a sorted, deterministic list of module paths
+#
+##############################################################################
 
 dir:
 

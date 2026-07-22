@@ -1,3 +1,27 @@
+##############################################################################
+#
+# Recovery Deployment Health
+#
+# Purpose
+# -------
+# Periodically validates whether the node is healthy for GitOps operations
+# (GitLab Runner, reconciliation, rollback). Acts as a read-only observer
+# that triggers rollback-on-failure when critical services are down.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Run the deployment-health.sh script every 5 minutes (default)
+# - Provide systemd service and timer for health checking
+# - Export GitOps context (repo, branch, worktree) to the health script
+# - Trigger rollback-on-failure.service on health check failure
+# - Enforce strict hardening (NoNewPrivileges, PrivateTmp, ProtectSystem=strict)
+#
+##############################################################################
+
 # =============================================================================
 # Fleet Deployment Health Monitor
 # =============================================================================

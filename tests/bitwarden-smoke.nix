@@ -1,3 +1,25 @@
+##############################################################################
+#
+# Tests Bitwarden Smoke
+#
+# Purpose
+# -------
+# NixOS VM smoke test that validates the Bitwarden CLI integration, SOPS
+# secret provisioning, and clipboard tool availability.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Verify bitwarden-cli, jq, and fzf are installed
+# - Verify clipboard tools (wl-copy/wl-paste) are available
+# - Verify SOPS secrets are provisioned for Bitwarden credentials
+# - Verify bw status command works
+#
+##############################################################################
+
 { pkgs, sops-nix, home-manager }:
 
 pkgs.testers.nixosTest {

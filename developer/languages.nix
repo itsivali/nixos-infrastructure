@@ -31,6 +31,7 @@ in
 
     go
 
+    bun
     nodejs_22
     yarn
     typescript
@@ -44,5 +45,9 @@ in
     ruff
     black
     mypy
+
+    terraform
+    opentofu
+    terraform-ls
   ];
 }

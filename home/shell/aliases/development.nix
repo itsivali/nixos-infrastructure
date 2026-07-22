@@ -30,10 +30,14 @@
     bt = "btop";
     rg = "rg";
     f = "fd";
+    v = "nvim";
+    vi = "nvim";
     reload = "exec zsh";
     py = "python";
     serve = "python -m http.server";
     json = "jq";
     tldr = "tldr";
+    tf = "terraform";
+    tofu = "opentofu";
   };
 }

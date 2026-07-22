@@ -31,18 +31,18 @@ func CmdTailscale(a *app.App) *cobra.Command {
 			var status struct {
 				BackendState string `json:"BackendState"`
 				Self         struct {
-					HostName   string `json:"HostName"`
+					HostName     string   `json:"HostName"`
 					TailscaleIPs []string `json:"TailscaleIPs"`
-					OS         string `json:"OS"`
-					Online     bool   `json:"Online"`
+					OS           string   `json:"OS"`
+					Online       bool     `json:"Online"`
 				} `json:"Self"`
 				Peer map[string]struct {
-					HostName   string `json:"HostName"`
+					HostName     string   `json:"HostName"`
 					TailscaleIPs []string `json:"TailscaleIPs"`
-					OS         string `json:"OS"`
-					Online     bool   `json:"Online"`
-					TxBytes    int64  `json:"TxBytes"`
-					RxBytes    int64  `json:"RxBytes"`
+					OS           string   `json:"OS"`
+					Online       bool     `json:"Online"`
+					TxBytes      int64    `json:"TxBytes"`
+					RxBytes      int64    `json:"RxBytes"`
 				} `json:"Peer"`
 			}
 

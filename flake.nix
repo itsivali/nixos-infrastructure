@@ -60,7 +60,7 @@
         version = julesVersion;
         src = pkgs.fetchurl {
           url = "https://storage.googleapis.com/jules-cli/v${julesVersion}/jules_external_v${julesVersion}_linux_amd64.tar.gz";
-          hash = "sha256-1b2c021cy8n9diaydhj90s3jqxrkjwj9p3ff2hm7fm7j20wv99nd";
+          hash = "sha256-zaa0ORDyVHcqFM6NmySXM3cshwZJwuZVbMkiz4IATKw=";
         };
         nativeBuildInputs = [ pkgs.nodejs ];
         installPhase = ''

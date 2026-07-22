@@ -71,6 +71,7 @@ in
       Restart = "always";
       RestartSec = "30s";
       MemoryMax = "64M";
+      MemoryHigh = "48M";
       CPUQuota = "10%";
       CPUWeight = 30;
     };

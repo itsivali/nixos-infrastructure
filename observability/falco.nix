@@ -181,6 +181,11 @@ in
         Restart = "always";
         RestartSec = "10s";
 
+        # Memory limits (1GB observability budget)
+        MemoryMax = "128M";
+        MemoryHigh = "100M";
+        CPUQuota = "15%";
+
         # Hardening
         NoNewPrivileges = false; # Falco needs privileges for BPF
         PrivateTmp = true;

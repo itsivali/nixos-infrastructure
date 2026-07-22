@@ -103,11 +103,11 @@ in
     };
   };
 
-  # CPU and memory limits for all observability services
+  # CPU and memory limits for all observability services (1GB RAM budget)
   systemd.services.grafana = lib.mkIf cfg.enable {
     serviceConfig = {
-      MemoryMax = "128M";
-      MemoryHigh = "96M";
+      MemoryMax = "256M";
+      MemoryHigh = "200M";
       CPUQuota = "15%";
       CPUWeight = 50;
       IOWeight = 30;
@@ -116,8 +116,8 @@ in
 
   systemd.services.loki = lib.mkIf cfg.loki.enable {
     serviceConfig = {
-      MemoryMax = "64M";
-      MemoryHigh = "48M";
+      MemoryMax = "128M";
+      MemoryHigh = "100M";
       CPUQuota = "10%";
       CPUWeight = 40;
     };
@@ -125,8 +125,8 @@ in
 
   systemd.services.prometheus = lib.mkIf cfg.enable {
     serviceConfig = {
-      MemoryMax = "64M";
-      MemoryHigh = "48M";
+      MemoryMax = "128M";
+      MemoryHigh = "100M";
       CPUQuota = "20%";
       CPUWeight = 50;
     };

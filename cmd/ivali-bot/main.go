@@ -84,6 +84,19 @@ func main() {
 		handlers.NewGrantCommand(bot.Auth(), bot.API()),
 		handlers.NewRevokeCommand(bot.Auth(), bot.API()),
 		handlers.NewUsersListCommand(bot.Auth(), bot.API()),
+		// New commands
+		handlers.NewMenuInlineCommand(config),
+		handlers.NewUptimeCommand(config),
+		handlers.NewMemoryCommand(config),
+		handlers.NewCPUCommand(config),
+		handlers.NewUpdatesCommand(config),
+		handlers.NewDiffCommand(config),
+		handlers.NewGitopsReconcileCommand(config),
+		handlers.NewVerifyCommand(config),
+		handlers.NewGitopsBackupCommand(config),
+		handlers.NewRestoreCommand(config),
+		handlers.NewTailscaleCommand(config),
+		handlers.NewFirewallCommand(config),
 	)
 
 	// Register inline-keyboard callback handlers.

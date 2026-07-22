@@ -32,12 +32,12 @@ let
     "org.gnome.Settings.desktop"
     "LocalSend.desktop"
     "zeditor.desktop"
+    "antigravity-ide.desktop"
     "us.zoom.Zoom.desktop"
     "obsidian.desktop"
     "notion-app-enhanced.desktop"
-    "org.libreoffice.LibreOffice.writer.desktop"
-    "org.libreoffice.LibreOffice.calc.desktop"
-    "org.libreoffice.LibreOffice.impress.desktop"
+    "ivali-dashboard.desktop"
+    "bw-tui.desktop"
   ];
 
   # Apps that should always be in favorites (installed desktop GUI apps)

@@ -38,6 +38,7 @@ let
     "notion-app-enhanced.desktop"
     "ivali-dashboard.desktop"
     "bw-tui.desktop"
+    "jules-ai.desktop"
   ];
 
   # Apps that should always be in favorites (installed desktop GUI apps)

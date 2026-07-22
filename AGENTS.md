@@ -17,14 +17,14 @@ flake.nix
 ├── hosts/hosts.nix          ← host registry (declarative host specs)
 ├── configuration.nix         ← top-level module registry (auto-imports everything)
 ├── lib/host-templates/       ← NixOS host templates (laptop.nix generates full config)
-├── security/                 ← SOPS secrets, Tailscale, firewall, hardening
+├── security/                 ← SOPS secrets, Tailscale, firewall, hardening, Jules security
 ├── boot/                     ← kernel, systemd-boot, sysctl tuning
 ├── networking/               ← NetworkManager, DNS, timezone
 ├── desktop/                  ← GNOME lean, GPU acceleration
 ├── observability/            ← Prometheus, Grafana, Loki, Alloy, Falco
 ├── recovery/                 ← health checks, rollback, self-heal
 ├── automation/               ← GitOps reconciler, Telegram bot, CI
-├── developer/                ← Go, Node, Python, Flutter toolchains
+├── developer/                ← Go, Node, Python, Terraform, Jules AI agent toolchains
 ├── services/                 ← msmtp, bot, nginx, postgres, redis
 ├── home/                     ← Home Manager (shell, git, editors, fonts, services)
 ├── packages/                 ← CLI, desktop, system, user package sets
@@ -87,6 +87,14 @@ ivali explain <mod>   # Explain a module
 ivali graph tree      # Import hierarchy
 ivali dashboard       # Interactive TUI
 ivali bootstrap host  # Generate new host config
+ivali jules status    # Show Jules connection and auth status
+ivali jules login     # Authenticate with Google Jules
+ivali jules task      # Show or create a Jules task
+ivali jules tasks     # List all Jules tasks
+ivali jules cancel    # Cancel a running Jules task
+ivali jules history   # Show completed Jules tasks
+ivali jules logs      # Show Jules task logs
+ivali jules config    # Show or set Jules configuration
 ```
 
 ### Scripts
@@ -107,6 +115,7 @@ desktop-bridge helpers (`scripts/bot/lib/desktop.sh`) remain for the smoke test.
 /update    /reboot    /shutdown  /cancel
 /open      /apps      /run       /git
 /screenshot /volume   /brightness /clipboard
+/jules_status /jules_tasks /jules_new /jules_history
 ```
 
 ## Secrets
@@ -116,6 +125,7 @@ All secrets use SOPS with age encryption. Encrypted files in `secrets/`:
 - `secrets/gitlab-runner.yaml` — GitLab Runner registration token
 - `secrets/telegram.yaml` — Bot token, chat ID, email
 - `secrets/gitlab.yaml` — GitLab API token
+- `secrets/jules.yaml` — Jules API key for Google AI coding agent
 - `secrets/hosts/<name>.yaml` — Per-host secrets
 
 Runtime secrets are at `/run/secrets/` (symlinked by sops-nix).

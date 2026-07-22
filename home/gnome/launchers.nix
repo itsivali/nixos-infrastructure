@@ -59,5 +59,15 @@ in
       categories = [ "Network" "System" ];
       mimeType = [ ];
     };
+
+    jules-ai = {
+      name = "Jules AI Agent";
+      comment = "Google Jules AI coding agent";
+      exec = "jules";
+      icon = "utilities-terminal";
+      terminal = true;
+      categories = [ "Development" "Utility" ];
+      mimeType = [ ];
+    };
   };
 }

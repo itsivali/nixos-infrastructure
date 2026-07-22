@@ -53,6 +53,32 @@
       # ivali / bw-tui / ivali-bot are not rebuilt from scratch every switch.
       goSrc = import ./lib/go-src.nix { src = self; lib = lib; };
 
+      # Google Jules CLI — fetched Go binary, wrapped with Node.js runner
+      julesVersion = "0.1.42";
+      julesBinary = pkgs.stdenv.mkDerivation {
+        pname = "jules-cli";
+        version = julesVersion;
+        src = pkgs.fetchurl {
+          url = "https://storage.googleapis.com/jules-cli/v${julesVersion}/jules_external_v${julesVersion}_linux_amd64.tar.gz";
+          hash = "sha256-1b2c021cy8n9diaydhj90s3jqxrkjwj9p3ff2hm7fm7j20wv99nd";
+        };
+        nativeBuildInputs = [ pkgs.nodejs ];
+        installPhase = ''
+          runHook preInstall
+          mkdir -p $out/bin
+          mkdir -p $out/libexec/jules
+          cp jules $out/libexec/jules/jules
+          chmod +x $out/libexec/jules/jules
+          cp run.cjs $out/libexec/jules/run.cjs
+          runHook postInstall
+        '';
+        dontFixup = true;
+      };
+      julesWrapped = pkgs.writeShellScriptBin "jules" ''
+        export JULES_CONFIG_DIR="''${JULES_CONFIG_DIR:-$HOME/.config/jules}"
+        exec ${pkgs.nodejs}/bin/node ${julesBinary}/libexec/jules/run.cjs "$@"
+      '';
+
       # Generate nixosConfigurations for each host
       nixosConfigurations = lib.mapAttrs
         (name: hostSpec:
@@ -169,6 +195,8 @@
           preBuild = "export CGO_ENABLED=0";
         };
 
+        jules = julesWrapped;
+
         # FIX: required for `nix build` / CI default behavior
         default =
           self.nixosConfigurations.prague.config.system.build.toplevel;
@@ -196,6 +224,7 @@
         automation-smoke = import ./tests/automation-smoke.nix { inherit pkgs sops-nix home-manager; };
         bitwarden-smoke = import ./tests/bitwarden-smoke.nix { inherit pkgs sops-nix home-manager; };
         bot-desktop-smoke = import ./tests/bot-desktop-smoke.nix { inherit pkgs sops-nix home-manager; };
+        jules-smoke = import ./tests/jules-smoke.nix { inherit pkgs sops-nix home-manager; };
       };
     };
 }

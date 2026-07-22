@@ -36,6 +36,7 @@ func (c *MenuInlineCommand) Execute(ctx context.Context, msg *telegram.Message) 
 		{Text: "\U0001f4ca Monitoring", CallbackData: "menu:monitoring"},
 		{Text: "\U0001f4be Backup", CallbackData: "menu:backup"},
 		{Text: "\u2699\ufe0f Services", CallbackData: "menu:services"},
+		{Text: "\U0001f916 Jules", CallbackData: "menu:jules"},
 		{Text: "\u2753 Help", CallbackData: "menu:help"},
 	}
 
@@ -65,6 +66,8 @@ func (c *MenuInlineCommand) handleCallback(_ context.Context, msg *telegram.Mess
 		return c.showBackup(msg.ChatID)
 	case "services":
 		return c.showServices(msg.ChatID)
+	case "jules":
+		return c.showJules(msg.ChatID)
 	case "help":
 		return c.showHelp(msg.ChatID)
 	default:
@@ -203,6 +206,40 @@ func (c *MenuInlineCommand) showServices(chatID int64) error {
 	return c.api.SendMarkdown(chatID, strings.Join(lines, "\n"))
 }
 
+func (c *MenuInlineCommand) showJules(chatID int64) error {
+	var lines []string
+	lines = append(lines, "*Jules AI Agent*")
+	lines = append(lines, "")
+
+	binCheck := runCmd("which jules 2>/dev/null && echo found || echo not_found", 5)
+	binCheck = strings.TrimSpace(binCheck)
+	if binCheck == "found" {
+		lines = append(lines, "*CLI:* `installed`")
+	} else {
+		lines = append(lines, "*CLI:* `not installed`")
+		lines = append(lines, "")
+		lines = append(lines, "_Jules is not installed on this host._")
+		return c.api.SendMarkdown(chatID, strings.Join(lines, "\n"))
+	}
+
+	apiKeyCheck := runCmd("test -f /run/secrets/jules-api-key && echo present || echo missing", 5)
+	apiKeyCheck = strings.TrimSpace(apiKeyCheck)
+	if apiKeyCheck == "present" {
+		lines = append(lines, "*API key:* `configured`")
+	} else {
+		lines = append(lines, "*API key:* `not found`")
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, "*Commands:*")
+	lines = append(lines, "  /jules_status — Connection status")
+	lines = append(lines, "  /jules_tasks — List tasks")
+	lines = append(lines, "  /jules_new — Create a task")
+	lines = append(lines, "  /jules_history — Past tasks")
+
+	return c.api.SendMarkdown(chatID, strings.Join(lines, "\n"))
+}
+
 func (c *MenuInlineCommand) showHelp(chatID int64) error {
 	var lines []string
 	lines = append(lines, "*Available Commands*")
@@ -213,6 +250,7 @@ func (c *MenuInlineCommand) showHelp(chatID int64) error {
 	lines = append(lines, "*Network:* /tailscale /firewall")
 	lines = append(lines, "*Desktop:* /open /apps /screenshot /volume /brightness")
 	lines = append(lines, "*Dev:* /git /nix /run /scan /doctor")
+	lines = append(lines, "*AI Agent:* /jules_status /jules_tasks /jules_new /jules_history")
 	lines = append(lines, "*Info:* /help /menu /menu_inline /top /generations")
 
 	return c.api.SendMarkdown(chatID, strings.Join(lines, "\n"))

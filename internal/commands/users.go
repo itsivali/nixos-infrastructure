@@ -51,7 +51,7 @@ func CmdUsers(a *app.App) *cobra.Command {
 			}
 			fmt.Println()
 
-			sudo, err := exec.Command("sh", "-c", "sudo -n true 2>&1 && echo 'passwordless' || echo 'requires password'").CombinedOutput()
+			sudo, _ := exec.Command("sh", "-c", "sudo -n true 2>&1 && echo 'passwordless' || echo 'requires password'").CombinedOutput()
 			fmt.Println(t.Section("Sudo Access"))
 			fmt.Println(t.KeyValue("Current user", strings.TrimSpace(string(sudo))))
 

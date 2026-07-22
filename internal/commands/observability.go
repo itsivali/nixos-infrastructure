@@ -34,13 +34,13 @@ func CmdObservability(a *app.App) *cobra.Command {
 			for _, s := range services {
 				out, err := exec.Command("curl", "-sf", "--max-time", "3", s.url).CombinedOutput()
 				if err != nil {
-					fmt.Println(fmt.Sprintf("  %s %-15s %s", t.Bad("✗"), s.name, t.Dim("unavailable")))
+					fmt.Printf("  %s %-15s %s\n", t.Bad("✗"), s.name, t.Dim("unavailable"))
 				} else {
 					resp := strings.TrimSpace(string(out))
 					if len(resp) > 50 {
 						resp = resp[:50] + "..."
 					}
-					fmt.Println(fmt.Sprintf("  %s %-15s %s", t.Good("✓"), s.name, t.Dim(resp)))
+					fmt.Printf("  %s %-15s %s\n", t.Good("✓"), s.name, t.Dim(resp))
 				}
 			}
 
@@ -54,7 +54,7 @@ func CmdObservability(a *app.App) *cobra.Command {
 				if state == "active" {
 					icon = t.Good("✓")
 				}
-				fmt.Println(fmt.Sprintf("  %s %-30s %s", icon, svc, state))
+				fmt.Printf("  %s %-30s %s\n", icon, svc, state)
 			}
 
 			return nil

@@ -33,7 +33,7 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      self.packages.${pkgs.system}.jules
+      self.packages.${pkgs.stdenv.hostPlatform.system}.jules
       pkgs.nodejs
     ];
 

@@ -52,7 +52,7 @@ func CmdServices(a *app.App) *cobra.Command {
 					detail += fmt.Sprintf("  since=%s", uptimeStr)
 				}
 
-				fmt.Println(fmt.Sprintf("  %s %-25s %s", icon, svc, t.Dim(detail)))
+				fmt.Printf("  %s %-25s %s\n", icon, svc, t.Dim(detail))
 			}
 
 			fmt.Println()

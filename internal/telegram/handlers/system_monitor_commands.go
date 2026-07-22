@@ -113,7 +113,7 @@ func (c *CPUCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 
 	parts := strings.Fields(loadAvg)
 	if len(parts) >= 3 {
-		lines = append(lines, fmt.Sprintf("*Load averages (1/5/15 min):*"))
+		lines = append(lines, "*Load averages (1/5/15 min):*")
 		lines = append(lines, fmt.Sprintf("  1 min:  `%s`", parts[0]))
 		lines = append(lines, fmt.Sprintf("  5 min:  `%s`", parts[1]))
 		lines = append(lines, fmt.Sprintf("  15 min: `%s`", parts[2]))

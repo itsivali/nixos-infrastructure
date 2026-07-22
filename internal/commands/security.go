@@ -42,7 +42,7 @@ func CmdSecurity(a *app.App) *cobra.Command {
 				if state == c.pass {
 					icon = t.Good("✓")
 				}
-				fmt.Println(fmt.Sprintf("  %s %-20s %s", icon, c.name, state))
+				fmt.Printf("  %s %-20s %s\n", icon, c.name, state)
 			}
 
 			fmt.Println()
@@ -72,7 +72,7 @@ func CmdSecurity(a *app.App) *cobra.Command {
 				if state == "yes" {
 					icon = t.Good("✓")
 				}
-				fmt.Println(fmt.Sprintf("  %s %s", icon, flag))
+				fmt.Printf("  %s %s\n", icon, flag)
 			}
 
 			fmt.Println()
@@ -88,7 +88,7 @@ func CmdSecurity(a *app.App) *cobra.Command {
 						rulesCount++
 					}
 				}
-				fmt.Println(fmt.Sprintf("  %s nftables active  •  %d rules", t.Good("✓"), rulesCount))
+				fmt.Printf("  %s nftables active  •  %d rules\n", t.Good("✓"), rulesCount)
 			}
 
 			return nil

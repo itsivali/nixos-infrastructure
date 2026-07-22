@@ -149,7 +149,6 @@ func (c *Client) GetVaultStatus() (string, error) {
 	return s.Status, nil
 }
 
-
 func (c *Client) Unlock(password string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -172,6 +171,59 @@ func (c *Client) Unlock(password string) (string, error) {
 	}
 	return strings.TrimSpace(string(out)), nil
 }
+
+func (c *Client) LoginAndUnlock(email, password, clientID, clientSecret string) (string, error) {
+	status, _ := c.GetVaultStatus()
+
+	if status == "unauthenticated" {
+		if clientID != "" && clientSecret != "" {
+			if err := c.Login(clientID, clientSecret); err != nil {
+				return "", fmt.Errorf("login API key failed: %w", err)
+			}
+			// Status transitions to locked, proceed to Unlock(password) below
+		} else if email != "" && password != "" {
+			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			cmd := exec.CommandContext(ctx, c.BwPath, "login", email, "--passwordenv", "BW_PASS", "--raw")
+			cmd.Stdin = nil
+			stderr := new(strings.Builder)
+			cmd.Stderr = stderr
+			filteredEnv := make([]string, 0, len(os.Environ()))
+			for _, e := range os.Environ() {
+				if !strings.HasPrefix(e, "BW_PASS=") {
+					filteredEnv = append(filteredEnv, e)
+				}
+			}
+			cmd.Env = append(filteredEnv, "BW_PASS="+password)
+
+			out, err := cmd.Output()
+			if err != nil {
+				if ctx.Err() == context.DeadlineExceeded {
+					return "", fmt.Errorf("login timeout")
+				}
+				msg := strings.TrimSpace(stderr.String())
+				if msg == "" {
+					msg = strings.TrimSpace(string(out))
+				}
+				if msg == "" {
+					msg = err.Error()
+				}
+				return "", fmt.Errorf("login: %s", msg)
+			}
+			session := strings.TrimSpace(string(out))
+			if session != "" {
+				c.Session = session
+				return session, nil
+			}
+		} else {
+			return "", fmt.Errorf("vault is unauthenticated: please enter email and master password to log in")
+		}
+	}
+
+	return c.Unlock(password)
+}
+
+
 
 func (c *Client) Lock() error {
 	_, err := c.run("lock")

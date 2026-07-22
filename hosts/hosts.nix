@@ -98,6 +98,7 @@
     sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
     features = {
       secrets = true;
+      bitwarden = true;
       gitlabRunner = true;
       bot = true;
       tailscale = true;

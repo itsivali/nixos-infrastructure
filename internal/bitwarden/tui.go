@@ -156,7 +156,10 @@ func (c categoryTab) String() string {
 }
 
 type unlockModel struct {
+	status      string // "unauthenticated" or "locked"
+	email       []rune
 	password    []rune
+	activeField int // 0 = email (if unauthenticated), 1 = password
 	err         string
 	unlocking   bool
 	hasSopsPass bool
@@ -186,7 +189,7 @@ type listModel struct {
 
 type tuiModel struct {
 	mode  viewMode
-	state string // "loading", "unlocked", "locked", "error"
+	state string // "loading", "unlocked", "locked", "unauthenticated", "error"
 
 	width  int
 	height int
@@ -300,14 +303,33 @@ func (m *tuiModel) Init() tea.Cmd {
 }
 
 func (m *tuiModel) initUnlockModel() {
-	m.unlock = &unlockModel{
-		password: nil,
+	status, _ := m.client.GetVaultStatus()
+	if status == "" || status == "unknown" {
+		status = "locked"
 	}
-	// Check for SOPS decrypted password file
-	sopsPath := "/run/secrets/bitwarden_password"
-	if data, err := os.ReadFile(sopsPath); err == nil && len(strings.TrimSpace(string(data))) > 0 {
+
+	m.unlock = &unlockModel{
+		status:      status,
+		activeField: 0,
+	}
+
+	if status == "unauthenticated" {
+		m.unlock.activeField = 0
+	} else {
+		m.unlock.activeField = 1
+	}
+
+	// Read SOPS password if present
+	sopsPassPath := "/run/secrets/bitwarden_password"
+	if data, err := os.ReadFile(sopsPassPath); err == nil && len(strings.TrimSpace(string(data))) > 0 {
 		m.unlock.hasSopsPass = true
 		m.unlock.sopsPass = strings.TrimSpace(string(data))
+	}
+
+	// Read SOPS email if present
+	sopsEmailPath := "/run/secrets/bitwarden_email"
+	if data, err := os.ReadFile(sopsEmailPath); err == nil && len(strings.TrimSpace(string(data))) > 0 {
+		m.unlock.email = []rune(strings.TrimSpace(string(data)))
 	}
 }
 
@@ -326,7 +348,12 @@ func (m *tuiModel) loadItems() tea.Cmd {
 
 		items, err = m.client.ListItems()
 		if err != nil {
-			m.state = "locked"
+			status, _ := m.client.GetVaultStatus()
+			if status == "unauthenticated" {
+				m.state = "unauthenticated"
+			} else {
+				m.state = "locked"
+			}
 			return itemsErrMsg{err: err}
 		}
 		if m.cacheFile != "" {
@@ -413,7 +440,6 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case itemsErrMsg:
 		m.err = msg.err
 		m.errTime = time.Now()
-		m.state = "locked"
 		m.mode = modeUnlock
 		m.initUnlockModel()
 		return m, nil
@@ -424,7 +450,7 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		_ = WriteSessionFile(m.sessionFile, msg.session)
 		m.state = "unlocked"
 		m.mode = modeList
-		m.showToast("Vault Unlocked Successfully!")
+		m.showToast("Vault Logged In & Unlocked Successfully!")
 		return m, m.reloadItems()
 
 	case unlockErrMsg:
@@ -479,45 +505,68 @@ func (m *tuiModel) handleUnlockKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
-	case "ctrl+c":
+	case "ctrl+c", "esc":
 		return m, tea.Quit
 
-	case "esc":
-		return m, tea.Quit
+	case "tab", "down", "up":
+		if m.unlock.status == "unauthenticated" {
+			if m.unlock.activeField == 0 {
+				m.unlock.activeField = 1
+			} else {
+				m.unlock.activeField = 0
+			}
+		}
 
 	case "backspace":
-		if len(m.unlock.password) > 0 {
+		if m.unlock.activeField == 0 && len(m.unlock.email) > 0 {
+			m.unlock.email = m.unlock.email[:len(m.unlock.email)-1]
+		} else if len(m.unlock.password) > 0 {
 			m.unlock.password = m.unlock.password[:len(m.unlock.password)-1]
 		}
 
 	case "enter":
-		if len(m.unlock.password) > 0 && !m.unlock.unlocking {
+		if !m.unlock.unlocking {
+			if m.unlock.status == "unauthenticated" && len(m.unlock.email) == 0 {
+				m.unlock.err = "Please enter your Bitwarden email address"
+				return m, nil
+			}
+			if len(m.unlock.password) == 0 {
+				m.unlock.err = "Please enter your master password"
+				return m, nil
+			}
 			m.unlock.unlocking = true
 			m.unlock.err = ""
-			pass := string(m.unlock.password)
-			return m, m.performUnlock(pass)
+			return m, m.performLoginAndUnlock(string(m.unlock.email), string(m.unlock.password))
 		}
 
 	case "s":
 		if m.unlock.hasSopsPass && !m.unlock.unlocking {
 			m.unlock.unlocking = true
 			m.unlock.err = ""
-			return m, m.performUnlock(m.unlock.sopsPass)
+			return m, m.performLoginAndUnlock(string(m.unlock.email), m.unlock.sopsPass)
 		} else if !m.unlock.unlocking && isPrintableKey(msg) {
-			m.unlock.password = append(m.unlock.password, []rune(msg.String())...)
+			if m.unlock.activeField == 0 && m.unlock.status == "unauthenticated" {
+				m.unlock.email = append(m.unlock.email, []rune(msg.String())...)
+			} else {
+				m.unlock.password = append(m.unlock.password, []rune(msg.String())...)
+			}
 		}
 
 	default:
 		if isPrintableKey(msg) && !m.unlock.unlocking {
-			m.unlock.password = append(m.unlock.password, []rune(msg.String())...)
+			if m.unlock.activeField == 0 && m.unlock.status == "unauthenticated" {
+				m.unlock.email = append(m.unlock.email, []rune(msg.String())...)
+			} else {
+				m.unlock.password = append(m.unlock.password, []rune(msg.String())...)
+			}
 		}
 	}
 	return m, nil
 }
 
-func (m *tuiModel) performUnlock(password string) tea.Cmd {
+func (m *tuiModel) performLoginAndUnlock(email, password string) tea.Cmd {
 	return func() tea.Msg {
-		session, err := m.client.Unlock(password)
+		session, err := m.client.LoginAndUnlock(email, password, "", "")
 		if err != nil {
 			return unlockErrMsg{err: err}
 		}
@@ -830,31 +879,68 @@ func (m *tuiModel) View() string {
 func (m *tuiModel) renderUnlock() string {
 	var b strings.Builder
 
-	title := styleTitleBar.Render(" 🔐 Bitwarden Vault — Unlock Required ")
-	b.WriteString(title + "\n\n")
-
-	var dialogContent string
 	if m.unlock == nil {
 		m.initUnlockModel()
 	}
 
-	masked := strings.Repeat("•", len(m.unlock.password))
-	if m.unlock.unlocking {
-		dialogContent += "Unlocking vault...\n\n"
-	} else {
-		dialogContent += fmt.Sprintf("Master Password: %s█\n\n", masked)
-		if m.unlock.hasSopsPass {
-			dialogContent += lipgloss.NewStyle().Foreground(clrGreen).Render("✓ SOPS secret detected at /run/secrets/bitwarden_password") + "\n"
-			dialogContent += fmt.Sprintf("Press %s to unlock using SOPS secret\n\n", styleKey.Render("[s]"))
-		}
-		if m.unlock.err != "" {
-			dialogContent += lipgloss.NewStyle().Foreground(clrRed).Render("Error: "+m.unlock.err) + "\n\n"
-		}
-		dialogContent += "Press [Enter] to submit  •  [Esc/q] to quit"
-	}
+	if m.unlock.status == "unauthenticated" {
+		title := styleTitleBar.Render(" 🔑 Bitwarden Vault — Login Required ")
+		b.WriteString(title + "\n\n")
 
-	box := styleBox.Width(min(60, m.width-4)).Render(dialogContent)
-	b.WriteString(box + "\n")
+		var dialogContent string
+		if m.unlock.unlocking {
+			dialogContent += "Logging into Bitwarden...\n\n"
+		} else {
+			emailStr := string(m.unlock.email)
+			if m.unlock.activeField == 0 {
+				dialogContent += fmt.Sprintf("%s Email: %s█\n\n", styleKey.Render("►"), emailStr)
+			} else {
+				dialogContent += fmt.Sprintf("  Email: %s\n\n", emailStr)
+			}
+
+			maskedPass := strings.Repeat("•", len(m.unlock.password))
+			if m.unlock.activeField == 1 {
+				dialogContent += fmt.Sprintf("%s Master Password: %s█\n\n", styleKey.Render("►"), maskedPass)
+			} else {
+				dialogContent += fmt.Sprintf("  Master Password: %s\n\n", maskedPass)
+			}
+
+			if m.unlock.hasSopsPass {
+				dialogContent += lipgloss.NewStyle().Foreground(clrGreen).Render("✓ SOPS master password detected") + "\n"
+				dialogContent += fmt.Sprintf("Press %s to login using SOPS secret\n\n", styleKey.Render("[s]"))
+			}
+
+			if m.unlock.err != "" {
+				dialogContent += lipgloss.NewStyle().Foreground(clrRed).Render("Error: "+m.unlock.err) + "\n\n"
+			}
+			dialogContent += "Press [Tab/↑↓] switch field  •  [Enter] submit  •  [Esc] quit"
+		}
+
+		box := styleBox.Width(min(65, m.width-4)).Render(dialogContent)
+		b.WriteString(box + "\n")
+	} else {
+		title := styleTitleBar.Render(" 🔐 Bitwarden Vault — Unlock Required ")
+		b.WriteString(title + "\n\n")
+
+		var dialogContent string
+		masked := strings.Repeat("•", len(m.unlock.password))
+		if m.unlock.unlocking {
+			dialogContent += "Unlocking vault...\n\n"
+		} else {
+			dialogContent += fmt.Sprintf("Master Password: %s█\n\n", masked)
+			if m.unlock.hasSopsPass {
+				dialogContent += lipgloss.NewStyle().Foreground(clrGreen).Render("✓ SOPS master password detected") + "\n"
+				dialogContent += fmt.Sprintf("Press %s to unlock using SOPS secret\n\n", styleKey.Render("[s]"))
+			}
+			if m.unlock.err != "" {
+				dialogContent += lipgloss.NewStyle().Foreground(clrRed).Render("Error: "+m.unlock.err) + "\n\n"
+			}
+			dialogContent += "Press [Enter] to submit  •  [Esc/q] to quit"
+		}
+
+		box := styleBox.Width(min(60, m.width-4)).Render(dialogContent)
+		b.WriteString(box + "\n")
+	}
 
 	return lipgloss.NewStyle().Width(m.width).Render(b.String())
 }
@@ -1081,6 +1167,8 @@ func (m *tuiModel) stateIcon() string {
 		return "🔓"
 	case "locked":
 		return "🔒"
+	case "unauthenticated":
+		return "🔑"
 	case "error":
 		return "⚠"
 	default:

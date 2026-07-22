@@ -38,4 +38,3 @@ func CopyToClipboardWithTimeout(text string, timeoutSec int) error {
 func SendNotification(title, message string) {
 	_ = exec.Command("notify-send", "-a", "Bitwarden TUI", "-i", "dialog-password", title, message).Run()
 }
-

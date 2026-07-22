@@ -60,7 +60,7 @@
             inherit system;
 
             specialArgs = {
-              inherit self;
+              inherit self inputs;
               flake = self;
               hostSpec = hostSpec;
               defaultUsername = hostSpec.userName or defaultUsername;

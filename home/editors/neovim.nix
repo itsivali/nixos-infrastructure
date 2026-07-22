@@ -29,7 +29,7 @@ let
   lspPackages = with pkgs; [
     gopls
     nil
-    nodePackages.typescript-language-server
+    typescript-language-server
     pyright
     rust-analyzer
     nixpkgs-fmt
@@ -121,8 +121,8 @@ in
       cmp-nvim-lsp
       cmp-buffer
       cmp-path
-      LuaSnip
-      cmp_luasnip
+      luasnip
+      { plugin = pkgs.vimPlugins.cmp_luasnip; }
 
       # Treesitter
       {
@@ -142,14 +142,14 @@ in
       { plugin = lazygit-nvim; config = "vim.g.lazygit_floating_window_winblend = 0"; type = "lua"; }
 
       # Editing
-      { plugin = Comment-nvim; config = "lua require('Comment').setup()"; type = "lua"; }
+      { plugin = comment-nvim; config = "lua require('Comment').setup()"; type = "lua"; }
       { plugin = nvim-autopairs; config = "lua require('nvim-autopairs').setup()"; type = "lua"; }
       { plugin = popup-nvim; }
     ];
 
     extraPackages = lspPackages;
 
-    extraLuaConfig = /* lua */ ''
+    initLua = /* lua */ ''
       -- ── General Settings ──────────────────────────────────────────────
       vim.opt.number = true
       vim.opt.relativenumber = true

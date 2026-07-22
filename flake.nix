@@ -63,21 +63,19 @@
           hash = "sha256-c869LI+Jubsk703MuM15Q8y2npmzfeJnwvV5Mjen0QM=";
         };
         sourceRoot = ".";
-        nativeBuildInputs = [ pkgs.nodejs ];
         installPhase = ''
           runHook preInstall
           mkdir -p $out/bin
           mkdir -p $out/libexec/jules
           cp jules $out/libexec/jules/jules
           chmod +x $out/libexec/jules/jules
-          cp run.cjs $out/libexec/jules/run.cjs
           runHook postInstall
         '';
         dontFixup = true;
       };
       julesWrapped = pkgs.writeShellScriptBin "jules" ''
         export JULES_CONFIG_DIR="''${JULES_CONFIG_DIR:-$HOME/.config/jules}"
-        exec ${pkgs.nodejs}/bin/node ${julesBinary}/libexec/jules/run.cjs "$@"
+        exec ${julesBinary}/libexec/jules/jules "$@"
       '';
 
       # Generate nixosConfigurations for each host

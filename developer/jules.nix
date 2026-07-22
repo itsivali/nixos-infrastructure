@@ -34,7 +34,6 @@ in
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
       self.packages.${pkgs.stdenv.hostPlatform.system}.jules
-      pkgs.nodejs
     ];
 
     # SOPS secret for the API key

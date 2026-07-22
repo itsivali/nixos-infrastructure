@@ -39,6 +39,7 @@ let
     "ivali-dashboard.desktop"
     "bw-tui.desktop"
     "jules-ai.desktop"
+    "nvim.desktop"
   ];
 
   # Apps that should always be in favorites (installed desktop GUI apps)
@@ -51,6 +52,7 @@ let
   removeFavorites = [
     "org.gnome.Extensions.desktop" # GNOME Extensions app
     "org.gnome.DiskUtility.desktop" # Disks
+    "org.gnome.Screenshot.desktop"
     "vlc.desktop"
   ];
 

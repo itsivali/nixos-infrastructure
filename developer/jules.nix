@@ -9,7 +9,7 @@
 #
 # Ownership
 # ---------
-# environment.systemPackages, programs.git
+# environment.systemPackages
 #
 # Does NOT Own
 # ------------
@@ -37,12 +37,9 @@ in
       pkgs.nodejs
     ];
 
-    # Git configuration for Jules (needs a proper user identity)
-    programs.git.enable = true;
-
     # SOPS secret for the API key
     sops.secrets.jules-api-key = {
-      sopsFile = ../../secrets/jules.yaml;
+      sopsFile = ../secrets/jules.yaml;
       path = "/run/secrets/jules-api-key";
     };
   };

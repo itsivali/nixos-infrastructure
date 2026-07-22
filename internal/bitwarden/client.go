@@ -133,6 +133,23 @@ func (c *Client) Status() (string, error) {
 	return strings.TrimSpace(string(out)), nil
 }
 
+type bwStatusJSON struct {
+	Status string `json:"status"`
+}
+
+func (c *Client) GetVaultStatus() (string, error) {
+	out, err := c.run("status")
+	if err != nil {
+		return "unknown", err
+	}
+	var s bwStatusJSON
+	if err := json.Unmarshal(out, &s); err != nil {
+		return "unknown", nil
+	}
+	return s.Status, nil
+}
+
+
 func (c *Client) Unlock(password string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()

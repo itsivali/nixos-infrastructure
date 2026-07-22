@@ -11,21 +11,46 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// ── Styling ──────────────────────────────────────────────
+// ── Styling (Catppuccin Mocha) ─────────────────────────────
 
 var (
-	clrDim     = lipgloss.Color("#6c7086")
-	clrAccent  = lipgloss.Color("#89b4fa")
-	clrGreen   = lipgloss.Color("#a6e3a1")
-	clrRed     = lipgloss.Color("#f38ba8")
-	clrWhite   = lipgloss.Color("#cdd6f4")
-	clrSurface = lipgloss.Color("#313244")
+	clrCrust    = lipgloss.Color("#11111b")
+	clrBase     = lipgloss.Color("#1e1e2e")
+	clrSurface  = lipgloss.Color("#313244")
+	clrOverlay  = lipgloss.Color("#45475a")
+	clrDim      = lipgloss.Color("#6c7086")
+	clrText     = lipgloss.Color("#cdd6f4")
+	clrAccent   = lipgloss.Color("#89b4fa")
+	clrGreen    = lipgloss.Color("#a6e3a1")
+	clrRed      = lipgloss.Color("#f38ba8")
+	clrYellow   = lipgloss.Color("#f9e2af")
+	clrMauve    = lipgloss.Color("#cba6f7")
+	clrLavender = lipgloss.Color("#b4bfe2")
+
+	styleTitleBar = lipgloss.NewStyle().
+			Foreground(clrCrust).
+			Background(clrAccent).
+			Bold(true).
+			Padding(0, 1)
+
+	styleTabActive = lipgloss.NewStyle().
+			Foreground(clrCrust).
+			Background(clrMauve).
+			Bold(true).
+			Padding(0, 1)
+
+	styleTabInactive = lipgloss.NewStyle().
+			Foreground(clrText).
+			Background(clrSurface).
+			Padding(0, 1)
 
 	styleItem = lipgloss.NewStyle().
 			Padding(0, 2)
 
 	styleSelected = lipgloss.NewStyle().
+			Foreground(clrText).
 			Background(clrSurface).
+			Bold(true).
 			Padding(0, 2)
 
 	styleDim = lipgloss.NewStyle().
@@ -33,12 +58,13 @@ var (
 			Padding(0, 2)
 
 	styleDetailLabel = lipgloss.NewStyle().
-				Foreground(clrDim).
+				Foreground(clrMauve).
+				Bold(true).
 				Width(11).
 				Align(lipgloss.Right)
 
 	styleDetailValue = lipgloss.NewStyle().
-				Foreground(clrWhite).
+				Foreground(clrText).
 				Padding(0, 0, 0, 1)
 
 	styleCopied = lipgloss.NewStyle().
@@ -49,14 +75,15 @@ var (
 			Foreground(clrAccent).
 			Bold(true)
 
-	styleTitleBar = lipgloss.NewStyle().
-			Foreground(clrWhite).
-			Background(lipgloss.Color("#45475a")).
+	styleStatusBar = lipgloss.NewStyle().
+			Foreground(clrText).
+			Background(clrOverlay).
 			Padding(0, 1)
 
-	styleStatusBar = lipgloss.NewStyle().
-			Foreground(clrDim).
-			Padding(0, 1)
+	styleBox = lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(clrMauve).
+			Padding(1, 2)
 )
 
 // ── Messages ──────────────────────────────────────────────
@@ -83,32 +110,78 @@ type syncErrMsg struct {
 	err error
 }
 
-// ── Model ─────────────────────────────────────────────────
+type unlockSuccessMsg struct {
+	session string
+}
+
+type unlockErrMsg struct {
+	err error
+}
+
+// ── Model Definitions ─────────────────────────────────────
 
 type viewMode int
 
 const (
 	modeList viewMode = iota
 	modeDetail
+	modeUnlock
 )
 
-type listModel struct {
-	items    []VaultItem
-	filtered []VaultItem
-	cursor   int
-	offset   int
-	filter   []rune
+type categoryTab int
+
+const (
+	tabAll categoryTab = iota
+	tabLogins
+	tabCards
+	tabNotes
+	tabFavorites
+)
+
+func (c categoryTab) String() string {
+	switch c {
+	case tabAll:
+		return "All"
+	case tabLogins:
+		return "Logins"
+	case tabCards:
+		return "Cards"
+	case tabNotes:
+		return "Notes"
+	case tabFavorites:
+		return "Favorites"
+	default:
+		return "All"
+	}
+}
+
+type unlockModel struct {
+	password    []rune
+	err         string
+	unlocking   bool
+	hasSopsPass bool
+	sopsPass    string
 }
 
 type detailModel struct {
-	item        VaultItem
-	password    string
-	fetching    bool
-	copiedField string
-	copiedAt    time.Time
-	err         string
-	status      string
-	statusAt    time.Time
+	item         VaultItem
+	password     string
+	showPassword bool
+	fetching     bool
+	copiedField  string
+	copiedAt     time.Time
+	err          string
+	status       string
+	statusAt     time.Time
+}
+
+type listModel struct {
+	items     []VaultItem
+	filtered  []VaultItem
+	cursor    int
+	offset    int
+	filter    []rune
+	activeTab categoryTab
 }
 
 type tuiModel struct {
@@ -120,6 +193,7 @@ type tuiModel struct {
 
 	list   listModel
 	detail *detailModel
+	unlock *unlockModel
 
 	client *Client
 	env    *Env
@@ -130,6 +204,9 @@ type tuiModel struct {
 	sessionFile   string
 
 	initialFilter string
+
+	toast   string
+	toastAt time.Time
 
 	err     error
 	errTime time.Time
@@ -189,9 +266,6 @@ func (e *Env) Resolve() {
 		}
 		e.CacheTimeFile = rtDir + "/cache-time"
 	}
-	// Only trust the session file — it's deleted on lock. The env var from
-	// shell startup may be stale after inactivity lock. If the file doesn't
-	// exist the vault is locked; don't guess with the env var.
 	if e.Session == "" {
 		if session, err := ReadSessionFromFile(e.SessionFile); err == nil {
 			e.Session = session
@@ -216,8 +290,6 @@ func NewTUI(env *Env, initialFilter string) *tuiModel {
 }
 
 func (m *tuiModel) Init() tea.Cmd {
-	// Restore session synchronously before loading items to avoid
-	// a race where loadItems runs bw list without BW_SESSION set.
 	if m.env.Session != "" {
 		m.client.Session = m.env.Session
 	} else if session, err := ReadSessionFromFile(m.sessionFile); err == nil && session != "" {
@@ -227,9 +299,20 @@ func (m *tuiModel) Init() tea.Cmd {
 	return m.loadItems()
 }
 
+func (m *tuiModel) initUnlockModel() {
+	m.unlock = &unlockModel{
+		password: nil,
+	}
+	// Check for SOPS decrypted password file
+	sopsPath := "/run/secrets/bitwarden_password"
+	if data, err := os.ReadFile(sopsPath); err == nil && len(strings.TrimSpace(string(data))) > 0 {
+		m.unlock.hasSopsPass = true
+		m.unlock.sopsPass = strings.TrimSpace(string(data))
+	}
+}
+
 func (m *tuiModel) loadItems() tea.Cmd {
 	return func() tea.Msg {
-		// Try cache first
 		var items []VaultItem
 		var err error
 
@@ -241,13 +324,11 @@ func (m *tuiModel) loadItems() tea.Cmd {
 			}
 		}
 
-		// Fall back to live listing
 		items, err = m.client.ListItems()
 		if err != nil {
-			m.state = "error"
+			m.state = "locked"
 			return itemsErrMsg{err: err}
 		}
-		// Write back to cache for next startup
 		if m.cacheFile != "" {
 			_ = WriteCache(m.cacheFile, items)
 			_ = WriteCacheTime(m.cacheTimeFile)
@@ -259,24 +340,53 @@ func (m *tuiModel) loadItems() tea.Cmd {
 
 func (m *tuiModel) applyFilter() {
 	filter := strings.ToLower(string(m.list.filter))
-	if filter == "" {
-		m.list.filtered = make([]VaultItem, len(m.list.items))
-		copy(m.list.filtered, m.list.items)
-	} else {
-		m.list.filtered = nil
-		for _, item := range m.list.items {
+	m.list.filtered = nil
+
+	for _, item := range m.list.items {
+		// Category tab filter
+		switch m.list.activeTab {
+		case tabLogins:
+			if item.Type != 1 {
+				continue
+			}
+		case tabCards:
+			if item.Type != 2 {
+				continue
+			}
+		case tabNotes:
+			if item.Type != 4 {
+				continue
+			}
+		case tabFavorites:
+			if !item.Favorite {
+				continue
+			}
+		}
+
+		// Text search across fields
+		if filter == "" {
+			m.list.filtered = append(m.list.filtered, item)
+		} else {
 			if strings.Contains(strings.ToLower(item.Name), filter) ||
-				strings.Contains(strings.ToLower(item.Username()), filter) {
+				strings.Contains(strings.ToLower(item.Username()), filter) ||
+				strings.Contains(strings.ToLower(item.PrimaryURI()), filter) ||
+				strings.Contains(strings.ToLower(item.Notes), filter) {
 				m.list.filtered = append(m.list.filtered, item)
 			}
 		}
 	}
+
 	if m.list.cursor >= len(m.list.filtered) {
 		m.list.cursor = len(m.list.filtered) - 1
 		if m.list.cursor < 0 {
 			m.list.cursor = 0
 		}
 	}
+}
+
+func (m *tuiModel) showToast(msg string) {
+	m.toast = msg
+	m.toastAt = time.Now()
 }
 
 func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -297,12 +407,31 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.initialFilter = ""
 		}
 		m.state = "unlocked"
+		m.mode = modeList
 		return m, nil
 
 	case itemsErrMsg:
 		m.err = msg.err
 		m.errTime = time.Now()
-		m.state = "error"
+		m.state = "locked"
+		m.mode = modeUnlock
+		m.initUnlockModel()
+		return m, nil
+
+	case unlockSuccessMsg:
+		m.env.Session = msg.session
+		m.client.Session = msg.session
+		_ = WriteSessionFile(m.sessionFile, msg.session)
+		m.state = "unlocked"
+		m.mode = modeList
+		m.showToast("Vault Unlocked Successfully!")
+		return m, m.reloadItems()
+
+	case unlockErrMsg:
+		if m.unlock != nil {
+			m.unlock.unlocking = false
+			m.unlock.err = msg.err.Error()
+		}
 		return m, nil
 
 	case passwordMsg:
@@ -320,6 +449,7 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case syncDoneMsg:
+		m.showToast("Vault Synced!")
 		return m, m.loadItems()
 
 	case syncErrMsg:
@@ -333,6 +463,8 @@ func (m *tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *tuiModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch m.mode {
+	case modeUnlock:
+		return m.handleUnlockKey(msg)
 	case modeList:
 		return m.handleListKey(msg)
 	case modeDetail:
@@ -341,10 +473,84 @@ func (m *tuiModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *tuiModel) handleUnlockKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.unlock == nil {
+		m.initUnlockModel()
+	}
+
+	switch msg.String() {
+	case "ctrl+c":
+		return m, tea.Quit
+
+	case "esc":
+		return m, tea.Quit
+
+	case "backspace":
+		if len(m.unlock.password) > 0 {
+			m.unlock.password = m.unlock.password[:len(m.unlock.password)-1]
+		}
+
+	case "enter":
+		if len(m.unlock.password) > 0 && !m.unlock.unlocking {
+			m.unlock.unlocking = true
+			m.unlock.err = ""
+			pass := string(m.unlock.password)
+			return m, m.performUnlock(pass)
+		}
+
+	case "s":
+		if m.unlock.hasSopsPass && !m.unlock.unlocking {
+			m.unlock.unlocking = true
+			m.unlock.err = ""
+			return m, m.performUnlock(m.unlock.sopsPass)
+		} else if !m.unlock.unlocking && isPrintableKey(msg) {
+			m.unlock.password = append(m.unlock.password, []rune(msg.String())...)
+		}
+
+	default:
+		if isPrintableKey(msg) && !m.unlock.unlocking {
+			m.unlock.password = append(m.unlock.password, []rune(msg.String())...)
+		}
+	}
+	return m, nil
+}
+
+func (m *tuiModel) performUnlock(password string) tea.Cmd {
+	return func() tea.Msg {
+		session, err := m.client.Unlock(password)
+		if err != nil {
+			return unlockErrMsg{err: err}
+		}
+		return unlockSuccessMsg{session: session}
+	}
+}
+
 func (m *tuiModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
+
+	case "tab":
+		m.list.activeTab = (m.list.activeTab + 1) % 5
+		m.list.cursor = 0
+		m.applyFilter()
+
+	case "shift+tab":
+		m.list.activeTab = (m.list.activeTab + 4) % 5
+		m.list.cursor = 0
+		m.applyFilter()
+
+	case "1", "2", "3", "4", "5":
+		if len(m.list.filter) == 0 {
+			idx := int(msg.String()[0] - '1')
+			m.list.activeTab = categoryTab(idx)
+			m.list.cursor = 0
+			m.applyFilter()
+			return m, nil
+		} else if isPrintableKey(msg) {
+			m.list.filter = append(m.list.filter, []rune(msg.String())...)
+			m.applyFilter()
+		}
 
 	case "up", "k":
 		if m.list.cursor > 0 {
@@ -379,7 +585,8 @@ func (m *tuiModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			item := m.list.filtered[m.list.cursor]
 			m.mode = modeDetail
 			m.detail = &detailModel{
-				item: item,
+				item:         item,
+				showPassword: false,
 			}
 			return m, m.fetchPassword(item.ID)
 		}
@@ -398,11 +605,50 @@ func (m *tuiModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.applyFilter()
 		}
 
+	case "y", "p":
+		if len(m.list.filtered) > 0 {
+			item := m.list.filtered[m.list.cursor]
+			return m, m.quickCopyPassword(item.ID)
+		}
+
+	case "u":
+		if len(m.list.filtered) > 0 {
+			item := m.list.filtered[m.list.cursor]
+			u := item.Username()
+			if u != "" {
+				_ = CopyToClipboard(u)
+				SendNotification("Bitwarden TUI", "Username copied to clipboard")
+				m.showToast("✓ Username copied!")
+			} else {
+				m.showToast("No username for selected item")
+			}
+		}
+
+	case "o":
+		if len(m.list.filtered) > 0 {
+			item := m.list.filtered[m.list.cursor]
+			uri := item.PrimaryURI()
+			if uri != "" {
+				_ = exec.Command("xdg-open", uri).Start()
+				m.showToast("Opened URL in browser!")
+			} else {
+				m.showToast("No URI for selected item")
+			}
+		}
+
 	case "r":
 		return m, m.reloadItems()
 
 	case "s":
 		return m, m.syncVault()
+
+	case "l":
+		_ = m.client.Lock()
+		m.state = "locked"
+		m.mode = modeUnlock
+		m.initUnlockModel()
+		m.showToast("Vault Locked")
+		return m, nil
 
 	default:
 		if isPrintableKey(msg) {
@@ -414,36 +660,52 @@ func (m *tuiModel) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *tuiModel) quickCopyPassword(id string) tea.Cmd {
+	return func() tea.Msg {
+		pass, err := m.client.GetPassword(id)
+		if err != nil {
+			return itemsErrMsg{err: err}
+		}
+		_ = CopyToClipboardWithTimeout(pass, 30)
+		return passwordMsg{password: pass}
+	}
+}
+
 func (m *tuiModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 
-	case "esc", "left":
+	case "esc", "left", "h":
 		m.mode = modeList
 		m.detail = nil
 		return m, nil
 
-	case "p":
+	case "v":
+		if m.detail != nil {
+			m.detail.showPassword = !m.detail.showPassword
+		}
+
+	case "y", "p":
 		if m.detail.password == "" {
-			m.detail.status = "Password not yet loaded (still fetching)"
+			m.detail.status = "Password fetching..."
 			m.detail.statusAt = time.Now()
 			break
 		}
-		if err := CopyToClipboard(m.detail.password); err != nil {
+		if err := CopyToClipboardWithTimeout(m.detail.password, 30); err != nil {
 			m.detail.status = "Clipboard error: " + err.Error()
 			m.detail.statusAt = time.Now()
 		} else {
 			m.detail.copiedField = "password"
 			m.detail.copiedAt = time.Now()
-			m.detail.status = "✓ Password copied!"
+			m.detail.status = "✓ Password copied (30s auto-clear)!"
 			m.detail.statusAt = time.Now()
 		}
 
-	case "e":
+	case "u", "e":
 		u := m.detail.item.Username()
 		if u == "" {
-			m.detail.status = "No email/username for this item"
+			m.detail.status = "No username for this item"
 			m.detail.statusAt = time.Now()
 			break
 		}
@@ -451,13 +713,14 @@ func (m *tuiModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.detail.status = "Clipboard error: " + err.Error()
 			m.detail.statusAt = time.Now()
 		} else {
+			SendNotification("Bitwarden TUI", "Username copied to clipboard")
 			m.detail.copiedField = "email"
 			m.detail.copiedAt = time.Now()
-			m.detail.status = "✓ Email copied!"
+			m.detail.status = "✓ Username copied!"
 			m.detail.statusAt = time.Now()
 		}
 
-	case "u":
+	case "i":
 		uri := m.detail.item.PrimaryURI()
 		if uri == "" {
 			m.detail.status = "No URI for this item"
@@ -468,6 +731,7 @@ func (m *tuiModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.detail.status = "Clipboard error: " + err.Error()
 			m.detail.statusAt = time.Now()
 		} else {
+			SendNotification("Bitwarden TUI", "URI copied to clipboard")
 			m.detail.copiedField = "uri"
 			m.detail.copiedAt = time.Now()
 			m.detail.status = "✓ URI copied!"
@@ -484,6 +748,7 @@ func (m *tuiModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.detail.status = "Clipboard error: " + err.Error()
 			m.detail.statusAt = time.Now()
 		} else {
+			SendNotification("Bitwarden TUI", "Notes copied to clipboard")
 			m.detail.copiedField = "notes"
 			m.detail.copiedAt = time.Now()
 			m.detail.status = "✓ Notes copied!"
@@ -501,7 +766,7 @@ func (m *tuiModel) handleDetailKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.detail.status = "Failed to open browser: " + err.Error()
 			m.detail.statusAt = time.Now()
 		} else {
-			m.detail.status = "Opened in browser"
+			m.detail.status = "Opened in default browser"
 			m.detail.statusAt = time.Now()
 		}
 	}
@@ -544,14 +809,16 @@ func (m *tuiModel) scrollPage() int {
 	return max(1, m.height-6)
 }
 
-// ── View ──────────────────────────────────────────────────
+// ── View Rendering ────────────────────────────────────────
 
 func (m *tuiModel) View() string {
 	if !m.ready() {
-		return "Loading..."
+		return "Loading Bitwarden TUI..."
 	}
 
 	switch m.mode {
+	case modeUnlock:
+		return m.renderUnlock()
 	case modeList:
 		return m.renderList()
 	case modeDetail:
@@ -560,68 +827,126 @@ func (m *tuiModel) View() string {
 	return ""
 }
 
+func (m *tuiModel) renderUnlock() string {
+	var b strings.Builder
+
+	title := styleTitleBar.Render(" 🔐 Bitwarden Vault — Unlock Required ")
+	b.WriteString(title + "\n\n")
+
+	var dialogContent string
+	if m.unlock == nil {
+		m.initUnlockModel()
+	}
+
+	masked := strings.Repeat("•", len(m.unlock.password))
+	if m.unlock.unlocking {
+		dialogContent += "Unlocking vault...\n\n"
+	} else {
+		dialogContent += fmt.Sprintf("Master Password: %s█\n\n", masked)
+		if m.unlock.hasSopsPass {
+			dialogContent += lipgloss.NewStyle().Foreground(clrGreen).Render("✓ SOPS secret detected at /run/secrets/bitwarden_password") + "\n"
+			dialogContent += fmt.Sprintf("Press %s to unlock using SOPS secret\n\n", styleKey.Render("[s]"))
+		}
+		if m.unlock.err != "" {
+			dialogContent += lipgloss.NewStyle().Foreground(clrRed).Render("Error: "+m.unlock.err) + "\n\n"
+		}
+		dialogContent += "Press [Enter] to submit  •  [Esc/q] to quit"
+	}
+
+	box := styleBox.Width(min(60, m.width-4)).Render(dialogContent)
+	b.WriteString(box + "\n")
+
+	return lipgloss.NewStyle().Width(m.width).Render(b.String())
+}
+
+func (m *tuiModel) renderCategoryTabs() string {
+	var tabs []string
+	categories := []categoryTab{tabAll, tabLogins, tabCards, tabNotes, tabFavorites}
+
+	for i, cat := range categories {
+		label := fmt.Sprintf("[%d: %s]", i+1, cat.String())
+		if cat == m.list.activeTab {
+			tabs = append(tabs, styleTabActive.Render(label))
+		} else {
+			tabs = append(tabs, styleTabInactive.Render(label))
+		}
+	}
+	return strings.Join(tabs, " ")
+}
+
 func (m *tuiModel) renderList() string {
 	var b strings.Builder
 
-	// Title bar
-	title := styleTitleBar.Render(fmt.Sprintf(" BW — Bitwarden Vault    %d items    %s",
-		len(m.list.items), m.stateIcon()))
-	b.WriteString(title)
-	b.WriteString("\n")
+	// Header Title Bar
+	titleText := fmt.Sprintf(" BW — Bitwarden Vault    %d items    %s", len(m.list.items), m.stateIcon())
+	title := styleTitleBar.Render(titleText)
+	b.WriteString(title + "\n")
 
-	// Item list
-	listHeight := m.height - 4
+	// Category Tabs
+	b.WriteString(m.renderCategoryTabs() + "\n")
+
+	// Search filter bar
+	filterStr := string(m.list.filter)
+	if filterStr == "" {
+		b.WriteString(lipgloss.NewStyle().Foreground(clrDim).Render(" 🔍 Filter credentials (type to search)...") + "\n\n")
+	} else {
+		b.WriteString(fmt.Sprintf(" 🔍 Filter: %s    %d matches\n\n",
+			lipgloss.NewStyle().Foreground(clrYellow).Bold(true).Render(filterStr),
+			len(m.list.filtered)))
+	}
+
+	// Item list render
+	listHeight := m.height - 6
 	start, end := m.visibleRange(listHeight)
 
 	for i := start; i < end && i < len(m.list.filtered); i++ {
 		item := m.list.filtered[i]
 		selected := i == m.list.cursor
 
-		line := fmt.Sprintf("%s %s", item.Icon(), item.Name)
+		favIcon := ""
+		if item.Favorite {
+			favIcon = "⭐ "
+		}
+
+		line := fmt.Sprintf("%s%s %s", favIcon, item.Icon(), item.Name)
 		if selected {
-			b.WriteString(styleSelected.Render(line))
+			b.WriteString(styleSelected.Render("▎ " + line))
 		} else {
 			b.WriteString(styleItem.Render(line))
 		}
 		b.WriteString("\n")
 
 		// Subtitle line
-		subtitle := ""
+		subtitle := "   "
 		if u := item.Username(); u != "" {
-			subtitle = "   " + u
+			subtitle += u
+		}
+		if uri := item.PrimaryURI(); uri != "" {
+			if u := item.Username(); u != "" {
+				subtitle += "  •  "
+			}
+			subtitle += uri
 		}
 		if selected {
-			b.WriteString(styleSelected.Render(subtitle))
+			b.WriteString(styleSelected.Render("  " + subtitle))
 		} else {
 			b.WriteString(styleDim.Render(subtitle))
 		}
 		b.WriteString("\n")
 	}
 
-	// Footer
-	footerStr := m.renderFilter()
-	if m.err != nil {
-		if m.state == "error" || time.Since(m.errTime) < 5*time.Second {
-			footerStr += styleRed(" " + m.err.Error())
-		} else {
-			m.err = nil
-		}
+	// Toast / Error notification
+	if m.toast != "" && time.Since(m.toastAt) < 3*time.Second {
+		b.WriteString(styleCopied.Render(" "+m.toast) + "\n")
+	} else if m.err != nil && time.Since(m.errTime) < 5*time.Second {
+		b.WriteString(styleRed(" "+m.err.Error()) + "\n")
 	}
-	if m.state == "error" && m.err == nil {
-		footerStr += styleRed(" Vault is locked or unreachable — press r to retry, or run bw-tui unlock")
-	}
-	footer := styleStatusBar.Render(footerStr)
+
+	// Footer bar
+	footer := styleStatusBar.Render(" Tab categories  ↑↓ nav  ↵ detail  y password  u username  o open URL  l lock  q quit")
 	b.WriteString(footer)
 
 	return lipgloss.NewStyle().Width(m.width).Render(b.String())
-}
-
-func (m *tuiModel) renderFilter() string {
-	filter := string(m.list.filter)
-	if filter == "" {
-		return " / filter…    ↑↓ navigate  ↵ select  r refresh  s sync  q quit"
-	}
-	return fmt.Sprintf(" / %s    %d matches", filter, len(m.list.filtered))
 }
 
 func (m *tuiModel) visibleRange(height int) (int, int) {
@@ -629,13 +954,11 @@ func (m *tuiModel) visibleRange(height int) (int, int) {
 	if n == 0 {
 		return 0, 0
 	}
-	// Each item takes 2 lines (name + subtitle)
 	itemsPerPage := height / 2
 	if itemsPerPage < 1 {
 		itemsPerPage = 1
 	}
 
-	// Adjust offset so cursor is visible
 	if m.list.cursor < m.list.offset {
 		m.list.offset = m.list.cursor
 	}
@@ -658,100 +981,86 @@ func (m *tuiModel) renderDetail() string {
 
 	var b strings.Builder
 
-	// Title bar with back button and actions
-	titleText := fmt.Sprintf(" ← Back    %s %s", item.Icon(), item.Name)
+	titleText := fmt.Sprintf(" ← Esc Back    %s %s", item.Icon(), item.Name)
 	title := styleTitleBar.Render(titleText)
-	b.WriteString(title)
-	b.WriteString("\n")
+	b.WriteString(title + "\n\n")
 
-	// Item details
-	b.WriteString("\n")
+	var details strings.Builder
 
-	// Type
-	b.WriteString(fmt.Sprintf(" %s  %s\n",
+	details.WriteString(fmt.Sprintf(" %s  %s\n",
 		styleDetailLabel.Render("Type:"),
 		styleDetailValue.Render(item.TypeLabel())))
 
-	// Username
 	if u := item.Username(); u != "" {
 		copied := ""
 		if m.detail.copiedField == "email" && time.Since(m.detail.copiedAt) < 2*time.Second {
 			copied = styleCopied.Render(" ✓ copied!")
 		}
-		b.WriteString(fmt.Sprintf(" %s  %s%s\n",
+		details.WriteString(fmt.Sprintf(" %s  %s%s\n",
 			styleDetailLabel.Render("Username:"),
 			styleDetailValue.Render(u),
 			copied))
 	}
 
-	// Password
 	if m.detail.fetching {
-		b.WriteString(fmt.Sprintf(" %s  %s\n",
+		details.WriteString(fmt.Sprintf(" %s  %s\n",
 			styleDetailLabel.Render("Password:"),
 			styleDetailValue.Render("fetching...")))
 	} else if m.detail.err != "" {
-		b.WriteString(fmt.Sprintf(" %s  %s\n",
+		details.WriteString(fmt.Sprintf(" %s  %s\n",
 			styleDetailLabel.Render("Password:"),
 			styleDetailValue.Render(styleRed(m.detail.err))))
 	} else if m.detail.password != "" {
 		copied := ""
 		if m.detail.copiedField == "password" && time.Since(m.detail.copiedAt) < 2*time.Second {
-			copied = styleCopied.Render(" ✓ copied!")
+			copied = styleCopied.Render(" ✓ copied (30s auto-clear)!")
 		}
-		b.WriteString(fmt.Sprintf(" %s  %s%s\n",
+		dispPass := strings.Repeat("•", 16)
+		if m.detail.showPassword {
+			dispPass = m.detail.password
+		}
+		details.WriteString(fmt.Sprintf(" %s  %s%s\n",
 			styleDetailLabel.Render("Password:"),
-			styleDetailValue.Render(strings.Repeat("•", 16)),
+			styleDetailValue.Render(dispPass),
 			copied))
 	} else {
-		b.WriteString(fmt.Sprintf(" %s  %s\n",
+		details.WriteString(fmt.Sprintf(" %s  %s\n",
 			styleDetailLabel.Render("Password:"),
 			styleDetailValue.Render("(locked)")))
 	}
 
-	// URI
 	if uri := item.PrimaryURI(); uri != "" {
 		copied := ""
 		if m.detail.copiedField == "uri" && time.Since(m.detail.copiedAt) < 2*time.Second {
 			copied = styleCopied.Render(" ✓ copied!")
 		}
-		b.WriteString(fmt.Sprintf(" %s  %s%s\n",
+		details.WriteString(fmt.Sprintf(" %s  %s%s\n",
 			styleDetailLabel.Render("URI:"),
 			styleDetailValue.Render(uri),
 			copied))
 	}
 
-	// Notes
 	if item.Notes != "" {
 		copied := ""
 		if m.detail.copiedField == "notes" && time.Since(m.detail.copiedAt) < 2*time.Second {
 			copied = styleCopied.Render(" ✓ copied!")
 		}
-		// Truncate notes to fit
-		notes := item.Notes
-		if len(notes) > 60 {
-			notes = notes[:60] + "..."
-		}
-		b.WriteString(fmt.Sprintf(" %s  %s%s\n",
+		details.WriteString(fmt.Sprintf(" %s  %s%s\n",
 			styleDetailLabel.Render("Notes:"),
-			styleDetailValue.Render(notes),
+			styleDetailValue.Render(item.Notes),
 			copied))
 	}
 
-	// Separator
-	b.WriteString("\n")
-	b.WriteString(strings.Repeat("─", m.width-2))
-	b.WriteString("\n\n")
+	b.WriteString(styleBox.Width(min(70, m.width-4)).Render(details.String()) + "\n\n")
 
-	// Action keys
 	b.WriteString(fmt.Sprintf(" %s %s  %s %s  %s %s  %s %s  %s %s\n\n",
-		styleKey.Render("[p]"), "password",
-		styleKey.Render("[e]"), "email",
-		styleKey.Render("[u]"), "uri",
-		styleKey.Render("[n]"), "notes",
+		styleKey.Render("[y/p]"), "copy password",
+		styleKey.Render("[u]"), "copy username",
+		styleKey.Render("[v]"), "toggle visibility",
 		styleKey.Render("[o]"), "open browser",
+		styleKey.Render("[Esc]"), "back",
 	))
 
-	// Status message
 	if m.detail.status != "" && time.Since(m.detail.statusAt) < 3*time.Second {
 		if strings.HasPrefix(m.detail.status, "✓") {
 			b.WriteString(styleCopied.Render(" "+m.detail.status) + "\n\n")
@@ -760,7 +1069,6 @@ func (m *tuiModel) renderDetail() string {
 		}
 	}
 
-	// Footer
 	footer := styleStatusBar.Render(" Esc back   q quit")
 	b.WriteString(footer)
 
@@ -793,6 +1101,13 @@ func isPrintableKey(msg tea.KeyMsg) bool {
 
 func styleRed(s string) string {
 	return lipgloss.NewStyle().Foreground(clrRed).Render(s)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func max(a, b int) int {

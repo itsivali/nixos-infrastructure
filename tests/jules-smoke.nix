@@ -18,24 +18,23 @@ let
     version = julesVersion;
     src = pkgs.fetchurl {
       url = "https://storage.googleapis.com/jules-cli/v${julesVersion}/jules_external_v${julesVersion}_linux_amd64.tar.gz";
-      hash = "sha256-zaa0ORDyVHcqFM6NmySXM3cshwZJwuZVbMkiz4IATKw=";
+      hash = "sha256-c869LI+Jubsk703MuM15Q8y2npmzfeJnwvV5Mjen0QM=";
     };
-    nativeBuildInputs = [ pkgs.nodejs ];
+    sourceRoot = ".";
+    nativeBuildInputs = [ pkgs.autoPatchelfHook ];
     installPhase = ''
       runHook preInstall
       mkdir -p $out/bin
       mkdir -p $out/libexec/jules
       cp jules $out/libexec/jules/jules
       chmod +x $out/libexec/jules/jules
-      cp run.cjs $out/libexec/jules/run.cjs
       runHook postInstall
     '';
-    dontFixup = true;
   };
 
   julesWrapped = pkgs.writeShellScriptBin "jules" ''
     export JULES_CONFIG_DIR="''${JULES_CONFIG_DIR:-$HOME/.config/jules}"
-    exec ${pkgs.nodejs}/bin/node ${julesBinary}/libexec/jules/run.cjs "$@"
+    exec ${julesBinary}/libexec/jules/jules "$@"
   '';
 in
 pkgs.testers.nixosTest {

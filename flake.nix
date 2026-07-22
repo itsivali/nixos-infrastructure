@@ -53,7 +53,7 @@
       # ivali / bw-tui / ivali-bot are not rebuilt from scratch every switch.
       goSrc = import ./lib/go-src.nix { src = self; lib = lib; };
 
-      # Google Jules CLI — fetched Go binary, wrapped with Node.js runner
+      # Google Jules CLI — pre-built Go binary patched for NixOS
       julesVersion = "0.1.42";
       julesBinary = pkgs.stdenv.mkDerivation {
         pname = "jules-cli";
@@ -63,6 +63,7 @@
           hash = "sha256-c869LI+Jubsk703MuM15Q8y2npmzfeJnwvV5Mjen0QM=";
         };
         sourceRoot = ".";
+        nativeBuildInputs = [ pkgs.autoPatchelfHook ];
         installPhase = ''
           runHook preInstall
           mkdir -p $out/bin
@@ -71,7 +72,6 @@
           chmod +x $out/libexec/jules/jules
           runHook postInstall
         '';
-        dontFixup = true;
       };
       julesWrapped = pkgs.writeShellScriptBin "jules" ''
         export JULES_CONFIG_DIR="''${JULES_CONFIG_DIR:-$HOME/.config/jules}"

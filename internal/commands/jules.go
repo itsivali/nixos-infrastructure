@@ -74,7 +74,9 @@ func julesStatus(a *app.App) *cobra.Command {
 			if err == nil && strings.TrimSpace(string(out)) != "" {
 				fmt.Println(t.Good("  ✓ Authenticated"))
 			} else {
-				fmt.Println(t.Dim("  ℹ Not authenticated (run: jules login)"))
+				fmt.Println(t.Dim("  ℹ Not authenticated"))
+				fmt.Println(t.Dim("    1. Run: jules login  (browser OAuth with Google)"))
+				fmt.Println(t.Dim("    2. Install: https://github.com/apps/google-labs-jules/installations/select_target"))
 			}
 
 			return nil
@@ -91,6 +93,9 @@ This opens a browser window for Google account selection.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := a.Term
 			fmt.Println(t.Header("🔐  Jules Login"))
+			fmt.Println()
+			fmt.Println(t.Dim("  After login, also install the GitHub app:"))
+			fmt.Println(t.Dim("  https://github.com/apps/google-labs-jules/installations/select_target"))
 			fmt.Println()
 
 			if !confirmAction(t, "Open browser for Jules authentication?") {

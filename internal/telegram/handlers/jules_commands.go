@@ -36,27 +36,26 @@ func (c *JulesStatusCommand) Execute(ctx context.Context, msg *telegram.Message)
 		return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
 	}
 
-	// Check API key
-	apiKeyCheck := runCmd("test -f /run/secrets/jules-api-key && echo present || echo missing", 5)
-	apiKeyCheck = strings.TrimSpace(apiKeyCheck)
-	if apiKeyCheck == "present" {
-		lines = append(lines, "*API key:* `configured`")
+	// Check OAuth config
+	configCheck := runCmd("test -f ~/.jules/config.yaml && echo present || echo missing", 5)
+	configCheck = strings.TrimSpace(configCheck)
+	if configCheck == "present" {
+		lines = append(lines, "*Config:* `present`")
 	} else {
-		lines = append(lines, "*API key:* `not found`")
-		lines = append(lines, "")
-		lines = append(lines, "_Run ivali jules login on the host to authenticate._")
-		return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
+		lines = append(lines, "*Config:* `not found`")
 	}
 
-	// Check authentication status
-	remoteList := runCmd("jules remote list 2>&1 || echo 'not authenticated'", 10)
+	// Check authentication by testing a real API call
+	remoteList := runCmd("jules remote list --repo 2>&1", 10)
 	remoteList = strings.TrimSpace(remoteList)
-	if remoteList != "" && !strings.Contains(remoteList, "not authenticated") && !strings.Contains(remoteList, "Error") {
+	if remoteList != "" && !strings.Contains(remoteList, "401") && !strings.Contains(remoteList, "UNAUTHENTICATED") && !strings.Contains(remoteList, "Error") {
 		lines = append(lines, "*Auth:* `authenticated`")
 		lines = append(lines, "")
 		lines = append(lines, fmt.Sprintf("```%s```", remoteList))
 	} else {
-		lines = append(lines, "*Auth:* `not authenticated`")
+		lines = append(lines, "*Auth:* `not authenticated` (OAuth required)")
+		lines = append(lines, "")
+		lines = append(lines, "_Run `jules login` on the host to authenticate._")
 	}
 
 	return c.api.SendLongMessage(msg.ChatID, strings.Join(lines, "\n"), 3500)
@@ -107,7 +106,7 @@ func (c *JulesNewCommand) Execute(ctx context.Context, msg *telegram.Message) er
 	description := strings.Join(args, " ")
 	_ = c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("*Creating Jules task:*\n`%s`", description))
 
-	output := runCmdArgs(60, "jules", "new", "--description", description)
+	output := runCmdArgs(60, "jules", "new", description)
 	output = strings.TrimSpace(output)
 	if output == "" {
 		output = "(no output)"
@@ -136,7 +135,7 @@ func (c *JulesCancelCommand) Execute(ctx context.Context, msg *telegram.Message)
 
 	if msg.IsCallback && msg.CallbackData() == "confirm:jules_cancel" {
 		taskID := args[0]
-		output := runCmd(fmt.Sprintf("jules cancel %s 2>&1", taskID), 30)
+		output := runCmdArgs(30, "jules", "cancel", taskID)
 		return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("*Task Cancelled*\n```%s\n```", output), 3500)
 	}
 

@@ -74,7 +74,7 @@
         '';
       };
       julesWrapped = pkgs.writeShellScriptBin "jules" ''
-        export JULES_CONFIG_DIR="''${JULES_CONFIG_DIR:-$HOME/.config/jules}"
+        export JULES_CONFIG_DIR="''${JULES_CONFIG_DIR:-$HOME/.jules}"
         if [ -z "''${JULES_API_KEY:-}" ] && [ -f /run/secrets/jules-api-key ]; then
           export JULES_API_KEY="$(cat /run/secrets/jules-api-key)"
         fi

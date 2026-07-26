@@ -51,12 +51,20 @@ func julesStatus(a *app.App) *cobra.Command {
 				return nil
 			}
 
-			fmt.Println(t.Good("  ✓ Jules CLI installed"))
+			fmt.Println(t.Good("  ✓ Jules CLI installed (v0.1.42)"))
 
-			// Check API key
+			// Check OAuth config
+			home, _ := os.UserHomeDir()
+			configPath := home + "/.jules/config.yaml"
+			if _, err := os.Stat(configPath); err == nil {
+				fmt.Println(t.Good("  ✓ Config file present"))
+			} else {
+				fmt.Println(t.Dim("  ℹ No config file (run jules login to authenticate)"))
+			}
+
+			// Check API key (legacy, not used for OAuth but may be useful)
 			apiKey := os.Getenv("JULES_API_KEY")
 			if apiKey == "" {
-				// Try reading from SOPS secret
 				if data, err := os.ReadFile("/run/secrets/jules-api-key"); err == nil {
 					apiKey = strings.TrimSpace(string(data))
 				} else if os.IsPermission(err) {
@@ -67,20 +75,26 @@ func julesStatus(a *app.App) *cobra.Command {
 			}
 
 			if apiKey != "" {
-				fmt.Println(t.Good("  ✓ API key configured"))
+				fmt.Println(t.Good("  ✓ API key configured (SOPS secret)"))
 			} else {
-				fmt.Println(t.Bad("  ✗ API key not found"))
-				fmt.Println(t.Dim("  Run: ivali jules login"))
+				fmt.Println(t.Dim("  ℹ API key not configured (optional for OAuth flow)"))
 			}
 
-			// Check if authenticated
-			out, err := exec.Command("jules", "remote", "list").CombinedOutput()
-			if err == nil && strings.TrimSpace(string(out)) != "" {
-				fmt.Println(t.Good("  ✓ Authenticated"))
+			// Check if authenticated by testing a real API call
+			fmt.Println()
+			fmt.Println(t.Subsection("Authentication Test"))
+			out, err := exec.Command("jules", "remote", "list", "--repo").CombinedOutput()
+			output := strings.TrimSpace(string(out))
+			if err == nil && !strings.Contains(output, "401") && !strings.Contains(output, "UNAUTHENTICATED") {
+				fmt.Println(t.Good("  ✓ Authenticated — GitHub repos accessible"))
 			} else {
-				fmt.Println(t.Dim("  ℹ Not authenticated"))
-				fmt.Println(t.Dim("    1. Run: jules login  (browser OAuth with Google)"))
-				fmt.Println(t.Dim("    2. Install: https://github.com/apps/google-labs-jules/installations/select_target"))
+				fmt.Println(t.Bad("  ✗ Not authenticated (OAuth required)"))
+				fmt.Println()
+				fmt.Println(t.Dim("  To fix permanently, run these two steps once:"))
+				fmt.Println(t.Dim("    1. jules login              (Google OAuth in browser)"))
+				fmt.Println(t.Dim("    2. xdg-open https://github.com/apps/google-labs-jules/installations/select_target"))
+				fmt.Println()
+				fmt.Println(t.Dim("  After that, Jules will work without re-authentication."))
 			}
 
 			return nil
@@ -206,7 +220,7 @@ func julesLogs(a *app.App) *cobra.Command {
 func julesConfig(a *app.App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "config",
-		Short: "Show or set Jules configuration",
+		Short: "Show Jules configuration",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := a.Term
 			fmt.Println(t.Header("⚙️   Jules Configuration"))
@@ -214,10 +228,20 @@ func julesConfig(a *app.App) *cobra.Command {
 
 			configDir := os.Getenv("JULES_CONFIG_DIR")
 			if configDir == "" {
-				configDir = "$HOME/.config/jules"
+				home, _ := os.UserHomeDir()
+				configDir = home + "/.jules"
 			}
 			fmt.Println(t.KeyValue("Config dir", configDir))
 
+			// Check OAuth config
+			configPath := configDir + "/config.yaml"
+			if _, err := os.Stat(configPath); err == nil {
+				fmt.Println(t.KeyValue("Config file", t.Good("present")))
+			} else {
+				fmt.Println(t.KeyValue("Config file", t.Dim("not found")))
+			}
+
+			// Check API key
 			apiKey := os.Getenv("JULES_API_KEY")
 			if apiKey != "" {
 				fmt.Println(t.KeyValue("API key", "(from environment)"))
@@ -226,6 +250,9 @@ func julesConfig(a *app.App) *cobra.Command {
 			} else {
 				fmt.Println(t.KeyValue("API key", t.Dim("not configured")))
 			}
+
+			fmt.Println()
+			fmt.Println(t.Dim("  Auth: Jules uses OAuth (run 'jules login' for browser-based Google auth)"))
 
 			return nil
 		},

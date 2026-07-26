@@ -46,16 +46,26 @@ func (p *AIPlugin) Status() *state.ComponentStatus {
 	}
 	meta["jules_api_key"] = fmtBool(julesAPIKey)
 
+	julesOAuth := false
+	home, _ := os.UserHomeDir()
+	if _, err := os.Stat(home + "/.jules/config.yaml"); err == nil {
+		julesOAuth = true
+	}
+	meta["jules_oauth"] = fmtBool(julesOAuth)
+
 	meta["opencode_dir"] = fmtBool(fileExists(".opencode"))
 	meta["opencode_knowledge"] = fmtBool(fileExists("opencode/README.md"))
 
 	stateVal := state.StateHealthy
 	var messages []string
 
-	if julesInstalled && julesAPIKey {
-		messages = append(messages, "Jules ready")
+	if julesInstalled && julesOAuth {
+		messages = append(messages, "Jules ready (OAuth)")
+	} else if julesInstalled && julesAPIKey {
+		messages = append(messages, "Jules CLI installed, OAuth not configured (API key only)")
+		stateVal = state.StateWarning
 	} else if julesInstalled {
-		messages = append(messages, "Jules CLI installed, API key not configured")
+		messages = append(messages, "Jules CLI installed, not authenticated")
 		stateVal = state.StateWarning
 	} else {
 		messages = append(messages, "Jules CLI not installed")
@@ -76,7 +86,8 @@ func (p *AIPlugin) Status() *state.ComponentStatus {
 		Metadata: map[string]string{
 			"jules_binary":        fmtBool(julesInstalled),
 			"jules_api_key":       fmtBool(julesAPIKey),
-			"jules_ready":         fmtBool(julesInstalled && julesAPIKey),
+			"jules_oauth":         fmtBool(julesOAuth),
+			"jules_ready":         fmtBool(julesInstalled && julesOAuth),
 			"opencode_configured": fmtBool(fileExists(".opencode")),
 			"knowledge_base":      fmtBool(fileExists("opencode/README.md")),
 		},

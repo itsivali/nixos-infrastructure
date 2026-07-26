@@ -81,82 +81,59 @@ func TestScoreFromResult(t *testing.T) {
 	}
 }
 
-func TestSeverityColor(t *testing.T) {
-	tests := []struct {
-		severity string
-		expected string
-	}{
-		{"critical", "\033[1;31m"},
-		{"high", "\033[0;31m"},
-		{"medium", "\033[0;33m"},
-		{"low", "\033[0;36m"},
-		{"unknown", "\033[0m"},
+func TestScanResultToCheckItems(t *testing.T) {
+	result := &ScanResult{
+		Score:    80,
+		MaxScore: 100,
+		Categories: []Category{
+			{
+				Name: "firewall",
+				Pass: true,
+				Checks: []Check{
+					{Name: "nftables", Pass: true, Message: "policy drop: true", Severity: "critical"},
+				},
+			},
+			{
+				Name: "kernel",
+				Pass: false,
+				Checks: []Check{
+					{Name: "slab_nomerge", Pass: false, Message: "slab_nomerge: false", Severity: "medium"},
+				},
+			},
+		},
 	}
 
-	for _, tt := range tests {
-		color := SeverityColor(tt.severity)
-		if color != tt.expected {
-			t.Errorf("expected %s for severity %s, got %s", tt.expected, tt.severity, color)
-		}
-	}
-}
-
-func TestParseScore(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected int
-	}{
-		{"85", 85},
-		{"100", 100},
-		{"0", 0},
-		{"invalid", 0},
+	items := ScanResultToCheckItems(result)
+	if len(items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(items))
 	}
 
-	for _, tt := range tests {
-		result := ParseScore(tt.input)
-		if result != tt.expected {
-			t.Errorf("expected %d for input %s, got %d", tt.expected, tt.input, result)
-		}
+	if items[0].Status != StatusPass {
+		t.Errorf("expected pass for nftables, got %d", items[0].Status)
+	}
+	if items[1].Status != StatusWarn {
+		t.Errorf("expected warn for slab_nomerge (medium severity), got %d", items[1].Status)
 	}
 }
 
-func TestParseBool(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected bool
-	}{
-		{"true", true},
-		{"1", true},
-		{"yes", true},
-		{"false", false},
-		{"0", false},
-		{"no", false},
-		{"", false},
+func TestScanResultToCheckItemsHighSeverity(t *testing.T) {
+	result := &ScanResult{
+		Categories: []Category{
+			{
+				Name: "ssh",
+				Pass: false,
+				Checks: []Check{
+					{Name: "password-auth", Pass: false, Message: "password auth: yes", Severity: "high"},
+				},
+			},
+		},
 	}
 
-	for _, tt := range tests {
-		result := ParseBool(tt.input)
-		if result != tt.expected {
-			t.Errorf("expected %v for input %s, got %v", tt.expected, tt.input, result)
-		}
+	items := ScanResultToCheckItems(result)
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item, got %d", len(items))
 	}
-}
-
-func TestParseInt(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected int
-	}{
-		{"85", 85},
-		{"100", 100},
-		{"0", 0},
-		{"invalid", 0},
-	}
-
-	for _, tt := range tests {
-		result := ParseInt(tt.input)
-		if result != tt.expected {
-			t.Errorf("expected %d for input %s, got %d", tt.expected, tt.input, result)
-		}
+	if items[0].Status != StatusFail {
+		t.Errorf("expected fail for high severity check, got %d", items[0].Status)
 	}
 }

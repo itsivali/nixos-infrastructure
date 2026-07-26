@@ -2,94 +2,53 @@ package commands
 
 import (
 	"fmt"
-	"os/exec"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/security"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdSecurity(a *app.App) *cobra.Command {
 	return &cobra.Command{
 		Use:   "security",
-		Short: "🔒  Security audit summary",
+		Short: "Security audit summary",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := a.Term
 
-			fmt.Println(t.Header("🔒 Security Audit"))
+			fmt.Println(t.Header("Security Audit"))
 			fmt.Println()
 
-			type check struct {
-				name string
-				cmd  string
-				pass string
+			result, err := security.RunFullScan()
+			if err != nil {
+				fmt.Println(t.CheckList([]terminal.CheckItem{
+					{Label: fmt.Sprintf("Scan failed: %s", err), Status: terminal.StatusFail},
+				}))
+				return nil
 			}
 
-			checks := []check{
-				{"AppArmor", "aa-status --enabled 2>/dev/null", "enabled"},
-				{"Fail2ban", "systemctl is-active fail2ban 2>/dev/null", "active"},
-				{"SSH daemon", "systemctl is-active sshd 2>/dev/null", "active"},
-				{"Tailscale", "systemctl is-active tailscaled 2>/dev/null", "active"},
-				{"Auditd", "systemctl is-active auditd 2>/dev/null", "active"},
-			}
-
-			fmt.Println(t.Section("Service Status"))
-			for _, c := range checks {
-				out, _ := exec.Command("sh", "-c", c.cmd).CombinedOutput()
-				state := strings.TrimSpace(string(out))
-				icon := t.Bad("✗")
-				if state == c.pass {
-					icon = t.Good("✓")
-				}
-				fmt.Printf("  %s %-20s %s\n", icon, c.name, state)
-			}
-
-			fmt.Println()
-			fmt.Println(t.Section("SSH Configuration"))
-			sshSettings := []string{
-				"grep -E '^PasswordAuthentication|^PermitRootLogin|^AllowUsers' /etc/ssh/sshd_config 2>/dev/null",
-			}
-			for _, cmd := range sshSettings {
-				out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
-				if err == nil {
-					for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-						if line != "" {
-							fmt.Println(t.Dim(fmt.Sprintf("  %s", line)))
+			for _, cat := range result.Categories {
+				fmt.Println(t.Section(cat.Name))
+				for _, check := range cat.Checks {
+					status := terminal.StatusPass
+					if !check.Pass {
+						if check.Severity == "critical" || check.Severity == "high" {
+							status = terminal.StatusFail
+						} else {
+							status = terminal.StatusWarn
 						}
 					}
+					fmt.Println(t.CheckList([]terminal.CheckItem{
+						{Label: check.Name, Status: status, Detail: check.Message},
+					}))
 				}
+				fmt.Println()
 			}
 
+			fmt.Println(t.Separator())
+			fmt.Println(t.Summary("Score", security.ScoreFromResult(result)))
 			fmt.Println()
-			fmt.Println(t.Section("Kernel Hardening"))
-			hardening := []string{"slab_nomerge", "init_on_alloc=1", "init_on_free=1", "pti=on", "randomize_kstack_offset=on"}
-			for _, flag := range hardening {
-				out, _ := exec.Command("sh", "-c",
-					fmt.Sprintf("grep -qw '\\(%s\\|%s=1\\)' /proc/cmdline 2>/dev/null && echo yes || echo no", flag, flag)).CombinedOutput()
-				state := strings.TrimSpace(string(out))
-				icon := t.Bad("✗")
-				if state == "yes" {
-					icon = t.Good("✓")
-				}
-				fmt.Printf("  %s %s\n", icon, flag)
-			}
-
-			fmt.Println()
-			fmt.Println(t.Section("Firewall"))
-			nftOut, err := exec.Command("nft", "list", "ruleset").CombinedOutput()
-			if err != nil {
-				fmt.Println(t.Bad("  nftables not available"))
-			} else {
-				rules := strings.Split(string(nftOut), "\n")
-				rulesCount := 0
-				for _, r := range rules {
-					if strings.Contains(r, "rule") {
-						rulesCount++
-					}
-				}
-				fmt.Printf("  %s nftables active  •  %d rules\n", t.Good("✓"), rulesCount)
-			}
 
 			return nil
 		},

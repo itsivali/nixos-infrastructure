@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -378,32 +377,60 @@ func ScoreFromResult(result *ScanResult) string {
 	}
 }
 
-func SeverityColor(severity string) string {
-	switch severity {
-	case "critical":
-		return "\033[1;31m" // Bold Red
-	case "high":
-		return "\033[0;31m" // Red
-	case "medium":
-		return "\033[0;33m" // Yellow
-	case "low":
-		return "\033[0;36m" // Cyan
-	default:
-		return "\033[0m" // Reset
+type CheckItem struct {
+	Label  string
+	Status int
+	Detail string
+}
+
+const (
+	StatusPass = 0
+	StatusWarn = 1
+	StatusFail = 2
+)
+
+func ScanResultToCheckItems(result *ScanResult) []CheckItem {
+	var items []CheckItem
+	for _, cat := range result.Categories {
+		for _, check := range cat.Checks {
+			status := StatusPass
+			if !check.Pass {
+				if check.Severity == "critical" || check.Severity == "high" {
+					status = StatusFail
+				} else {
+					status = StatusWarn
+				}
+			}
+			items = append(items, CheckItem{
+				Label:  fmt.Sprintf("[%s] %s", cat.Name, check.Name),
+				Status: status,
+				Detail: check.Message,
+			})
+		}
 	}
+	return items
 }
 
-func ParseScore(s string) int {
-	var score int
-	_, _ = fmt.Sscanf(s, "%d", &score)
-	return score
-}
-
-func ParseBool(s string) bool {
-	return s == "true" || s == "1" || s == "yes"
-}
-
-func ParseInt(s string) int {
-	val, _ := strconv.Atoi(s)
-	return val
+func ScanResultToCategoryItems(result *ScanResult) [][]CheckItem {
+	var categories [][]CheckItem
+	for _, cat := range result.Categories {
+		var items []CheckItem
+		for _, check := range cat.Checks {
+			status := StatusPass
+			if !check.Pass {
+				if check.Severity == "critical" || check.Severity == "high" {
+					status = StatusFail
+				} else {
+					status = StatusWarn
+				}
+			}
+			items = append(items, CheckItem{
+				Label:  check.Name,
+				Status: status,
+				Detail: check.Message,
+			})
+		}
+		categories = append(categories, items)
+	}
+	return categories
 }

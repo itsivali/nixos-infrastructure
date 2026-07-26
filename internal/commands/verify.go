@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/security"
 	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
@@ -159,44 +160,31 @@ Returns structured output suitable for CI/CD integration.`,
 }
 
 func runSecurityChecks() []terminal.CheckItem {
+	result, err := security.RunFullScan()
+	if err != nil {
+		return []terminal.CheckItem{
+			{Label: fmt.Sprintf("Security scan failed: %s", err), Status: terminal.StatusFail},
+		}
+	}
+
 	var checks []terminal.CheckItem
-
-	// Check firewall
-	if cmd := exec.Command("nft", "list", "ruleset"); cmd.Run() == nil {
-		checks = append(checks, terminal.CheckItem{Label: "Firewall (nftables)", Status: terminal.StatusPass})
-	} else {
-		checks = append(checks, terminal.CheckItem{Label: "Firewall (nftables)", Status: terminal.StatusWarn})
+	for _, cat := range result.Categories {
+		for _, check := range cat.Checks {
+			status := terminal.StatusPass
+			if !check.Pass {
+				if check.Severity == "critical" || check.Severity == "high" {
+					status = terminal.StatusFail
+				} else {
+					status = terminal.StatusWarn
+				}
+			}
+			checks = append(checks, terminal.CheckItem{
+				Label:  fmt.Sprintf("[%s] %s", cat.Name, check.Name),
+				Status: status,
+				Detail: check.Message,
+			})
+		}
 	}
-
-	// Check fail2ban
-	if cmd := exec.Command("systemctl", "is-active", "fail2ban"); cmd.Run() == nil {
-		checks = append(checks, terminal.CheckItem{Label: "Fail2ban active", Status: terminal.StatusPass})
-	} else {
-		checks = append(checks, terminal.CheckItem{Label: "Fail2ban active", Status: terminal.StatusWarn})
-	}
-
-	// Check SSH password auth
-	sshConfig, err := exec.Command("grep", "-i", "PasswordAuthentication", "/etc/ssh/sshd_config").Output()
-	if err == nil && strings.Contains(string(sshConfig), "no") {
-		checks = append(checks, terminal.CheckItem{Label: "SSH password auth disabled", Status: terminal.StatusPass})
-	} else {
-		checks = append(checks, terminal.CheckItem{Label: "SSH password auth disabled", Status: terminal.StatusWarn})
-	}
-
-	// Check kernel hardening
-	if cmd := exec.Command("sysctl", "kernel.kptr_restrict"); cmd.Run() == nil {
-		checks = append(checks, terminal.CheckItem{Label: "Kernel kptr_restrict", Status: terminal.StatusPass})
-	} else {
-		checks = append(checks, terminal.CheckItem{Label: "Kernel kptr_restrict", Status: terminal.StatusWarn})
-	}
-
-	// Check Tailscale
-	if cmd := exec.Command("tailscale", "status"); cmd.Run() == nil {
-		checks = append(checks, terminal.CheckItem{Label: "Tailscale active", Status: terminal.StatusPass})
-	} else {
-		checks = append(checks, terminal.CheckItem{Label: "Tailscale active", Status: terminal.StatusWarn})
-	}
-
 	return checks
 }
 

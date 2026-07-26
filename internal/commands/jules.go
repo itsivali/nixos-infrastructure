@@ -59,6 +59,10 @@ func julesStatus(a *app.App) *cobra.Command {
 				// Try reading from SOPS secret
 				if data, err := os.ReadFile("/run/secrets/jules-api-key"); err == nil {
 					apiKey = strings.TrimSpace(string(data))
+				} else if os.IsPermission(err) {
+					fmt.Println(t.Bad("  ✗ API key exists but not readable (permission denied)"))
+					fmt.Println(t.Dim("  Rebuild with: sudo nixos-rebuild switch --flake .#prague"))
+					return nil
 				}
 			}
 

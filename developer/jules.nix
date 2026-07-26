@@ -36,10 +36,11 @@ in
       self.packages.${pkgs.stdenv.hostPlatform.system}.jules
     ];
 
-    # SOPS secret for the API key
+    # SOPS secret for the API key — owned by ivali so the Jules wrapper can read it
     sops.secrets.jules-api-key = {
       sopsFile = ../secrets/jules.yaml;
       path = "/run/secrets/jules-api-key";
+      owner = "ivali";
     };
   };
 }

@@ -213,7 +213,7 @@ in
   ivali.security.fail2ban.enable = true;
 
   ############################################################################
-  # JULES (Google AI coding agent)
+  # AI CODING AGENTS
   ############################################################################
-  ivali.jules.enable = true;
+  ivali.openhands.enable = true;
 }

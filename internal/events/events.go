@@ -33,9 +33,9 @@ const (
 	EventServiceRecovered   Type = "service.recovered"
 	EventSecretUpdated      Type = "secret.updated"
 	EventTelegramCommand    Type = "telegram.command"
-	EventJulesTaskCreated   Type = "jules.task.created"
-	EventJulesTaskCompleted Type = "jules.task.completed"
-	EventJulesTaskFailed    Type = "jules.task.failed"
+	EventAITaskCreated      Type = "ai.task.created"
+	EventAITaskCompleted    Type = "ai.task.completed"
+	EventAITaskFailed       Type = "ai.task.failed"
 	EventOpenCodeTask       Type = "opencode.task"
 	EventBuildStarted       Type = "build.started"
 	EventBuildCompleted     Type = "build.completed"
@@ -265,22 +265,22 @@ func (b *Bus) EmitServiceRecovered(source, service string, metadata map[string]s
 	b.Emit(EventServiceRecovered, source, fmt.Sprintf("service recovered: %s", service), SeverityInfo, m)
 }
 
-func (b *Bus) EmitJulesTaskCreated(source, taskID string, metadata map[string]string) {
+func (b *Bus) EmitAITaskCreated(source, taskID string, metadata map[string]string) {
 	m := metadata
 	if m == nil {
 		m = make(map[string]string)
 	}
 	m["task_id"] = taskID
-	b.Emit(EventJulesTaskCreated, source, fmt.Sprintf("Jules task created: %s", taskID), SeverityInfo, m)
+	b.Emit(EventAITaskCreated, source, fmt.Sprintf("AI task created: %s", taskID), SeverityInfo, m)
 }
 
-func (b *Bus) EmitJulesTaskCompleted(source, taskID string, metadata map[string]string) {
+func (b *Bus) EmitAITaskCompleted(source, taskID string, metadata map[string]string) {
 	m := metadata
 	if m == nil {
 		m = make(map[string]string)
 	}
 	m["task_id"] = taskID
-	b.Emit(EventJulesTaskCompleted, source, fmt.Sprintf("Jules task completed: %s", taskID), SeverityInfo, m)
+	b.Emit(EventAITaskCompleted, source, fmt.Sprintf("AI task completed: %s", taskID), SeverityInfo, m)
 }
 
 func (b *Bus) EmitPluginLoaded(source string, err error) {

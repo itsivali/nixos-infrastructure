@@ -142,7 +142,7 @@ func TestBusMetadata(t *testing.T) {
 		"task":   "abc-123",
 		"result": "success",
 	}
-	b.Emit(EventJulesTaskCreated, "jules", "task created", SeverityInfo, meta)
+	b.Emit(EventAITaskCreated, "ai", "task created", SeverityInfo, meta)
 
 	if received.Metadata["host"] != "prague" {
 		t.Errorf("Metadata[host] = %q, want %q", received.Metadata["host"], "prague")

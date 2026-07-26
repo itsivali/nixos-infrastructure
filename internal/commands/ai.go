@@ -15,10 +15,10 @@ func CmdAI(a *app.App) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ai",
 		Short: "🤖  AI orchestration",
-		Long: `Orchestrate work between AI systems (OpenCode and Google Jules).
+		Long: `Orchestrate work between AI systems (OpenCode and OpenHands).
 
 OpenCode handles interactive tasks: debugging, builds, tests, editing.
-Jules handles autonomous tasks: auditing, refactoring, documentation.
+OpenHands is a self-hosted AI coding agent available for autonomous tasks.
 
 Commands:
   ai status       Show AI system availability
@@ -56,22 +56,11 @@ func aiStatus(a *app.App) *cobra.Command {
 				}
 			}
 
-			fmt.Println(t.Section("Jules"))
-			if _, err := exec.LookPath("jules"); err == nil {
-				fmt.Println(t.Good("  ✓ CLI installed"))
+			fmt.Println(t.Section("OpenHands"))
+			if _, err := exec.LookPath("openhands"); err == nil {
+				fmt.Println(t.Good("  ✓ Available"))
 			} else {
-				fmt.Println(t.Dim("  ✗ CLI not installed"))
-			}
-			apiKey := os.Getenv("JULES_API_KEY")
-			if apiKey == "" {
-				if data, err := os.ReadFile("/run/secrets/jules-api-key"); err == nil {
-					apiKey = strings.TrimSpace(string(data))
-				}
-			}
-			if apiKey != "" {
-				fmt.Println(t.Good("  ✓ API key configured"))
-			} else {
-				fmt.Println(t.Dim("  ✗ API key not configured"))
+				fmt.Println(t.Dim("  ✗ Not available (run 'openhands' after enabling ivali.openhands)"))
 			}
 			fmt.Println()
 
@@ -89,10 +78,7 @@ func aiStatus(a *app.App) *cobra.Command {
 			fmt.Println()
 
 			fmt.Println(t.Section("Routing Rules"))
-			fmt.Println(t.Dim("  Interactive (debug, build, test, edit)  →  OpenCode"))
-			fmt.Println(t.Dim("  Autonomous (audit, refactor, document)  →  Jules"))
-			fmt.Println(t.Dim("  Long-running (>200 chars description)   →  Jules"))
-			fmt.Println(t.Dim("  General / small                         →  OpenCode"))
+			fmt.Println(t.Dim("  All tasks  →  OpenCode"))
 			fmt.Println()
 
 			return nil
@@ -120,9 +106,6 @@ func aiRoute(a *app.App) *cobra.Command {
 			fmt.Println()
 
 			switch system {
-			case "jules":
-				fmt.Println(t.Dim("  Run:  ivali jules task --description \"<description>\""))
-				fmt.Println(t.Dim("  Or:   jules new --description \"<description>\""))
 			case "opencode":
 				fmt.Println(t.Dim("  OpenCode is your interactive CLI."))
 				fmt.Println(t.Dim("  Describe what you need in natural language."))
@@ -135,27 +118,5 @@ func aiRoute(a *app.App) *cobra.Command {
 }
 
 func routeTask(description string) string {
-	lower := strings.ToLower(description)
-
-	julesKeywords := []string{
-		"audit", "analyze", "analysis",
-		"refactor", "modernize",
-		"document", "documentation",
-		"architecture",
-		"all modules", "every module", "repository-wide",
-		"dependency", "impact analysis",
-		"root cause",
-	}
-
-	for _, kw := range julesKeywords {
-		if strings.Contains(lower, kw) {
-			return "jules"
-		}
-	}
-
-	if len(description) > 200 {
-		return "jules"
-	}
-
 	return "opencode"
 }

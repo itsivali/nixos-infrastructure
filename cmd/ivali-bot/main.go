@@ -96,14 +96,6 @@ func main() {
 		handlers.NewRestoreCommand(config),
 		handlers.NewTailscaleCommand(config),
 		handlers.NewFirewallCommand(config),
-		// Jules commands
-		handlers.NewJulesStatusCommand(config),
-		handlers.NewJulesTasksCommand(config),
-		handlers.NewJulesNewCommand(config),
-		handlers.NewJulesCancelCommand(config),
-		handlers.NewJulesHistoryCommand(config),
-		handlers.NewJulesLogsCommand(config),
-		handlers.NewJulesConfigCommand(config),
 		// Platform commands
 		handlers.NewStateCommand(config),
 		handlers.NewEventsCommand(config),

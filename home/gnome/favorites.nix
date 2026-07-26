@@ -38,7 +38,6 @@ let
     "notion-app-enhanced.desktop"
     "ivali-dashboard.desktop"
     "bw-tui.desktop"
-    "jules-ai.desktop"
     "nvim.desktop"
   ];
 

@@ -39,7 +39,5 @@
     tldr = "tldr";
     tf = "terraform";
     tofu = "opentofu";
-    jules = "jules";
-    j = "jules";
   };
 }

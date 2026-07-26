@@ -8,7 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/state"
 )
 
 func CmdStatus(a *app.App) *cobra.Command {
@@ -63,6 +64,77 @@ packages, secrets, and pending changes.`,
 			if b, err := os.ReadFile("/var/lib/observability/state.json"); err == nil {
 				fmt.Println(t.Section("Observability"))
 				fmt.Println(t.Dim(strings.TrimSpace(string(b))))
+				fmt.Println()
+			}
+
+			if a.State != nil {
+				fmt.Println(t.Section("Platform State"))
+				fmt.Println(t.KeyValue("Global", a.State.GlobalState().String()))
+				fmt.Println(t.KeyValue("Components", a.State.Summary()))
+				for name, comp := range a.State.All() {
+					icon := "✓"
+					status := t.Good
+					switch comp.State {
+					case state.StateWarning:
+						icon = "⚠"
+						status = t.Warn
+					case state.StateDegraded, state.StateOffline:
+						icon = "✗"
+						status = t.Bad
+					case state.StateUnknown:
+						icon = "?"
+						status = t.Dim
+					}
+					label := comp.DisplayName
+					if label == "" {
+						label = name
+					}
+					fmt.Printf("  %s %s\n", status(fmt.Sprintf("%s %s", icon, label)), t.Dim(comp.Message))
+				}
+				fmt.Println()
+			}
+
+			if a.Plugins != nil {
+				fmt.Println(t.Section("Plugins"))
+				fmt.Println(t.KeyValue("Loaded", fmt.Sprintf("%d", a.Plugins.PluginCount())))
+				for _, p := range a.Plugins.All() {
+					st := p.Status()
+					icon := "✓"
+					status := t.Good
+					switch st.State {
+					case state.StateWarning:
+						icon = "⚠"
+						status = t.Warn
+					case state.StateDegraded, state.StateOffline:
+						icon = "✗"
+						status = t.Bad
+					case state.StateUnknown:
+						icon = "?"
+						status = t.Dim
+					}
+					fmt.Printf("  %s %s\n", status(fmt.Sprintf("%s %s", icon, p.DisplayName())), t.Dim(st.Message))
+				}
+				fmt.Println()
+			}
+
+			if a.Events != nil {
+				fmt.Println(t.Section("Events"))
+				fmt.Println(t.KeyValue("History", fmt.Sprintf("%d recorded", a.Events.HistoryCount())))
+				recent := a.Events.HistoryLast(5)
+				for _, e := range recent {
+					severity := "info"
+					switch e.Severity {
+					case "warn":
+						severity = "⚠ warn"
+					case "error":
+						severity = "✗ error"
+					case "critical":
+						severity = "✗ critical"
+					}
+					fmt.Printf("  %s %s\n",
+						t.Dim(fmt.Sprintf("[%s]", e.Timestamp.Format("15:04:05"))),
+						fmt.Sprintf("%s %s", t.Dim(severity), e.Message))
+				}
 				fmt.Println()
 			}
 

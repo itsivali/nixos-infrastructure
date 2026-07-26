@@ -11,8 +11,9 @@ import (
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/state"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdDoctor(a *app.App) *cobra.Command {
@@ -226,6 +227,57 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 						{Label: "Module ownership", Status: terminal.StatusPass},
 					},
 				},
+			}
+
+			if a.State != nil {
+				allChecks = append(allChecks, struct {
+					Category string
+					Checks   []terminal.CheckItem
+				}{
+					Category: "Platform State",
+					Checks: func() []terminal.CheckItem {
+						items := []terminal.CheckItem{
+							{Label: fmt.Sprintf("Global state: %s", a.State.GlobalState().String()), Status: terminal.StatusPass},
+						}
+						for _, comp := range a.State.NonHealthy() {
+							status := terminal.StatusWarn
+							if comp.State == state.StateDegraded || comp.State == state.StateOffline {
+								status = terminal.StatusFail
+							}
+							items = append(items, terminal.CheckItem{
+								Label:  fmt.Sprintf("%s: %s", comp.DisplayName, comp.Message),
+								Status: status,
+							})
+						}
+						return items
+					}(),
+				})
+			}
+
+			if a.Plugins != nil {
+				allChecks = append(allChecks, struct {
+					Category string
+					Checks   []terminal.CheckItem
+				}{
+					Category: "Plugins",
+					Checks: func() []terminal.CheckItem {
+						items := []terminal.CheckItem{}
+						for _, p := range a.Plugins.All() {
+							st := p.Status()
+							status := terminal.StatusPass
+							if st.State == state.StateWarning {
+								status = terminal.StatusWarn
+							} else if st.State == state.StateDegraded || st.State == state.StateOffline {
+								status = terminal.StatusFail
+							}
+							items = append(items, terminal.CheckItem{
+								Label:  fmt.Sprintf("%s: %s", p.DisplayName(), st.Message),
+								Status: status,
+							})
+						}
+						return items
+					}(),
+				})
 			}
 
 			if fix && (fixedDocs > 0 || removedDups > 0) {

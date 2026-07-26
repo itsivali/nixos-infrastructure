@@ -99,8 +99,8 @@ func TestCheckLoad(t *testing.T) {
 	if result == nil {
 		t.Fatal("expected result")
 	}
-	if result.Name != "load" {
-		t.Errorf("expected load, got %s", result.Name)
+	if result.Name != "cpu" {
+		t.Errorf("expected cpu, got %s", result.Name)
 	}
 }
 

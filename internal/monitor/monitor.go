@@ -2,12 +2,11 @@ package monitor
 
 import (
 	"fmt"
-	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/itsivali/nixos-infrastructure/internal/events"
+	"github.com/itsivali/nixos-infrastructure/internal/platform/health"
 	"github.com/itsivali/nixos-infrastructure/internal/state"
 )
 
@@ -115,127 +114,24 @@ func (m *Monitor) runChecks() {
 	}
 }
 
+func adaptCheck(r health.CheckResult) *CheckResult {
+	return &CheckResult{Name: r.Name, State: r.State, Message: r.Message}
+}
+
 func CheckDisk() (*CheckResult, error) {
-	out, err := exec.Command("sh", "-c", "df -h / | tail -1 | awk '{print $5}' | tr -d '%'").CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("checking disk: %w", err)
-	}
-
-	percent := strings.TrimSpace(string(out))
-	var used int
-	_, _ = fmt.Sscanf(percent, "%d", &used)
-
-	if used > 90 {
-		return &CheckResult{
-			Name:    "disk",
-			State:   state.StateDegraded,
-			Message: fmt.Sprintf("disk usage critical: %s%%", percent),
-		}, nil
-	}
-	if used > 80 {
-		return &CheckResult{
-			Name:    "disk",
-			State:   state.StateWarning,
-			Message: fmt.Sprintf("disk usage high: %s%%", percent),
-		}, nil
-	}
-
-	return &CheckResult{
-		Name:    "disk",
-		State:   state.StateHealthy,
-		Message: fmt.Sprintf("disk usage normal: %s%%", percent),
-	}, nil
+	return adaptCheck(health.CheckDisk()), nil
 }
 
 func CheckMemory() (*CheckResult, error) {
-	out, err := exec.Command("sh", "-c", "free | grep Mem | awk '{printf \"%.0f\", $3/$2 * 100}'").CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("checking memory: %w", err)
-	}
-
-	percent := strings.TrimSpace(string(out))
-	var used int
-	_, _ = fmt.Sscanf(percent, "%d", &used)
-
-	if used > 95 {
-		return &CheckResult{
-			Name:    "memory",
-			State:   state.StateDegraded,
-			Message: fmt.Sprintf("memory usage critical: %s%%", percent),
-		}, nil
-	}
-	if used > 85 {
-		return &CheckResult{
-			Name:    "memory",
-			State:   state.StateWarning,
-			Message: fmt.Sprintf("memory usage high: %s%%", percent),
-		}, nil
-	}
-
-	return &CheckResult{
-		Name:    "memory",
-		State:   state.StateHealthy,
-		Message: fmt.Sprintf("memory usage normal: %s%%", percent),
-	}, nil
+	return adaptCheck(health.CheckMemory()), nil
 }
 
 func CheckLoad() (*CheckResult, error) {
-	out, err := exec.Command("sh", "-c", "cat /proc/loadavg | awk '{print $1}'").CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("checking load: %w", err)
-	}
-
-	loadStr := strings.TrimSpace(string(out))
-	var load float64
-	_, _ = fmt.Sscanf(loadStr, "%f", &load)
-
-	cpusOut, _ := exec.Command("nproc").CombinedOutput()
-	var cpus int
-	_, _ = fmt.Sscanf(strings.TrimSpace(string(cpusOut)), "%d", &cpus)
-	if cpus == 0 {
-		cpus = 1
-	}
-
-	ratio := load / float64(cpus)
-	if ratio > 2.0 {
-		return &CheckResult{
-			Name:    "load",
-			State:   state.StateDegraded,
-			Message: fmt.Sprintf("load critical: %s (%.1fx cores)", loadStr, ratio),
-		}, nil
-	}
-	if ratio > 1.5 {
-		return &CheckResult{
-			Name:    "load",
-			State:   state.StateWarning,
-			Message: fmt.Sprintf("load high: %s (%.1fx cores)", loadStr, ratio),
-		}, nil
-	}
-
-	return &CheckResult{
-		Name:    "load",
-		State:   state.StateHealthy,
-		Message: fmt.Sprintf("load normal: %s", loadStr),
-	}, nil
+	return adaptCheck(health.CheckCPULoad()), nil
 }
 
 func CheckService(name string) CheckFunc {
 	return func() (*CheckResult, error) {
-		out, err := exec.Command("systemctl", "is-active", name).CombinedOutput()
-		status := strings.TrimSpace(string(out))
-
-		if err != nil || status != "active" {
-			return &CheckResult{
-				Name:    name,
-				State:   state.StateDegraded,
-				Message: fmt.Sprintf("service %s is %s", name, status),
-			}, nil
-		}
-
-		return &CheckResult{
-			Name:    name,
-			State:   state.StateHealthy,
-			Message: fmt.Sprintf("service %s is active", name),
-		}, nil
+		return adaptCheck(health.CheckService(name)), nil
 	}
 }

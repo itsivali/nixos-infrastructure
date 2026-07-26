@@ -83,18 +83,44 @@ func julesStatus(a *app.App) *cobra.Command {
 			// Check if authenticated by testing a real API call
 			fmt.Println()
 			fmt.Println(t.Subsection("Authentication Test"))
+
+			// Step 1: Check Google OAuth (keyring)
+			keyringOK := false
+			krOut, _ := exec.Command("dbus-send", "--session", "--dest=org.freedesktop.secrets",
+				"--type=method_call", "--print-reply",
+				"/org/freedesktop/secrets", "org.freedesktop.Secret.Service.SearchItems",
+				"dict:string:string:service,jules-cli").CombinedOutput()
+			if strings.Contains(string(krOut), "/org/freedesktop/secrets/") {
+				keyringOK = true
+				fmt.Println(t.Good("  ✓ Google OAuth token in keyring"))
+			} else {
+				fmt.Println(t.Dim("  ℹ No Google OAuth token in keyring (run jules login)"))
+			}
+
+			// Step 2: Test full API access (requires both OAuth + GitHub app)
 			out, err := exec.Command("jules", "remote", "list", "--repo").CombinedOutput()
 			output := strings.TrimSpace(string(out))
 			if err == nil && !strings.Contains(output, "401") && !strings.Contains(output, "UNAUTHENTICATED") {
-				fmt.Println(t.Good("  ✓ Authenticated — GitHub repos accessible"))
-			} else {
-				fmt.Println(t.Bad("  ✗ Not authenticated (OAuth required)"))
+				fmt.Println(t.Good("  ✓ GitHub repos accessible"))
+			} else if keyringOK {
+				fmt.Println(t.Bad("  ✗ GitHub app not connected"))
 				fmt.Println()
-				fmt.Println(t.Dim("  To fix permanently, run these two steps once:"))
+				fmt.Println(t.Dim("  Google OAuth is set, but the GitHub app must be installed:"))
+				fmt.Println()
+				fmt.Println(t.Warn("  1. Open a browser logged into YOUR GitHub account (not root)"))
+				fmt.Println(t.Warn("  2. Visit: https://github.com/apps/google-labs-jules/installations/select_target"))
+				fmt.Println(t.Warn("  3. Click 'Install' to authorize Jules"))
+				fmt.Println()
+				fmt.Println(t.Dim("  Hint: If the link opens under root's account, log out of root's"))
+				fmt.Println(t.Dim("  GitHub session first, then log in as your user (ivali/itsivali)."))
+			} else {
+				fmt.Println(t.Bad("  ✗ Not authenticated"))
+				fmt.Println()
+				fmt.Println(t.Dim("  Run these two steps once:"))
 				fmt.Println(t.Dim("    1. jules login              (Google OAuth in browser)"))
 				fmt.Println(t.Dim("    2. xdg-open https://github.com/apps/google-labs-jules/installations/select_target"))
 				fmt.Println()
-				fmt.Println(t.Dim("  After that, Jules will work without re-authentication."))
+				fmt.Println(t.Dim("  For step 2, make sure your browser is logged into YOUR GitHub account."))
 			}
 
 			return nil
@@ -139,7 +165,7 @@ func julesTask(a *app.App) *cobra.Command {
 				// Create a new task
 				fmt.Println(t.Header("🤖  Creating Jules Task"))
 				fmt.Println()
-				return runWithOutput(t, "Submitting task...", "jules", "new", "--description", description)
+				return runWithOutput(t, "Submitting task...", "jules", "new", description)
 			}
 
 			if len(args) == 0 {

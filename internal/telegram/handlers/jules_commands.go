@@ -53,9 +53,20 @@ func (c *JulesStatusCommand) Execute(ctx context.Context, msg *telegram.Message)
 		lines = append(lines, "")
 		lines = append(lines, fmt.Sprintf("```%s```", remoteList))
 	} else {
-		lines = append(lines, "*Auth:* `not authenticated` (OAuth required)")
-		lines = append(lines, "")
-		lines = append(lines, "_Run `jules login` on the host to authenticate._")
+		// Check if keyring has the Google OAuth token
+		krCheck := runCmd("dbus-send --session --dest=org.freedesktop.secrets --type=method_call --print-reply /org/freedesktop/secrets org.freedesktop.Secret.Service.SearchItems 'dict:string:string:service,jules-cli' 2>&1", 5)
+		if strings.Contains(krCheck, "/org/freedesktop/secrets/") {
+			lines = append(lines, "*Google OAuth:* `token in keyring`")
+			lines = append(lines, "*GitHub App:* `not connected`")
+			lines = append(lines, "")
+			lines = append(lines, "_Google auth is set, but GitHub app must be installed._")
+			lines = append(lines, "_Visit (as YOUR GitHub user, not root):_")
+			lines = append(lines, "`https://github.com/apps/google-labs-jules/installations/select_target`")
+		} else {
+			lines = append(lines, "*Auth:* `not authenticated`")
+			lines = append(lines, "")
+			lines = append(lines, "_Run `jules login` on the host, then connect GitHub app._")
+		}
 	}
 
 	return c.api.SendLongMessage(msg.ChatID, strings.Join(lines, "\n"), 3500)

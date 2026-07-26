@@ -107,7 +107,7 @@ func (c *JulesNewCommand) Execute(ctx context.Context, msg *telegram.Message) er
 	description := strings.Join(args, " ")
 	_ = c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("*Creating Jules task:*\n`%s`", description))
 
-	output := runCmd(fmt.Sprintf("jules new --description '%s' 2>&1", description), 60)
+	output := runCmdArgs(60, "jules", "new", "--description", description)
 	output = strings.TrimSpace(output)
 	if output == "" {
 		output = "(no output)"

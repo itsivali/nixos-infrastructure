@@ -28,7 +28,17 @@ func (c *GitCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 		output := runCmdAsUser("cd /home/ivali/nixos-infrastructure && git status --short 2>/dev/null", 10)
 		return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 	}
-	output := runCmdAsUser(fmt.Sprintf("cd /home/ivali/nixos-infrastructure && git %s 2>&1", args), 30)
+	fields := strings.Fields(args)
+	allowed := map[string]bool{
+		"status": true, "log": true, "diff": true, "show": true,
+		"branch": true, "remote": true, "tag": true, "stash": true,
+		"blame": true, "shortlog": true, "describe": true,
+	}
+	if !allowed[fields[0]] {
+		return c.api.SendMarkdown(msg.ChatID, "Git subcommand not allowed. Use: status, log, diff, show, branch, remote, tag, stash, blame, shortlog, describe")
+	}
+	cmdArgs := append([]string{"-C", "/home/ivali/nixos-infrastructure", "git"}, fields...)
+	output := runCmdArgs(30, cmdArgs...)
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 }
 

@@ -81,7 +81,7 @@ func (c *PkgCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 		output := runCmd("nix-env -q 2>/dev/null | wc -l", 10)
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Installed packages: %s", output))
 	}
-	output := runCmd(fmt.Sprintf("nix-env -q %s 2>/dev/null || echo 'Package not found'", args), 30)
+	output := runCmdArgs(30, append([]string{"nix-env", "-q"}, strings.Fields(args)...)...)
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 }
 
@@ -149,23 +149,6 @@ func (c *LogCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
 }
 
-type BackupCommand struct {
-	api *telegram.API
-}
-
-func NewBackupCommand(config *telegram.Config) *BackupCommand {
-	return &BackupCommand{api: telegram.NewAPI(config.BotToken)}
-}
-
-func (c *BackupCommand) Name() string                      { return "backup" }
-func (c *BackupCommand) Description() string               { return "Trigger backup" }
-func (c *BackupCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
-
-func (c *BackupCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	_ = c.api.SendMarkdown(msg.ChatID, "Backup not yet implemented")
-	return nil
-}
-
 type MetricsCommand struct {
 	api *telegram.API
 }
@@ -224,22 +207,6 @@ func (c *MetricsCommand) Execute(ctx context.Context, msg *telegram.Message) err
 	}
 
 	return c.api.SendLongMessage(msg.ChatID, strings.Join(lines, "\n"), 3500)
-}
-
-type CancelCommand struct {
-	api *telegram.API
-}
-
-func NewCancelCommand(config *telegram.Config) *CancelCommand {
-	return &CancelCommand{api: telegram.NewAPI(config.BotToken)}
-}
-
-func (c *CancelCommand) Name() string                      { return "cancel" }
-func (c *CancelCommand) Description() string               { return "Cancel pending operations" }
-func (c *CancelCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
-
-func (c *CancelCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	return c.api.SendMarkdown(msg.ChatID, "No pending operations to cancel")
 }
 
 // User management — delegated to NixOS declarative config.
@@ -376,6 +343,6 @@ func (c *NotifyCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 	if args == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/notify <message>`")
 	}
-	runCmd(fmt.Sprintf("notify-send 'Bot' '%s'", args), 5)
+	runCmd(fmt.Sprintf("notify-send 'Bot' %s", quoteSh(args)), 5)
 	return c.api.SendMarkdown(msg.ChatID, "Notification sent")
 }

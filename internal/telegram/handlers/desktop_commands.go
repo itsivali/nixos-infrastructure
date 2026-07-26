@@ -67,7 +67,7 @@ func (c *VolumeCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 		output := runCmdAsUser("wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null || echo 'wpctl not available'", 5)
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔊 %s", output))
 	}
-	output := runCmdAsUser(fmt.Sprintf("wpctl set-volume @DEFAULT_AUDIO_SINK@ %s 2>/dev/null", args), 5)
+	output := runCmdAsUser(fmt.Sprintf("wpctl set-volume @DEFAULT_AUDIO_SINK@ %s 2>/dev/null", quoteSh(args)), 5)
 	_ = output
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔊 Volume set to %s", args))
 }
@@ -124,7 +124,7 @@ func (c *BrightnessCommand) Execute(ctx context.Context, msg *telegram.Message) 
 		output := runCmdAsUser("brightnessctl info 2>/dev/null | grep -oP '\\d+%' | head -1 || echo 'unknown'", 5)
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔆 Brightness: %s", output))
 	}
-	output := runCmdAsUser(fmt.Sprintf("brightnessctl set %s 2>/dev/null", args), 5)
+	output := runCmdAsUser(fmt.Sprintf("brightnessctl set %s 2>/dev/null", quoteSh(args)), 5)
 	_ = output
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("🔆 Brightness set to %s", args))
 }
@@ -169,7 +169,7 @@ func (c *ClipboardCommand) Execute(ctx context.Context, msg *telegram.Message) e
 	args := strings.TrimSpace(msg.Args)
 	if strings.HasPrefix(args, "set ") {
 		content := strings.TrimPrefix(args, "set ")
-		runCmdAsUser(fmt.Sprintf("echo -n '%s' | wl-copy 2>/dev/null", content), 5)
+		runCmdAsUser(fmt.Sprintf("echo -n %s | wl-copy 2>/dev/null", quoteSh(content)), 5)
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("📋 Clipboard set to: `%s`", content))
 	}
 	output := runCmdAsUser("wl-paste 2>/dev/null || echo 'Clipboard empty'", 5)

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"strings"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/itsivali/nixos-infrastructure/internal/security"
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
@@ -137,7 +140,7 @@ func (c *MenuInlineCommand) showSecurity(chatID int64) error {
 		if !cat.Pass {
 			icon = "❌"
 		}
-		lines = append(lines, fmt.Sprintf("*%s %s*", icon, strings.Title(cat.Name)))
+		lines = append(lines, fmt.Sprintf("*%s %s*", icon, cases.Title(language.Und).String(cat.Name)))
 		for _, check := range cat.Checks {
 			checkIcon := "  ✅"
 			if !check.Pass {

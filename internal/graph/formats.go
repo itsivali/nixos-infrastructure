@@ -90,5 +90,3 @@ func sanitizeDOTID(s string) string {
 	}
 	return s
 }
-
-

@@ -9,14 +9,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/repository"
-	"github.com/willisivali/nixos-infrastructure/internal/scanner"
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/docs"
+	"github.com/itsivali/nixos-infrastructure/internal/repository"
+	"github.com/itsivali/nixos-infrastructure/internal/scanner"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdDocs(a *app.App) *cobra.Command {
 	var generateCodex bool
+	var analyze bool
 
 	cmd := &cobra.Command{
 		Use:   "docs [module]",
@@ -25,7 +27,8 @@ func CmdDocs(a *app.App) *cobra.Command {
 With a module argument, show docs for that specific module.
 Without arguments, generate a full project DOCS.md file.
 
-Use --codex to also generate opencode/modules.md catalog.`,
+Use --codex to also generate opencode/modules.md catalog.
+Use --analyze for AI-powered documentation quality analysis.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !a.RequireRepo() {
@@ -61,6 +64,10 @@ Use --codex to also generate opencode/modules.md catalog.`,
 				return nil
 			}
 
+			if analyze {
+				return runDocAnalysis(t, r)
+			}
+
 			if err := writeDocs(t, r); err != nil {
 				return err
 			}
@@ -74,6 +81,7 @@ Use --codex to also generate opencode/modules.md catalog.`,
 	}
 
 	cmd.Flags().BoolVar(&generateCodex, "codex", false, "Also generate opencode/modules.md catalog")
+	cmd.Flags().BoolVar(&analyze, "analyze", false, "Run AI-powered documentation quality analysis")
 	return cmd
 }
 
@@ -123,6 +131,58 @@ func writeDocs(t *terminal.Terminal, r *repository.Repository) error {
 	}
 
 	fmt.Printf("  %s %s\n", t.Good("✓"), t.Dim("Generated "+docPath))
+	fmt.Println()
+	return nil
+}
+
+func runDocAnalysis(t *terminal.Terminal, r *repository.Repository) error {
+	fmt.Println(t.Subsection("Documentation Quality Analysis"))
+	fmt.Println()
+
+	metrics := docs.AnalyzeRepository(r.Result.AllModules, r.Parsed)
+
+	fmt.Printf("  %s Total modules: %d\n", t.Info("i"), metrics.TotalModules)
+	fmt.Printf("  %s Documented: %d (%.1f%%)\n", t.Info("i"), metrics.DocumentedModules, metrics.CoveragePercent)
+	fmt.Printf("  %s Average quality: %.2f\n", t.Info("i"), metrics.AverageQuality)
+	fmt.Printf("  %s Suggestions: %d\n\n", t.Info("i"), metrics.TotalSuggestions)
+
+	type moduleScore struct {
+		path     string
+		quality  float64
+		suggests int
+	}
+
+	var scores []moduleScore
+	for _, m := range r.Result.AllModules {
+		if info, ok := r.Parsed[m.Path]; ok {
+			analysis := docs.AnalyzeModule(m.Path, info)
+			scores = append(scores, moduleScore{
+				path:     m.RelPath,
+				quality:  analysis.DocQuality,
+				suggests: len(analysis.Suggestions),
+			})
+		}
+	}
+
+	sort.Slice(scores, func(i, j int) bool {
+		return scores[i].quality < scores[j].quality
+	})
+
+	fmt.Println(t.Subsection("Modules Needing Attention"))
+	count := 0
+	for _, s := range scores {
+		if s.quality < 0.5 && count < 10 {
+			icon := "⚠"
+			status := t.Warn
+			fmt.Printf("  %s %s (quality: %.2f, suggestions: %d)\n", status(icon), t.Dim(s.path), s.quality, s.suggests)
+			count++
+		}
+	}
+
+	if count == 0 {
+		fmt.Println("  " + t.Good("All modules have good documentation quality!"))
+	}
+
 	fmt.Println()
 	return nil
 }

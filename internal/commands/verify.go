@@ -7,17 +7,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdVerify(a *app.App) *cobra.Command {
-	return &cobra.Command{
+	var skipSecurity bool
+
+	cmd := &cobra.Command{
 		Use:   "verify",
-		Short: "Full verification (lint + health + architecture)",
+		Short: "Full verification (lint + health + architecture + security)",
 		Long: `Run a comprehensive repository verification including formatting checks,
 linting, module validation, import integrity, ownership analysis,
-architecture compliance, and health assessment.
+architecture compliance, security scanning, and health assessment.
 
 Returns structured output suitable for CI/CD integration.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -123,6 +125,19 @@ Returns structured output suitable for CI/CD integration.`,
 			}))
 			fmt.Println()
 
+			// ── Security ──────────────────────────────────────────────────
+			if !skipSecurity {
+				fmt.Println(t.Subsection("Security"))
+				secChecks := runSecurityChecks()
+				for _, c := range secChecks {
+					if c.Status != terminal.StatusPass {
+						exitCode = 1
+					}
+					fmt.Println(t.CheckList([]terminal.CheckItem{c}))
+				}
+				fmt.Println()
+			}
+
 			// ── Summary ──────────────────────────────────────────────────
 			fmt.Println(t.Separator())
 			if exitCode == 0 {
@@ -138,6 +153,51 @@ Returns structured output suitable for CI/CD integration.`,
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&skipSecurity, "skip-security", false, "Skip security checks")
+	return cmd
+}
+
+func runSecurityChecks() []terminal.CheckItem {
+	var checks []terminal.CheckItem
+
+	// Check firewall
+	if cmd := exec.Command("nft", "list", "ruleset"); cmd.Run() == nil {
+		checks = append(checks, terminal.CheckItem{Label: "Firewall (nftables)", Status: terminal.StatusPass})
+	} else {
+		checks = append(checks, terminal.CheckItem{Label: "Firewall (nftables)", Status: terminal.StatusWarn})
+	}
+
+	// Check fail2ban
+	if cmd := exec.Command("systemctl", "is-active", "fail2ban"); cmd.Run() == nil {
+		checks = append(checks, terminal.CheckItem{Label: "Fail2ban active", Status: terminal.StatusPass})
+	} else {
+		checks = append(checks, terminal.CheckItem{Label: "Fail2ban active", Status: terminal.StatusWarn})
+	}
+
+	// Check SSH password auth
+	sshConfig, err := exec.Command("grep", "-i", "PasswordAuthentication", "/etc/ssh/sshd_config").Output()
+	if err == nil && strings.Contains(string(sshConfig), "no") {
+		checks = append(checks, terminal.CheckItem{Label: "SSH password auth disabled", Status: terminal.StatusPass})
+	} else {
+		checks = append(checks, terminal.CheckItem{Label: "SSH password auth disabled", Status: terminal.StatusWarn})
+	}
+
+	// Check kernel hardening
+	if cmd := exec.Command("sysctl", "kernel.kptr_restrict"); cmd.Run() == nil {
+		checks = append(checks, terminal.CheckItem{Label: "Kernel kptr_restrict", Status: terminal.StatusPass})
+	} else {
+		checks = append(checks, terminal.CheckItem{Label: "Kernel kptr_restrict", Status: terminal.StatusWarn})
+	}
+
+	// Check Tailscale
+	if cmd := exec.Command("tailscale", "status"); cmd.Run() == nil {
+		checks = append(checks, terminal.CheckItem{Label: "Tailscale active", Status: terminal.StatusPass})
+	} else {
+		checks = append(checks, terminal.CheckItem{Label: "Tailscale active", Status: terminal.StatusWarn})
+	}
+
+	return checks
 }
 
 func checkNixFlakeCheck(root string) terminal.CheckItem {

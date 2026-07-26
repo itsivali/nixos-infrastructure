@@ -6,11 +6,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
 )
 
 func CmdSuggest(a *app.App) *cobra.Command {
-	return &cobra.Command{
+	var autoFix bool
+
+	cmd := &cobra.Command{
 		Use:   "suggest",
 		Short: "Analyze repository and recommend improvements",
 		Long: `Analyze the repository structure and provide actionable
@@ -20,7 +22,10 @@ recommendations for improvement, including:
   • Duplicate imports across modules
   • Modules without documentation headers
   • Modules declaring options (potential API surface)
-  • Architecture and organization suggestions`,
+  • Architecture and organization suggestions
+  • Security hardening recommendations
+
+Use --auto to automatically fix safe issues (duplicate imports).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !a.RequireRepo() {
 				return nil
@@ -41,33 +46,30 @@ recommendations for improvement, including:
 			missingHeaders := r.CheckMissingDocHeaders()
 			optMods := r.CheckModulesWithOptions()
 
-			suggestions := []struct {
+			type suggestion struct {
 				Severity string
 				Title    string
 				Items    []string
-			}{}
+				Action   string
+			}
+
+			var suggestions []suggestion
 
 			if len(orphans) > 0 {
-				suggestions = append(suggestions, struct {
-					Severity string
-					Title    string
-					Items    []string
-				}{
+				suggestions = append(suggestions, suggestion{
 					Severity: "warning",
 					Title:    fmt.Sprintf("Orphan Modules (%d)", len(orphans)),
 					Items:    orphans,
+					Action:   "Review and either add to imports or remove",
 				})
 			}
 
 			if len(dups) > 0 {
-				suggestions = append(suggestions, struct {
-					Severity string
-					Title    string
-					Items    []string
-				}{
+				suggestions = append(suggestions, suggestion{
 					Severity: "warning",
 					Title:    fmt.Sprintf("Duplicate Imports (%d)", len(dups)),
 					Items:    dups,
+					Action:   "Run 'ivali suggest --auto' to remove duplicates",
 				})
 			}
 
@@ -76,14 +78,11 @@ recommendations for improvement, including:
 				if len(display) > 10 {
 					display = display[:10]
 				}
-				suggestions = append(suggestions, struct {
-					Severity string
-					Title    string
-					Items    []string
-				}{
+				suggestions = append(suggestions, suggestion{
 					Severity: "info",
 					Title:    fmt.Sprintf("Modules Missing Doc Headers (%d)", len(missingHeaders)),
 					Items:    display,
+					Action:   "Add documentation headers following repository conventions",
 				})
 			}
 
@@ -92,14 +91,11 @@ recommendations for improvement, including:
 				if len(display) > 10 {
 					display = display[:10]
 				}
-				suggestions = append(suggestions, struct {
-					Severity string
-					Title    string
-					Items    []string
-				}{
+				suggestions = append(suggestions, suggestion{
 					Severity: "info",
 					Title:    fmt.Sprintf("Modules Declaring Options (%d)", len(optMods)),
 					Items:    display,
+					Action:   "Consider if options should be moved to dedicated options.nix",
 				})
 			}
 
@@ -133,6 +129,18 @@ recommendations for improvement, including:
 					}
 					fmt.Printf("    %s  %s\n", t.Dim("→"), t.Dim(item))
 				}
+
+				if s.Action != "" {
+					fmt.Printf("    %s  %s\n", t.Info("i"), t.Dim("Action: "+s.Action))
+				}
+				fmt.Println()
+			}
+
+			if autoFix && len(dups) > 0 {
+				fmt.Println(t.Subsection("Auto-Fix"))
+				fmt.Println("  Removing duplicate imports...")
+				removed := r.RemoveDuplicateImportLines()
+				fmt.Printf("  %s Removed %d duplicate import line(s)\n", t.Good("✓"), removed)
 				fmt.Println()
 			}
 
@@ -149,4 +157,7 @@ recommendations for improvement, including:
 			return nil
 		},
 	}
+
+	cmd.Flags().BoolVar(&autoFix, "auto", false, "Automatically fix safe issues (duplicate imports)")
+	return cmd
 }

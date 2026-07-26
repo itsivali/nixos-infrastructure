@@ -1,6 +1,7 @@
 package remediation
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -51,12 +52,12 @@ func TestEngineAttemptRemediation(t *testing.T) {
 	engine := NewEngine(st, bus)
 	engine.Start()
 
-	fixed := false
+	var fixed atomic.Bool
 	action := &mockAction{
 		name:   "test-fix",
 		canFix: true,
 		fixFunc: func(comp *state.ComponentStatus) (*Result, error) {
-			fixed = true
+			fixed.Store(true)
 			return &Result{
 				Success:   true,
 				Message:   "fixed",
@@ -72,7 +73,7 @@ func TestEngineAttemptRemediation(t *testing.T) {
 
 	time.Sleep(100 * time.Millisecond)
 
-	if !fixed {
+	if !fixed.Load() {
 		t.Error("expected fix to be applied")
 	}
 

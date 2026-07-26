@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,9 +38,9 @@ func TestMonitorRunsChecks(t *testing.T) {
 	bus := events.New()
 	mon := New(st, bus, 50*time.Millisecond)
 
-	checkRun := false
+	var checkRun atomic.Bool
 	mon.RegisterCheck("test", func() (*CheckResult, error) {
-		checkRun = true
+		checkRun.Store(true)
 		return &CheckResult{
 			Name:    "test",
 			State:   state.StateHealthy,
@@ -51,7 +52,7 @@ func TestMonitorRunsChecks(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	mon.Stop()
 
-	if !checkRun {
+	if !checkRun.Load() {
 		t.Error("expected check to be run")
 	}
 

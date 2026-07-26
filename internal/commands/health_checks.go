@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 func checkNixFormatting(root string) terminal.CheckItem {

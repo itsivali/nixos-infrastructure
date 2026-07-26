@@ -9,9 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/repository"
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/repository"
+	"github.com/itsivali/nixos-infrastructure/internal/state"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 func CmdHealth(a *app.App) *cobra.Command {
@@ -36,13 +37,7 @@ Use --system to show system health (disk, memory, CPU, services, Tailscale).`,
 				if watch {
 					return runSystemWatch(t)
 				}
-				fmt.Println()
-				fmt.Println(t.Section("System Health"))
-				fmt.Println()
-				for _, c := range systemHealthChecks() {
-					fmt.Println(t.CheckList([]terminal.CheckItem{c}))
-				}
-				fmt.Println()
+				renderSystemHealthFromState(t, a)
 				return nil
 			}
 
@@ -149,6 +144,54 @@ func runSystemWatch(t *terminal.Terminal) error {
 			fmt.Println("  " + t.Dim(" Watching... refresh every 3s  (Ctrl+C to stop)"))
 		}
 	}
+}
+
+func renderSystemHealthFromState(t *terminal.Terminal, a *app.App) {
+	fmt.Println()
+	fmt.Println(t.Section("Platform Health"))
+	fmt.Println()
+
+	if a.State == nil {
+		renderSystemHealth(t)
+		return
+	}
+
+	globalState := a.State.GlobalState()
+	fmt.Println(t.KeyValue("Global State", globalState.String()))
+	fmt.Println(t.KeyValue("Components", a.State.Summary()))
+	fmt.Println()
+
+	for name, comp := range a.State.All() {
+		icon := "✓"
+		status := t.Good
+		switch comp.State {
+		case state.StateWarning:
+			icon = "⚠"
+			status = t.Warn
+		case state.StateDegraded:
+			icon = "✗"
+			status = t.Bad
+		case state.StateOffline:
+			icon = "✗"
+			status = t.Bad
+		case state.StateUnknown:
+			icon = "?"
+			status = t.Dim
+		}
+		label := comp.DisplayName
+		if label == "" {
+			label = name
+		}
+		fmt.Printf("  %s %s\n", status(fmt.Sprintf("%s %s", icon, label)), t.Dim(comp.Message))
+	}
+	fmt.Println()
+
+	fmt.Println(t.Subsection("Legacy System Health"))
+	fmt.Println()
+	for _, c := range systemHealthChecks() {
+		fmt.Println(t.CheckList([]terminal.CheckItem{c}))
+	}
+	fmt.Println()
 }
 
 func renderSystemHealth(t *terminal.Terminal) {

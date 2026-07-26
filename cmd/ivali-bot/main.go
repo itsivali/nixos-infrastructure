@@ -69,9 +69,7 @@ func main() {
 		handlers.NewSpeedtestCommand(config),
 		handlers.NewTopCommand(config),
 		handlers.NewLogCommand(config),
-		handlers.NewBackupCommand(config),
 		handlers.NewMetricsCommand(config),
-		handlers.NewCancelCommand(config),
 		handlers.NewWindowsCommand(config),
 		handlers.NewWorkspaceCommand(config),
 		handlers.NewUsersCommand(config),
@@ -129,6 +127,17 @@ func main() {
 	// Register inline-keyboard callback handlers.
 	bot.RegisterCallback("confirm:", &confirmHandler{bot: bot})
 	bot.RegisterCallback("cancel", &confirmHandler{bot: bot})
+
+	// Wire rate limiter and audit logger hooks.
+	rl := handlers.NewDefaultRateLimiter()
+	audit := handlers.NewAuditLogger("ivali-bot")
+
+	bot.SetBeforeExec(func(userID int, chatID int64, cmdName string) bool {
+		return rl.Allow(int64(userID))
+	})
+	bot.SetAfterExec(func(userID int, chatID int64, cmdName string, args string, success bool, durationMs int64) {
+		audit.Log(int64(userID), chatID, cmdName, args, success, durationMs)
+	})
 
 	// Run the bot
 	ctx := context.Background()

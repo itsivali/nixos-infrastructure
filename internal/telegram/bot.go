@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 )
 
 // Role represents a user permission level.
@@ -121,6 +122,13 @@ type Bot struct {
 	api       *API
 	auth      *Auth
 	logger    Logger
+	// beforeExec is an optional hook called before command execution.
+	// Return false to block the command. userID and chatID identify the
+	// source; cmdName is the command being dispatched.
+	beforeExec func(userID int, chatID int64, cmdName string) bool
+	// afterExec is an optional hook called after command execution with
+	// timing and success information for audit logging.
+	afterExec func(userID int, chatID int64, cmdName string, args string, success bool, durationMs int64)
 }
 
 // Logger is the interface for bot logging.
@@ -177,6 +185,18 @@ func (b *Bot) Auth() *Auth {
 	return b.auth
 }
 
+// SetBeforeExec sets an optional hook called before command execution.
+// Return false from the hook to block the command.
+func (b *Bot) SetBeforeExec(hook func(userID int, chatID int64, cmdName string) bool) {
+	b.beforeExec = hook
+}
+
+// SetAfterExec sets an optional hook called after command execution.
+// Used for audit logging with timing and success information.
+func (b *Bot) SetAfterExec(hook func(userID int, chatID int64, cmdName string, args string, success bool, durationMs int64)) {
+	b.afterExec = hook
+}
+
 // CommandByName returns a registered command by name.
 func (b *Bot) CommandByName(name string) (Command, bool) {
 	cmd, ok := b.commands[name]
@@ -222,7 +242,20 @@ func (b *Bot) Dispatch(ctx context.Context, msg *Message) error {
 
 	b.logger.Info("command executed", "command", cmdName, "user", msg.Username, "chat", msg.ChatID)
 
-	return cmd.Execute(ctx, msg)
+	// Optional rate-limiting / permission hook
+	if b.beforeExec != nil && !b.beforeExec(msg.UserID, msg.ChatID, cmdName) {
+		return b.api.SendMarkdown(msg.ChatID, "Command blocked by rate limiter.")
+	}
+
+	start := time.Now()
+	err := cmd.Execute(ctx, msg)
+	durationMs := time.Since(start).Milliseconds()
+
+	if b.afterExec != nil {
+		b.afterExec(msg.UserID, msg.ChatID, cmdName, msg.Args, err == nil, durationMs)
+	}
+
+	return err
 }
 
 // dispatchCallback routes callback queries to registered handlers.

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/itsivali/nixos-infrastructure/internal/security"
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
@@ -279,41 +280,36 @@ func (c *SecurityCommand) Description() string               { return "Show secu
 func (c *SecurityCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *SecurityCommand) Execute(ctx context.Context, msg *telegram.Message) error {
+	result, err := security.RunFullScan()
+	if err != nil {
+		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("*Security scan failed:* `%s`", err))
+	}
+
 	var lines []string
 	lines = append(lines, "*Security Status*")
 	lines = append(lines, "")
 
-	fw := runCmd("nft list ruleset >/dev/null 2>&1 && echo enabled || echo 'nft not available'", 10)
-	lines = append(lines, fmt.Sprintf("*Firewall (nftables):* `%s`", strings.TrimSpace(fw)))
-
-	aa := runCmd("aa-status --enabled >/dev/null 2>&1 && echo enforced || echo 'not enforced'", 10)
-	lines = append(lines, fmt.Sprintf("*AppArmor:* `%s`", strings.TrimSpace(aa)))
-
-	// Kernel hardening flags from the boot command line.
-	hardening := []string{"slab_nomerge", "init_on_alloc=1", "init_on_free=1", "pti=on", "vsyscall=none", "randomize_kstack_offset=on"}
-	var enabled []string
-	var missing []string
-	for _, flag := range hardening {
-		// The flag may appear as "flag" or "flag=1".
-		if runCmd(fmt.Sprintf("grep -qw '\\(%s\\|%s=1\\)' /proc/cmdline 2>/dev/null && echo yes || echo no", flag, flag), 5) == "yes" {
-			enabled = append(enabled, flag)
-		} else {
-			missing = append(missing, flag)
+	for _, cat := range result.Categories {
+		icon := "✅"
+		if !cat.Pass {
+			icon = "❌"
 		}
+		lines = append(lines, fmt.Sprintf("*%s %s*", icon, strings.Title(cat.Name)))
+		for _, check := range cat.Checks {
+			checkIcon := "  ✅"
+			if !check.Pass {
+				if check.Severity == "critical" || check.Severity == "high" {
+					checkIcon = "  ❌"
+				} else {
+					checkIcon = "  ⚠️"
+				}
+			}
+			lines = append(lines, fmt.Sprintf("%s %s: `%s`", checkIcon, check.Name, check.Message))
+		}
+		lines = append(lines, "")
 	}
-	lines = append(lines, fmt.Sprintf("*Kernel hardening:* `%s`", strings.Join(enabled, ", ")))
-	if len(missing) > 0 {
-		lines = append(lines, fmt.Sprintf("  ⚠ _missing:_ `%s`", strings.Join(missing, ", ")))
-	}
 
-	ssh := runCmd("systemctl is-active sshd >/dev/null 2>&1 && echo active || echo inactive", 5)
-	lines = append(lines, fmt.Sprintf("*SSH daemon:* `%s`", strings.TrimSpace(ssh)))
-
-	f2b := runCmd("systemctl is-active fail2ban >/dev/null 2>&1 && echo active || echo inactive", 5)
-	lines = append(lines, fmt.Sprintf("*Fail2ban:* `%s`", strings.TrimSpace(f2b)))
-
-	tail := runCmd("systemctl is-active tailscaled >/dev/null 2>&1 && echo active || echo inactive", 5)
-	lines = append(lines, fmt.Sprintf("*Tailscale:* `%s`", strings.TrimSpace(tail)))
+	lines = append(lines, fmt.Sprintf("_Score: %s_", security.ScoreFromResult(result)))
 
 	return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/itsivali/nixos-infrastructure/internal/security"
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
@@ -122,23 +123,35 @@ func (c *MenuInlineCommand) showGitOps(chatID int64) error {
 }
 
 func (c *MenuInlineCommand) showSecurity(chatID int64) error {
+	result, err := security.RunFullScan()
+	if err != nil {
+		return c.api.SendMarkdown(chatID, fmt.Sprintf("*Security scan failed:* `%s`", err))
+	}
+
 	var lines []string
 	lines = append(lines, "*Security Status*")
 	lines = append(lines, "")
 
-	fw := runCmd("nft list ruleset >/dev/null 2>&1 && echo enabled || echo disabled", 5)
-	lines = append(lines, fmt.Sprintf("*Firewall:* `%s`", strings.TrimSpace(fw)))
+	for _, cat := range result.Categories {
+		icon := "✅"
+		if !cat.Pass {
+			icon = "❌"
+		}
+		lines = append(lines, fmt.Sprintf("*%s %s*", icon, strings.Title(cat.Name)))
+		for _, check := range cat.Checks {
+			checkIcon := "  ✅"
+			if !check.Pass {
+				if check.Severity == "critical" || check.Severity == "high" {
+					checkIcon = "  ❌"
+				} else {
+					checkIcon = "  ⚠️"
+				}
+			}
+			lines = append(lines, fmt.Sprintf("%s %s", checkIcon, check.Name))
+		}
+		lines = append(lines, "")
+	}
 
-	aa := runCmd("aa-status --enabled >/dev/null 2>&1 && echo enforced || echo inactive", 5)
-	lines = append(lines, fmt.Sprintf("*AppArmor:* `%s`", strings.TrimSpace(aa)))
-
-	ssh := runCmd("systemctl is-active sshd >/dev/null 2>&1 && echo active || echo inactive", 5)
-	lines = append(lines, fmt.Sprintf("*SSH:* `%s`", strings.TrimSpace(ssh)))
-
-	f2b := runCmd("systemctl is-active fail2ban >/dev/null 2>&1 && echo active || echo inactive", 5)
-	lines = append(lines, fmt.Sprintf("*Fail2ban:* `%s`", strings.TrimSpace(f2b)))
-
-	lines = append(lines, "")
 	lines = append(lines, "_Tap /security for full details_")
 
 	return c.api.SendMarkdown(chatID, strings.Join(lines, "\n"))

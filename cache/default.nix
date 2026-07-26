@@ -70,8 +70,8 @@ in
 
   config = lib.mkIf cfg.enable {
     # Prepend the user cache ahead of cache.nixos.org.
-    nix.settings.substituters = lib.mkOBefore [ cfg.url ];
-    nix.settings.trusted-public-keys = lib.mkOBefore [ trustedKey ];
+    nix.settings.substituters = lib.mkBefore [ cfg.url ];
+    nix.settings.trusted-public-keys = lib.mkBefore [ trustedKey ];
 
     environment.systemPackages = [ pkgs.attic ];
 

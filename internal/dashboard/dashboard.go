@@ -12,9 +12,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/willisivali/nixos-infrastructure/internal/repository"
-	"github.com/willisivali/nixos-infrastructure/internal/scanner"
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"github.com/itsivali/nixos-infrastructure/internal/repository"
+	"github.com/itsivali/nixos-infrastructure/internal/scanner"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 type sortField int
@@ -69,8 +69,8 @@ func New(repo *repository.Repository, term *terminal.Terminal) tea.Model {
 	return &model{
 		repo:     repo,
 		term:     term,
-		tabs:     []string{"Overview", "Modules", "Health", "Domains", "Git Log", "Generations"},
-		tabIcons: []string{"", "", "", "", "", ""},
+		tabs:     []string{"Overview", "Modules", "Health", "Domains", "Git Log", "Generations", "Observability", "Docs"},
+		tabIcons: []string{"", "", "", "", "", "", "", ""},
 	}
 }
 
@@ -393,6 +393,10 @@ func (m *model) View() string {
 		b.WriteString(m.renderGitLog())
 	case 5:
 		b.WriteString(m.renderGenerations())
+	case 6:
+		b.WriteString(m.renderObservability())
+	case 7:
+		b.WriteString(m.renderDocs())
 	}
 
 	b.WriteString("\n")
@@ -1180,6 +1184,64 @@ func (m *model) renderGenerations() string {
 	return b.String()
 }
 
+func (m *model) renderObservability() string {
+	var b strings.Builder
+
+	b.WriteString("  " + m.term.IconH1("", "Observability Stack") + "\n\n")
+
+	services := []struct {
+		name  string
+		check string
+		port  string
+	}{
+		{"Prometheus", "curl -s http://127.0.0.1:9090/-/healthy", "9090"},
+		{"Grafana", "curl -s http://127.0.0.1:3000/grafana/api/health", "3000"},
+		{"Loki", "curl -s http://127.0.0.1:3100/ready", "3100"},
+		{"Alloy", "systemctl is-active alloy 2>/dev/null", "N/A"},
+		{"Falco", "systemctl is-active falco 2>/dev/null", "N/A"},
+		{"Node Exporter", "curl -s http://127.0.0.1:9100/metrics >/dev/null 2>&1 && echo up || echo down", "9100"},
+		{"NixOS Exporter", "ss -tlnp 2>/dev/null | grep -q :9101 && echo up || echo down", "9101"},
+	}
+
+	b.WriteString("  " + m.term.Section("Services") + "\n")
+	for _, svc := range services {
+		out, err := exec.Command("sh", "-c", svc.check).CombinedOutput()
+		status := strings.TrimSpace(string(out))
+		active := err == nil && (status == "up" || status == "active" || strings.Contains(status, "ok"))
+		if active {
+			b.WriteString(fmt.Sprintf("  %s %-20s %s  %s\n",
+				m.term.ColoredIcon("✓", m.term.Color.Green),
+				svc.name,
+				m.term.Dim(svc.port),
+				m.term.Dim(status)))
+		} else {
+			b.WriteString(fmt.Sprintf("  %s %-20s %s  %s\n",
+				m.term.ColoredIcon("✗", m.term.Color.Red),
+				svc.name,
+				m.term.Dim(svc.port),
+				m.term.Dim(status)))
+		}
+	}
+	b.WriteString("\n")
+
+	b.WriteString("  " + m.term.Section("System Metrics") + "\n")
+	mem := runDashCmd("free -h | grep Mem | awk '{print $3 \"/\" $2}'")
+	load := runDashCmd("cat /proc/loadavg | awk '{print $1}'")
+	cpus := runDashCmd("nproc")
+	disk := runDashCmd("df -h / | tail -1 | awk '{print $3 \"/\" $2 \" (\" $5 \")\"}'")
+	b.WriteString(fmt.Sprintf("  Memory:    %s\n", m.term.Dim(mem)))
+	b.WriteString(fmt.Sprintf("  CPU Load:  %s  Cores: %s\n", m.term.Dim(load), m.term.Dim(cpus)))
+	b.WriteString(fmt.Sprintf("  Disk /:    %s\n", m.term.Dim(disk)))
+	b.WriteString("\n")
+
+	b.WriteString("  " + m.term.Section("Quick Links") + "\n")
+	b.WriteString(fmt.Sprintf("  %s Grafana:      %s\n", m.term.Dim(""), m.term.Dim("http://127.0.0.1:3000/grafana/")))
+	b.WriteString(fmt.Sprintf("  %s Prometheus:   %s\n", m.term.Dim(""), m.term.Dim("http://127.0.0.1:9090")))
+	b.WriteString(fmt.Sprintf("  %s Loki:         %s\n", m.term.Dim(""), m.term.Dim("http://127.0.0.1:3100")))
+
+	return b.String()
+}
+
 func (m *model) renderHelpBar() string {
 	help := m.term.Dim("  ? help  ←/→ tab  r refresh  s sort  / filter  a actions  q quit")
 	if m.helpVisible {
@@ -1225,6 +1287,90 @@ func (m *model) renderActionMode() string {
 }
 
 type errMsg error
+
+func runDashCmd(cmd string) string {
+	out, err := exec.Command("sh", "-c", cmd).CombinedOutput()
+	if err != nil {
+		return "unavailable"
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func (m *model) renderDocs() string {
+	if m.repo.Result == nil {
+		return "  " + m.term.Dim("No data — run ivali scan first.")
+	}
+
+	var b strings.Builder
+
+	b.WriteString("  " + m.term.Section("Documentation Quality") + "\n\n")
+
+	// Calculate documentation metrics
+	totalModules := len(m.repo.Result.AllModules)
+	documentedModules := 0
+	totalQuality := 0.0
+
+	for _, mod := range m.repo.Result.AllModules {
+		if info, ok := m.repo.Parsed[mod.Path]; ok && info.DocHeader != "" {
+			documentedModules++
+			if info.Purpose != "" {
+				totalQuality += 0.5
+			}
+			if len(info.Owns) > 0 {
+				totalQuality += 0.3
+			}
+			if len(info.Imports) > 0 {
+				totalQuality += 0.2
+			}
+		}
+	}
+
+	coverage := 0.0
+	avgQuality := 0.0
+	if totalModules > 0 {
+		coverage = float64(documentedModules) / float64(totalModules) * 100
+		avgQuality = totalQuality / float64(totalModules)
+	}
+
+	b.WriteString(fmt.Sprintf("  %s Total modules:     %d\n", m.term.Dim(""), totalModules))
+	b.WriteString(fmt.Sprintf("  %s Documented:        %d (%.1f%%)\n", m.term.Dim(""), documentedModules, coverage))
+	b.WriteString(fmt.Sprintf("  %s Average quality:   %.2f/1.00\n", m.term.Dim(""), avgQuality))
+	b.WriteString("\n")
+
+	// Show modules needing attention
+	b.WriteString("  " + m.term.Subsection("Modules Needing Documentation") + "\n")
+
+	count := 0
+	for _, mod := range m.repo.Result.AllModules {
+		if count >= 10 {
+			break
+		}
+		if info, ok := m.repo.Parsed[mod.Path]; ok {
+			if info.DocHeader == "" && !info.IsAutoImport {
+				b.WriteString(fmt.Sprintf("  %s %s\n",
+					m.term.ColoredIcon("⚠", m.term.Color.Yellow),
+					m.term.Dim(mod.RelPath)))
+				count++
+			}
+		}
+	}
+
+	if count == 0 {
+		b.WriteString("  " + m.term.Good("All modules have documentation!") + "\n")
+	}
+
+	b.WriteString("\n")
+
+	// Show recent documentation suggestions
+	b.WriteString("  " + m.term.Subsection("Documentation Tips") + "\n")
+	b.WriteString(fmt.Sprintf("  %s %s\n", m.term.Dim(""), m.term.Dim("Add doc headers with Purpose, Ownership, Responsibilities")))
+	b.WriteString(fmt.Sprintf("  %s %s\n", m.term.Dim(""), m.term.Dim("Use triple # delimiters for doc header blocks")))
+	b.WriteString(fmt.Sprintf("  %s %s\n", m.term.Dim(""), m.term.Dim("Run 'ivali docs --analyze' for detailed quality report")))
+	b.WriteString("\n")
+
+	return b.String()
+}
+
 type refreshDone time.Time
 type refreshTick time.Time
 type spinnerTick time.Time

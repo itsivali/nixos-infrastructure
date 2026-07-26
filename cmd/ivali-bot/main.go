@@ -7,8 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/willisivali/nixos-infrastructure/internal/telegram"
-	"github.com/willisivali/nixos-infrastructure/internal/telegram/handlers"
+	"github.com/itsivali/nixos-infrastructure/internal/metrics"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/handlers"
 )
 
 func main() {
@@ -103,7 +104,27 @@ func main() {
 		handlers.NewJulesNewCommand(config),
 		handlers.NewJulesCancelCommand(config),
 		handlers.NewJulesHistoryCommand(config),
+		handlers.NewJulesLogsCommand(config),
+		handlers.NewJulesConfigCommand(config),
+		// Platform commands
+		handlers.NewStateCommand(config),
+		handlers.NewEventsCommand(config),
+		handlers.NewPluginsCommand(config),
+		handlers.NewInventoryCommand(config),
 	)
+
+	// Start metrics server
+	metricsAddr := ":9115"
+	if v := os.Getenv("IVALI_METRICS_ADDR"); v != "" {
+		metricsAddr = v
+	}
+	metricsSrv := metrics.NewServer(metricsAddr)
+	go func() {
+		fmt.Printf("Metrics server listening on %s\n", metricsAddr)
+		if err := metricsSrv.Start(); err != nil && err.Error() != "http: Server closed" {
+			fmt.Fprintf(os.Stderr, "Metrics server error: %v\n", err)
+		}
+	}()
 
 	// Register inline-keyboard callback handlers.
 	bot.RegisterCallback("confirm:", &confirmHandler{bot: bot})

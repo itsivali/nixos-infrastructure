@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/willisivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
 // System commands — Nix, packages, diagnostics, and user management.
@@ -179,8 +179,51 @@ func (c *MetricsCommand) Description() string               { return "Show Prome
 func (c *MetricsCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *MetricsCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("curl -s http://127.0.0.1:9090/api/v1/query?query=up 2>/dev/null | jq -r '.data.result[] | \"\\(.metric.job): \\(.value[1])\"' 2>/dev/null || echo 'Prometheus not available'", 10)
-	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
+	var lines []string
+	lines = append(lines, "*Prometheus Metrics*")
+	lines = append(lines, "")
+
+	// Service health
+	upOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=up' 2>/dev/null | jq -r '.data.result[] | \"`\" + .metric.job + \"`: \" + .value[1]' 2>/dev/null || echo 'Prometheus not available'", 10)
+	if strings.TrimSpace(upOutput) != "" && !strings.Contains(upOutput, "not available") {
+		lines = append(lines, "*Service Health:*")
+		lines = append(lines, upOutput)
+		lines = append(lines, "")
+	}
+
+	// CPU usage
+	cpuOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=100-(avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))*100)' 2>/dev/null | jq -r '.data.result[0].value[1] | . + \"%\"' 2>/dev/null", 10)
+	cpuOutput = strings.TrimSpace(cpuOutput)
+	if cpuOutput != "" && cpuOutput != "null" {
+		lines = append(lines, fmt.Sprintf("*CPU Usage:* `%s`", cpuOutput))
+	}
+
+	// Memory usage
+	memOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=(1-(node_memory_MemAvailable_bytes/node_memory_MemTotal_bytes))*100' 2>/dev/null | jq -r '.data.result[0].value[1] | . + \"%\"' 2>/dev/null", 10)
+	memOutput = strings.TrimSpace(memOutput)
+	if memOutput != "" && memOutput != "null" {
+		lines = append(lines, fmt.Sprintf("*Memory Usage:* `%s`", memOutput))
+	}
+
+	// Disk usage
+	diskOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=(1-(node_filesystem_avail_bytes{mountpoint=\"/\"}/node_filesystem_size_bytes{mountpoint=\"/\"}))*100' 2>/dev/null | jq -r '.data.result[0].value[1] | . + \"%\"' 2>/dev/null", 10)
+	diskOutput = strings.TrimSpace(diskOutput)
+	if diskOutput != "" && diskOutput != "null" {
+		lines = append(lines, fmt.Sprintf("*Disk Usage /:* `%s`", diskOutput))
+	}
+
+	// System load
+	loadOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=node_load1' 2>/dev/null | jq -r '.data.result[0].value[1]' 2>/dev/null", 10)
+	loadOutput = strings.TrimSpace(loadOutput)
+	if loadOutput != "" && loadOutput != "null" {
+		lines = append(lines, fmt.Sprintf("*System Load (1m):* `%s`", loadOutput))
+	}
+
+	if len(lines) == 1 {
+		lines = append(lines, "`Prometheus not available or no metrics found.`")
+	}
+
+	return c.api.SendLongMessage(msg.ChatID, strings.Join(lines, "\n"), 3500)
 }
 
 type CancelCommand struct {

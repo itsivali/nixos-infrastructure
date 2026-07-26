@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
 )
 
 // CmdDiff runs a dry NixOS rebuild and prints the derivations that would

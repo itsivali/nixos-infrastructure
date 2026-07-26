@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/willisivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
 func TestRunCmd(t *testing.T) {

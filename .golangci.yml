@@ -28,7 +28,7 @@ linters-settings:
   gofmt:
     simplify: true
   goimports:
-    local-prefixes: github.com/willisivali/nixos-infrastructure
+    local-prefixes: github.com/itsivali/nixos-infrastructure
   revive:
     rules:
       - name: exported

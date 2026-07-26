@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/willisivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
 // UptimeCommand shows system uptime.

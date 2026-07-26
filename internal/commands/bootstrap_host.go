@@ -9,9 +9,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/template"
-	"github.com/willisivali/nixos-infrastructure/internal/wizard"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/template"
+	"github.com/itsivali/nixos-infrastructure/internal/wizard"
 )
 
 func CmdBootstrapHost(a *app.App) *cobra.Command {

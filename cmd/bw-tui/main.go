@@ -7,7 +7,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/willisivali/nixos-infrastructure/internal/bitwarden"
+	"github.com/itsivali/nixos-infrastructure/internal/bitwarden"
 )
 
 func main() {

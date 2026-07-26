@@ -31,6 +31,15 @@ flake.nix
 ├── lib/                      ← Nix helpers (auto-imports, hardware detection)
 ├── scripts/                  ← Shell scripts (deploy, health, rollback, bot)
 ├── internal/                 ← Go CLI (ivali) source code
+│   ├── state/                ← Platform state engine (state.Engine)
+│   ├── events/               ← Structured event bus (events.Bus)
+│   ├── plugin/               ← Plugin architecture + 9 seed plugins
+│   ├── inventory/            ← Host inventory discovery
+│   ├── docs/                 ← Documentation analysis and quality metrics
+│   ├── security/             ← Security scanner with 20+ checks
+│   ├── metrics/              ← Prometheus exporter and collector
+│   ├── remediation/          ← Auto-remediation engine with 4 actions
+│   └── monitor/              ← Health monitor with periodic checks
 ├── tests/                    ← NixOS smoke tests
 └── opencode/                 ← Knowledge base (AI context, architecture, troubleshooting)
 ```
@@ -83,10 +92,30 @@ ivali status          # Repository state summary
 ivali doctor          # Full health check
 ivali doctor --fix    # Auto-fix issues
 ivali docs            # Generate DOCS.md from module headers
+ivali docs --analyze  # AI-powered documentation quality analysis
+ivali docs --codex    # Generate opencode/modules.md catalog
 ivali explain <mod>   # Explain a module
 ivali graph tree      # Import hierarchy
-ivali dashboard       # Interactive TUI
+ivali graph go-deps   # Go package dependencies
+ivali graph tree/deps/ownership --format mermaid  # Mermaid output
+ivali graph tree/deps/ownership --format dot      # DOT output
+ivali search <query>  # Semantic repository search
+ivali inventory       # Comprehensive host inventory
+ivali inventory --json# Machine-readable inventory
+ivali ai status       # AI system availability (Jules + OpenCode)
+ivali ai route <desc> # Route task to appropriate AI system
+ivali dashboard       # Interactive TUI (8 tabs: Overview, Modules, Health, Domains, Git Log, Generations, Observability, Docs)
 ivali bootstrap host  # Generate new host config
+ivali monitor         # Real-time system metrics (--json for snapshot)
+ivali observability   # Check Prometheus/Grafana/Loki health
+ivali metrics         # Repository metrics report (--json, --output)
+ivali remediation     # Show auto-remediation history
+ivali security-scan   # Comprehensive security scan (--json)
+ivali suggest         # Analyze repo and recommend improvements
+ivali suggest --auto  # Auto-fix safe issues (duplicate imports)
+ivali verify          # Full verification (lint + health + architecture + security)
+
+# Jules AI agent
 ivali jules status    # Show Jules connection and auth status
 ivali jules login     # Authenticate with Google Jules
 ivali jules task      # Show or create a Jules task
@@ -116,6 +145,8 @@ desktop-bridge helpers (`scripts/bot/lib/desktop.sh`) remain for the smoke test.
 /open      /apps      /run       /git
 /screenshot /volume   /brightness /clipboard
 /jules_status /jules_tasks /jules_new /jules_history
+/jules_logs /jules_config
+/state     /events    /plugins   /inventory
 ```
 
 ## Secrets

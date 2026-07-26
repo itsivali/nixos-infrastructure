@@ -223,8 +223,6 @@ func (c *Client) LoginAndUnlock(email, password, clientID, clientSecret string) 
 	return c.Unlock(password)
 }
 
-
-
 func (c *Client) Lock() error {
 	_, err := c.run("lock")
 	return err

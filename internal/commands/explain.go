@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/parser"
-	"github.com/willisivali/nixos-infrastructure/internal/scanner"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/parser"
+	"github.com/itsivali/nixos-infrastructure/internal/scanner"
 )
 
 func CmdExplain(a *app.App) *cobra.Command {

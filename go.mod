@@ -1,4 +1,4 @@
-module github.com/willisivali/nixos-infrastructure
+module github.com/itsivali/nixos-infrastructure
 
 go 1.26.4
 

@@ -6,7 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/events"
 )
 
 func Root(a *app.App) *cobra.Command {
@@ -24,6 +25,36 @@ a beautiful interactive terminal experience.`,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			a.SetVerbose(verbose)
 			a.SetJSON(jsonOutput)
+
+			_ = a.Events
+			_ = a.State
+			_ = a.Metrics
+
+			if a.Metrics != nil {
+				a.Metrics.CommandStarted(cmd.Name())
+			}
+
+			if a.Events != nil && verbose {
+				a.Events.SubscribeFunc("cli-log", func(evt events.Event) {
+					level := "info"
+					switch evt.Severity {
+					case events.SeverityWarn:
+						level = "warn"
+					case events.SeverityError:
+						level = "error"
+					case events.SeverityCritical:
+						level = "critical"
+					}
+					a.Log.Debug().Str("event", string(evt.Type)).Str("severity", level).Msg(evt.Message)
+				})
+			}
+
+			return nil
+		},
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			if a.Metrics != nil {
+				a.Metrics.CommandFinished(cmd.Name(), cmd.Flags().Changed("error"))
+			}
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -44,6 +75,7 @@ a beautiful interactive terminal experience.`,
 	root.SetHelpTemplate(rootHelp(a))
 
 	root.AddCommand(
+		CmdAI(a),
 		CmdBackup(a),
 		CmdBootstrap(a),
 		CmdCompletion(a),
@@ -57,18 +89,23 @@ a beautiful interactive terminal experience.`,
 		CmdFirewall(a),
 		CmdGraph(a),
 		CmdHealth(a),
+		CmdInventory(a),
 		CmdJules(a),
 		CmdLogs(a),
 		CmdMetrics(a),
 		CmdMonitor(a),
 		CmdObservability(a),
 		CmdRestore(a),
+		CmdSearch(a),
 		CmdSecrets(a),
 		CmdRebuild(a),
 		CmdReconcile(a),
+		CmdRemediation(a),
 		CmdRollback(a),
+		CmdHealthMonitor(a),
 		CmdScan(a),
 		CmdSecurity(a),
+		CmdSecurityScan(a),
 		CmdServices(a),
 		CmdStatus(a),
 		CmdSuggest(a),
@@ -114,7 +151,9 @@ func rootHelp(a *app.App) string {
 				"status          Show repository state summary",
 				"doctor          Run all repository health checks",
 				"verify          Full verification (lint, health, architecture)",
-				"graph           Display module and dependency graphs",
+				"graph           Display module, Go, and dependency graphs",
+				"search          Search repository for modules and related items",
+				"inventory       Show comprehensive host inventory",
 				"explain         Explain a module or option",
 				"suggest         Analyze repository and recommend improvements",
 			},
@@ -163,8 +202,11 @@ func rootHelp(a *app.App) string {
 			},
 		},
 		{
-			Title: "AI Coding Agent",
+			Title: "AI Systems",
 			Commands: []string{
+				"ai                AI orchestration and routing",
+				"ai status         Show AI system availability",
+				"ai route          Route a task to the appropriate AI",
 				"jules             Google Jules AI coding agent",
 				"jules status      Show Jules connection and auth status",
 				"jules login       Authenticate with Google Jules",

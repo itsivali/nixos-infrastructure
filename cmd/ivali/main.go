@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
-	"github.com/willisivali/nixos-infrastructure/internal/commands"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/commands"
 )
 
 func main() {

@@ -14,18 +14,16 @@ import (
 // ── Styling (Catppuccin Mocha) ─────────────────────────────
 
 var (
-	clrCrust    = lipgloss.Color("#11111b")
-	clrBase     = lipgloss.Color("#1e1e2e")
-	clrSurface  = lipgloss.Color("#313244")
-	clrOverlay  = lipgloss.Color("#45475a")
-	clrDim      = lipgloss.Color("#6c7086")
-	clrText     = lipgloss.Color("#cdd6f4")
-	clrAccent   = lipgloss.Color("#89b4fa")
-	clrGreen    = lipgloss.Color("#a6e3a1")
-	clrRed      = lipgloss.Color("#f38ba8")
-	clrYellow   = lipgloss.Color("#f9e2af")
-	clrMauve    = lipgloss.Color("#cba6f7")
-	clrLavender = lipgloss.Color("#b4bfe2")
+	clrCrust   = lipgloss.Color("#11111b")
+	clrSurface = lipgloss.Color("#313244")
+	clrOverlay = lipgloss.Color("#45475a")
+	clrDim     = lipgloss.Color("#6c7086")
+	clrText    = lipgloss.Color("#cdd6f4")
+	clrAccent  = lipgloss.Color("#89b4fa")
+	clrGreen   = lipgloss.Color("#a6e3a1")
+	clrRed     = lipgloss.Color("#f38ba8")
+	clrYellow  = lipgloss.Color("#f9e2af")
+	clrMauve   = lipgloss.Color("#cba6f7")
 
 	styleTitleBar = lipgloss.NewStyle().
 			Foreground(clrCrust).
@@ -40,9 +38,9 @@ var (
 			Padding(0, 1)
 
 	styleTabInactive = lipgloss.NewStyle().
-			Foreground(clrText).
-			Background(clrSurface).
-			Padding(0, 1)
+				Foreground(clrText).
+				Background(clrSurface).
+				Padding(0, 1)
 
 	styleItem = lipgloss.NewStyle().
 			Padding(0, 2)

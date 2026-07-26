@@ -12,8 +12,8 @@ import (
 
 	"github.com/adrg/xdg"
 
-	"github.com/willisivali/nixos-infrastructure/internal/parser"
-	"github.com/willisivali/nixos-infrastructure/internal/scanner"
+	"github.com/itsivali/nixos-infrastructure/internal/parser"
+	"github.com/itsivali/nixos-infrastructure/internal/scanner"
 )
 
 type Repository struct {

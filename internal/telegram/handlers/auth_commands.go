@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/willisivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
 // AuthStatusCommand shows the current authentication mode and how to register

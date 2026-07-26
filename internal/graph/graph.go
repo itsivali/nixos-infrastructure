@@ -6,8 +6,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/willisivali/nixos-infrastructure/internal/parser"
-	"github.com/willisivali/nixos-infrastructure/internal/scanner"
+	"github.com/itsivali/nixos-infrastructure/internal/parser"
+	"github.com/itsivali/nixos-infrastructure/internal/scanner"
 )
 
 type NodeType string

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/willisivali/nixos-infrastructure/internal/terminal"
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 func confirmAction(t *terminal.Terminal, message string) bool {

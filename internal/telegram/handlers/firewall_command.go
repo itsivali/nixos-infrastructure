@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/willisivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
 // FirewallCommand shows nftables firewall status and rules summary.

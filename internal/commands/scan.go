@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/willisivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/app"
 )
 
 func CmdScan(a *app.App) *cobra.Command {

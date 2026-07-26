@@ -12,6 +12,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/security"
 	"github.com/itsivali/nixos-infrastructure/internal/state"
 	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
@@ -220,13 +221,64 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 						return items
 					}(),
 				},
-				{
-					Category: "Architecture",
-					Checks: []terminal.CheckItem{
-						{Label: "Domain boundaries", Status: terminal.StatusPass},
-						{Label: "Module ownership", Status: terminal.StatusPass},
-					},
-				},
+		{
+			Category: "Architecture",
+			Checks: func() []terminal.CheckItem {
+				var items []terminal.CheckItem
+				domains := []string{"boot", "networking", "desktop", "security", "services", "developer", "observability", "recovery", "automation", "packages", "home"}
+				for _, d := range domains {
+					path := filepath.Join(r.Root, d, "default.nix")
+					if _, err := os.Stat(path); err != nil {
+						items = append(items, terminal.CheckItem{
+							Label:  fmt.Sprintf("Domain: %s (missing default.nix)", d),
+							Status: terminal.StatusWarn,
+						})
+					} else {
+						items = append(items, terminal.CheckItem{
+							Label:  fmt.Sprintf("Domain: %s", d),
+							Status: terminal.StatusPass,
+						})
+					}
+				}
+				hostsPath := filepath.Join(r.Root, "hosts", "hosts.nix")
+				if _, err := os.Stat(hostsPath); err != nil {
+					items = append(items, terminal.CheckItem{Label: "hosts.nix missing", Status: terminal.StatusFail})
+				} else {
+					items = append(items, terminal.CheckItem{Label: "hosts.nix present", Status: terminal.StatusPass})
+				}
+				return items
+			}(),
+		},
+			{
+				Category: "Security",
+				Checks: func() []terminal.CheckItem {
+					result, err := security.RunFullScan()
+					if err != nil {
+						return []terminal.CheckItem{
+							{Label: fmt.Sprintf("Scan failed: %s", err), Status: terminal.StatusFail},
+						}
+					}
+					var items []terminal.CheckItem
+					for _, cat := range result.Categories {
+						for _, check := range cat.Checks {
+							status := terminal.StatusPass
+							if !check.Pass {
+								if check.Severity == "critical" || check.Severity == "high" {
+									status = terminal.StatusFail
+								} else {
+									status = terminal.StatusWarn
+								}
+							}
+							items = append(items, terminal.CheckItem{
+								Label:  fmt.Sprintf("[%s] %s", cat.Name, check.Name),
+								Status: status,
+								Detail: check.Message,
+							})
+						}
+					}
+					return items
+				}(),
+			},
 			}
 
 			if a.State != nil {

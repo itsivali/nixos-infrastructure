@@ -74,6 +74,7 @@ func New(level InitLevel) (*App, error) {
 		a.Remediation.RegisterAction(remediation.NewServiceRestartAction())
 		a.Remediation.RegisterAction(remediation.NewDiskCleanupAction())
 		a.Remediation.RegisterAction(remediation.NewNetworkResetAction())
+	a.Remediation.RegisterAction(remediation.NewNixOSRebuildAction())
 
 		a.Monitor = monitor.New(a.State, a.Events, 30*time.Second)
 		a.Monitor.RegisterCheck("disk", monitor.CheckDisk)

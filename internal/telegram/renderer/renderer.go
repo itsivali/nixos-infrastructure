@@ -8,11 +8,11 @@ import (
 
 // Card represents a formatted response card.
 type Card struct {
-	Title   string
-	Icon    string
-	Lines   []string
-	Footer  string
-	Status  CardStatus
+	Title  string
+	Icon   string
+	Lines  []string
+	Footer string
+	Status CardStatus
 }
 
 // CardStatus represents the visual status of a card.

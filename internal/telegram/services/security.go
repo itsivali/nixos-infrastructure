@@ -3,9 +3,10 @@ package services
 import (
 	"fmt"
 
-	"github.com/itsivali/nixos-infrastructure/internal/security"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/itsivali/nixos-infrastructure/internal/security"
 )
 
 // SecurityService provides security scanning and status.

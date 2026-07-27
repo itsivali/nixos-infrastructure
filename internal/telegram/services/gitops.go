@@ -66,5 +66,3 @@ func (s *GitOpsService) ResticLastRun() string {
 func (s *GitOpsService) LastSnapshot() string {
 	return s.runner.Run("restic snapshots --latest 1 --no-lock 2>/dev/null | tail -2 | head -1 || echo 'no snapshots'", 15)
 }
-
-

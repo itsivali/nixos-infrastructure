@@ -17,13 +17,13 @@ func NewTailscaleService(runner *Runner) *TailscaleService {
 
 // StatusResult holds parsed Tailscale status information.
 type StatusResult struct {
-	Daemon       string
-	State        string
-	IP           string
-	Hostname     string
-	DNSName      string
-	Peers        string
-	IsRunning    bool
+	Daemon    string
+	State     string
+	IP        string
+	Hostname  string
+	DNSName   string
+	Peers     string
+	IsRunning bool
 }
 
 // Status retrieves comprehensive Tailscale status.

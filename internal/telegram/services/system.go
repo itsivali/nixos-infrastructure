@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"os"
 	"strings"
 )
 
@@ -114,13 +113,4 @@ func (s *SystemService) FailedUnits() string {
 // Hostname returns the system hostname.
 func (s *SystemService) Hostname() string {
 	return strings.TrimSpace(s.runner.Run("hostname", 5))
-}
-
-// currentUser returns the DEFAULT_USER env value or "ivali".
-func currentUser() string {
-	u := os.Getenv("DEFAULT_USER")
-	if u == "" {
-		u = "ivali"
-	}
-	return u
 }

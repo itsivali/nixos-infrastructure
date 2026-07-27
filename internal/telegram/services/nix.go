@@ -7,7 +7,7 @@ import (
 
 // NixService provides NixOS and Nix package manager operations.
 type NixService struct {
-	runner *Runner
+	runner  *Runner
 	repoDir string
 }
 

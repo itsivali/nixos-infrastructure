@@ -181,8 +181,8 @@ func (s *AIService) Status() AIStatus {
 
 // AIStatus holds AI system status information.
 type AIStatus struct {
-	OpenCode     string
-	OpenHands    string
+	OpenCode      string
+	OpenHands     string
 	KnowledgeBase string
 }
 

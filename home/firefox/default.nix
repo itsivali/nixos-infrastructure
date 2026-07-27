@@ -105,6 +105,24 @@ in
         "browser.sessionstore.interval" = 15000;
         "javascript.options.wasm_gc" = true;
 
+        # ── Audio / WebRTC ──────────────────────────────────────
+        # Prevents audio suspension during video calls (Google Meet)
+        "media.audio.suspend_on_video_visibility.enabled" = false;
+        # Enable screen sharing via PipeWire portal
+        "media.getusermedia.screensharing.enabled" = true;
+        # WebRTC for video/audio calls
+        "media.webrtc.enabled" = true;
+        "media.peerconnection.enabled" = true;
+        "media.peerconnection.ice.default_address_only" = false;
+        "media.peerconnection.ice.proxy_only" = false;
+        "media.peerconnection.ice.no_host" = false;
+        # Allow device permission prompts (mic, camera)
+        "media.navigator.permission.device" = true;
+        # Autoplay policy: block with exception for media
+        "media.autoplay.default" = 5;
+        # DRM for streaming services
+        "media.hardwareedia.drm-enabled" = true;
+
         # ── UI / appearance (Gruvbox-dark, compact) ──────────────
         "ui.systemUsesDarkTheme" = 1;
         "browser.theme.toolbar-theme" = 1;

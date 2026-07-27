@@ -14,7 +14,7 @@
 #
 # Responsibilities
 # ----------------
-# - Import audio, GDM, appearance, shell, applications, and tweaks modules
+# - Import audio, GDM, portal, appearance, shell, applications, and tweaks modules
 # - Declare the ivali.desktop.gnome.enable option
 # - Enable GNOME desktop manager, polkit, gvfs, udisks2, upower
 # - Set Wayland session variables (NIXOS_OZONE_WL, MOZ_ENABLE_WAYLAND)
@@ -31,6 +31,7 @@ in
   imports = [
     ./audio.nix
     ./gdm.nix
+    ./portal.nix
     ./appearance
     ./shell
     ./applications

@@ -10,100 +10,106 @@ import (
 	"github.com/itsivali/nixos-infrastructure/internal/metrics"
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 	"github.com/itsivali/nixos-infrastructure/internal/telegram/handlers"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/services"
 )
 
 func main() {
 	debug := flag.Bool("debug", false, "Enable debug logging")
 	flag.Parse()
 
-	// Load configuration
 	config, err := telegram.LoadConfig()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to load config: %v\n", err)
 		os.Exit(1)
 	}
-
 	config.Debug = *debug
 
-	// Create logger
 	logger := telegram.NewSimpleLogger(config.Debug)
-
-	// Create runner
 	runner := telegram.NewRunner(config, logger)
-
-	// Register commands
 	bot := runner.Bot()
+
+	// Create the shared services container.
+	svc := services.NewContainer(config.RepoDir)
+
+	// Register all commands using the shared services.
 	bot.RegisterCommands(
 		handlers.NewHelpCommand(bot),
-		handlers.NewStatusCommand(config),
-		handlers.NewHealthCommand(config),
-		handlers.NewDiskCommand(config),
-		handlers.NewProcessesCommand(config),
-		handlers.NewGenerationsCommand(config),
-		handlers.NewRebootCommand(config),
-		handlers.NewShutdownCommand(config),
-		handlers.NewDeployCommand(config),
-		handlers.NewRollbackCommand(config),
-		handlers.NewUpdateCommand(config),
-		handlers.NewScanCommand(config),
-		handlers.NewSecurityCommand(config),
-		handlers.NewDoctorCommand(config),
-		handlers.NewStoreCommand(config),
-		handlers.NewGCCommand(config),
-		handlers.NewAppsCommand(config),
-		handlers.NewOpenCommand(config),
-		handlers.NewVolumeCommand(config),
-		handlers.NewMuteCommand(config),
-		handlers.NewUnmuteCommand(config),
-		handlers.NewBrightnessCommand(config),
-		handlers.NewScreenshotCommand(config),
-		handlers.NewClipboardCommand(config),
-		handlers.NewDesktopPowerCommand(config),
-		handlers.NewFirefoxCommand(config),
-		handlers.NewGitCommand(config),
-		handlers.NewGithubCommand(config),
-		handlers.NewGitlabCommand(config),
-		handlers.NewNixCommand(config),
-		handlers.NewRunCommand(config),
-		handlers.NewPkgCommand(config),
-		handlers.NewSpeedtestCommand(config),
-		handlers.NewTopCommand(config),
-		handlers.NewLogCommand(config),
-		handlers.NewMetricsCommand(config),
-		handlers.NewWindowsCommand(config),
-		handlers.NewWorkspaceCommand(config),
-		handlers.NewUsersCommand(config),
-		handlers.NewAddUserCommand(config),
-		handlers.NewRmUserCommand(config),
-		handlers.NewMenuCommand(config),
-		handlers.NewStartCommand(config),
-		handlers.NewNotifyCommand(config),
-		handlers.NewMonitorOnCommand(config),
+		handlers.NewStatusCommand(bot.API(), svc),
+		handlers.NewHealthCommand(bot.API(), svc),
+		handlers.NewDiskCommand(bot.API(), svc),
+		handlers.NewProcessesCommand(bot.API(), svc),
+		handlers.NewGenerationsCommand(bot.API(), svc),
+		handlers.NewRebootCommand(bot.API()),
+		handlers.NewShutdownCommand(bot.API()),
+		handlers.NewDeployCommand(bot.API(), config, svc),
+		handlers.NewRollbackCommand(bot.API(), svc),
+		handlers.NewUpdateCommand(bot.API(), svc),
+		handlers.NewScanCommand(bot.API(), svc),
+		handlers.NewSecurityCommand(bot.API(), svc),
+		handlers.NewDoctorCommand(bot.API(), svc),
+		handlers.NewStoreCommand(bot.API(), svc),
+		handlers.NewGCCommand(bot.API(), svc),
+		handlers.NewAppsCommand(bot.API(), svc),
+		handlers.NewOpenCommand(bot.API(), svc),
+		handlers.NewVolumeCommand(bot.API(), svc),
+		handlers.NewMuteCommand(bot.API(), svc),
+		handlers.NewUnmuteCommand(bot.API(), svc),
+		handlers.NewBrightnessCommand(bot.API(), svc),
+		handlers.NewScreenshotCommand(bot.API(), svc),
+		handlers.NewClipboardCommand(bot.API(), svc),
+		handlers.NewDesktopPowerCommand(bot.API(), svc),
+		handlers.NewFirefoxCommand(bot.API(), svc),
+		handlers.NewWindowsCommand(bot.API(), svc),
+		handlers.NewWorkspaceCommand(bot.API(), svc),
+		handlers.NewGitCommand(bot.API(), svc),
+		handlers.NewGithubCommand(bot.API(), svc),
+		handlers.NewGitlabCommand(bot.API(), svc),
+		handlers.NewNixCommand(bot.API(), svc),
+		handlers.NewRunCommand(bot.API(), svc),
+		handlers.NewPkgCommand(bot.API(), svc),
+		handlers.NewSpeedtestCommand(bot.API(), svc),
+		handlers.NewTopCommand(bot.API(), svc),
+		handlers.NewLogCommand(bot.API(), svc),
+		handlers.NewMetricsCommand(bot.API(), svc),
+		handlers.NewUsersCommand(bot.API(), svc),
+		handlers.NewAddUserCommand(bot.API()),
+		handlers.NewRmUserCommand(bot.API()),
+		handlers.NewMenuCommand(bot.API()),
+		handlers.NewStartCommand(bot.API()),
+		handlers.NewNotifyCommand(bot.API(), svc),
+		handlers.NewMonitorOnCommand(bot.API(), svc),
 		handlers.NewAuthStatusCommand(bot.Auth(), bot.API()),
 		handlers.NewGrantCommand(bot.Auth(), bot.API()),
 		handlers.NewRevokeCommand(bot.Auth(), bot.API()),
 		handlers.NewUsersListCommand(bot.Auth(), bot.API()),
-		// New commands
-		handlers.NewMenuInlineCommand(config),
-		handlers.NewUptimeCommand(config),
-		handlers.NewMemoryCommand(config),
-		handlers.NewCPUCommand(config),
-		handlers.NewUpdatesCommand(config),
-		handlers.NewDiffCommand(config),
-		handlers.NewGitopsReconcileCommand(config),
-		handlers.NewVerifyCommand(config),
-		handlers.NewGitopsBackupCommand(config),
-		handlers.NewRestoreCommand(config),
-		handlers.NewTailscaleCommand(config),
-		handlers.NewFirewallCommand(config),
-		// Platform commands
-		handlers.NewStateCommand(config),
-		handlers.NewEventsCommand(config),
-		handlers.NewPluginsCommand(config),
-		handlers.NewInventoryCommand(config),
+		handlers.NewMenuInlineCommand(bot.API(), svc),
+		handlers.NewUptimeCommand(bot.API(), svc),
+		handlers.NewMemoryCommand(bot.API(), svc),
+		handlers.NewCPUCommand(bot.API(), svc),
+		handlers.NewUpdatesCommand(bot.API(), svc),
+		handlers.NewDiffCommand(bot.API(), svc),
+		handlers.NewGitopsReconcileCommand(bot.API(), svc),
+		handlers.NewVerifyCommand(bot.API(), svc),
+		handlers.NewGitopsBackupCommand(bot.API(), svc),
+		handlers.NewRestoreCommand(bot.API(), svc),
+		handlers.NewTailscaleCommand(bot.API(), svc),
+		handlers.NewFirewallCommand(bot.API(), svc),
+		handlers.NewStateCommand(bot.API(), svc),
+		handlers.NewEventsCommand(bot.API(), svc),
+		handlers.NewPluginsCommand(bot.API(), svc),
+		handlers.NewInventoryCommand(bot.API(), svc),
+		// Extra commands
+		handlers.NewAICommand(bot.API(), svc),
+		handlers.NewOpenCodeCommand(bot.API(), svc),
+		handlers.NewNetworkCommand(bot.API(), svc),
+		handlers.NewJournalCommand(bot.API(), svc),
+		handlers.NewRepoCommand(bot.API(), svc),
+		handlers.NewSearchCommand(bot.API(), svc),
+		handlers.NewGraphCommand(bot.API(), svc),
+		handlers.NewSuggestCommand(bot.API(), svc),
 	)
 
-	// Start metrics server
+	// Start metrics server.
 	metricsAddr := ":9115"
 	if v := os.Getenv("IVALI_METRICS_ADDR"); v != "" {
 		metricsAddr = v
@@ -116,13 +122,13 @@ func main() {
 		}
 	}()
 
-	// Register inline-keyboard callback handlers.
-	menuInline := handlers.NewMenuInlineCommand(config)
+	// Register callback handlers.
+	menuInline := handlers.NewMenuInlineCommand(bot.API(), svc)
 	bot.RegisterCallback("menu:", menuInline)
 	bot.RegisterCallback("confirm:", &confirmHandler{bot: bot})
 	bot.RegisterCallback("cancel", &confirmHandler{bot: bot})
 
-	// Wire rate limiter and audit logger hooks.
+	// Wire rate limiter and audit logger.
 	rl := handlers.NewDefaultRateLimiter()
 	audit := handlers.NewAuditLogger("ivali-bot")
 
@@ -133,7 +139,6 @@ func main() {
 		audit.Log(int64(userID), chatID, cmdName, args, success, durationMs)
 	})
 
-	// Run the bot
 	ctx := context.Background()
 	if err := runner.Run(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "Bot error: %v\n", err)
@@ -141,18 +146,17 @@ func main() {
 	}
 }
 
-// confirmHandler routes inline-keyboard "confirm:<action>" / "cancel" payloads
-// to the corresponding registered command. The originating command decides
-// whether the payload is the actual confirmation (msg.IsCallback &&
-// CallbackData == "confirm:<action>") or just a request to show the prompt.
 type confirmHandler struct {
 	bot *telegram.Bot
 }
 
-func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string) error {
+func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string, messageID int) error {
 	api := h.bot.API()
 
 	if data == "cancel" {
+		if messageID > 0 {
+			_ = api.EditMessageMarkdown(chatID, messageID, "❌ Cancelled")
+		}
 		return api.AnswerCallback(queryID, "Cancelled")
 	}
 
@@ -166,7 +170,6 @@ func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, cha
 		return api.AnswerCallback(queryID, "Unknown action: "+action)
 	}
 
-	// Re-check permissions for the user who pressed the button.
 	if !h.bot.Auth().GetUserRole(userID).HasPermission(cmd.RequiredPermission()) {
 		return api.AnswerCallback(queryID, "Permission denied")
 	}
@@ -177,6 +180,7 @@ func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, cha
 		IsCallback:      true,
 		CallbackPayload: data,
 		CallbackID:      queryID,
+		MessageID:       messageID,
 	}
 
 	if err := cmd.Execute(ctx, msg); err != nil {

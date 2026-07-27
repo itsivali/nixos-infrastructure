@@ -112,7 +112,7 @@ func (c *CommandFunc) Execute(ctx context.Context, msg *Message) error {
 
 // CallbackHandler handles inline keyboard callback queries.
 type CallbackHandler interface {
-	HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string) error
+	HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string, messageID int) error
 }
 
 // Bot is the main Telegram bot controller.
@@ -262,7 +262,7 @@ func (b *Bot) Dispatch(ctx context.Context, msg *Message) error {
 func (b *Bot) dispatchCallback(ctx context.Context, msg *Message) error {
 	for prefix, handler := range b.callbacks {
 		if strings.HasPrefix(msg.CallbackData(), prefix) {
-			return handler.HandleCallback(ctx, msg.CallbackID, msg.ChatID, msg.UserID, msg.CallbackData())
+			return handler.HandleCallback(ctx, msg.CallbackID, msg.ChatID, msg.UserID, msg.CallbackData(), msg.MessageID)
 		}
 	}
 

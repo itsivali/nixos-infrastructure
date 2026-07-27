@@ -155,9 +155,11 @@ func (r *Runner) handleCallback(ctx context.Context, query *CallbackQuery) {
 		CallbackPayload: query.Data,
 	}
 
-	// Store callback data for handler access
-	// This is a simple approach - in production you'd use a proper field
-	_ = query.Data
+	// Wire through the message ID so handlers can edit the original message
+	// instead of sending a new one, keeping the chat clean.
+	if query.Message != nil {
+		botMsg.MessageID = query.Message.MessageID
+	}
 
 	if err := r.bot.Dispatch(ctx, botMsg); err != nil {
 		r.logger.Error("callback dispatch failed", "error", err)

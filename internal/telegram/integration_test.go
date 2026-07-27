@@ -84,7 +84,7 @@ func TestIntegrationCallbackRegistration(t *testing.T) {
 	logger := &mockLogger{}
 	bot := New(api, auth, logger)
 
-	bot.RegisterCallback("test_", &mockCallbackHandler{fn: func(ctx context.Context, queryID string, chatID int64, userID int, data string) error {
+	bot.RegisterCallback("test_", &mockCallbackHandler{fn: func(ctx context.Context, queryID string, chatID int64, userID int, data string, messageID int) error {
 		return nil
 	}})
 
@@ -94,11 +94,11 @@ func TestIntegrationCallbackRegistration(t *testing.T) {
 }
 
 type mockCallbackHandler struct {
-	fn func(ctx context.Context, queryID string, chatID int64, userID int, data string) error
+	fn func(ctx context.Context, queryID string, chatID int64, userID int, data string, messageID int) error
 }
 
-func (h *mockCallbackHandler) HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string) error {
-	return h.fn(ctx, queryID, chatID, userID, data)
+func (h *mockCallbackHandler) HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string, messageID int) error {
+	return h.fn(ctx, queryID, chatID, userID, data, messageID)
 }
 
 func TestRunnerIsRecent(t *testing.T) {

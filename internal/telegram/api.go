@@ -191,6 +191,34 @@ func (a *API) EditMessage(chatID int64, messageID int, text string, parseMode st
 	return a.post("editMessageText", params)
 }
 
+// EditMessageWithKeyboard edits an existing message and updates its inline keyboard.
+func (a *API) EditMessageWithKeyboard(chatID int64, messageID int, text string, buttons []InlineButton) error {
+	keyboard := buildInlineKeyboard(buttons)
+	params := url.Values{
+		"chat_id":                  {strconv.FormatInt(chatID, 10)},
+		"message_id":               {strconv.Itoa(messageID)},
+		"text":                     {text},
+		"parse_mode":               {"Markdown"},
+		"reply_markup":             {keyboard},
+		"disable_web_page_preview": {"true"},
+	}
+	return a.post("editMessageText", params)
+}
+
+// EditMessageMarkdown edits a message with Markdown formatting.
+func (a *API) EditMessageMarkdown(chatID int64, messageID int, text string) error {
+	return a.EditMessage(chatID, messageID, text, "Markdown")
+}
+
+// DeleteMessage deletes a message from the chat.
+func (a *API) DeleteMessage(chatID int64, messageID int) error {
+	params := url.Values{
+		"chat_id":    {strconv.FormatInt(chatID, 10)},
+		"message_id": {strconv.Itoa(messageID)},
+	}
+	return a.post("deleteMessage", params)
+}
+
 // AnswerCallback answers a callback query.
 func (a *API) AnswerCallback(callbackQueryID string, text string) error {
 	params := url.Values{

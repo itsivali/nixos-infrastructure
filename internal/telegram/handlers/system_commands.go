@@ -222,7 +222,7 @@ func (c *AddUserCommand) Description() string               { return "Add a syst
 func (c *AddUserCommand) RequiredPermission() telegram.Role { return telegram.RoleOwner }
 
 func (c *AddUserCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	return c.api.SendMarkdown(msg.ChatID, "User management is handled via NixOS configuration in hosts/hosts.nix")
+	return c.api.SendMarkdown(msg.ChatID, "User management is handled via NixOS configuration in hosts/<name>.nix")
 }
 
 type RmUserCommand struct {
@@ -238,7 +238,7 @@ func (c *RmUserCommand) Description() string               { return "Remove a sy
 func (c *RmUserCommand) RequiredPermission() telegram.Role { return telegram.RoleOwner }
 
 func (c *RmUserCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	return c.api.SendMarkdown(msg.ChatID, "User management is handled via NixOS configuration in hosts/hosts.nix")
+	return c.api.SendMarkdown(msg.ChatID, "User management is handled via NixOS configuration in hosts/<name>.nix")
 }
 
 type MenuCommand struct {

@@ -37,7 +37,7 @@
       system = "x86_64-linux";
       lib = nixpkgs.lib;
 
-      # Import host registry
+      # Import host registry (auto-aggregates per-host specs from hosts/*.nix)
       hostsConfig = import ./hosts/hosts.nix { inherit lib; };
 
       # Default username (can be overridden per-host)

@@ -117,6 +117,8 @@ func main() {
 	}()
 
 	// Register inline-keyboard callback handlers.
+	menuInline := handlers.NewMenuInlineCommand(config)
+	bot.RegisterCallback("menu:", menuInline)
 	bot.RegisterCallback("confirm:", &confirmHandler{bot: bot})
 	bot.RegisterCallback("cancel", &confirmHandler{bot: bot})
 

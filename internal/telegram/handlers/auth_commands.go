@@ -9,10 +9,6 @@ import (
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
 
-// AuthStatusCommand shows the current authentication mode and how to register
-// users. In single-user mode (no users configured) every member of the
-// authorised chat is treated as owner; once /grant registers a user, the
-// fallback is disabled and only registered users have roles.
 type AuthStatusCommand struct {
 	auth *telegram.Auth
 	api  *telegram.API
@@ -45,7 +41,6 @@ func (c *AuthStatusCommand) Execute(ctx context.Context, msg *telegram.Message) 
 	return c.api.SendMarkdown(msg.ChatID, b.String())
 }
 
-// GrantCommand adds or updates a user's role. Owner only.
 type GrantCommand struct {
 	auth *telegram.Auth
 	api  *telegram.API
@@ -66,11 +61,9 @@ func (c *GrantCommand) Execute(ctx context.Context, msg *telegram.Message) error
 
 	switch len(fields) {
 	case 1:
-		// Grant the issuing user a role: /grant <role>
 		userID = msg.UserID
 		role = telegram.ParseRole(fields[0])
 	case 2:
-		// /grant <userId> <role>
 		id, err := strconv.Atoi(fields[0])
 		if err != nil {
 			return c.api.SendMarkdown(msg.ChatID, "Usage: `/grant <userId> <role>` or `/grant <role>`")
@@ -89,7 +82,6 @@ func (c *GrantCommand) Execute(ctx context.Context, msg *telegram.Message) error
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Granted *%s* to user `%d` (`%s`).", role, userID, msg.Username))
 }
 
-// RevokeCommand removes a user. Owner only.
 type RevokeCommand struct {
 	auth *telegram.Auth
 	api  *telegram.API
@@ -116,7 +108,6 @@ func (c *RevokeCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Revoked access for user `%d`.", id))
 }
 
-// UsersListCommand lists registered users.
 type UsersListCommand struct {
 	auth *telegram.Auth
 	api  *telegram.API

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/services"
 )
 
 func TestRunCmd(t *testing.T) {
@@ -31,11 +32,9 @@ func TestRunCmd(t *testing.T) {
 				return
 			}
 			if tt.name == "empty" {
-				// empty command might error or produce no output
 				return
 			}
 			if tt.name == "exit code" {
-				// exit 1 produces empty stdout
 				return
 			}
 			if !strings.Contains(got, tt.want) {
@@ -46,41 +45,39 @@ func TestRunCmd(t *testing.T) {
 }
 
 func TestCommandNames(t *testing.T) {
-	config := &telegram.Config{
-		BotToken: "test-token",
-		ChatID:   123,
-	}
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
 
 	commands := []telegram.Command{
-		NewAppsCommand(config),
-		NewOpenCommand(config),
-		NewVolumeCommand(config),
-		NewMuteCommand(config),
-		NewUnmuteCommand(config),
-		NewBrightnessCommand(config),
-		NewScreenshotCommand(config),
-		NewClipboardCommand(config),
-		NewDesktopPowerCommand(config),
-		NewFirefoxCommand(config),
-		NewGitCommand(config),
-		NewGithubCommand(config),
-		NewGitlabCommand(config),
-		NewNixCommand(config),
-		NewRunCommand(config),
-		NewPkgCommand(config),
-		NewSpeedtestCommand(config),
-		NewTopCommand(config),
-		NewLogCommand(config),
-		NewMetricsCommand(config),
-		NewWindowsCommand(config),
-		NewWorkspaceCommand(config),
-		NewUsersCommand(config),
-		NewAddUserCommand(config),
-		NewRmUserCommand(config),
-		NewMenuCommand(config),
-		NewStartCommand(config),
-		NewNotifyCommand(config),
-		NewMonitorOnCommand(config),
+		NewAppsCommand(api, svc),
+		NewOpenCommand(api, svc),
+		NewVolumeCommand(api, svc),
+		NewMuteCommand(api, svc),
+		NewUnmuteCommand(api, svc),
+		NewBrightnessCommand(api, svc),
+		NewScreenshotCommand(api, svc),
+		NewClipboardCommand(api, svc),
+		NewDesktopPowerCommand(api, svc),
+		NewFirefoxCommand(api, svc),
+		NewGitCommand(api, svc),
+		NewGithubCommand(api, svc),
+		NewGitlabCommand(api, svc),
+		NewNixCommand(api, svc),
+		NewRunCommand(api, svc),
+		NewPkgCommand(api, svc),
+		NewSpeedtestCommand(api, svc),
+		NewTopCommand(api, svc),
+		NewLogCommand(api, svc),
+		NewMetricsCommand(api, svc),
+		NewWindowsCommand(api, svc),
+		NewWorkspaceCommand(api, svc),
+		NewUsersCommand(api, svc),
+		NewAddUserCommand(api),
+		NewRmUserCommand(api),
+		NewMenuCommand(api),
+		NewStartCommand(api),
+		NewNotifyCommand(api, svc),
+		NewMonitorOnCommand(api, svc),
 	}
 
 	seen := make(map[string]bool)
@@ -101,62 +98,57 @@ func TestCommandNames(t *testing.T) {
 }
 
 func TestCommandsAreCallable(t *testing.T) {
-	config := &telegram.Config{
-		BotToken: "test-token",
-		ChatID:   123,
-		StateDir: t.TempDir(),
-	}
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
 
 	commands := []struct {
 		name string
 		cmd  telegram.Command
 	}{
-		{"apps", NewAppsCommand(config)},
-		{"open", NewOpenCommand(config)},
-		{"volume", NewVolumeCommand(config)},
-		{"mute", NewMuteCommand(config)},
-		{"unmute", NewUnmuteCommand(config)},
-		{"brightness", NewBrightnessCommand(config)},
-		{"menu", NewMenuCommand(config)},
-		{"start", NewStartCommand(config)},
+		{"apps", NewAppsCommand(api, svc)},
+		{"open", NewOpenCommand(api, svc)},
+		{"volume", NewVolumeCommand(api, svc)},
+		{"mute", NewMuteCommand(api, svc)},
+		{"unmute", NewUnmuteCommand(api, svc)},
+		{"brightness", NewBrightnessCommand(api, svc)},
+		{"menu", NewMenuCommand(api)},
+		{"start", NewStartCommand(api)},
 	}
 
 	ctx := context.Background()
 	for _, tc := range commands {
 		t.Run(tc.name, func(t *testing.T) {
 			msg := &telegram.Message{
-				ChatID:   config.ChatID,
+				ChatID:   123,
 				UserID:   123,
 				Username: "test",
 				Text:     "/" + tc.name,
 				Command:  tc.name,
 				Args:     "",
 			}
-
-			// Commands will fail because we don't have a real API
-			// but they should not panic
 			_ = tc.cmd.Execute(ctx, msg)
 		})
 	}
 }
 
 func TestCommandPermissions(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token"}
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
 
 	tests := []struct {
 		name       string
 		cmd        telegram.Command
 		permission telegram.Role
 	}{
-		{"guest commands", NewStartCommand(config), telegram.RoleGuest},
-		{"guest commands menu", NewMenuCommand(config), telegram.RoleGuest},
-		{"user commands apps", NewAppsCommand(config), telegram.RoleUser},
-		{"user commands open", NewOpenCommand(config), telegram.RoleUser},
-		{"user commands volume", NewVolumeCommand(config), telegram.RoleUser},
-		{"admin commands nix", NewNixCommand(config), telegram.RoleAdmin},
-		{"admin commands run", NewRunCommand(config), telegram.RoleAdmin},
-		{"admin commands deploy", NewDeployCommand(config), telegram.RoleAdmin},
-		{"owner commands users", NewUsersCommand(config), telegram.RoleOwner},
+		{"guest commands", NewStartCommand(api), telegram.RoleGuest},
+		{"guest commands menu", NewMenuCommand(api), telegram.RoleGuest},
+		{"user commands apps", NewAppsCommand(api, svc), telegram.RoleUser},
+		{"user commands open", NewOpenCommand(api, svc), telegram.RoleUser},
+		{"user commands volume", NewVolumeCommand(api, svc), telegram.RoleUser},
+		{"admin commands nix", NewNixCommand(api, svc), telegram.RoleAdmin},
+		{"admin commands run", NewRunCommand(api, svc), telegram.RoleAdmin},
+		{"admin commands deploy", NewDeployCommand(api, &telegram.Config{RepoDir: "/tmp"}, svc), telegram.RoleAdmin},
+		{"owner commands users", NewUsersCommand(api, svc), telegram.RoleOwner},
 	}
 
 	for _, tt := range tests {
@@ -170,17 +162,19 @@ func TestCommandPermissions(t *testing.T) {
 }
 
 func TestOpenCommandEmptyArgs(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token", ChatID: 123}
-	cmd := NewOpenCommand(config)
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
+	cmd := NewOpenCommand(api, svc)
 
 	msg := &telegram.Message{ChatID: 123, Args: ""}
 	err := cmd.Execute(context.Background(), msg)
-	_ = err // API call fails but should not panic
+	_ = err
 }
 
 func TestDesktopPowerCommandInvalidArgs(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token", ChatID: 123}
-	cmd := NewDesktopPowerCommand(config)
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
+	cmd := NewDesktopPowerCommand(api, svc)
 
 	msg := &telegram.Message{ChatID: 123, Args: "invalid"}
 	err := cmd.Execute(context.Background(), msg)
@@ -188,8 +182,9 @@ func TestDesktopPowerCommandInvalidArgs(t *testing.T) {
 }
 
 func TestNixCommandEmptyArgs(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token", ChatID: 123}
-	cmd := NewNixCommand(config)
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
+	cmd := NewNixCommand(api, svc)
 
 	msg := &telegram.Message{ChatID: 123, Args: ""}
 	err := cmd.Execute(context.Background(), msg)
@@ -197,8 +192,9 @@ func TestNixCommandEmptyArgs(t *testing.T) {
 }
 
 func TestRunCommandEmptyArgs(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token", ChatID: 123}
-	cmd := NewRunCommand(config)
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
+	cmd := NewRunCommand(api, svc)
 
 	msg := &telegram.Message{ChatID: 123, Args: ""}
 	err := cmd.Execute(context.Background(), msg)
@@ -206,8 +202,9 @@ func TestRunCommandEmptyArgs(t *testing.T) {
 }
 
 func TestNotifyCommandEmptyArgs(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token", ChatID: 123}
-	cmd := NewNotifyCommand(config)
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
+	cmd := NewNotifyCommand(api, svc)
 
 	msg := &telegram.Message{ChatID: 123, Args: ""}
 	err := cmd.Execute(context.Background(), msg)
@@ -215,8 +212,9 @@ func TestNotifyCommandEmptyArgs(t *testing.T) {
 }
 
 func TestClipboardCommandSet(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token", ChatID: 123}
-	cmd := NewClipboardCommand(config)
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
+	cmd := NewClipboardCommand(api, svc)
 
 	msg := &telegram.Message{ChatID: 123, Args: "set hello world"}
 	err := cmd.Execute(context.Background(), msg)
@@ -224,53 +222,54 @@ func TestClipboardCommandSet(t *testing.T) {
 }
 
 func TestAllCommandsImplementInterface(t *testing.T) {
-	config := &telegram.Config{BotToken: "test-token"}
+	api := telegram.NewAPI("test-token")
+	svc := services.NewContainer("/tmp/test-repo")
 
 	allCommands := []telegram.Command{
-		NewAppsCommand(config),
-		NewOpenCommand(config),
-		NewVolumeCommand(config),
-		NewMuteCommand(config),
-		NewUnmuteCommand(config),
-		NewBrightnessCommand(config),
-		NewScreenshotCommand(config),
-		NewClipboardCommand(config),
-		NewDesktopPowerCommand(config),
-		NewFirefoxCommand(config),
-		NewGitCommand(config),
-		NewGithubCommand(config),
-		NewGitlabCommand(config),
-		NewNixCommand(config),
-		NewRunCommand(config),
-		NewPkgCommand(config),
-		NewSpeedtestCommand(config),
-		NewTopCommand(config),
-		NewLogCommand(config),
-		NewMetricsCommand(config),
-		NewWindowsCommand(config),
-		NewWorkspaceCommand(config),
-		NewUsersCommand(config),
-		NewAddUserCommand(config),
-		NewRmUserCommand(config),
-		NewMenuCommand(config),
-		NewStartCommand(config),
-		NewNotifyCommand(config),
-		NewMonitorOnCommand(config),
-		NewStatusCommand(config),
-		NewHealthCommand(config),
-		NewDiskCommand(config),
-		NewProcessesCommand(config),
-		NewGenerationsCommand(config),
-		NewRebootCommand(config),
-		NewShutdownCommand(config),
-		NewDeployCommand(config),
-		NewRollbackCommand(config),
-		NewUpdateCommand(config),
-		NewScanCommand(config),
-		NewSecurityCommand(config),
-		NewDoctorCommand(config),
-		NewStoreCommand(config),
-		NewGCCommand(config),
+		NewAppsCommand(api, svc),
+		NewOpenCommand(api, svc),
+		NewVolumeCommand(api, svc),
+		NewMuteCommand(api, svc),
+		NewUnmuteCommand(api, svc),
+		NewBrightnessCommand(api, svc),
+		NewScreenshotCommand(api, svc),
+		NewClipboardCommand(api, svc),
+		NewDesktopPowerCommand(api, svc),
+		NewFirefoxCommand(api, svc),
+		NewGitCommand(api, svc),
+		NewGithubCommand(api, svc),
+		NewGitlabCommand(api, svc),
+		NewNixCommand(api, svc),
+		NewRunCommand(api, svc),
+		NewPkgCommand(api, svc),
+		NewSpeedtestCommand(api, svc),
+		NewTopCommand(api, svc),
+		NewLogCommand(api, svc),
+		NewMetricsCommand(api, svc),
+		NewWindowsCommand(api, svc),
+		NewWorkspaceCommand(api, svc),
+		NewUsersCommand(api, svc),
+		NewAddUserCommand(api),
+		NewRmUserCommand(api),
+		NewMenuCommand(api),
+		NewStartCommand(api),
+		NewNotifyCommand(api, svc),
+		NewMonitorOnCommand(api, svc),
+		NewStatusCommand(api, svc),
+		NewHealthCommand(api, svc),
+		NewDiskCommand(api, svc),
+		NewProcessesCommand(api, svc),
+		NewGenerationsCommand(api, svc),
+		NewRebootCommand(api),
+		NewShutdownCommand(api),
+		NewDeployCommand(api, &telegram.Config{RepoDir: "/tmp"}, svc),
+		NewRollbackCommand(api, svc),
+		NewUpdateCommand(api, svc),
+		NewScanCommand(api, svc),
+		NewSecurityCommand(api, svc),
+		NewDoctorCommand(api, svc),
+		NewStoreCommand(api, svc),
+		NewGCCommand(api, svc),
 	}
 
 	for _, cmd := range allCommands {

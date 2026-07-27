@@ -6,15 +6,17 @@ import (
 	"strings"
 
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/renderer"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/services"
 )
 
-// StateCommand shows platform state engine status.
 type StateCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewStateCommand(config *telegram.Config) *StateCommand {
-	return &StateCommand{api: telegram.NewAPI(config.BotToken)}
+func NewStateCommand(api *telegram.API, svc *services.Container) *StateCommand {
+	return &StateCommand{api: api, svc: svc}
 }
 
 func (c *StateCommand) Name() string                      { return "state" }
@@ -22,17 +24,17 @@ func (c *StateCommand) Description() string               { return "Show platfor
 func (c *StateCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *StateCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("ivali health --system 2>&1 || echo 'ivali not available'", 30)
-	return c.api.SendLongMessage(msg.ChatID, "```"+output+"```", 3500)
+	output := c.svc.Platform.Health()
+	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
-// EventsCommand shows recent event history.
 type EventsCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewEventsCommand(config *telegram.Config) *EventsCommand {
-	return &EventsCommand{api: telegram.NewAPI(config.BotToken)}
+func NewEventsCommand(api *telegram.API, svc *services.Container) *EventsCommand {
+	return &EventsCommand{api: api, svc: svc}
 }
 
 func (c *EventsCommand) Name() string                      { return "events" }
@@ -40,20 +42,20 @@ func (c *EventsCommand) Description() string               { return "Show recent
 func (c *EventsCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *EventsCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("ivali status 2>&1 | grep -A 20 'Events' || echo 'No events available'", 15)
-	if strings.TrimSpace(output) == "" || strings.Contains(output, "No events") {
+	output := c.svc.Platform.Events()
+	if output == "" {
 		return c.api.SendMarkdown(msg.ChatID, "*Event Log*\n\n`No recent events recorded.`")
 	}
-	return c.api.SendLongMessage(msg.ChatID, "*Event Log*\n\n```"+output+"```", 3500)
+	return c.api.SendLongMessage(msg.ChatID, "*Event Log*\n\n"+renderer.CodeBlock(output), 3500)
 }
 
-// PluginsCommand shows plugin registry status.
 type PluginsCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewPluginsCommand(config *telegram.Config) *PluginsCommand {
-	return &PluginsCommand{api: telegram.NewAPI(config.BotToken)}
+func NewPluginsCommand(api *telegram.API, svc *services.Container) *PluginsCommand {
+	return &PluginsCommand{api: api, svc: svc}
 }
 
 func (c *PluginsCommand) Name() string                      { return "plugins" }
@@ -65,31 +67,25 @@ func (c *PluginsCommand) Execute(ctx context.Context, msg *telegram.Message) err
 	lines = append(lines, "*Plugin Registry*")
 	lines = append(lines, "")
 
-	plugins := []string{
-		"bitwarden", "security", "gitops", "telegram",
-		"observability", "recovery", "desktop", "developer", "ai",
-	}
-
+	plugins := c.svc.Platform.Plugins()
 	for _, p := range plugins {
-		output := runCmd(fmt.Sprintf("ivali health --system 2>&1 | grep -i '%s' || echo 'unknown'", p), 5)
-		output = strings.TrimSpace(output)
-		if output == "" || output == "unknown" {
-			lines = append(lines, fmt.Sprintf("`%-15s` ✗ not loaded", p))
+		if p.Loaded {
+			lines = append(lines, fmt.Sprintf("`%-15s` ✓ %s", p.Name, p.Detail))
 		} else {
-			lines = append(lines, fmt.Sprintf("`%-15s` ✓ %s", p, output))
+			lines = append(lines, fmt.Sprintf("`%-15s` ✗ not loaded", p.Name))
 		}
 	}
 
 	return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
 }
 
-// InventoryCommand shows host inventory.
 type InventoryCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewInventoryCommand(config *telegram.Config) *InventoryCommand {
-	return &InventoryCommand{api: telegram.NewAPI(config.BotToken)}
+func NewInventoryCommand(api *telegram.API, svc *services.Container) *InventoryCommand {
+	return &InventoryCommand{api: api, svc: svc}
 }
 
 func (c *InventoryCommand) Name() string                      { return "inventory" }
@@ -98,7 +94,6 @@ func (c *InventoryCommand) RequiredPermission() telegram.Role { return telegram.
 
 func (c *InventoryCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	_ = c.api.SendMarkdown(msg.ChatID, "*Collecting inventory...*")
-
-	output := runCmd("ivali inventory 2>&1 || echo 'ivali not available'", 30)
-	return c.api.SendLongMessage(msg.ChatID, "*Host Inventory*\n\n```"+output+"```", 3500)
+	output := c.svc.Platform.Inventory()
+	return c.api.SendLongMessage(msg.ChatID, "*Host Inventory*\n\n"+renderer.CodeBlock(output), 3500)
 }

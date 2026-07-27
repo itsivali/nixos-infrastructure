@@ -6,16 +6,17 @@ import (
 	"strings"
 
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/renderer"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/services"
 )
-
-// System commands — Nix, packages, diagnostics, and user management.
 
 type NixCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewNixCommand(config *telegram.Config) *NixCommand {
-	return &NixCommand{api: telegram.NewAPI(config.BotToken)}
+func NewNixCommand(api *telegram.API, svc *services.Container) *NixCommand {
+	return &NixCommand{api: api, svc: svc}
 }
 
 func (c *NixCommand) Name() string                      { return "nix" }
@@ -27,21 +28,20 @@ func (c *NixCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	if args == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/nix <command>`")
 	}
-	// Execute without a shell so user-supplied arguments cannot inject
-	// shell metacharacters (e.g. `; rm -rf /`).
-	output := runCmdArgs(120, append([]string{"nix"}, strings.Fields(args)...)...)
+	output := c.svc.Nix.NixCommand(strings.Fields(args)...)
 	if output == "" {
 		output = "(no output)"
 	}
-	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
+	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
 type RunCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewRunCommand(config *telegram.Config) *RunCommand {
-	return &RunCommand{api: telegram.NewAPI(config.BotToken)}
+func NewRunCommand(api *telegram.API, svc *services.Container) *RunCommand {
+	return &RunCommand{api: api, svc: svc}
 }
 
 func (c *RunCommand) Name() string                      { return "run" }
@@ -53,22 +53,20 @@ func (c *RunCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	if args == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/run <command>`")
 	}
-	// Execute without a shell so user-supplied arguments cannot inject
-	// shell metacharacters (e.g. `; rm -rf /`). Arguments are split on
-	// whitespace and passed directly to exec.
-	output := runCmdArgs(120, strings.Fields(args)...)
+	output := c.svc.Runner.RunArgs(120, strings.Fields(args)...)
 	if output == "" {
 		output = "(no output)"
 	}
-	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
+	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
 type PkgCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewPkgCommand(config *telegram.Config) *PkgCommand {
-	return &PkgCommand{api: telegram.NewAPI(config.BotToken)}
+func NewPkgCommand(api *telegram.API, svc *services.Container) *PkgCommand {
+	return &PkgCommand{api: api, svc: svc}
 }
 
 func (c *PkgCommand) Name() string                      { return "pkg" }
@@ -78,19 +76,20 @@ func (c *PkgCommand) RequiredPermission() telegram.Role { return telegram.RoleUs
 func (c *PkgCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	args := strings.TrimSpace(msg.Args)
 	if args == "" {
-		output := runCmd("nix-env -q 2>/dev/null | wc -l", 10)
+		output := c.svc.Nix.PkgInfo("")
 		return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("Installed packages: %s", output))
 	}
-	output := runCmdArgs(30, append([]string{"nix-env", "-q"}, strings.Fields(args)...)...)
-	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
+	output := c.svc.Nix.PkgInfo(args)
+	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
 type SpeedtestCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewSpeedtestCommand(config *telegram.Config) *SpeedtestCommand {
-	return &SpeedtestCommand{api: telegram.NewAPI(config.BotToken)}
+func NewSpeedtestCommand(api *telegram.API, svc *services.Container) *SpeedtestCommand {
+	return &SpeedtestCommand{api: api, svc: svc}
 }
 
 func (c *SpeedtestCommand) Name() string                      { return "speedtest" }
@@ -99,16 +98,18 @@ func (c *SpeedtestCommand) RequiredPermission() telegram.Role { return telegram.
 
 func (c *SpeedtestCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	_ = c.api.SendMarkdown(msg.ChatID, "Running speed test...")
-	output := runCmd("curl -s -w '\\nSpeed: %{speed_download} bytes/sec\\nTime: %{time_total}s\\n' -o /dev/null http://speedtest.tele2.net/10MB.zip 2>/dev/null || echo 'Speed test failed'", 60)
-	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
+	output := c.svc.Runner.Run(
+		"curl -s -w '\\nSpeed: %{speed_download} bytes/sec\\nTime: %{time_total}s\\n' -o /dev/null http://speedtest.tele2.net/10MB.zip 2>/dev/null || echo 'Speed test failed'", 60)
+	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
 type TopCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewTopCommand(config *telegram.Config) *TopCommand {
-	return &TopCommand{api: telegram.NewAPI(config.BotToken)}
+func NewTopCommand(api *telegram.API, svc *services.Container) *TopCommand {
+	return &TopCommand{api: api, svc: svc}
 }
 
 func (c *TopCommand) Name() string                      { return "top" }
@@ -116,28 +117,24 @@ func (c *TopCommand) Description() string               { return "Show system me
 func (c *TopCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *TopCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	var lines []string
-	lines = append(lines, "*System Metrics*")
-	lines = append(lines, "")
-
-	output := runCmd("uptime", 5)
-	lines = append(lines, fmt.Sprintf("*Uptime:* `%s`", output))
-
-	output = runCmd("free -h | head -2", 5)
-	lines = append(lines, fmt.Sprintf("*Memory:*\n```\n%s\n```", output))
-
-	output = runCmd("df -h / | tail -1", 5)
-	lines = append(lines, fmt.Sprintf("*Disk:* `%s`", output))
-
-	return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
+	uptime, memory, disk := c.svc.System.TopMetrics()
+	return c.api.SendMarkdown(msg.ChatID, renderer.BuildCard(renderer.Card{
+		Title: "System Metrics",
+		Lines: []string{
+			renderer.KeyValue("Uptime", uptime),
+			"*Memory:*\n" + renderer.CodeBlock(memory),
+			renderer.KeyValue("Disk", disk),
+		},
+	}))
 }
 
 type LogCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewLogCommand(config *telegram.Config) *LogCommand {
-	return &LogCommand{api: telegram.NewAPI(config.BotToken)}
+func NewLogCommand(api *telegram.API, svc *services.Container) *LogCommand {
+	return &LogCommand{api: api, svc: svc}
 }
 
 func (c *LogCommand) Name() string                      { return "log" }
@@ -145,16 +142,17 @@ func (c *LogCommand) Description() string               { return "Show system lo
 func (c *LogCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *LogCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("journalctl -u ivali-bot -n 20 --no-pager 2>/dev/null || journalctl -n 20 --no-pager", 10)
-	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
+	output := c.svc.System.Journal()
+	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
 type MetricsCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewMetricsCommand(config *telegram.Config) *MetricsCommand {
-	return &MetricsCommand{api: telegram.NewAPI(config.BotToken)}
+func NewMetricsCommand(api *telegram.API, svc *services.Container) *MetricsCommand {
+	return &MetricsCommand{api: api, svc: svc}
 }
 
 func (c *MetricsCommand) Name() string                      { return "metrics" }
@@ -166,40 +164,24 @@ func (c *MetricsCommand) Execute(ctx context.Context, msg *telegram.Message) err
 	lines = append(lines, "*Prometheus Metrics*")
 	lines = append(lines, "")
 
-	// Service health
-	upOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=up' 2>/dev/null | jq -r '.data.result[] | \"`\" + .metric.job + \"`: \" + .value[1]' 2>/dev/null || echo 'Prometheus not available'", 10)
-	if strings.TrimSpace(upOutput) != "" && !strings.Contains(upOutput, "not available") {
+	services := c.svc.Monitoring.PrometheusServices()
+	if services != "" && !strings.Contains(services, "not available") {
 		lines = append(lines, "*Service Health:*")
-		lines = append(lines, upOutput)
+		lines = append(lines, services)
 		lines = append(lines, "")
 	}
 
-	// CPU usage
-	cpuOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=100-(avg(rate(node_cpu_seconds_total{mode=\"idle\"}[5m]))*100)' 2>/dev/null | jq -r '.data.result[0].value[1] | . + \"%\"' 2>/dev/null", 10)
-	cpuOutput = strings.TrimSpace(cpuOutput)
-	if cpuOutput != "" && cpuOutput != "null" {
-		lines = append(lines, fmt.Sprintf("*CPU Usage:* `%s`", cpuOutput))
+	if cpu := c.svc.Monitoring.CPUUsage(); cpu != "" && cpu != "null" {
+		lines = append(lines, renderer.KeyValue("CPU Usage", cpu+"%"))
 	}
-
-	// Memory usage
-	memOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=(1-(node_memory_MemAvailable_bytes/node_memory_MemTotal_bytes))*100' 2>/dev/null | jq -r '.data.result[0].value[1] | . + \"%\"' 2>/dev/null", 10)
-	memOutput = strings.TrimSpace(memOutput)
-	if memOutput != "" && memOutput != "null" {
-		lines = append(lines, fmt.Sprintf("*Memory Usage:* `%s`", memOutput))
+	if mem := c.svc.Monitoring.MemoryUsage(); mem != "" && mem != "null" {
+		lines = append(lines, renderer.KeyValue("Memory Usage", mem+"%"))
 	}
-
-	// Disk usage
-	diskOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=(1-(node_filesystem_avail_bytes{mountpoint=\"/\"}/node_filesystem_size_bytes{mountpoint=\"/\"}))*100' 2>/dev/null | jq -r '.data.result[0].value[1] | . + \"%\"' 2>/dev/null", 10)
-	diskOutput = strings.TrimSpace(diskOutput)
-	if diskOutput != "" && diskOutput != "null" {
-		lines = append(lines, fmt.Sprintf("*Disk Usage /:* `%s`", diskOutput))
+	if disk := c.svc.Monitoring.DiskUsage(); disk != "" && disk != "null" {
+		lines = append(lines, renderer.KeyValue("Disk Usage /", disk+"%"))
 	}
-
-	// System load
-	loadOutput := runCmd("curl -s 'http://127.0.0.1:9090/api/v1/query?query=node_load1' 2>/dev/null | jq -r '.data.result[0].value[1]' 2>/dev/null", 10)
-	loadOutput = strings.TrimSpace(loadOutput)
-	if loadOutput != "" && loadOutput != "null" {
-		lines = append(lines, fmt.Sprintf("*System Load (1m):* `%s`", loadOutput))
+	if load := c.svc.Monitoring.SystemLoad(); load != "" && load != "null" {
+		lines = append(lines, renderer.KeyValue("System Load (1m)", load))
 	}
 
 	if len(lines) == 1 {
@@ -209,14 +191,13 @@ func (c *MetricsCommand) Execute(ctx context.Context, msg *telegram.Message) err
 	return c.api.SendLongMessage(msg.ChatID, strings.Join(lines, "\n"), 3500)
 }
 
-// User management — delegated to NixOS declarative config.
-
 type UsersCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewUsersCommand(config *telegram.Config) *UsersCommand {
-	return &UsersCommand{api: telegram.NewAPI(config.BotToken)}
+func NewUsersCommand(api *telegram.API, svc *services.Container) *UsersCommand {
+	return &UsersCommand{api: api, svc: svc}
 }
 
 func (c *UsersCommand) Name() string                      { return "sysusers" }
@@ -224,16 +205,16 @@ func (c *UsersCommand) Description() string               { return "List system 
 func (c *UsersCommand) RequiredPermission() telegram.Role { return telegram.RoleOwner }
 
 func (c *UsersCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("getent passwd | cut -d: -f1,6 | grep -v '/nix/store' | head -20", 5)
-	return c.api.SendLongMessage(msg.ChatID, fmt.Sprintf("```%s\n```", output), 3500)
+	output := c.svc.Runner.Run("getent passwd | cut -d: -f1,6 | grep -v '/nix/store' | head -20", 5)
+	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
 type AddUserCommand struct {
 	api *telegram.API
 }
 
-func NewAddUserCommand(config *telegram.Config) *AddUserCommand {
-	return &AddUserCommand{api: telegram.NewAPI(config.BotToken)}
+func NewAddUserCommand(api *telegram.API) *AddUserCommand {
+	return &AddUserCommand{api: api}
 }
 
 func (c *AddUserCommand) Name() string                      { return "adduser" }
@@ -248,8 +229,8 @@ type RmUserCommand struct {
 	api *telegram.API
 }
 
-func NewRmUserCommand(config *telegram.Config) *RmUserCommand {
-	return &RmUserCommand{api: telegram.NewAPI(config.BotToken)}
+func NewRmUserCommand(api *telegram.API) *RmUserCommand {
+	return &RmUserCommand{api: api}
 }
 
 func (c *RmUserCommand) Name() string                      { return "rmuser" }
@@ -260,14 +241,12 @@ func (c *RmUserCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 	return c.api.SendMarkdown(msg.ChatID, "User management is handled via NixOS configuration in hosts/hosts.nix")
 }
 
-// Navigation — menus and entry points.
-
 type MenuCommand struct {
 	api *telegram.API
 }
 
-func NewMenuCommand(config *telegram.Config) *MenuCommand {
-	return &MenuCommand{api: telegram.NewAPI(config.BotToken)}
+func NewMenuCommand(api *telegram.API) *MenuCommand {
+	return &MenuCommand{api: api}
 }
 
 func (c *MenuCommand) Name() string                      { return "menu" }
@@ -288,7 +267,6 @@ Tap a button below or type a command.`
 	return c.api.SendReplyKeyboard(msg.ChatID, menu, rows)
 }
 
-// menuRows builds the persistent reply-keyboard layout (emoji + command).
 func menuRows() [][]string {
 	return [][]string{
 		{"🖥 /status", "💓 /health", "📊 /metrics", "💽 /disk"},
@@ -306,8 +284,8 @@ type StartCommand struct {
 	api *telegram.API
 }
 
-func NewStartCommand(config *telegram.Config) *StartCommand {
-	return &StartCommand{api: telegram.NewAPI(config.BotToken)}
+func NewStartCommand(api *telegram.API) *StartCommand {
+	return &StartCommand{api: api}
 }
 
 func (c *StartCommand) Name() string                      { return "start" }
@@ -328,10 +306,11 @@ Type /menu for the main menu.`
 
 type NotifyCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewNotifyCommand(config *telegram.Config) *NotifyCommand {
-	return &NotifyCommand{api: telegram.NewAPI(config.BotToken)}
+func NewNotifyCommand(api *telegram.API, svc *services.Container) *NotifyCommand {
+	return &NotifyCommand{api: api, svc: svc}
 }
 
 func (c *NotifyCommand) Name() string                      { return "notify" }
@@ -343,6 +322,6 @@ func (c *NotifyCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 	if args == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Usage: `/notify <message>`")
 	}
-	runCmd(fmt.Sprintf("notify-send 'Bot' %s", quoteSh(args)), 5)
+	c.svc.System.Notify(args)
 	return c.api.SendMarkdown(msg.ChatID, "Notification sent")
 }

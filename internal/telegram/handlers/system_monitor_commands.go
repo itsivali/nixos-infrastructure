@@ -6,15 +6,17 @@ import (
 	"strings"
 
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/renderer"
+	"github.com/itsivali/nixos-infrastructure/internal/telegram/services"
 )
 
-// UptimeCommand shows system uptime.
 type UptimeCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewUptimeCommand(config *telegram.Config) *UptimeCommand {
-	return &UptimeCommand{api: telegram.NewAPI(config.BotToken)}
+func NewUptimeCommand(api *telegram.API, svc *services.Container) *UptimeCommand {
+	return &UptimeCommand{api: api, svc: svc}
 }
 
 func (c *UptimeCommand) Name() string                      { return "uptime" }
@@ -22,21 +24,23 @@ func (c *UptimeCommand) Description() string               { return "Show system
 func (c *UptimeCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *UptimeCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := runCmd("uptime -p 2>/dev/null || uptime", 5)
-	output = strings.TrimSpace(output)
+	output := strings.TrimSpace(c.svc.System.Uptime())
 	if output == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Failed to retrieve uptime.")
 	}
-	return c.api.SendMarkdown(msg.ChatID, fmt.Sprintf("*System Uptime*\n\n`%s`", output))
+	return c.api.SendMarkdown(msg.ChatID, renderer.BuildCard(renderer.Card{
+		Title: "System Uptime",
+		Lines: []string{renderer.InlineCode(output)},
+	}))
 }
 
-// MemoryCommand shows memory usage.
 type MemoryCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewMemoryCommand(config *telegram.Config) *MemoryCommand {
-	return &MemoryCommand{api: telegram.NewAPI(config.BotToken)}
+func NewMemoryCommand(api *telegram.API, svc *services.Container) *MemoryCommand {
+	return &MemoryCommand{api: api, svc: svc}
 }
 
 func (c *MemoryCommand) Name() string                      { return "memory" }
@@ -44,33 +48,14 @@ func (c *MemoryCommand) Description() string               { return "Show memory
 func (c *MemoryCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *MemoryCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	var lines []string
-	lines = append(lines, "*Memory Usage*")
-	lines = append(lines, "")
-
-	raw := runCmd("free -h", 5)
-	raw = strings.TrimSpace(raw)
+	memLine, swapLine, raw := c.svc.System.Memory()
 	if raw == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Failed to retrieve memory info.")
 	}
 
-	memLine := ""
-	swapLine := ""
-	for _, row := range strings.Split(raw, "\n") {
-		fields := strings.Fields(row)
-		if len(fields) < 2 {
-			continue
-		}
-		switch fields[0] {
-		case "Mem:":
-			memLine = fmt.Sprintf("*Total:* `%s`  *Used:* `%s`  *Free:* `%s`  *Avail:* `%s`",
-				fields[1], fields[2], fields[3], fields[6])
-		case "Swap:":
-			swapLine = fmt.Sprintf("*Swap Total:* `%s`  *Used:* `%s`  *Free:* `%s`",
-				fields[1], fields[2], fields[3])
-		}
-	}
-
+	var lines []string
+	lines = append(lines, "*Memory Usage*")
+	lines = append(lines, "")
 	if memLine != "" {
 		lines = append(lines, memLine)
 	}
@@ -78,22 +63,19 @@ func (c *MemoryCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 		lines = append(lines, "")
 		lines = append(lines, swapLine)
 	}
-
 	lines = append(lines, "")
-	lines = append(lines, "```")
-	lines = append(lines, raw)
-	lines = append(lines, "```")
+	lines = append(lines, renderer.CodeBlock(raw))
 
 	return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
 }
 
-// CPUCommand shows CPU load and core count.
 type CPUCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewCPUCommand(config *telegram.Config) *CPUCommand {
-	return &CPUCommand{api: telegram.NewAPI(config.BotToken)}
+func NewCPUCommand(api *telegram.API, svc *services.Container) *CPUCommand {
+	return &CPUCommand{api: api, svc: svc}
 }
 
 func (c *CPUCommand) Name() string                      { return "cpu" }
@@ -101,15 +83,14 @@ func (c *CPUCommand) Description() string               { return "Show CPU load"
 func (c *CPUCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *CPUCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	var lines []string
-	lines = append(lines, "*CPU Status*")
-	lines = append(lines, "")
-
-	loadAvg := runCmd("cat /proc/loadavg 2>/dev/null", 5)
-	loadAvg = strings.TrimSpace(loadAvg)
+	loadAvg := strings.TrimSpace(c.svc.Runner.Run("cat /proc/loadavg 2>/dev/null", 5))
 	if loadAvg == "" {
 		return c.api.SendMarkdown(msg.ChatID, "Failed to retrieve CPU info.")
 	}
+
+	var lines []string
+	lines = append(lines, "*CPU Status*")
+	lines = append(lines, "")
 
 	parts := strings.Fields(loadAvg)
 	if len(parts) >= 3 {
@@ -119,32 +100,28 @@ func (c *CPUCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 		lines = append(lines, fmt.Sprintf("  15 min: `%s`", parts[2]))
 	}
 
-	cores := runCmd("nproc 2>/dev/null || echo unknown", 5)
-	cores = strings.TrimSpace(cores)
+	cores := strings.TrimSpace(c.svc.System.CPUCores())
 	lines = append(lines, "")
-	lines = append(lines, fmt.Sprintf("*CPU cores:* `%s`", cores))
+	lines = append(lines, renderer.KeyValue("CPU cores", cores))
 
-	model := runCmd("grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | xargs", 5)
-	model = strings.TrimSpace(model)
+	model := strings.TrimSpace(c.svc.System.CPUModel())
 	if model != "" {
-		lines = append(lines, fmt.Sprintf("*Model:* `%s`", model))
+		lines = append(lines, renderer.KeyValue("Model", model))
 	}
 
 	lines = append(lines, "")
-	lines = append(lines, "```")
-	lines = append(lines, loadAvg)
-	lines = append(lines, "```")
+	lines = append(lines, renderer.CodeBlock(loadAvg))
 
 	return c.api.SendMarkdown(msg.ChatID, strings.Join(lines, "\n"))
 }
 
-// UpdatesCommand shows NixOS update information.
 type UpdatesCommand struct {
 	api *telegram.API
+	svc *services.Container
 }
 
-func NewUpdatesCommand(config *telegram.Config) *UpdatesCommand {
-	return &UpdatesCommand{api: telegram.NewAPI(config.BotToken)}
+func NewUpdatesCommand(api *telegram.API, svc *services.Container) *UpdatesCommand {
+	return &UpdatesCommand{api: api, svc: svc}
 }
 
 func (c *UpdatesCommand) Name() string                      { return "updates" }
@@ -156,33 +133,27 @@ func (c *UpdatesCommand) Execute(ctx context.Context, msg *telegram.Message) err
 	lines = append(lines, "*Update Status*")
 	lines = append(lines, "")
 
-	_ = c.api.SendMarkdown(msg.ChatID, "Checking update status...")
-
-	pkgCount := runCmd("nix-store -q --requisites /run/current-system 2>/dev/null | wc -l", 30)
-	pkgCount = strings.TrimSpace(pkgCount)
+	pkgCount := strings.TrimSpace(c.svc.Nix.SystemPackageCount())
 	if pkgCount == "" {
 		pkgCount = "unknown"
 	}
-	lines = append(lines, fmt.Sprintf("*Installed system packages:* `%s`", pkgCount))
+	lines = append(lines, renderer.KeyValue("Installed system packages", pkgCount))
 
-	gen := runCmd("nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1", 10)
-	gen = strings.TrimSpace(gen)
+	gen := strings.TrimSpace(c.svc.Nix.CurrentGeneration())
 	if gen != "" {
-		lines = append(lines, fmt.Sprintf("*Current generation:* `%s`", gen))
+		lines = append(lines, renderer.KeyValue("Current generation", gen))
 	}
 
-	repoStatus := runCmd("cd /home/ivali/nixos-infrastructure && git status --short 2>/dev/null | head -5", 5)
-	repoStatus = strings.TrimSpace(repoStatus)
+	repoStatus := strings.TrimSpace(c.svc.Git.Status())
 	if repoStatus == "" {
 		lines = append(lines, "*Repo:* `clean (no uncommitted changes)`")
 	} else {
-		lines = append(lines, fmt.Sprintf("*Repo (uncommitted):*\n```\n%s\n```", repoStatus))
+		lines = append(lines, fmt.Sprintf("*Repo (uncommitted):*\n%s", renderer.CodeBlock(repoStatus)))
 	}
 
-	lastUpdate := runCmd("cd /home/ivali/nixos-infrastructure && git log --oneline -1 --format='%cr %s' 2>/dev/null", 5)
-	lastUpdate = strings.TrimSpace(lastUpdate)
+	lastUpdate := strings.TrimSpace(c.svc.Git.HeadCommitRelative())
 	if lastUpdate != "" {
-		lines = append(lines, fmt.Sprintf("*Last commit:* `%s`", lastUpdate))
+		lines = append(lines, renderer.KeyValue("Last commit", lastUpdate))
 	}
 
 	lines = append(lines, "")

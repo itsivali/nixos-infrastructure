@@ -25,7 +25,7 @@ with pkgs; [
   localsend
   zoom-us
   obsidian
-  vlc
+  mpv
   firefox
   libreoffice-fresh
   brightnessctl

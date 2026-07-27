@@ -127,8 +127,6 @@ in
     home.packages = with pkgs; [
       bitwarden-cli
       jq
-      wl-clipboard
-      xclip
       libnotify
     ] ++ lib.optional (inputs ? self)
       inputs.self.packages.${pkgs.stdenv.hostPlatform.system}.bw-tui;

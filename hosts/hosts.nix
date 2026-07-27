@@ -133,6 +133,16 @@
       #    generation. CPU/disk heavy on every deploy — re-enabled now that
       #    the GNOME/Hyprland setup is finalized.
       fleet.gitopsReconciler.canary = true;
+
+      # ── Local development databases ─────────────────────────────────
+      ivali.dev.databases.enable = true;
+
+      # ── Google Cloud SDK + GKE ──────────────────────────────────────
+      ivali.cloud.enable = true;
+      # ivali.cloud.projectId = "your-gcp-project-id";
+
+      # ── Wayland clipboard ───────────────────────────────────────────
+      ivali.desktop.clipboard.enable = true;
     };
   };
 }

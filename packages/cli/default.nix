@@ -23,31 +23,40 @@
 
 with pkgs; [
   age
+  ansible
+  argocd
   bat
   bitwarden-cli
   btop
+  consul
   curl
   direnv
   eza
   fastfetch
   fd
   fzf
-  grim
   gh
   git
   gitui
   gitlab
   glab
   gnupg
+  google-cloud-sdk
+  grim
   home-manager
   htop
   iproute2
   jq
   just
+  kubectl
+  kubernetes-helm
+  kubectx
+  kustomize
   lazygit
   nixd
   opencode
   openssl
+  packer
   pciutils
   python3
   ripgrep
@@ -58,6 +67,7 @@ with pkgs; [
   tree
   unzip
   usbutils
+  vault
   vim
   watchexec
   wmctrl

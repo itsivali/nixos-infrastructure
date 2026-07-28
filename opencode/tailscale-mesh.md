@@ -25,8 +25,10 @@ This document describes how to set up a multi-host Tailscale mesh for the nixos-
 ### Primary Host (prague)
 
 ```nix
-# hosts/hosts.nix
-prague = {
+# hosts/prague.nix
+{ lib, ... }:
+
+{
   hostName = "prague";
   userName = "ivali";
   tags = [ "tag:admin" "tag:infra" ];
@@ -40,14 +42,17 @@ prague = {
     bot = true;
   };
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
-};
+  config = { };
+}
 ```
 
 ### Server Host (backup)
 
 ```nix
-# hosts/hosts.nix
-server = {
+# hosts/server.nix
+{ lib, ... }:
+
+{
   hostName = "server";
   userName = "admin";
   tags = [ "tag:admin" "tag:server" ];
@@ -59,14 +64,17 @@ server = {
     secrets = true;
   };
   sopsKeyPath = "/home/admin/.config/sops/age/keys.txt";
-};
+  config = { };
+}
 ```
 
 ### Mobile Host (laptop)
 
 ```nix
-# hosts/hosts.nix
-laptop = {
+# hosts/laptop.nix
+{ lib, ... }:
+
+{
   hostName = "laptop";
   userName = "ivali";
   tags = [ "tag:admin" "tag:personal" ];
@@ -78,7 +86,8 @@ laptop = {
     secrets = true;
   };
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
-};
+  config = { };
+}
 ```
 
 ## ACL Tags
@@ -304,8 +313,8 @@ tailscale debug | grep -A 5 "KeyExpiry"
 
 ## Adding New Hosts
 
-1. Add host entry to `hosts/hosts.nix`
-2. Create `hosts/<name>/hardware-configuration.nix`
+1. Create `hosts/<name>.nix` with the host spec
+2. Run `ivali bootstrap host <name>` to generate hardware config and secrets
 3. Set appropriate tags and features
 4. Deploy with `nixos-rebuild switch --flake .#<name>`
 5. Verify connectivity in Tailscale admin console

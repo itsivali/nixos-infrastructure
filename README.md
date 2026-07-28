@@ -52,8 +52,11 @@ all wired together through a zero-touch auto-import module system.
 
 ```
 flake.nix
-├── hosts/hosts.nix              ← host registry (declarative host specs)
-├── configuration.nix             ← top-level module registry (auto-imports everything)
+├── hosts/              ← per-host specs (prague.nix, tuscany.nix, testvm.nix)
+│   ├── hosts.nix       ← aggregator (auto-discovers hosts/*.nix)
+│   ├── default.nix     ← bootstrap template (excluded from registry)
+│   └── <name>/         ← hardware-configuration.nix per host
+├── configuration.nix   ← top-level module registry (auto-imports everything)
 ├── lib/host-templates/           ← NixOS host templates (generates full config)
 │
 ├── security/                     ← SOPS secrets, Tailscale, firewall, hardening
@@ -435,7 +438,7 @@ Commit and push the generated hardware file:
 
 ```bash
 cd ~/nixos-infrastructure
-git add hosts/hardware-configuration.nix
+git add hosts/prague.nix hosts/prague/hardware-configuration.nix secrets/hosts/prague.yaml
 git commit -m "chore: add hardware configuration for prague"
 git push
 ```
@@ -497,7 +500,8 @@ ivali-bot             # Start the Telegram bot (systemd service: ivali-bot.servi
 
 ## Host Management
 
-Hosts are defined in `hosts/hosts.nix`. The flake generates `nixosConfigurations`
+Hosts are defined as per-host spec files (`hosts/<name>.nix`), auto-discovered
+by `hosts/hosts.nix` (the aggregator). The flake generates `nixosConfigurations`
 dynamically from this registry.
 
 ```nix
@@ -525,8 +529,8 @@ prague = {
 
 ### Adding a New Host
 
-1. Add entry to `hosts/hosts.nix`
-2. Create `hosts/<name>/hardware-configuration.nix` (run `nixos-generate-config`)
+1. Create `hosts/<name>.nix` with the host spec (see `hosts/default.nix` for template)
+2. Run `ivali bootstrap host <name>` to generate hardware config and secrets
 3. Run `nixos-rebuild switch --flake .#<name>`
 
 ---

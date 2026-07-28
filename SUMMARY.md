@@ -60,12 +60,12 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 | Component | Location | Description |
 |-----------|----------|-------------|
 | `flake.nix` | Root | Multi-host flake generating `nixosConfigurations` from host registry |
-| `hosts/hosts.nix` | Host Registry | Central attrset defining all hosts with identity and feature flags |
+| `hosts/hosts.nix` | Host Registry | Auto-aggregator discovering per-host specs from `hosts/*.nix` |
 | `lib/host-templates/laptop.nix` | Template | NixOS module reading `hostSpec` from `specialArgs` |
-| `hosts/hardware-configuration.nix` | Hardware | Auto-generated hardware config for `prague` |
+| `hosts/<name>/hardware-configuration.nix` | Hardware | Auto-generated hardware config per host |
 
 **Adding a new host:**
-1. Add entry to `hosts/hosts.nix`
+1. Create `hosts/<name>.nix` with the host spec
 2. Run `ivali bootstrap host <name>`
 3. Commit and push
 

@@ -16,10 +16,9 @@ Structured documentation for this NixOS infrastructure repository.
 ## Quick Reference
 
 ### Adding a New Host
-1. Add entry to `hosts/hosts.nix`
-2. Create `hosts/<name>/hardware-configuration.nix`
-3. Run `ivali bootstrap host <name>`
-4. Apply: `sudo nixos-rebuild switch --flake .#<name>`
+1. Create `hosts/<name>.nix` with the host spec (see `hosts/default.nix` for template)
+2. Run `ivali bootstrap host <name>` to generate hardware config and secrets
+3. Apply: `sudo nixos-rebuild switch --flake .#<name>`
 
 ### Deploying Changes
 ```bash

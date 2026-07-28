@@ -62,7 +62,8 @@ configuration.nix
 
 ### Host Registry
 
-`hosts/hosts.nix` is a Nix attrset defining all known hosts:
+`hosts/hosts.nix` is an auto-aggregator that discovers per-host spec files
+from `hosts/*.nix` and builds the registry attrset:
 
 ```nix
 {

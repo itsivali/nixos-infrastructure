@@ -112,7 +112,7 @@ Restore from `~/.config/home-manager/` backup.
 
 **Fix:**
 1. Check runner status: `sudo systemctl status gitlab-runner`
-2. Verify tags in `hosts/hosts.nix` match GitLab project tags
+2. Verify tags in `hosts/<name>.nix` match GitLab project tags
 3. Check registration: `sudo gitlab-runner list`
 
 ## Performance Issues

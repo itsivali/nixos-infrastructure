@@ -2,7 +2,8 @@
 
 ## Host Registry
 
-All hosts are defined in `hosts/hosts.nix`. Each entry is a Nix attrset
+Hosts are defined as per-host spec files (`hosts/<name>.nix`), auto-discovered
+by `hosts/hosts.nix` (the aggregator). Each host spec is a Nix attrset
 with the following structure:
 
 ```nix
@@ -28,16 +29,15 @@ with the following structure:
 
 ## Adding a New Host
 
-### Method 1: Manual
+### Method 1: Using ivali bootstrap
 
-1. Add entry to `hosts/hosts.nix`
-2. Create `hosts/<name>/hardware-configuration.nix`
-3. Generate host config:
+1. Create `hosts/<name>.nix` with the host spec (see `hosts/default.nix` for template)
+2. Run:
    ```bash
    ivali bootstrap host <name>
    ```
-4. Review generated files
-5. Apply: `sudo nixos-rebuild switch --flake .#<name>`
+3. Review generated files
+4. Apply: `sudo nixos-rebuild switch --flake .#<name>`
 
 ### Method 2: From Fresh NixOS
 

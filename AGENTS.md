@@ -14,8 +14,11 @@ Declarative, reproducible, self-healing, GitOps-driven, Telegram-controlled.
 
 ```
 flake.nix
-├── hosts/hosts.nix          ← host registry (declarative host specs)
-├── configuration.nix         ← top-level module registry (auto-imports everything)
+├── hosts/              ← per-host specs (prague.nix, tuscany.nix, testvm.nix)
+│   ├── hosts.nix       ← aggregator (auto-discovers hosts/*.nix)
+│   ├── default.nix     ← bootstrap template (excluded from registry)
+│   └── <name>/         ← hardware-configuration.nix per host
+├── configuration.nix   ← top-level module registry (auto-imports everything)
 ├── lib/host-templates/       ← NixOS host templates (laptop.nix generates full config)
 ├── security/                 ← SOPS secrets, Tailscale, firewall, hardening
 ├── boot/                     ← kernel, systemd-boot, sysctl tuning
@@ -62,7 +65,8 @@ via `lib/auto-imports.nix`. No manual registration needed.
 
 ## Host Management
 
-Hosts are defined in `hosts/hosts.nix` as a Nix attrset. Each host entry specifies:
+Hosts are defined as per-host spec files (`hosts/<name>.nix`), auto-discovered
+by `hosts/hosts.nix` (the aggregator). Each host spec is a plain Nix attrset:
 - `hostName`, `userName`, `repoPath`
 - `tags` (Tailscale ACL), `tailnetDomain`
 - `features` (secrets, gitlabRunner, bot, tailscale, ssh)
@@ -73,8 +77,8 @@ The template `lib/host-templates/laptop.nix` reads `hostSpec` from `specialArgs`
 and generates the full NixOS configuration.
 
 **To add a new host:**
-1. Add entry to `hosts/hosts.nix`
-2. Create `hosts/<name>/hardware-configuration.nix`
+1. Create `hosts/<name>.nix` with the host spec (see `hosts/default.nix` for template)
+2. Run `ivali bootstrap host <name>` to generate hardware config and secrets
 3. Run `nixos-rebuild switch --flake .#<name>`
 
 ## Key Commands
@@ -188,7 +192,7 @@ originates on GitHub). Deployment is driven by the GitOps reconciler, not CI:
 
 ## Common Issues
 
-- **Flake evaluation fails**: Check `hosts/hosts.nix` for syntax errors
+- **Flake evaluation fails**: Check `hosts/<name>.nix` for syntax errors
 - **Module conflict**: Use `lib.mkDefault` or `lib.mkForce` for priority
 - **Secret not found**: Verify SOPS config in `.sops.yaml` and encrypted files
 - **Home Manager username error**: Ensure `username` is in `extraSpecialArgs`

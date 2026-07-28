@@ -167,6 +167,15 @@ let
         { expr = "node_systemd_unit_state{name=~\"prometheus.service|grafana.service|loki.service|nginx.service|alloy.service|ivali-bot-go.service|tailscaled.service\", state=\"active\"}"; legendFormat = "{{ name }}"; }
       ] "short")
 
+      # Go binary process metrics
+      (tsPanel "Go Process Memory" [
+        { expr = "process_resident_memory_bytes{job=\"ivali-bot\"}"; legendFormat = "ivali-bot RSS"; }
+      ] "decbytes")
+
+      (tsPanel "Go Goroutines" [
+        { expr = "go_goroutines{job=\"ivali-bot\"}"; legendFormat = "ivali-bot goroutines"; }
+      ] "short")
+
       {
         title = "Critical Services Status";
         type = "stat";

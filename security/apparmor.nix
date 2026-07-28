@@ -23,6 +23,11 @@
 # - ivali-bot: Telegram bot process (root, runs rebuilds/desktop automation)
 # - ivali-cli: Go CLI binary (defined but NOT auto-attached; see note below)
 #
+# NOTE: DevOps tools (kubectl, helm, terraform, ansible, etc.) are NOT
+# confined because they run interactively and need broad filesystem/network
+# access. AppConfining them would break legitimate workflows. If you need
+# to confine a CI/CD pipeline, create a dedicated service with its own profile.
+#
 # NOTE: the gitops-reconciler service runs UNCONFINED (see
 # automation/gitops-reconciler.nix) — confining bash broke the deploy loop
 # (shared-lib exec-mmap denied), so AppArmor confinement is not applied there.

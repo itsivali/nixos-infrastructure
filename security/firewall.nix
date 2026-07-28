@@ -20,8 +20,11 @@
 { config, lib, ... }:
 
 let
-  ts = config.ivali.tailscale;
   cfg = config.ivali.security.firewall;
+
+  # Safely read tailscale config — may not exist if tailscale.nix isn't imported
+  # (e.g. in smoke tests or minimal VMs).
+  tsAdvertiseExitNode = (lib.attrByPath [ "ivali" "tailscale" "advertiseExitNode" ] false config);
 
   # Default allowed egress domains for system operation
   defaultEgressDomains = [
@@ -111,7 +114,7 @@ in
             # LocalSend
             53317
           ]
-          ++ lib.optionals ts.advertiseExitNode [
+          ++ lib.optionals tsAdvertiseExitNode [
             # STUN
             3478
           ];

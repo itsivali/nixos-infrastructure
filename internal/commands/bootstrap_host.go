@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -220,7 +221,7 @@ func generateHostSpec(spec template.HostSpec) string {
 
 	b.WriteString("##############################################################################\n")
 	b.WriteString("#\n")
-	b.WriteString("# " + strings.Title(spec.HostName) + " — Host Spec\n")
+	b.WriteString("# " + titleCase(spec.HostName) + " — Host Spec\n")
 	b.WriteString("#\n")
 	b.WriteString("# Purpose\n")
 	b.WriteString("# -------\n")
@@ -271,4 +272,13 @@ func generateHostSpec(spec template.HostSpec) string {
 	b.WriteString("}\n")
 
 	return b.String()
+}
+
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	r[0] = unicode.ToUpper(r[0])
+	return string(r)
 }

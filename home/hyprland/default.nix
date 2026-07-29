@@ -17,6 +17,8 @@
 { ... }:
 
 {
+  wayland.systemd.target = "hyprland-session.target";
+
   imports = [
     ./hypr
     ./waybar

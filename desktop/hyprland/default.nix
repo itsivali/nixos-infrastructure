@@ -66,7 +66,6 @@ in
     services.udisks2.enable = true;
     services.gvfs.enable = true;
 
-    # Wayland-specific session environment variables
     environment.sessionVariables = {
       NIXOS_OZONE_WL = "1";
       MOZ_ENABLE_WAYLAND = "1";
@@ -74,9 +73,6 @@ in
       SDL_VIDEODRIVER = "wayland";
       _JAVA_AWT_WM_NONREPARENTING = "1";
       CLUTTER_BACKEND = "wayland";
-      XDG_CURRENT_DESKTOP = "Hyprland";
-      XDG_SESSION_DESKTOP = "Hyprland";
-      XDG_SESSION_TYPE = "wayland";
     };
 
     # Polkit authentication agent systemd user service

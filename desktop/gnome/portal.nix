@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Desktop GNOME XDG Portal
+# Desktop GNOME XDG Desktop Portal
 #
 # Purpose
 # -------
@@ -30,7 +30,10 @@ in
     xdg.portal = {
       enable = true;
       extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
-      config.common.default = "gnome";
+      config = {
+        common.default = [ "gtk" ];
+        gnome.default = [ "gnome" ];
+      };
     };
   };
 }

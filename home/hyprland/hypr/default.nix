@@ -1,0 +1,103 @@
+##############################################################################
+#
+# Home — Hyprland Configuration Root
+#
+# Purpose
+# -------
+# Configures wayland.windowManager.hyprland with theme colors, animations,
+# keybindings, window rules, and autostart background daemons.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+##############################################################################
+
+{ config, lib, pkgs, hostSpec, ... }:
+
+let
+  theme = import ../themes { inherit hostSpec; };
+  animations = import ./animations.nix;
+  rules = import ./rules.nix;
+  monitors = import ./monitors.nix;
+  keybindings = import ./keybindings.nix;
+in
+{
+  wayland.windowManager.hyprland = {
+    enable = true;
+    xwayland.enable = true;
+
+    settings = {
+      inherit (monitors) monitor;
+      inherit (animations) animations;
+      inherit (rules) windowrulev2 layerrule;
+      inherit (keybindings) bind binde bindl bindm;
+
+      exec-once = [
+        "waybar"
+        "swaync"
+        "hyprpaper"
+        "hypridle"
+        "wl-paste --watch cliphist store"
+        "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
+      ];
+
+      general = {
+        gaps_in = 4;
+        gaps_out = 8;
+        border_size = 2;
+        "col.active_border" = theme.colors.activeBorder;
+        "col.inactive_border" = theme.colors.inactiveBorder;
+        layout = "dwindle";
+        resize_on_border = true;
+      };
+
+      decoration = {
+        rounding = 10;
+        active_opacity = 1.0;
+        inactive_opacity = 0.95;
+        blur = {
+          enabled = true;
+          size = 6;
+          passes = 3;
+          new_optimizations = true;
+          ignore_opacity = true;
+          xray = false;
+        };
+        shadow = {
+          enabled = true;
+          range = 15;
+          render_power = 3;
+          color = "rgba(00000044)";
+        };
+      };
+
+      dwindle = {
+        pseudotile = true;
+        preserve_split = true;
+      };
+
+      input = {
+        kb_layout = "us";
+        follow_mouse = 1;
+        touchpad = {
+          natural_scroll = true;
+          tap-to-click = true;
+        };
+        sensitivity = 0;
+      };
+
+      gestures = {
+        workspace_swipe = true;
+        workspace_swipe_fingers = 3;
+      };
+
+      misc = {
+        disable_hyprland_logo = true;
+        disable_splash_rendering = true;
+        mouse_move_enables_dpms = true;
+        key_press_enables_dpms = true;
+      };
+    };
+  };
+}

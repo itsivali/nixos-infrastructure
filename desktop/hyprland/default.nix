@@ -1,0 +1,97 @@
+##############################################################################
+#
+# Desktop Hyprland
+#
+# Purpose
+# -------
+# Main Hyprland desktop environment module. Configures system-level
+# Hyprland session, GDM session discovery, Polkit authentication agent,
+# PAM security for Hyprlock, and Wayland session environment variables.
+#
+# Ownership
+# ---------
+# Willis Ivali <ivali>
+#
+# Responsibilities
+# ----------------
+# - Enable system-wide Hyprland & XWayland support
+# - Configure PAM for hyprlock screen locking
+# - Register XDG desktop portals (hyprland + gtk)
+# - Enable Polkit authentication and power management services
+# - Expose ivali.desktop.hyprland configuration options
+#
+##############################################################################
+
+{ config, lib, pkgs, ... }:
+
+let
+  cfg = config.ivali.desktop.hyprland;
+in
+{
+  imports = [
+    ./packages.nix
+    ./portal.nix
+  ];
+
+  options.ivali.desktop.hyprland = {
+    enable = lib.mkEnableOption "Hyprland desktop environment with Hyde Project aesthetics";
+
+    theme = lib.mkOption {
+      type = lib.types.enum [
+        "gruvbox"
+        "tokyo-night"
+        "catppuccin"
+        "nord"
+        "everforest"
+        "dracula"
+      ];
+      default = "gruvbox";
+      description = "System theme preset for Hyprland desktop components";
+    };
+  };
+
+  config = lib.mkIf cfg.enable {
+    # System-wide Hyprland compositing & display manager integration
+    programs.hyprland = {
+      enable = true;
+      xwayland.enable = true;
+    };
+
+    # Screen locking security authentication (PAM)
+    security.pam.services.hyprlock = { };
+
+    # Core system daemons required for desktop operations
+    security.polkit.enable = true;
+    services.upower.enable = true;
+    services.udisks2.enable = true;
+    services.gvfs.enable = true;
+
+    # Wayland-specific session environment variables
+    environment.sessionVariables = {
+      NIXOS_OZONE_WL = "1";
+      MOZ_ENABLE_WAYLAND = "1";
+      ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+      SDL_VIDEODRIVER = "wayland";
+      _JAVA_AWT_WM_NONREPARENTING = "1";
+      CLUTTER_BACKEND = "wayland";
+      XDG_CURRENT_DESKTOP = "Hyprland";
+      XDG_SESSION_DESKTOP = "Hyprland";
+      XDG_SESSION_TYPE = "wayland";
+    };
+
+    # Polkit authentication agent systemd user service
+    systemd.user.services.polkit-gnome-authentication-agent-1 = {
+      description = "polkit-gnome-authentication-agent-1";
+      wantedBy = [ "graphical-session.target" ];
+      wants = [ "graphical-session.target" ];
+      after = [ "graphical-session.target" ];
+      serviceConfig = {
+        Type = "simple";
+        ExecStart = "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1";
+        Restart = "on-failure";
+        RestartSec = 1;
+        TimeoutStopSec = 10;
+      };
+    };
+  };
+}

@@ -5,7 +5,8 @@
 # Purpose
 # -------
 # GTK, font, cursor, and icon configuration shared across all desktops.
-# Single source of truth for visual consistency.
+# When Hyprland is active, GTK settings follow the selected theme preset.
+# Falls back to adw-gtk3-dark when only GNOME is used.
 #
 # Ownership
 # ---------
@@ -14,8 +15,21 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, hostSpec, ... }:
 
+let
+  hostConfig = hostSpec.config or { };
+  hyprlandEnabled = hostConfig.ivali.desktop.hyprland.enable or false;
+
+  hyprTheme = import ./hyprland/themes { inherit hostSpec; };
+
+  themeName = if hyprlandEnabled then hyprTheme.gtk.theme else "adw-gtk3-dark";
+  themePkg = if hyprlandEnabled then pkgs.adw-gtk3 else pkgs.adw-gtk3;
+  iconName = if hyprlandEnabled then hyprTheme.gtk.iconTheme else "Tela-dark";
+  iconPkg = if hyprlandEnabled then pkgs.tela-icon-theme else pkgs.tela-icon-theme;
+  cursorName = if hyprlandEnabled then hyprTheme.gtk.cursorTheme else "Bibata-Modern-Ice";
+  cursorPkg = if hyprlandEnabled then pkgs.bibata-cursors else pkgs.bibata-cursors;
+in
 {
   gtk = {
     enable = true;
@@ -26,24 +40,24 @@
     };
 
     theme = {
-      name = "adw-gtk3-dark";
-      package = pkgs.adw-gtk3;
+      name = themeName;
+      package = themePkg;
     };
 
     iconTheme = {
-      name = "Tela-dark";
-      package = pkgs.tela-icon-theme;
+      name = iconName;
+      package = iconPkg;
     };
 
     cursorTheme = {
-      name = "Bibata-Modern-Ice";
-      package = pkgs.bibata-cursors;
+      name = cursorName;
+      package = cursorPkg;
     };
   };
 
   home.sessionVariables = {
-    GTK_THEME = "adw-gtk3-dark";
-    XCURSOR_THEME = "Bibata-Modern-Ice";
+    GTK_THEME = themeName;
+    XCURSOR_THEME = cursorName;
     XCURSOR_SIZE = "24";
   };
 }

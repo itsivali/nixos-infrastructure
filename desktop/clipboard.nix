@@ -30,7 +30,7 @@ in
     enable = lib.mkEnableOption "Wayland clipboard integration (wl-clipboard)";
   };
 
-  config = lib.mkIf (cfg.enable && config.ivali.desktop.gnome.enable) {
+  config = lib.mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
       wl-clipboard
     ];

@@ -26,6 +26,7 @@ in
   wayland.windowManager.hyprland = {
     enable = true;
     xwayland.enable = true;
+    configType = "hyprlang";
 
     settings = {
       inherit (monitors) monitor;

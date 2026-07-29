@@ -12,12 +12,6 @@
 # ---------
 # Willis Ivali <ivali>
 #
-# Responsibilities
-# ----------------
-# - Enable XDG portal with GNOME backend
-# - Support screen capture and audio capture via PipeWire
-# - GTK_USE_PORTAL=1 is set in gnome/default.nix session variables
-#
 ##############################################################################
 
 { config, lib, pkgs, ... }:
@@ -30,7 +24,7 @@ in
     xdg.portal = {
       enable = true;
       extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
-      config.common.default = lib.mkDefault "gnome";
+      config.common.default = "gnome";
     };
   };
 }

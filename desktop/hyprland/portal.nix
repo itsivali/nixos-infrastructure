@@ -27,8 +27,7 @@ in
         pkgs.xdg-desktop-portal-gtk
       ];
       config = {
-        common.default = lib.mkForce [ "hyprland" "gtk" ];
-        hyprland.default = [ "hyprland" "gtk" ];
+        hyprland.default = "hyprland;gtk";
       };
     };
   };

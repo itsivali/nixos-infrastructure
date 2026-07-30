@@ -35,7 +35,6 @@
     ./hyprsunset
     ./wallpaper
     ./keybindhint
-    ./themeselect
     ./dropdown
     ./gamemode
   ];

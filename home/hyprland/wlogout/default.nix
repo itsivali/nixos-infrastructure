@@ -12,11 +12,10 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, hostSpec, ... }:
+{ config, lib, ... }:
 
 let
   theme = import ../themes;
-  iconFor = label: "${pkgs.wlogout}/share/wlogout/assets/${label}.svg";
 in
 {
   programs.wlogout = {
@@ -25,38 +24,38 @@ in
       {
         label = "lock";
         action = "hyprlock";
-        text = "Lock";
-        image = iconFor "lock";
+        text = "󰌾  Lock";
+        keybind = "l";
       }
       {
         label = "logout";
         action = "hyprctl dispatch exit";
-        text = "Logout";
-        image = iconFor "logout";
+        text = "󰍃  Logout";
+        keybind = "e";
       }
       {
         label = "suspend";
         action = "systemctl suspend";
-        text = "Suspend";
-        image = iconFor "suspend";
+        text = "󰒲  Suspend";
+        keybind = "u";
       }
       {
         label = "hibernate";
         action = "systemctl hibernate";
-        text = "Hibernate";
-        image = iconFor "hibernate";
+        text = "󰤄  Hibernate";
+        keybind = "h";
       }
       {
         label = "reboot";
         action = "systemctl reboot";
-        text = "Reboot";
-        image = iconFor "reboot";
+        text = "󰜉  Reboot";
+        keybind = "r";
       }
       {
         label = "shutdown";
         action = "systemctl poweroff";
-        text = "Shutdown";
-        image = iconFor "shutdown";
+        text = "󰐥  Shutdown";
+        keybind = "s";
       }
     ];
 
@@ -64,7 +63,7 @@ in
       * {
         background-image: none;
         box-shadow: none;
-        font-family: "Inter Bold";
+        font-family: "Inter Bold", "MesloLGS NF", "Noto Sans Symbols", sans-serif;
         font-size: 14px;
       }
 

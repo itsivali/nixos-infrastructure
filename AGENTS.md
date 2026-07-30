@@ -2,6 +2,15 @@
 
 This file provides context for AI agents (OpenCode, Copilot, Claude, etc.) working on this repository.
 
+## Golden Rule: Always Verify Before Push
+
+Before pushing any change to GitLab, you MUST:
+1. Run `nix flake check --no-build` (or at minimum `nix eval .#nixosConfigurations.prague.config.system.build.toplevel.drvPath`) to validate the configuration
+2. Fix any evaluation errors that appear
+3. Only push after the flake evaluates cleanly (pre-existing warnings like Grafana passwords are acceptable)
+
+This prevents broken configurations from reaching the GitOps reconciler.
+
 ## What This Repository Is
 
 Autonomous NixOS + Home Manager infrastructure for a single-user laptop.

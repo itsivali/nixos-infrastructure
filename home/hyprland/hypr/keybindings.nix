@@ -76,6 +76,11 @@
     "SUPER CTRL, Right, workspace, e+1"
     "SUPER CTRL, Left, workspace, e-1"
     "SUPER CTRL, Down, workspace, emptym"
+
+    "CTRL, left, moveactive, -20 0"
+    "CTRL, right, moveactive, 20 0"
+    "CTRL, up, moveactive, 0 -20"
+    "CTRL, down, moveactive, 0 20"
   ];
 
   binde = [

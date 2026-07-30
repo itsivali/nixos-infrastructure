@@ -61,7 +61,6 @@ in
           enabled = true;
           size = 6;
           passes = 3;
-          new_optimizations = true;
           ignore_opacity = true;
           xray = false;
         };
@@ -86,11 +85,8 @@ in
           tap-to-click = true;
         };
         sensitivity = 0;
-      };
-
-      gestures = {
-        workspace_swipe = true;
-        workspace_swipe_fingers = 3;
+        gesture_workspace = true;
+        gesture_workspace_fingers = 3;
       };
 
       misc = {

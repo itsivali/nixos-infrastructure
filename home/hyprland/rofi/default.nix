@@ -53,7 +53,7 @@ in
         width = mkLiteral "600px";
         border-radius = mkLiteral "16px";
         border = mkLiteral "2px solid ${theme.colors.accent}";
-        background-color = mkLiteral "rgba(30, 30, 46, 0.95)";
+        background-color = mkLiteral "${theme.colors.bg}f2";
         padding = mkLiteral "16px";
       };
 

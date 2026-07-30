@@ -24,11 +24,11 @@ let
   hyprTheme = import ./hyprland/themes { inherit hostSpec; };
 
   themeName = if hyprlandEnabled then hyprTheme.gtk.theme else "adw-gtk3-dark";
-  themePkg = if hyprlandEnabled then pkgs.adw-gtk3 else pkgs.adw-gtk3;
+  themePkg = pkgs.adw-gtk3;
   iconName = if hyprlandEnabled then hyprTheme.gtk.iconTheme else "Tela-dark";
-  iconPkg = if hyprlandEnabled then pkgs.tela-icon-theme else pkgs.tela-icon-theme;
+  iconPkg = pkgs.tela-icon-theme;
   cursorName = if hyprlandEnabled then hyprTheme.gtk.cursorTheme else "Bibata-Modern-Ice";
-  cursorPkg = if hyprlandEnabled then pkgs.bibata-cursors else pkgs.bibata-cursors;
+  cursorPkg = pkgs.bibata-cursors;
 in
 {
   gtk = {

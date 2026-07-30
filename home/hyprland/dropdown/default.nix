@@ -1,8 +1,5 @@
-{ config, lib, pkgs, hostSpec, ... }:
+{ config, lib, pkgs, ... }:
 
-let
-  theme = import ../themes { inherit hostSpec; };
-in
 {
   wayland.windowManager.hyprland.settings = {
     windowrulev2 = [

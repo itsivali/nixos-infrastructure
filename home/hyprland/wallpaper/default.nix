@@ -1,7 +1,6 @@
 { config, lib, pkgs, hostSpec, ... }:
 
 let
-  theme = import ../themes { inherit hostSpec; };
   wallpaperDir = "${hostSpec.repoPath or "/home/ivali/nixos-infrastructure"}/wallpapers";
 in
 {

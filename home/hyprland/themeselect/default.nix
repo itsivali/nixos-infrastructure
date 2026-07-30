@@ -4,8 +4,8 @@ let
   theme = import ../themes { inherit hostSpec; };
   themeNames = [ "gruvbox" "tokyo-night" "catppuccin" "nord" "everforest" "dracula" ];
   themeScript = pkgs.writeShellScript "theme-selector" ''
-    THEME_DIR="$HOME/.config/hyde"
-    THEME_FILE="$THEME_DIR/theme"
+    THEME_DIR="$HOME/.config/hyprland"
+    THEME_FILE="$THEME_DIR/current-theme"
     mkdir -p "$THEME_DIR"
 
     THEMES="gruvbox

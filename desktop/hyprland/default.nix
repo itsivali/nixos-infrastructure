@@ -34,7 +34,7 @@ in
   ];
 
   options.ivali.desktop.hyprland = {
-    enable = lib.mkEnableOption "Hyprland desktop environment with Hyde Project aesthetics";
+    enable = lib.mkEnableOption "Hyprland desktop environment with themed components";
 
     theme = lib.mkOption {
       type = lib.types.enum [

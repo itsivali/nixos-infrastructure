@@ -27,7 +27,7 @@ with pkgs; [
   argocd
   bat
   bitwarden-cli
-  btm
+  bottom
   btop
   consul
   curl

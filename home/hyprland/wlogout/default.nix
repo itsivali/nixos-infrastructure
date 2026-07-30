@@ -16,7 +16,7 @@
 
 let
   theme = import ../themes;
-  iconFor = label: "${pkgs.wlogout}/share/wlogout/icons/${label}.png";
+  iconFor = label: "${pkgs.wlogout}/share/wlogout/assets/${label}.svg";
 in
 {
   programs.wlogout = {

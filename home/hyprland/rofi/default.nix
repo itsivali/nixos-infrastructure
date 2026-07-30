@@ -13,7 +13,7 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, hostSpec, ... }:
+{ config, lib, pkgs, ... }:
 
 let
   theme = import ../themes;
@@ -52,7 +52,8 @@ in
         location = mkLiteral "center";
         width = mkLiteral "600px";
         border-radius = mkLiteral "16px";
-        border = mkLiteral "2px solid ${theme.colors.accent}";
+        border = mkLiteral "2px";
+        border-color = mkLiteral theme.colors.accent;
         background-color = mkLiteral "${theme.colors.bg}f2";
         padding = mkLiteral "16px";
       };

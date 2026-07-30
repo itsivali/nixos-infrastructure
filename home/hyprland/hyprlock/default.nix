@@ -17,6 +17,7 @@
 
 let
   theme = import ../themes;
+  wallpaperDir = "${hostSpec.repoPath or "/home/ivali/nixos-infrastructure"}/wallpapers";
 in
 {
   programs.hyprlock = {
@@ -32,7 +33,7 @@ in
       background = [
         {
           monitor = "";
-          path = "screenshot";
+          path = "${wallpaperDir}/${theme.wallpaper.lockscreen}";
           blur_passes = 3;
           blur_size = 8;
           noise = 0.0117;

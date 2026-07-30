@@ -29,7 +29,6 @@
     orange = "#ffb86c";
     gray = "#6272a4";
     accent = "#bd93f9";
-    accentRgb = "rgb(bd93f9)";
     activeBorder = "rgba(bd93f9ff) rgba(ff79c6ff) 45deg";
     inactiveBorder = "rgba(44475aaa)";
   };

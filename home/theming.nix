@@ -55,10 +55,16 @@ in
       name = cursorName;
       package = cursorPkg;
     };
+
+    gtk4.extraConfig = {
+      gtk-theme-name = themeName;
+      gtk-application-prefer-dark-theme = true;
+    };
   };
 
+  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+
   home.sessionVariables = {
-    GTK_THEME = themeName;
     XCURSOR_THEME = cursorName;
     XCURSOR_SIZE = "24";
   };

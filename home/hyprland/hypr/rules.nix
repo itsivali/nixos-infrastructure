@@ -9,38 +9,35 @@
 ##############################################################################
 
 {
-  windowrulev2 = [
+  windowrule = [
     # Floating rules for dialogs, calculators, clipboards, managers
-    "float, class:^(Rofi)$"
-    "float, class:^(pavucontrol)$"
-    "float, class:^(blueman-manager)$"
-    "float, class:^(nm-connection-editor)$"
-    "float, class:^(org.gnome.Calculator)$"
-    "float, class:^(swappy)$"
-    "float, title:^(Open File)$"
-    "float, title:^(Save File)$"
+    "float 1, match:class ^(Rofi)$"
+    "float 1, match:class ^(pavucontrol)$"
+    "float 1, match:class ^(blueman-manager)$"
+    "float 1, match:class ^(nm-connection-editor)$"
+    "float 1, match:class ^(org.gnome.Calculator)$"
+    "float 1, match:class ^(swappy)$"
+    "float 1, match:title ^(Open File)$"
+    "float 1, match:title ^(Save File)$"
 
     # Opacity rules
-    "opacity 0.95 0.90, class:^(kitty)$"
-    "opacity 0.95 0.90, class:^(foot)$"
-    "opacity 0.98 0.95, class:^(code)$"
-    "opacity 0.98 0.95, class:^(zed)$"
+    "opacity 0.95 0.90, match:class ^(kitty)$"
+    "opacity 0.95 0.90, match:class ^(foot)$"
+    "opacity 0.98 0.95, match:class ^(code)$"
+    "opacity 0.98 0.95, match:class ^(zed)$"
 
     # Picture-in-Picture window rules
-    "float, title:^(Picture-in-Picture)$"
-    "pin, title:^(Picture-in-Picture)$"
-    "move 72% 72%, title:^(Picture-in-Picture)$"
-    "size 25% 25%, title:^(Picture-in-Picture)$"
+    "float 1, match:title ^(Picture-in-Picture)$"
+    "pin 1, match:title ^(Picture-in-Picture)$"
+    "move 72% 72%, match:title ^(Picture-in-Picture)$"
+    "size 25% 25%, match:title ^(Picture-in-Picture)$"
   ];
 
   layerrule = [
-    "blur, waybar"
-    "blur, swaync-control-center"
-    "blur, swaync-notification-window"
-    "blur, rofi"
-    "blur, wlogout"
-    "ignorezero, waybar"
-    "ignorezero, swaync-control-center"
-    "ignorezero, rofi"
+    "blur 1, match:namespace waybar"
+    "blur 1, match:namespace swaync-control-center"
+    "blur 1, match:namespace swaync-notification-window"
+    "blur 1, match:namespace rofi"
+    "blur 1, match:namespace wlogout"
   ];
 }

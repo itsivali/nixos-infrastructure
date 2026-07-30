@@ -9,7 +9,10 @@ in
     enable = true;
     settings = {
       preload = [ "${wallpaperDir}/${theme.wallpaper.filename}" ];
-      wallpaper = [ ",${wallpaperDir}/${theme.wallpaper.filename}" ];
+      wallpaper = [{
+        monitor = "";
+        path = "${wallpaperDir}/${theme.wallpaper.filename}";
+      }];
       splash = false;
       ipc = true;
     };

@@ -89,6 +89,8 @@
     backlight = {
       format = "{icon} {percent}%";
       format-icons = [ "󰃞" "󰃟" "󰃠" ];
+      on-click = "brightnessctl set 5%+";
+      on-click-right = "brightnessctl set 5%-";
     };
 
     network = {
@@ -96,6 +98,8 @@
       format-ethernet = "󰈀 Ethernet";
       format-disconnected = "󰤭 Offline";
       tooltip-format = "{ifname} via {gwaddr}";
+      on-click = "nm-connection-editor";
+      on-click-right = "nmtui";
     };
 
     battery = {

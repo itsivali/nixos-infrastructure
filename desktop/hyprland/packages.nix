@@ -44,6 +44,7 @@ in
       playerctl
       pavucontrol
       polkit_gnome
+      networkmanagerapplet
       libnotify
       imagemagick
       jq

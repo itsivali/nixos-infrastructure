@@ -31,7 +31,7 @@ in
     settings = {
       inherit (monitors) monitor;
       inherit (animations) animations;
-      inherit (rules) windowrulev2 layerrule;
+      inherit (rules) windowrule layerrule;
       inherit (keybindings) bind binde bindl bindm;
 
       exec-once = [
@@ -73,7 +73,6 @@ in
       };
 
       dwindle = {
-        pseudotile = true;
         preserve_split = true;
       };
 
@@ -85,8 +84,12 @@ in
           tap-to-click = true;
         };
         sensitivity = 0;
-        gesture_workspace = true;
-        gesture_workspace_fingers = 3;
+      };
+
+      gestures = {
+        workspace_swipe_distance = 300;
+        workspace_swipe_cancel_ratio = 0.5;
+        workspace_swipe_create_new = true;
       };
 
       misc = {

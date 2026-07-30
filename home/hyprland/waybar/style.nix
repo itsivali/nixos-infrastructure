@@ -42,6 +42,7 @@
   #battery,
   #idle_inhibitor,
   #custom-notification,
+  #custom-updates,
   #custom-power {
     background-color: ${theme.colors.bg1};
     padding: 4px 12px;

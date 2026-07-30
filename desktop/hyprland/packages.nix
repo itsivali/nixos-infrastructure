@@ -42,6 +42,7 @@ in
       brightnessctl
       pamixer
       playerctl
+      pavucontrol
       polkit_gnome
       libnotify
       matugen

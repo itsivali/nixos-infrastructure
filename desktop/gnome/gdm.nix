@@ -23,6 +23,7 @@
 
 let
   cfg = config.ivali.desktop.gnome;
+  theme = import ../../home/hyprland/themes;
 in
 {
   config = lib.mkIf cfg.enable {
@@ -42,21 +43,21 @@ in
     programs.dconf.profiles.gdm.databases = [{
       settings = {
         "org/gnome/desktop/interface" = {
-          gtk-theme = "adw-gtk3-dark";
+          gtk-theme = theme.gtk.theme;
           color-scheme = "prefer-dark";
-          icon-theme = "Tela-dark";
-          cursor-theme = "Bibata-Modern-Ice";
+          icon-theme = theme.gtk.iconTheme;
+          cursor-theme = theme.gtk.cursorTheme;
           cursor-size = lib.gvariant.mkInt32 24;
-          font-name = "Inter 11";
+          font-name = "${theme.fonts.sans} ${builtins.toString theme.fonts.size}";
         };
 
         "org/gnome/desktop/background" = {
           picture-options = "zoom";
-          primary-color = "#282828";
+          primary-color = theme.colors.bg;
         };
 
         "org/gnome/desktop/screensaver" = {
-          primary-color = "#282828";
+          primary-color = theme.colors.bg;
         };
       };
     }];

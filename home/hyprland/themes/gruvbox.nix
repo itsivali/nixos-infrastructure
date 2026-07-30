@@ -1,18 +1,5 @@
-##############################################################################
-#
-# Theme — Gruvbox Dark Preset
-#
-# Purpose
-# -------
-# Color palette and theme tokens for Gruvbox Dark aesthetic.
-#
-##############################################################################
-
-{
-  name = "gruvbox";
-  displayName = "Gruvbox Dark";
-
-  colors = {
+let
+  raw = {
     bg = "#282828";
     bg1 = "#3c3836";
     bg2 = "#504945";
@@ -28,9 +15,33 @@
     aqua = "#8ec07c";
     orange = "#fe8019";
     gray = "#928374";
-    accent = "#fe8019";
-    activeBorder = "rgba(fe8019ff) rgba(fabd2fff) 45deg";
-    inactiveBorder = "rgba(504945aa)";
+    bgHard = "#1d2021";
+    bgSoft = "#32302f";
+  };
+
+  stripHash = s: builtins.substring 1 (builtins.stringLength s - 1) s;
+in
+{
+  name = "gruvbox";
+  displayName = "Gruvbox Dark";
+
+  colors = raw // {
+    accent = raw.orange;
+
+    activeBorder = "rgba(${stripHash raw.orange}ff) rgba(${stripHash raw.yellow}ff) 45deg";
+    inactiveBorder = "rgba(${stripHash raw.bg2}aa)";
+    shadowColor = "rgba(${stripHash raw.bg}44)";
+  };
+
+  wallpaper = {
+    filename = "default.jpg";
+    lockscreen = "lockscreen.jpg";
+  };
+
+  fonts = {
+    sans = "Inter";
+    monospace = "MesloLGS NF";
+    size = 11;
   };
 
   gtk = {

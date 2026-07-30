@@ -13,10 +13,10 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, hostSpec, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  theme = import ../themes { inherit hostSpec; };
+  theme = import ../themes;
   animations = import ./animations.nix;
   rules = import ./rules.nix;
   monitors = import ./monitors.nix;
@@ -68,7 +68,7 @@ in
           enabled = true;
           range = 15;
           render_power = 3;
-          color = "rgba(00000044)";
+          color = theme.colors.shadowColor;
         };
       };
 

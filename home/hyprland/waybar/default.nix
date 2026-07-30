@@ -15,7 +15,7 @@
 { config, lib, pkgs, hostSpec, ... }:
 
 let
-  theme = import ../themes { inherit hostSpec; };
+  theme = import ../themes;
   waybarConfig = import ./config.nix;
   waybarStyle = import ./style.nix { inherit theme; };
 in

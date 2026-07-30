@@ -16,7 +16,7 @@
 { config, lib, pkgs, hostSpec, ... }:
 
 let
-  theme = import ../themes { inherit hostSpec; };
+  theme = import ../themes;
 in
 {
   services.swaync = {

@@ -21,7 +21,7 @@ let
   hostConfig = hostSpec.config or { };
   hyprlandEnabled = hostConfig.ivali.desktop.hyprland.enable or false;
 
-  hyprTheme = import ./hyprland/themes { inherit hostSpec; };
+  hyprTheme = import ./hyprland/themes;
 
   themeName = if hyprlandEnabled then hyprTheme.gtk.theme else "adw-gtk3-dark";
   themePkg = pkgs.adw-gtk3;
@@ -29,14 +29,16 @@ let
   iconPkg = pkgs.tela-icon-theme;
   cursorName = if hyprlandEnabled then hyprTheme.gtk.cursorTheme else "Bibata-Modern-Ice";
   cursorPkg = pkgs.bibata-cursors;
+  fontName = if hyprlandEnabled then hyprTheme.fonts.sans else "Inter";
+  fontSize = if hyprlandEnabled then hyprTheme.fonts.size else 11;
 in
 {
   gtk = {
     enable = true;
 
     font = {
-      name = "Inter";
-      size = 11;
+      name = fontName;
+      size = fontSize;
     };
 
     theme = {

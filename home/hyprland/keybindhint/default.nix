@@ -1,7 +1,6 @@
-{ config, lib, pkgs, hostSpec, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  theme = import ../themes { inherit hostSpec; };
   keybinds = ''
     ─── Window Management ───────────────
     SUPER+T/Q         Terminal
@@ -50,7 +49,7 @@ in
 
   wayland.windowManager.hyprland.settings = {
     bind = [
-      "SUPER, slash, exec, cat ~/.config/hypr/keybinds.txt | rofi -dmenu -p 'Keybindings' -theme-str \"* {background-color: ${theme.colors.bg}; text-color: ${theme.colors.fg};} window {border-color: ${theme.colors.accent};}\" -no-select"
+      "SUPER, slash, exec, cat ~/.config/hypr/keybinds.txt | rofi -dmenu -p 'Keybindings' -no-select"
     ];
   };
 }

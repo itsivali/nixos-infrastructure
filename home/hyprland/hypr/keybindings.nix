@@ -14,8 +14,8 @@
     "SUPER, N, exec, swaync-client -t -sw"
     "SUPER, W, togglefloating,"
     "SUPER, F, fullscreen, 0"
-    "SUPER, P, toggledpseudotile,"
-    "SUPER, J, layoutmsg, togglesplit"
+    "SUPER, P, pseudo,"
+    "SUPER, J, togglesplit,"
     "SUPER, G, togglegroup,"
     "SUPER SHIFT, F, pin,"
     "SUPER, S, togglespecialworkspace,"
@@ -76,8 +76,6 @@
     "SUPER CTRL, Right, workspace, e+1"
     "SUPER CTRL, Left, workspace, e-1"
     "SUPER CTRL, Down, workspace, emptym"
-    "SUPER, Z, movewindow"
-    "SUPER, X, resizewindow"
   ];
 
   binde = [

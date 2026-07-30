@@ -2,53 +2,53 @@
 
 let
   theme = import ../themes { inherit hostSpec; };
-  keybinds = ''
-    ─── Window Management ───────────────
-    SUPER+T/Q         Terminal
-    SUPER+C            Close window
-    SUPER+W            Toggle float
-    SUPER+F            Fullscreen
-    SUPER+J            Toggle split
-    SUPER+G            Toggle group
-    SUPER+SHIFT+F      Pin window
-    SUPER+L            Lock screen
-    SUPER+X/BACKSPACE  Power menu
-    SUPER+N            Notifications
-
-    ─── Navigation ──────────────────────
-    SUPER+H/J/K/L      Move focus (vim)
-    SUPER+Arrows       Move focus
-    SUPER+SHIFT+H/J/K/L  Move window
-    ALT+Tab             Cycle focus
-
-    ─── Workspaces ──────────────────────
-    SUPER+1-9          Workspace 1-9
-    SUPER+0            Workspace 10
-    SUPER+SHIFT+1-9    Move to workspace
-    SUPER+ALT+1-9      Move silently
-    SUPER+CTRL+Arrows  Next/prev workspace
-    SUPER+S             Scratchpad
-
-    ─── Apps ────────────────────────────
-    SUPER+SPACE/A      App launcher
-    SUPER+E            File manager
-    SUPER+B            Browser
-    SUPER+V            Clipboard
-
-    ─── Media ───────────────────────────
-    XF86Audio*         Volume
-    XF86Brightness*    Brightness
-    Print/SUPER+P      Screenshot
-
-    ─── Theming ─────────────────────────
-    SUPER+ALT+T        Night light
-    SUPER+ALT+Arrows   Wallpaper
-  '';
+  kbText = lib.concatStringsSep "\\n" [
+    "─── Window Management ───────────────"
+    "SUPER+T/Q         Terminal"
+    "SUPER+C            Close window"
+    "SUPER+W            Toggle float"
+    "SUPER+F            Fullscreen"
+    "SUPER+J            Toggle split"
+    "SUPER+G            Toggle group"
+    "SUPER+SHIFT+F      Pin window"
+    "SUPER+L            Lock screen"
+    "SUPER+X/BACKSPACE  Power menu"
+    "SUPER+N            Notifications"
+    ""
+    "─── Navigation ──────────────────────"
+    "SUPER+H/J/K/L      Move focus (vim)"
+    "SUPER+Arrows       Move focus"
+    "SUPER+SHIFT+H/J/K/L  Move window"
+    "ALT+Tab             Cycle focus"
+    ""
+    "─── Workspaces ──────────────────────"
+    "SUPER+1-9          Workspace 1-9"
+    "SUPER+0            Workspace 10"
+    "SUPER+SHIFT+1-9    Move to workspace"
+    "SUPER+ALT+1-9      Move silently"
+    "SUPER+CTRL+Arrows  Next/prev workspace"
+    "SUPER+S             Scratchpad"
+    ""
+    "─── Apps ────────────────────────────"
+    "SUPER+SPACE/A      App launcher"
+    "SUPER+E            File manager"
+    "SUPER+B            Browser"
+    "SUPER+V            Clipboard"
+    ""
+    "─── Media ───────────────────────────"
+    "XF86Audio*         Volume"
+    "XF86Brightness*    Brightness"
+    "Print/SUPER+P      Screenshot"
+    ""
+    "─── Theming ─────────────────────────"
+    "SUPER+ALT+T        Night light"
+    "SUPER+ALT+Arrows   Wallpaper"
+  ];
 in
 {
   wayland.windowManager.hyprland.settings = {
     bind = [
-      "SUPER, slash, exec, echo '${keybinds}' | rofi -dmenu -p 'Keybindings' -theme-str \"* {background-color: ${theme.colors.bg}; text-color: ${theme.colors.fg};} window {border-color: ${theme.colors.accent};}\" -no-select"
+      "SUPER, slash, exec, printf '${kbText}' | rofi -dmenu -p 'Keybindings' -theme-str \"* {background-color: ${theme.colors.bg}; text-color: ${theme.colors.fg};} window {border-color: ${theme.colors.accent};}\" -no-select"
     ];
   };
 }

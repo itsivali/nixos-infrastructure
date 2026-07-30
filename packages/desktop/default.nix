@@ -34,5 +34,6 @@ with pkgs; [
   gnome-disk-utility
   gnome-terminal
   gnome-system-monitor
+  mission-center
   notion-app-enhanced
 ]

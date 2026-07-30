@@ -16,6 +16,7 @@
 
 let
   theme = import ../themes;
+  iconFor = label: "${pkgs.wlogout}/share/wlogout/icons/${label}.png";
 in
 {
   programs.wlogout = {
@@ -26,30 +27,42 @@ in
         action = "hyprlock";
         text = "Lock";
         keybind = "l";
+        image = iconFor "lock";
       }
       {
         label = "logout";
         action = "hyprctl dispatch exit";
         text = "Logout";
         keybind = "e";
+        image = iconFor "logout";
       }
       {
         label = "suspend";
         action = "systemctl suspend";
         text = "Suspend";
         keybind = "u";
+        image = iconFor "suspend";
+      }
+      {
+        label = "hibernate";
+        action = "systemctl hibernate";
+        text = "Hibernate";
+        keybind = "h";
+        image = iconFor "hibernate";
       }
       {
         label = "reboot";
         action = "systemctl reboot";
         text = "Reboot";
         keybind = "r";
+        image = iconFor "reboot";
       }
       {
         label = "shutdown";
         action = "systemctl poweroff";
         text = "Shutdown";
         keybind = "s";
+        image = iconFor "shutdown";
       }
     ];
 

@@ -62,7 +62,7 @@ in
       }
 
       window {
-        background-color: ${theme.colors.bg}d9;
+        background-color: ${theme.css.bgA85};
       }
 
       button {

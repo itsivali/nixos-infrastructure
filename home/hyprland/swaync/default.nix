@@ -95,7 +95,7 @@ in
       }
 
       .control-center {
-        background: ${theme.colors.bg}d9;
+        background: ${theme.css.bgA85};
         border: 1px solid ${theme.colors.accent};
         border-radius: 16px;
         color: ${theme.colors.fg};

@@ -54,7 +54,7 @@ in
         border-radius = mkLiteral "16px";
         border = mkLiteral "2px";
         border-color = mkLiteral theme.colors.accent;
-        background-color = mkLiteral "${theme.colors.bg}f2";
+        background-color = mkLiteral "${theme.css.bgA95}";
         padding = mkLiteral "16px";
       };
 

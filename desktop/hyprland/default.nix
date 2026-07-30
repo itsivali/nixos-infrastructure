@@ -35,19 +35,6 @@ in
 
   options.ivali.desktop.hyprland = {
     enable = lib.mkEnableOption "Hyprland desktop environment with themed components";
-
-    theme = lib.mkOption {
-      type = lib.types.enum [
-        "gruvbox"
-        "tokyo-night"
-        "catppuccin"
-        "nord"
-        "everforest"
-        "dracula"
-      ];
-      default = "gruvbox";
-      description = "System theme preset for Hyprland desktop components";
-    };
   };
 
   config = lib.mkIf cfg.enable {

@@ -45,7 +45,6 @@ in
       pavucontrol
       polkit_gnome
       libnotify
-      matugen
       imagemagick
       jq
       libva-utils

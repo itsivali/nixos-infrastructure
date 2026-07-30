@@ -69,11 +69,15 @@
     cpu = {
       format = "󰍛 {usage}%";
       interval = 2;
+      on-click = "mission-center";
+      on-click-right = "kitty btop";
     };
 
     memory = {
       format = "󰘚 {percentage}%";
       interval = 2;
+      on-click = "mission-center";
+      on-click-right = "kitty btop";
     };
 
     pulseaudio = {

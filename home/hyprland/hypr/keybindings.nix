@@ -15,7 +15,7 @@
     "SUPER, W, togglefloating,"
     "SUPER, F, fullscreen, 0"
     "SUPER, P, pseudo,"
-    "SUPER, J, togglesplit,"
+    "SUPER, J, layoutmsg, togglesplit"
     "SUPER, G, togglegroup,"
     "SUPER SHIFT, F, pin,"
     "SUPER, S, togglespecialworkspace,"

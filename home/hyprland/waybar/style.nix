@@ -22,7 +22,7 @@
   }
 
   window#waybar {
-    background-color: rgba(30, 30, 46, 0.65);
+    background-color: ${theme.colors.bg}a6;
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 14px;
     color: ${theme.colors.fg};

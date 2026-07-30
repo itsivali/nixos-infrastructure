@@ -62,7 +62,7 @@ in
       }
 
       window {
-        background-color: rgba(30, 30, 46, 0.85);
+        background-color: ${theme.colors.bg}d9;
       }
 
       button {

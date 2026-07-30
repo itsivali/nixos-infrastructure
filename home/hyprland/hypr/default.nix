@@ -35,8 +35,6 @@ in
       inherit (keybindings) bind binde bindl bindm;
 
       exec-once = [
-        "waybar"
-        "swaync"
         "hypridle"
         "wl-paste --watch cliphist store"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"

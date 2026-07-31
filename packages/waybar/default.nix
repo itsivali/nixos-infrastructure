@@ -22,21 +22,25 @@
 { pkgs }:
 
 let
-  mkScript = name: src: pkgs.writeShellApplication {
-    inherit name;
+  mkScript = name: runtimeInputs: src: pkgs.writeShellApplication {
+    inherit name runtimeInputs;
     text = builtins.readFile src;
-    runtimeInputs = with pkgs; [
-      brightnessctl
-      glib
-      hyprlock
-      libnotify
-      power-profiles-daemon
-      rofi
-    ];
   };
+  shared = with pkgs; [
+    bash
+    libnotify
+  ];
 in
 [
-  (mkScript "power-profile-cycle" ../../scripts/waybar/power-profile-cycle.sh)
-  (mkScript "brightness-menu" ../../scripts/waybar/brightness-menu.sh)
-  (mkScript "switch-user" ../../scripts/waybar/switch-user.sh)
+  (mkScript "power-profile-cycle" (shared ++ [ pkgs.power-profiles-daemon ])
+    ../../scripts/waybar/power-profile-cycle.sh)
+  (mkScript "brightness-menu"
+    (shared ++ [ pkgs.brightnessctl pkgs.rofi ])
+    ../../scripts/waybar/brightness-menu.sh)
+  (mkScript "switch-user"
+    (shared ++ [ pkgs.glib pkgs.hyprlock ])
+    ../../scripts/waybar/switch-user.sh)
+  (mkScript "waybar-toggle"
+    (shared ++ [ pkgs.procps pkgs.util-linux pkgs.waybar ])
+    ../../scripts/waybar/toggle.sh)
 ]

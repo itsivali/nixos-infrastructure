@@ -39,6 +39,7 @@
   #pulseaudio,
   #backlight,
   #network,
+  #bluetooth,
   #battery,
   #idle_inhibitor,
   #custom-notification,
@@ -50,6 +51,36 @@
     border-radius: 10px;
     color: ${theme.colors.fg};
     border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  #custom-appmenu:hover,
+  #workspaces button:hover,
+  #clock:hover,
+  #cpu:hover,
+  #memory:hover,
+  #pulseaudio:hover,
+  #backlight:hover,
+  #network:hover,
+  #bluetooth:hover,
+  #battery:hover,
+  #idle_inhibitor:hover,
+  #custom-notification:hover,
+  #custom-updates:hover,
+  #custom-power:hover {
+    background-color: ${theme.colors.bg2};
+    border-color: ${theme.colors.accent};
+  }
+
+  window#waybar tooltip {
+    background-color: ${theme.css.bgA95};
+    border: 1px solid ${theme.colors.bg3};
+    border-radius: 10px;
+    color: ${theme.colors.fg};
+  }
+
+  window#waybar tooltip label {
+    color: ${theme.colors.fg};
+    font-weight: normal;
   }
 
   #custom-appmenu {
@@ -98,6 +129,10 @@
 
   #network {
     color: ${theme.colors.aqua};
+  }
+
+  #bluetooth {
+    color: ${theme.colors.blue};
   }
 
   #battery {

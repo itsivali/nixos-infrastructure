@@ -24,6 +24,7 @@
     ./waybar
     ./swaync
     ./swayosd
+    ./networkmanager
     ./hyprlock
     ./hypridle
     ./rofi

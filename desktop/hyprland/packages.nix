@@ -49,6 +49,12 @@ in
       imagemagick
       jq
       libva-utils
+
+      # Interactive status-bar tooling
+      blueman
+      bluez
+      networkmanager_dmenu
+      swayosd
     ];
   };
 }

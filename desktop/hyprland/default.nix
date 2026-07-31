@@ -53,6 +53,12 @@ in
     services.udisks2.enable = true;
     services.gvfs.enable = true;
 
+    # Bluetooth (BlueZ service + stack for the blueman manager / waybar module)
+    hardware.bluetooth.enable = true;
+
+    # Power profile switching (power-saver / balanced / performance)
+    services.power-profiles-daemon.enable = true;
+
     environment.sessionVariables = {
       NIXOS_OZONE_WL = "1";
       MOZ_ENABLE_WAYLAND = "1";

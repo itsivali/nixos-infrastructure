@@ -11,6 +11,7 @@
     "SUPER, L, exec, hyprlock"
     "SUPER, BACKSPACE, exec, wlogout"
     "SUPER, X, exec, wlogout"
+    "SUPER, M, exec, bash -c 'pgrep -x waybar >/dev/null && pkill -x waybar || waybar &'"
     "SUPER, N, exec, swaync-client -t -sw"
     "SUPER, W, togglefloating,"
     "SUPER, F, fullscreen, 0"

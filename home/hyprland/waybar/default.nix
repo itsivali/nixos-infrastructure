@@ -22,6 +22,7 @@ in
 {
   programs.waybar = {
     enable = true;
+    systemd.enable = false;
     settings = waybarConfig;
     style = waybarStyle;
   };

@@ -34,6 +34,12 @@ in
         keybind = "e";
       }
       {
+        label = "switch";
+        action = "switch-user";
+        text = "󰞉  Switch User";
+        keybind = "w";
+      }
+      {
         label = "suspend";
         action = "systemctl suspend";
         text = "󰒲  Suspend";

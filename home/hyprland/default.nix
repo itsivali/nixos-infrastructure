@@ -23,6 +23,7 @@
     ./hypr
     ./waybar
     ./swaync
+    ./swayosd
     ./hyprlock
     ./hypridle
     ./rofi

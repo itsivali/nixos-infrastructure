@@ -85,18 +85,18 @@
   ];
 
   binde = [
-    ", XF86AudioRaiseVolume, exec, pamixer -i 5"
-    ", XF86AudioLowerVolume, exec, pamixer -d 5"
-    ", F12, exec, pamixer -i 5"
-    ", F11, exec, pamixer -d 5"
-    ", XF86MonBrightnessUp, exec, brightnessctl set 5%+"
-    ", XF86MonBrightnessDown, exec, brightnessctl set 5%-"
+    ", XF86AudioRaiseVolume, exec, swayosd-client --output-volume raise"
+    ", XF86AudioLowerVolume, exec, swayosd-client --output-volume lower"
+    ", F12, exec, swayosd-client --output-volume raise"
+    ", F11, exec, swayosd-client --output-volume lower"
+    ", XF86MonBrightnessUp, exec, swayosd-client --brightness raise"
+    ", XF86MonBrightnessDown, exec, swayosd-client --brightness lower"
   ];
 
   bindl = [
-    ", XF86AudioMute, exec, pamixer -t"
-    ", XF86AudioMicMute, exec, pamixer -t -i 1"
-    ", F10, exec, pamixer -t"
+    ", XF86AudioMute, exec, swayosd-client --output-volume mute-toggle"
+    ", XF86AudioMicMute, exec, swayosd-client --input-volume mute-toggle"
+    ", F10, exec, swayosd-client --output-volume mute-toggle"
     ", XF86AudioPlay, exec, playerctl play-pause"
     ", XF86AudioNext, exec, playerctl next"
     ", XF86AudioPrev, exec, playerctl previous"

@@ -1,18 +1,14 @@
 ##############################################################################
 #
-# Desktop GNOME Shell
+# Desktop — Login
 #
 # Purpose
 # -------
-# Barrel module for GNOME Shell sub-modules (extensions).
+# Barrel for display-manager / login-screen modules.
 #
 # Ownership
 # ---------
 # Willis Ivali <ivali>
-#
-# Responsibilities
-# ----------------
-# - Import GNOME shell extension configuration
 #
 ##############################################################################
 
@@ -20,6 +16,6 @@
 
 {
   imports = [
-    ./extensions.nix
+    ./ly.nix
   ];
 }

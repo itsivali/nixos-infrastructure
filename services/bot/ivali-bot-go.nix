@@ -85,7 +85,7 @@ in
         apparmor-utils # aa-status (security)
         wireplumber # wpctl (volume/mute)
         brightnessctl
-        gnome-screenshot
+        grim # screenshots (Wayland)
         wl-clipboard # wl-copy / wl-paste
         libnotify # notify-send
         wmctrl

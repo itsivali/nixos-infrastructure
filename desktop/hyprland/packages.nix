@@ -1,15 +1,15 @@
 ##############################################################################
 #
-# Desktop Hyprland System Packages
+# Desktop — Hyprland System Packages
 #
 # Purpose
 # -------
-# System-level packages required for Hyprland desktop functionality,
-# audio, screen lock, status bar, launchers, notifications, and screenshot tools.
+# System-level packages specific to the Hyprland desktop. Shared packages
+# (grim, wl-clipboard, pavucontrol, ...) live in desktop/common/packages.nix.
 #
 # Ownership
 # ---------
-# Willis Ivali <ivali>
+# ivali.desktop.hyprland
 #
 ##############################################################################
 
@@ -21,40 +21,28 @@ in
 {
   config = lib.mkIf cfg.enable {
     environment.systemPackages = with pkgs; [
-      # Core Hyprland utilities
+      # Core Hyprland + session tools
       hyprland
       hyprlock
       hypridle
       hyprpaper
 
-      # Desktop components
+      # Desktop components (bar, launcher, lockscreen, notifications)
       waybar
       rofi
-      swaynotificationcenter
       wlogout
 
-      # Wayland utilities & helpers
-      grim
-      slurp
-      swappy
-      cliphist
-      wl-clipboard
-      brightnessctl
-      pamixer
-      playerctl
-      pavucontrol
-      polkit_gnome
-      networkmanagerapplet
-      libnotify
-      imagemagick
-      jq
-      libva-utils
-
       # Interactive status-bar tooling
-      blueman
-      bluez
       networkmanager_dmenu
       swayosd
+
+      # Blue-light filter (SUPER ALT T) + gamemode (SUPER ALT G)
+      hyprsunset
+      gamemode
+
+      # Bluetooth
+      bluez
+      bluez-tools
     ];
   };
 }

@@ -30,7 +30,6 @@
     ssh = true;
   };
   config = {
-    ivali.desktop.gnome.enable = true;
     ivali.desktop.hyprland.enable = true;
     # Disable observability stack until laptop upgrade
     ivali.observability.enable = lib.mkForce false;

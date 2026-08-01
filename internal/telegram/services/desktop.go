@@ -65,7 +65,7 @@ func (s *DesktopService) BrightnessSet(level string) string {
 // Screenshot captures the desktop to a file. Returns (filePath, success).
 func (s *DesktopService) Screenshot() (string, bool) {
 	output := s.runner.RunAsUser(
-		"gnome-screenshot -f /tmp/screenshot.png 2>/dev/null && echo OK || echo FAIL", 10)
+		"grim /tmp/screenshot.png 2>/dev/null && echo OK || echo FAIL", 10)
 	return "/tmp/screenshot.png", strings.Contains(output, "OK")
 }
 
@@ -88,7 +88,7 @@ func (s *DesktopService) Suspend() string {
 
 // Lock locks the desktop session.
 func (s *DesktopService) Lock() string {
-	s.runner.RunAsUser("gnome-screensaver-command -l 2>/dev/null || loginctl lock-session", 5)
+	s.runner.RunAsUser("hyprctl dispatch lock 2>/dev/null || loginctl lock-session", 5)
 	return "Locked"
 }
 
@@ -103,14 +103,14 @@ func (s *DesktopService) ListWindows() string {
 	return s.runner.RunAsUser("wmctrl -l 2>/dev/null || echo 'wmctrl not available'", 5)
 }
 
-// Workspaces returns GNOME workspace information.
+// Workspaces returns Hyprland workspace information.
 func (s *DesktopService) Workspaces() string {
 	return s.runner.RunAsUser(
-		"gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Eval 'global.workspace_manager.get_n_workspaces()' 2>/dev/null || echo 'GNOME not available'", 5)
+		"hyprctl workspaces -j 2>/dev/null | jq -r '.[].name' 2>/dev/null || echo 'Hyprland not available'", 5)
 }
 
 // MonitorOn turns on the monitor.
 func (s *DesktopService) MonitorOn() string {
-	s.runner.RunAsUser("xset dpms force on 2>/dev/null || true", 5)
+	s.runner.RunAsUser("hyprctl dispatch dpms on 2>/dev/null || xset dpms force on 2>/dev/null || true", 5)
 	return "Monitor turned on"
 }

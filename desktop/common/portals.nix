@@ -1,25 +1,24 @@
 ##############################################################################
 #
-# Desktop Hyprland XDG Desktop Portal
+# Desktop — Common Portals
 #
 # Purpose
 # -------
-# Configures XDG desktop portal integration for Hyprland screen sharing,
-# file selection dialogs, and desktop interactions.
+# XDG desktop portal integration shared by every Wayland desktop: Hyprland
+# backend (screen sharing, global shortcuts) plus GTK fallback (file dialogs).
+# XDG_CURRENT_DESKTOP=Hyprland (from common/environment.nix) is what makes
+# portal requests route to the Hyprland backend.
 #
 # Ownership
 # ---------
-# Willis Ivali <ivali>
+# xdg.portal
 #
 ##############################################################################
 
 { config, lib, pkgs, ... }:
 
-let
-  cfg = config.ivali.desktop.hyprland;
-in
 {
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf (config.ivali.desktop.hyprland.enable or false) {
     xdg.portal = {
       enable = true;
       extraPortals = [

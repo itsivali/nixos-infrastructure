@@ -1,12 +1,11 @@
 ##############################################################################
 #
-# Desktop Hyprland
+# Desktop — Hyprland
 #
 # Purpose
 # -------
-# Main Hyprland desktop environment module. Configures system-level
-# Hyprland session, GDM session discovery, Polkit authentication agent,
-# PAM security for Hyprlock, and Wayland session environment variables.
+# Hyprland desktop environment module. Barrel that wires the compositor and
+# system packages together, gated on ivali.desktop.hyprland.enable.
 #
 # Ownership
 # ---------
@@ -14,11 +13,9 @@
 #
 # Responsibilities
 # ----------------
-# - Enable system-wide Hyprland & XWayland support
-# - Configure PAM for hyprlock screen locking
-# - Register XDG desktop portals (hyprland + gtk)
-# - Enable Polkit authentication and power management services
-# - Expose ivali.desktop.hyprland configuration options
+# - Declare ivali.desktop.hyprland.enable
+# - Import compositor + system packages
+# - Portal integration lives in desktop/common/portals.nix
 #
 ##############################################################################
 
@@ -29,43 +26,11 @@ let
 in
 {
   imports = [
+    ./compositor.nix
     ./packages.nix
-    ./portal.nix
   ];
 
   options.ivali.desktop.hyprland = {
     enable = lib.mkEnableOption "Hyprland desktop environment with themed components";
-  };
-
-  config = lib.mkIf cfg.enable {
-    # System-wide Hyprland compositing & display manager integration
-    programs.hyprland = {
-      enable = true;
-      xwayland.enable = true;
-    };
-
-    # Screen locking security authentication (PAM)
-    security.pam.services.hyprlock = { };
-
-    # Core system daemons required for desktop operations
-    security.polkit.enable = true;
-    services.upower.enable = true;
-    services.udisks2.enable = true;
-    services.gvfs.enable = true;
-
-    # Bluetooth (BlueZ service + stack for the blueman manager / waybar module)
-    hardware.bluetooth.enable = true;
-
-    # Power profile switching (power-saver / balanced / performance)
-    services.power-profiles-daemon.enable = true;
-
-    environment.sessionVariables = {
-      NIXOS_OZONE_WL = "1";
-      MOZ_ENABLE_WAYLAND = "1";
-      ELECTRON_OZONE_PLATFORM_HINT = "wayland";
-      SDL_VIDEODRIVER = "wayland";
-      _JAVA_AWT_WM_NONREPARENTING = "1";
-      CLUTTER_BACKEND = "wayland";
-    };
   };
 }

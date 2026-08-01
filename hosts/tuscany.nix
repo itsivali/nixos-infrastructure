@@ -37,7 +37,7 @@
     ssh = true;
   };
   config = {
-    ivali.desktop.gnome.enable = true;
+    ivali.desktop.hyprland.enable = true;
     fleet.gitopsReconciler.enable = true;
     fleet.deploymentHealth.enable = true;
     fleet.deploymentHealth.enableRollback = true;

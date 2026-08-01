@@ -1,19 +1,21 @@
 ##############################################################################
 #
-# Common Desktop — Shared Abstractions
+# Desktop — Common
 #
 # Purpose
 # -------
-# Provides shared desktop theming, colors, fonts, icons, and cursor
-# configuration used by GNOME.
+# Shared desktop foundation used by every desktop environment: audio, portals,
+# clipboard, GPU, fonts, environment variables, base packages and the design
+# system theme. Desktop environments are thin wrappers over this layer.
 #
 # Ownership
 # ---------
-# Color palette, GTK theming, font config, cursor theme, icon theme.
+# Willis Ivali <ivali>
 #
-# Dependencies
-# ------------
-# None — pure option declarations with sensible defaults.
+# Responsibilities
+# ----------------
+# - Barrel for all desktop/common sub-modules
+# - Desktop-agnostic services and session configuration
 #
 ##############################################################################
 
@@ -22,5 +24,13 @@
 {
   imports = [
     ./colors.nix
+    ./theme.nix
+    ./audio.nix
+    ./clipboard.nix
+    ./environment.nix
+    ./fonts.nix
+    ./gpu.nix
+    ./packages.nix
+    ./portals.nix
   ];
 }

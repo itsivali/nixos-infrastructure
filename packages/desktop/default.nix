@@ -29,11 +29,7 @@ with pkgs; [
   firefox
   libreoffice-fresh
   brightnessctl
-  gnome-screenshot
   xdg-utils
-  gnome-disk-utility
-  gnome-terminal
-  gnome-system-monitor
   mission-center
   notion-app-enhanced
 ]

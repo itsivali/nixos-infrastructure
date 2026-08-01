@@ -37,7 +37,6 @@ in
       exec-once = [
         "waybar"
         "hypridle"
-        "wl-paste --watch cliphist store"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
       ];
 

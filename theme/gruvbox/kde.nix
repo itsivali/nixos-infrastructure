@@ -4,16 +4,23 @@
 #
 # Purpose
 # -------
-# KDE Plasma color-scheme surface (.colors file) derived from the palette.
-# Consumed by home/hyprland/krunner and any KDE application theming.
+# KDE Plasma color-scheme surface (.colors file). Widget role colors come
+# from theme.qt.palette (the single Qt palette source); KDE-only surfaces
+# (title bars, decorations, selection alternates) derive from the raw
+# Gruvbox palette. Consumed by home/hyprland/krunner.
 #
 # Ownership
 # ---------
-# Willis Ivali <ivali>
+# theme.gruvbox.kde
+#
+# Responsibilities
+# ----------------
+# - Map the Qt role palette onto KDE Colors:* groups
+# - Render the final .colors file consumed by Plasma/Qt apps
 #
 ##############################################################################
 
-{ colors }:
+{ colors, palette }:
 
 let
   # KDE uses 8-bit hex (RRGGBB) in .colors files.
@@ -30,73 +37,73 @@ let
     ));
 
   window = {
-    Window = colors.bg;
-    WindowText = colors.fg;
-    ForegroundNormal = colors.fg;
-    ForegroundInactive = colors.gray;
-    ForegroundLink = colors.blue;
-    ForegroundVisited = colors.purple;
-    DecorationFocus = colors.orange;
+    Window = palette.window;
+    WindowText = palette.windowText;
+    ForegroundNormal = palette.text;
+    ForegroundInactive = palette.placeholder;
+    ForegroundLink = palette.link;
+    ForegroundVisited = palette.linkVisited;
+    DecorationFocus = palette.highlight;
     DecorationHover = colors.yellow;
-    ActiveTitleBar = colors.bg1;
-    InactiveTitleBar = colors.bg;
-    ActiveTitleBarText = colors.fg;
-    InactiveTitleBarText = colors.gray;
-    SelectionBackground = colors.orange;
+    ActiveTitleBar = palette.button;
+    InactiveTitleBar = palette.window;
+    ActiveTitleBarText = palette.buttonText;
+    InactiveTitleBarText = palette.placeholder;
+    SelectionBackground = palette.highlight;
     SelectionAlternateBackground = colors.yellow;
-    TooltipBackground = colors.bg1;
-    TooltipText = colors.fg;
-    BackgroundNormal = colors.bg;
-    BackgroundAlternate = colors.bg1;
+    TooltipBackground = palette.toolTipBase;
+    TooltipText = palette.toolTipText;
+    BackgroundNormal = palette.window;
+    BackgroundAlternate = palette.alternateBase;
   };
 
   view = {
-    ViewBackground = colors.bg;
-    ViewText = colors.fg;
-    ForegroundNormal = colors.fg;
-    ForegroundInactive = colors.gray;
-    ForegroundLink = colors.blue;
-    ForegroundVisited = colors.purple;
-    BackgroundNormal = colors.bg;
-    BackgroundAlternate = colors.bg1;
-    SelectionBackground = colors.orange;
+    ViewBackground = palette.base;
+    ViewText = palette.text;
+    ForegroundNormal = palette.text;
+    ForegroundInactive = palette.placeholder;
+    ForegroundLink = palette.link;
+    ForegroundVisited = palette.linkVisited;
+    BackgroundNormal = palette.base;
+    BackgroundAlternate = palette.alternateBase;
+    SelectionBackground = palette.highlight;
     SelectionAlternateBackground = colors.yellow;
   };
 
   button = {
-    ButtonBackground = colors.bg1;
-    ButtonText = colors.fg;
-    ForegroundNormal = colors.fg;
-    ForegroundInactive = colors.gray;
-    ForegroundLink = colors.blue;
-    ForegroundVisited = colors.purple;
-    BackgroundNormal = colors.bg1;
-    BackgroundAlternate = colors.bg;
-    SelectionBackground = colors.orange;
+    ButtonBackground = palette.button;
+    ButtonText = palette.buttonText;
+    ForegroundNormal = palette.buttonText;
+    ForegroundInactive = palette.placeholder;
+    ForegroundLink = palette.link;
+    ForegroundVisited = palette.linkVisited;
+    BackgroundNormal = palette.button;
+    BackgroundAlternate = palette.base;
+    SelectionBackground = palette.highlight;
     SelectionAlternateBackground = colors.yellow;
   };
 
   selection = {
-    SelectionBackground = colors.orange;
+    SelectionBackground = palette.highlight;
     SelectionAlternateBackground = colors.yellow;
-    SelectionText = colors.bgHard;
-    ForegroundNormal = colors.fg;
-    ForegroundInactive = colors.gray;
-    ForegroundLink = colors.blue;
-    ForegroundVisited = colors.purple;
-    BackgroundNormal = colors.bg;
-    BackgroundAlternate = colors.bg1;
+    SelectionText = palette.highlightedText;
+    ForegroundNormal = palette.text;
+    ForegroundInactive = palette.placeholder;
+    ForegroundLink = palette.link;
+    ForegroundVisited = palette.linkVisited;
+    BackgroundNormal = palette.window;
+    BackgroundAlternate = palette.alternateBase;
   };
 
   tooltip = {
-    TooltipBackground = colors.bg1;
-    TooltipText = colors.fg;
-    ForegroundNormal = colors.fg;
-    ForegroundInactive = colors.gray;
-    ForegroundLink = colors.blue;
-    ForegroundVisited = colors.purple;
-    BackgroundNormal = colors.bg1;
-    BackgroundAlternate = colors.bg;
+    TooltipBackground = palette.toolTipBase;
+    TooltipText = palette.toolTipText;
+    ForegroundNormal = palette.toolTipText;
+    ForegroundInactive = palette.placeholder;
+    ForegroundLink = palette.link;
+    ForegroundVisited = palette.linkVisited;
+    BackgroundNormal = palette.toolTipBase;
+    BackgroundAlternate = palette.base;
   };
 in
 {

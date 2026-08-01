@@ -21,6 +21,9 @@
 { config, lib, pkgs, ... }:
 
 let
+  theme = import ../hyprland/themes;
+  t = theme.colors;
+
   # Pinned Firefox extensions (hashes resolved from AMO latest xpi).
   #
   # nixpkgs' fetchFirefoxAddon emits a single <id>.xpi at the package root
@@ -138,9 +141,9 @@ in
       userChrome = ''
         /* Gruvbox-dark compact Firefox */
         :root {
-          --gruvbox-bg: #282828;
-          --gruvbox-fg: #ebdbb2;
-          --gruvbox-orange: #fe8019;
+          --gruvbox-bg: ${t.bg};
+          --gruvbox-fg: ${t.fg};
+          --gruvbox-orange: ${t.orange};
         }
 
         /* Hide the horizontal tab strip (Sidebery provides vertical tabs) */

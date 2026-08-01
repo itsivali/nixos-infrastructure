@@ -4,8 +4,10 @@
 #
 # Purpose
 # -------
-# Qt6 style and color palette for qt6ct/Kvantum (Phase 3). Ensures every Qt
-# application — including non-KDE ones like Telegram — renders in Gruvbox.
+# Qt6 style and role palette. The palette is the single Qt color source —
+# consumed by theme/gruvbox/kde.nix (KDE .colors) — and the style drives
+# qt.style in desktop/kde. Ensures every Qt application — including non-KDE
+# ones like Telegram — renders in Gruvbox.
 #
 ##############################################################################
 

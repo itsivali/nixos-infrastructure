@@ -22,6 +22,9 @@
 
 { config, lib, pkgs, ... }:
 
+let
+  theme = import ../themes;
+in
 {
   home.file."networkmanager-dmenu/config.ini".text = ''
     [dmenu]
@@ -32,7 +35,7 @@
 
     [dmenu_passphrase]
     obscure = True
-    obscure_color = #282828
+    obscure_color = ${theme.colors.bg}
 
     [editor]
     terminal = ${pkgs.kdePackages.konsole}/bin/konsole -e

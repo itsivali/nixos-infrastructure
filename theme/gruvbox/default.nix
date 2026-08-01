@@ -26,6 +26,9 @@ let
   cursor = import ./cursor.nix;
   icons = import ./icons.nix;
   fonts = import ./fonts.nix;
+
+  # Qt style + role palette (single palette source for Qt surfaces).
+  qt = import ./qt.nix { inherit (palette) colors; };
 in
 {
   inherit (palette) raw colors css toRgba toRgb toLy toLyBold;
@@ -33,13 +36,12 @@ in
   name = "gruvbox";
   displayName = "Gruvbox Dark";
 
-  inherit cursor icons fonts;
+  inherit cursor icons fonts qt;
 
   gtk = import ./gtk.nix { inherit cursor icons; };
-  qt = import ./qt.nix { inherit (palette) colors; };
   kvantum = import ./kvantum.nix { inherit (palette) colors; };
   konsole = import ./konsole.nix { inherit (palette) colors; };
-  kde = import ./kde.nix { inherit (palette) colors; };
+  kde = import ./kde.nix { inherit (palette) colors; inherit (qt) palette; };
   waybar = import ./waybar.nix { inherit (palette) colors css; };
   hyprland = import ./hyprland.nix { inherit (palette) colors; };
   ly = import ./ly.nix { inherit (palette) colors toLy toLyBold; };

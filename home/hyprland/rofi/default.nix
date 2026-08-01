@@ -23,7 +23,7 @@ in
     enable = true;
     package = pkgs.rofi;
     font = "Inter 12";
-    terminal = "${pkgs.kitty}/bin/kitty";
+    terminal = "${pkgs.kdePackages.konsole}/bin/konsole";
 
     extraConfig = {
       modi = "drun,run,filebrowser,window";

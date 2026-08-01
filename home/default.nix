@@ -24,7 +24,7 @@ in
     ./theming.nix
     ./firefox
   ]
-  ++ (if hyprlandEnabled then [ ./hyprland ] else [ ])
+  ++ (if hyprlandEnabled then [ ./hyprland ./terminal ] else [ ])
   ++ [
     ./shell
     ./git

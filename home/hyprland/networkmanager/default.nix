@@ -35,7 +35,7 @@
     obscure_color = #282828
 
     [editor]
-    terminal = ${pkgs.kitty}/bin/kitty -e
+    terminal = ${pkgs.kdePackages.konsole}/bin/konsole -e
     gui_if_available = True
     gui = nm-connection-editor
 

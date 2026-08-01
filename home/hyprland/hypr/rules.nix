@@ -21,8 +21,8 @@
     "float 1, match:title ^(Save File)$"
 
     # Opacity rules
-    "opacity 0.95 0.90, match:class ^(kitty)$"
-    "opacity 0.95 0.90, match:class ^(foot)$"
+    "opacity 0.95 0.90, match:class ^(konsole)$"
+    "opacity 0.95 0.90, match:class ^(org.kde.konsole)$"
     "opacity 0.98 0.95, match:class ^(code)$"
     "opacity 0.98 0.95, match:class ^(zed)$"
 

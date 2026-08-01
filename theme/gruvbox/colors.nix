@@ -80,6 +80,16 @@ let
     in
     "rgba(${toString r}, ${toString g}, ${toString b}, ${toString a})";
 
+  # Decimal comma-separated RGB ("R,G,B") — used by Konsole color schemes
+  # and KDE .colors palettes.
+  toRgb = hex:
+    let
+      r = hexByte (builtins.substring 1 2 hex);
+      g = hexByte (builtins.substring 3 2 hex);
+      b = hexByte (builtins.substring 5 2 hex);
+    in
+    "${toString r},${toString g},${toString b}";
+
   # Ly true-color format: 0xSSRRGGBB (SS = styling, RRGGBB = RGB).
   toLy = hex: "0x00" + stripHash hex;
   toLyBold = hex: "0x01" + stripHash hex;
@@ -99,5 +109,5 @@ let
   };
 in
 {
-  inherit raw colors css toRgba toLy toLyBold;
+  inherit raw colors css toRgba toRgb toLy toLyBold;
 }

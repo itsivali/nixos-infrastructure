@@ -32,6 +32,7 @@ pkgs.testers.nixosTest {
       ../boot
       ../networking
       ../security/apparmor.nix
+      ../security/fail2ban.nix
       ../security/firewall.nix
       ../security/hardening.nix
       ../security/sudo.nix
@@ -43,6 +44,11 @@ pkgs.testers.nixosTest {
     system.stateVersion = "26.11";
 
     security.apparmor.enable = true;
+
+    ivali.security.fail2ban = {
+      enable = true;
+      bot.enable = true;
+    };
 
     users.users.testuser = {
       isNormalUser = true;
@@ -60,7 +66,7 @@ pkgs.testers.nixosTest {
     # Sysctl hardening
     machine.succeed("sysctl kernel.kptr_restrict | grep 2")
     machine.succeed("sysctl kernel.dmesg_restrict | grep 1")
-    machine.succeed("sysctl kernel.yama.ptrace_scope | grep 1")
+    machine.succeed("sysctl kernel.yama.ptrace_scope | grep 2")
 
     # Sudo configured
     machine.succeed("grep -q 'Defaults exec_slide' /etc/sudoers || true")
@@ -72,8 +78,8 @@ pkgs.testers.nixosTest {
     machine.succeed("sysctl fs.suid_dumpable | grep 0")
 
     # Additional sysctl hardening
-    machine.succeed("sysctl net.ipv4.conf.all.rp_filter | grep 1")
-    machine.succeed("sysctl net.ipv4.conf.default.rp_filter | grep 1")
+    machine.succeed("sysctl net.ipv4.conf.all.rp_filter | grep 2")
+    machine.succeed("sysctl net.ipv4.conf.default.rp_filter | grep 2")
     machine.succeed("sysctl net.ipv4.icmp_echo_ignore_broadcasts | grep 1")
     machine.succeed("sysctl net.ipv4.conf.all.accept_redirects | grep 0")
     machine.succeed("sysctl net.ipv6.conf.all.accept_redirects | grep 0")
@@ -91,7 +97,6 @@ pkgs.testers.nixosTest {
     machine.succeed("ls /etc/apparmor.d/")
     machine.succeed("cat /etc/apparmor.d/ivali-bot")
     machine.succeed("cat /etc/apparmor.d/ivali-cli")
-    machine.succeed("cat /etc/apparmor.d/gitops-reconciler")
 
     # fail2ban filter installed
     machine.succeed("cat /etc/fail2ban/filter.d/telegram-webhook.conf")

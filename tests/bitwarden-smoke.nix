@@ -38,6 +38,13 @@ pkgs.testers.nixosTest {
     services.openssh.enable = false;
     system.stateVersion = "26.11";
 
+    environment.systemPackages = with pkgs; [
+      bitwarden-cli
+      jq
+      fzf
+      wl-clipboard
+    ];
+
     users.users.testuser = {
       isNormalUser = true;
       extraGroups = [ "wheel" ];

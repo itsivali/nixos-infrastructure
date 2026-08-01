@@ -37,6 +37,9 @@ let
     timeout 0
     tcp-keepalive 300
 
+    # Notify systemd when ready (matches Type=notify)
+    supervised systemd
+
     # Memory
     maxmemory ${cfg.maxMemory}
     maxmemory-policy ${cfg.maxMemoryPolicy}

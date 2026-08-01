@@ -151,6 +151,10 @@
     # SYN cookies — SYN flood protection without state
     "net.ipv4.tcp_syncookies" = 1;
 
+    # RFC 1337 — time-wait assassination protection, prevents
+    # RST injection into TIME_WAIT connections
+    "net.ipv4.tcp_rfc1337" = 1;
+
     # Increase SYN backlog for high-connection-rate workloads
     "net.ipv4.tcp_max_syn_backlog" = 8192;
 

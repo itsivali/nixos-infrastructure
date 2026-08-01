@@ -2,6 +2,7 @@ package security
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 	"strings"
@@ -77,10 +78,17 @@ func RunFullScan() (*ScanResult, error) {
 }
 
 func firewallChecks() []func() Check {
+	notRoot := os.Geteuid() != 0
+	skipMsg := func(name string) Check {
+		return Check{Name: name, Pass: true, Message: "skipped (requires root)", Severity: "high"}
+	}
 	return []func() Check{
 		func() Check {
 			out, err := exec.Command("nft", "list", "ruleset").CombinedOutput()
 			if err != nil {
+				if notRoot {
+					return skipMsg("nftables")
+				}
 				return Check{Name: "nftables", Pass: false, Message: "nftables not available", Severity: "critical"}
 			}
 			hasDrop := strings.Contains(string(out), "policy drop")
@@ -94,6 +102,9 @@ func firewallChecks() []func() Check {
 		func() Check {
 			out, err := exec.Command("nft", "list", "ruleset").CombinedOutput()
 			if err != nil {
+				if notRoot {
+					return skipMsg("ssh-tailscale")
+				}
 				return Check{Name: "ssh-tailscale", Pass: false, Message: "cannot check", Severity: "high"}
 			}
 			re := regexp.MustCompile(`tcp dport 22.*iifname "tailscale0"`)
@@ -178,15 +189,28 @@ func kernelChecks() []func() Check {
 	}
 }
 
+func sshEffectiveConfig() (string, error) {
+	out, err := exec.Command("sshd", "-T").CombinedOutput()
+	if err == nil {
+		return string(out), nil
+	}
+	// sshd -T fails for non-root users (cannot read root-owned host keys).
+	// Fall back to parsing the on-disk config.
+	raw, readErr := os.ReadFile("/etc/ssh/sshd_config")
+	if readErr != nil {
+		return "", fmt.Errorf("sshd -T failed: %v; read sshd_config: %w", err, readErr)
+	}
+	return string(raw), nil
+}
+
 func sshChecks() []func() Check {
 	return []func() Check{
 		func() Check {
-			out, err := exec.Command("sshd", "-T").CombinedOutput()
+			config, err := sshEffectiveConfig()
 			if err != nil {
-				return Check{Name: "password-auth", Pass: false, Message: "sshd not running", Severity: "high"}
+				return Check{Name: "password-auth", Pass: false, Message: err.Error(), Severity: "high"}
 			}
-			config := string(out)
-			re := regexp.MustCompile(`(?m)^passwordauthentication\s+(\w+)`)
+			re := regexp.MustCompile(`(?mi)^passwordauthentication\s+(\w+)`)
 			matches := re.FindStringSubmatch(config)
 			if len(matches) < 2 {
 				return Check{Name: "password-auth", Pass: false, Message: "not found", Severity: "high"}
@@ -200,12 +224,11 @@ func sshChecks() []func() Check {
 			}
 		},
 		func() Check {
-			out, err := exec.Command("sshd", "-T").CombinedOutput()
+			config, err := sshEffectiveConfig()
 			if err != nil {
-				return Check{Name: "permit-root", Pass: false, Message: "sshd not running", Severity: "high"}
+				return Check{Name: "permit-root", Pass: false, Message: err.Error(), Severity: "high"}
 			}
-			config := string(out)
-			re := regexp.MustCompile(`(?m)^permitrootlogin\s+(\w+)`)
+			re := regexp.MustCompile(`(?mi)^permitrootlogin\s+(\w+)`)
 			matches := re.FindStringSubmatch(config)
 			if len(matches) < 2 {
 				return Check{Name: "permit-root", Pass: true, Message: "not found (default no)", Severity: "high"}

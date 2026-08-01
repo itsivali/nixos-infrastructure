@@ -201,7 +201,17 @@ func (r *Repository) CheckDuplicateImports() []string {
 	seen := make(map[string]string)
 	var duplicates []string
 	for _, info := range r.Parsed {
+		// Each file under tests/ is an isolated NixOS VM; shared imports
+		// across test nodes are expected and not duplicates.
+		if strings.HasPrefix(info.RelPath, "tests/") {
+			continue
+		}
 		for _, imp := range info.Imports {
+			// <auto-imports> is a per-directory sentinel, not a module path:
+			// every barrel legitimately imports its own directory's modules.
+			if imp == "<auto-imports>" {
+				continue
+			}
 			resolved := resolveImportRel(info.RelPath, imp)
 			if prev, ok := seen[resolved]; ok {
 				duplicates = append(duplicates, fmt.Sprintf("%s (in %s and %s)", imp, prev, info.RelPath))

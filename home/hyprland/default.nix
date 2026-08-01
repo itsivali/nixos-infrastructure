@@ -30,6 +30,7 @@
     ./hypridle
     ./rofi
     ./krunner
+    ./kde
     ./wlogout
     ./hyprpaper
     ./clipboard

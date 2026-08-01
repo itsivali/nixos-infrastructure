@@ -11,6 +11,9 @@
 
 { theme }:
 
+let
+  wb = theme.waybar;
+in
 ''
   * {
     border: none;
@@ -22,10 +25,10 @@
   }
 
   window#waybar {
-    background-color: ${theme.css.bgA65};
+    background-color: ${wb.background};
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 14px;
-    color: ${theme.colors.fg};
+    color: ${wb.text};
     transition-property: background-color;
     transition-duration: .5s;
   }
@@ -45,11 +48,11 @@
   #custom-notification,
   #custom-updates,
   #custom-power {
-    background-color: ${theme.colors.bg1};
+    background-color: ${wb.surface};
     padding: 4px 12px;
     margin: 4px 2px;
     border-radius: 10px;
-    color: ${theme.colors.fg};
+    color: ${wb.text};
     border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
@@ -67,24 +70,24 @@
   #custom-notification:hover,
   #custom-updates:hover,
   #custom-power:hover {
-    background-color: ${theme.colors.bg2};
-    border-color: ${theme.colors.accent};
+    background-color: ${wb.surfaceAlt};
+    border-color: ${wb.accent};
   }
 
   window#waybar tooltip {
-    background-color: ${theme.css.bgA95};
-    border: 1px solid ${theme.colors.bg3};
+    background-color: ${wb.bgA95};
+    border: 1px solid ${wb.border};
     border-radius: 10px;
-    color: ${theme.colors.fg};
+    color: ${wb.text};
   }
 
   window#waybar tooltip label {
-    color: ${theme.colors.fg};
+    color: ${wb.text};
     font-weight: normal;
   }
 
   #custom-appmenu {
-    color: ${theme.colors.accent};
+    color: ${wb.accent};
     font-size: 16px;
     padding-left: 10px;
     padding-right: 14px;
@@ -92,75 +95,75 @@
 
   #workspaces button {
     padding: 0 6px;
-    color: ${theme.colors.gray};
+    color: ${wb.textMuted};
     background-color: transparent;
     border-radius: 8px;
   }
 
   #workspaces button:hover {
-    background-color: ${theme.colors.bg2};
-    color: ${theme.colors.fg};
+    background-color: ${wb.surfaceAlt};
+    color: ${wb.text};
   }
 
   #workspaces button.active {
-    color: ${theme.colors.accent};
-    background-color: ${theme.colors.bg2};
+    color: ${wb.accent};
+    background-color: ${wb.surfaceAlt};
   }
 
   #clock {
-    color: ${theme.colors.aqua};
+    color: ${wb.aqua};
   }
 
   #cpu {
-    color: ${theme.colors.green};
+    color: ${wb.green};
   }
 
   #memory {
-    color: ${theme.colors.purple};
+    color: ${wb.purple};
   }
 
   #pulseaudio {
-    color: ${theme.colors.blue};
+    color: ${wb.blue};
   }
 
   #backlight {
-    color: ${theme.colors.yellow};
+    color: ${wb.yellow};
   }
 
   #network {
-    color: ${theme.colors.aqua};
+    color: ${wb.aqua};
   }
 
   #bluetooth {
-    color: ${theme.colors.blue};
+    color: ${wb.blue};
   }
 
   #battery {
-    color: ${theme.colors.green};
+    color: ${wb.green};
   }
 
   #battery.warning {
-    color: ${theme.colors.orange};
+    color: ${wb.accent};
   }
 
   #battery.critical {
-    color: ${theme.colors.red};
+    color: ${wb.red};
   }
 
   #idle_inhibitor {
-    color: ${theme.colors.yellow};
+    color: ${wb.yellow};
   }
 
   #custom-notification {
-    color: ${theme.colors.accent};
+    color: ${wb.accent};
   }
 
   #custom-updates {
-    color: ${theme.colors.blue};
+    color: ${wb.blue};
   }
 
   #custom-power {
-    color: ${theme.colors.red};
+    color: ${wb.red};
     padding-right: 12px;
   }
 ''

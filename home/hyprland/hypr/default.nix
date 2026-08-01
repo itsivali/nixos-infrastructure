@@ -16,7 +16,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  theme = import ../themes;
+  hl = (import ../themes).hyprland;
   animations = import ./animations.nix;
   rules = import ./rules.nix;
   monitors = import ./monitors.nix;
@@ -44,8 +44,8 @@ in
         gaps_in = 4;
         gaps_out = 8;
         border_size = 2;
-        "col.active_border" = theme.colors.activeBorder;
-        "col.inactive_border" = theme.colors.inactiveBorder;
+        "col.active_border" = hl.activeBorder;
+        "col.inactive_border" = hl.inactiveBorder;
         layout = "dwindle";
         resize_on_border = true;
       };
@@ -65,7 +65,7 @@ in
           enabled = true;
           range = 15;
           render_power = 3;
-          color = theme.colors.shadowColor;
+          color = hl.shadowColor;
         };
       };
 

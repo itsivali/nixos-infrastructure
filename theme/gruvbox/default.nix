@@ -22,6 +22,10 @@
 
 let
   palette = import ./colors.nix;
+
+  cursor = import ./cursor.nix;
+  icons = import ./icons.nix;
+  fonts = import ./fonts.nix;
 in
 {
   inherit (palette) raw colors css toRgba toRgb toLy toLyBold;
@@ -29,16 +33,15 @@ in
   name = "gruvbox";
   displayName = "Gruvbox Dark";
 
-  gtk = import ./gtk.nix;
+  inherit cursor icons fonts;
+
+  gtk = import ./gtk.nix { inherit cursor icons; };
   qt = import ./qt.nix { inherit (palette) colors; };
   kvantum = import ./kvantum.nix { inherit (palette) colors; };
   konsole = import ./konsole.nix { inherit (palette) colors; };
   kde = import ./kde.nix { inherit (palette) colors; };
   waybar = import ./waybar.nix { inherit (palette) colors css; };
   hyprland = import ./hyprland.nix { inherit (palette) colors; };
-  cursor = import ./cursor.nix;
-  icons = import ./icons.nix;
-  fonts = import ./fonts.nix;
   ly = import ./ly.nix { inherit (palette) colors toLy toLyBold; };
   plymouth = import ./plymouth.nix { inherit (palette) colors; };
   wallpaper = import ./wallpaper.nix;

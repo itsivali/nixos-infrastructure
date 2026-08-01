@@ -29,6 +29,7 @@ let
   iconPkg = pkgs.tela-icon-theme;
   cursorName = if hyprlandEnabled then hyprTheme.gtk.cursorTheme else "Bibata-Modern-Ice";
   cursorPkg = pkgs.bibata-cursors;
+  cursorSize = if hyprlandEnabled then hyprTheme.gtk.cursorSize else 24;
   fontName = if hyprlandEnabled then hyprTheme.fonts.sans else "Inter";
   fontSize = if hyprlandEnabled then hyprTheme.fonts.size else 11;
 in
@@ -63,6 +64,6 @@ in
 
   home.sessionVariables = {
     XCURSOR_THEME = cursorName;
-    XCURSOR_SIZE = "24";
+    XCURSOR_SIZE = toString cursorSize;
   };
 }

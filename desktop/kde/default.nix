@@ -31,7 +31,7 @@
     # plasma-integration and systemsettings, and sets QT_QPA_PLATFORMTHEME.
     qt.enable = true;
     qt.platformTheme = "kde";
-    qt.style = "kvantum";
+    qt.style = (import ../../theme/gruvbox/default.nix).qt.style;
 
     environment.systemPackages = with pkgs; [
       # Standalone KRunner launcher (binary + Applications runner plugin).

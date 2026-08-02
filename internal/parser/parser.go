@@ -20,7 +20,7 @@ type ModuleInfo struct {
 }
 
 var (
-	autoImportRe   = regexp.MustCompile(`import\s+(?:\.\./)*lib/auto-imports\.nix`)
+	autoImportRe    = regexp.MustCompile(`import\s+(?:\.\./)*lib/auto-imports\.nix`)
 	readDirImportRe = regexp.MustCompile(`builtins\.readDir`)
 	importExprRe    = regexp.MustCompile(`import\s+(\.\.?/[\w./-]+)`)
 	optionDeclRe    = regexp.MustCompile(`options\s*=\s*\{`)

@@ -73,5 +73,6 @@ with pkgs; [
   watchexec
   wmctrl
   wget
+  zip
   zoxide
 ]

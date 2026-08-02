@@ -13,7 +13,7 @@
     "SUPER, Q, exec, konsole"
     "SUPER, T, exec, konsole"
     "SUPER, C, killactive,"
-    "SUPER, E, exec, nautilus"
+    "SUPER, E, exec, dolphin"
     "SUPER, B, exec, firefox"
     "SUPER, SPACE, exec, krunner"
     "SUPER, A, exec, krunner"

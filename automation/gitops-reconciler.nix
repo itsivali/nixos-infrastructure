@@ -73,6 +73,13 @@ in
     ## SERVICE
     ########################################################################
 
+    # Pre-create the deploy lock owned by ivali: the reconciler runs as the
+    # operator user (ivali) but /run is root-owned, so without this the lock
+    # acquisition ("exec 9> /run/deploy.lock") fails on every run.
+    systemd.tmpfiles.rules = [
+      "f /run/deploy.lock 0660 ivali users -"
+    ];
+
     systemd.services.gitops-reconciler = {
       description = "Fleet GitOps Reconciliation Loop";
 

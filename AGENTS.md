@@ -2,14 +2,56 @@
 
 This file provides context for AI agents (OpenCode, Copilot, Claude, etc.) working on this repository.
 
-## Golden Rule: Always Verify Before Push
+## Golden Rule: Iterate to Completion, Then Verify Before Push
 
-Before pushing any change to GitLab, you MUST:
-1. Run `nix flake check --no-build` (or at minimum `nix eval .#nixosConfigurations.prague.config.system.build.toplevel.drvPath`) to validate the configuration
-2. Fix any evaluation errors that appear
-3. Only push after the flake evaluates cleanly (pre-existing warnings like Grafana passwords are acceptable)
+**Work is only done when every task is complete AND every error it surfaces is solved.**
+Never stop at partial success: when one task reveals another problem in the
+repository, fix that problem too before declaring the work finished.
 
-This prevents broken configurations from reaching the GitOps reconciler.
+### Mandatory Completion Loop
+
+While working on this repository, you MUST:
+
+1. **Iterate through all tasks until all are complete.** Do not stop early or
+   hand off unfinished work.
+2. **Solve every error you find in the repository**, including pre-existing
+   ones unrelated to your current task.
+3. **Keep all CI checks passing.** If a change (or an existing state) makes any
+   CI job fail, fix it before pushing.
+4. **Always run `ivali verify`** before finishing. If it reports any failure,
+   fix it and re-run until it exits 0.
+5. **Always run `ivali doctor`** before finishing. Read the report and fix
+   every failed check (doctor exits non-zero on failures; warnings are
+   informational but should be resolved where reasonable).
+6. **Always run `nix flake check --no-build`** before finishing (also run
+   implicitly by `ivali verify`/`ivali doctor`). Fix any evaluation errors.
+7. **Format all `.nix` files with `nix fmt`** before pushing.
+8. **Run `go test ./...`** when Go code changed, and fix any failures.
+9. **Push to GitLab, never leave work uncommitted or unpushed.** If a
+   configuration switch is requested, it must only happen after the change is
+   committed, pushed to GitLab, and CI is green.
+
+### Push Gate (in order, before any push)
+
+1. `nix fmt` — format all `.nix` files
+2. Commit all changes locally (verify and doctor fail on a dirty tree, so the
+   commit must come before the checks)
+3. `ivali verify` — must exit 0 (solves: formatting, flake check, duplicates,
+   orphans, doc headers, security)
+4. `ivali doctor` — must exit 0; fix every failed check
+5. `nix flake check --no-build` — must pass (pre-existing warnings like
+   Grafana passwords are acceptable)
+6. `go test ./...` — must pass when Go code changed
+7. `git push origin main` (GitLab only — never push to GitHub directly; the
+   mirror does that)
+8. Confirm the GitHub Actions run on the mirror goes green before considering
+   the work complete
+
+### Switch Gate
+
+`sudo nixos-rebuild switch --flake .#prague` must only be run after the
+completion loop and push gate above are satisfied. This prevents broken
+configurations from reaching the running system or the GitOps reconciler.
 
 ## What This Repository Is
 
@@ -194,9 +236,13 @@ originates on GitHub). Deployment is driven by the GitOps reconciler, not CI:
 
 ## Testing
 
-- `nixos-rebuild switch --flake .#prague` — full system rebuild
+- `ivali verify` — full verification (formatting, flake check, duplicates,
+  orphans, doc headers, security); must exit 0 before finishing
+- `ivali doctor` — repository health check; must exit 0 before finishing
 - `nix flake check --no-build` — flake validation
 - `go test ./...` — Go unit tests
+- `nixos-rebuild switch --flake .#prague` — full system rebuild (only after the
+  push gate above is satisfied)
 - `tests/laptop-smoke.nix` — NixOS VM smoke test
 
 ## Common Issues

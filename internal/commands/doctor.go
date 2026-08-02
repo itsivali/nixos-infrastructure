@@ -40,7 +40,10 @@ func CmdDoctor(a *app.App) *cobra.Command {
   • Architecture violations
 
 Use --fix to automatically fix issues where possible.
-Use --aggressive with --fix to also deduplicate imports, prune orphans, and more.`,
+Use --aggressive with --fix to also deduplicate imports, prune orphans, and more.
+
+Exits non-zero when any check fails (warnings alone are informational and do
+not fail the gate), so it can be used in CI and the GitOps reconciler.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if !a.RequireRepo() {
 				return nil
@@ -354,6 +357,7 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 			}
 
 			passed := 0
+			failed := 0
 			total := 0
 
 			for _, cat := range allChecks {
@@ -363,6 +367,8 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 					total++
 					if c.Status == terminal.StatusPass {
 						passed++
+					} else if c.Status == terminal.StatusFail {
+						failed++
 					}
 				}
 				fmt.Println()
@@ -370,13 +376,16 @@ Use --aggressive with --fix to also deduplicate imports, prune orphans, and more
 
 			fmt.Println(t.Separator())
 			score := t.Summary("Checks", fmt.Sprintf("%d/%d passed", passed, total))
-			if passed == total {
+			if failed == 0 {
 				fmt.Println(score + "  " + t.Good("healthy"))
 			} else {
 				fmt.Println(score + "  " + t.Warn("needs attention"))
 			}
 			fmt.Println()
 
+			if failed > 0 {
+				return fmt.Errorf("doctor found %d failed check(s)", failed)
+			}
 			return nil
 		},
 	}

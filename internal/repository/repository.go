@@ -202,8 +202,10 @@ func (r *Repository) CheckDuplicateImports() []string {
 	var duplicates []string
 	for _, info := range r.Parsed {
 		// Each file under tests/ is an isolated NixOS VM; shared imports
-		// across test nodes are expected and not duplicates.
-		if strings.HasPrefix(info.RelPath, "tests/") {
+		// across test nodes are expected and not duplicates. Match on the
+		// absolute path since RelPath is cwd-relative (and caches created
+		// from a different working directory shift the prefix).
+		if strings.Contains(filepath.ToSlash(info.Path), "/tests/") {
 			continue
 		}
 		for _, imp := range info.Imports {
@@ -302,6 +304,11 @@ func (r *Repository) CheckOrphanModules() []string {
 				abs := filepath.Join(filepath.Dir(path), imp)
 				explicitlyImported[abs] = true
 			}
+		}
+		// Let-binding imports (import ./foo.nix) also reference the module.
+		for _, imp := range info.ImportRefs {
+			abs := filepath.Join(filepath.Dir(path), imp)
+			explicitlyImported[abs] = true
 		}
 	}
 

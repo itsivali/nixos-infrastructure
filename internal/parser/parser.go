@@ -14,16 +14,19 @@ type ModuleInfo struct {
 	Purpose      string   `json:"purpose,omitempty"`
 	Owns         []string `json:"owns,omitempty"`
 	Imports      []string `json:"imports,omitempty"`
+	ImportRefs   []string `json:"import_refs,omitempty"`
 	HasOptions   bool     `json:"has_options"`
 	IsAutoImport bool     `json:"is_auto_import"`
 }
 
 var (
 	autoImportRe   = regexp.MustCompile(`import\s+(?:\.\./)*lib/auto-imports\.nix`)
-	optionDeclRe   = regexp.MustCompile(`options\s*=\s*\{`)
-	commentBlockRe = regexp.MustCompile(`(?s)#{3,}.*?#{3,}`)
-	purposeRe      = regexp.MustCompile(`(?i)Purpose\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
-	ownsRe         = regexp.MustCompile(`(?i)(?:Owns?|Ownership)\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
+	readDirImportRe = regexp.MustCompile(`builtins\.readDir`)
+	importExprRe    = regexp.MustCompile(`import\s+(\.\.?/[\w./-]+)`)
+	optionDeclRe    = regexp.MustCompile(`options\s*=\s*\{`)
+	commentBlockRe  = regexp.MustCompile(`(?s)#{3,}.*?#{3,}`)
+	purposeRe       = regexp.MustCompile(`(?i)Purpose\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
+	ownsRe          = regexp.MustCompile(`(?i)(?:Owns?|Ownership)\s*\n\s*-+\s*\n\s*(.+?)(?:\n\n|\n#|\z)`)
 )
 
 func Parse(path string) (*ModuleInfo, error) {
@@ -43,8 +46,9 @@ func Parse(path string) (*ModuleInfo, error) {
 	info.Purpose = extractPurpose(content, info.DocHeader)
 	info.Owns = extractOwns(content, info.DocHeader)
 	info.Imports = extractImports(content)
+	info.ImportRefs = extractImportRefs(content)
 	info.HasOptions = optionDeclRe.MatchString(content)
-	info.IsAutoImport = autoImportRe.MatchString(content)
+	info.IsAutoImport = autoImportRe.MatchString(content) || readDirImportRe.MatchString(content)
 
 	return info, nil
 }
@@ -161,6 +165,21 @@ func extractImports(content string) []string {
 	}
 
 	return imports
+}
+
+// extractImportRefs finds relative import expressions used in let-bindings
+// (e.g. `animations = import ./animations.nix;`). These reference modules that
+// are consumed but not part of an `imports = [...]` list, so duplicate-import
+// detection ignores them while orphan detection treats them as referenced.
+func extractImportRefs(content string) []string {
+	var refs []string
+	for _, m := range importExprRe.FindAllStringSubmatch(content, -1) {
+		if strings.HasSuffix(m[1], "lib/auto-imports.nix") {
+			continue
+		}
+		refs = append(refs, m[1])
+	}
+	return refs
 }
 
 func extractInlineImports(line string, imports *[]string) {

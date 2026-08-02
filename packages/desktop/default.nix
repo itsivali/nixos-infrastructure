@@ -14,7 +14,7 @@
 
 # ---------
 
-# Willis Ivali 
+# Willis Ivali
 
 # Responsibilities
 
@@ -28,7 +28,7 @@
 
 # Desktop applications — combined into system package set by aggregator.
 
-\{ pkgs \ }:
+\{ pkgs \\ \ }:
 
-with pkgs; \[ localsend zoom-us obsidian mpv firefox libreoffice-fresh brightnessctl xdg-utils mission-center notion-app-enhanced **microsoft-edge**\ ]
+with pkgs; \[ localsend zoom-us obsidian mpv firefox libreoffice-fresh brightnessctl xdg-utils mission-center notion-app-enhanced **microsoft-edge** \ ]
 

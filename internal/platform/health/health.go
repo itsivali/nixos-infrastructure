@@ -252,8 +252,10 @@ func CheckTailscale() CheckResult {
 }
 
 func CheckNixFormatting(root string) CheckResult {
-	hasUncommitted, _ := exec.Command("git", "-C", root, "diff", "--quiet", "--", "*.nix").Output()
-	hasStaged, _ := exec.Command("git", "-C", root, "diff", "--cached", "--quiet", "--", "*.nix").Output()
+	// git diff --quiet exits 0 when clean, 1 when there are changes.
+	// Check the error, not the (always non-nil) byte slice.
+	_, hasUncommitted := exec.Command("git", "-C", root, "diff", "--quiet", "--", "*.nix").Output()
+	_, hasStaged := exec.Command("git", "-C", root, "diff", "--cached", "--quiet", "--", "*.nix").Output()
 
 	if hasUncommitted != nil || hasStaged != nil {
 		return CheckResult{Name: "formatting", State: state.StateWarning, Message: "skipped (uncommitted .nix changes present)"}

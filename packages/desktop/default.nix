@@ -1,34 +1,38 @@
-\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#
+################################################################################
+# Desktop Packages
+#
+# Purpose:
+#   Defines the desktop applications installed system-wide.
+#
+# Responsibilities:
+#   - Provide a curated set of desktop applications.
+#   - Be imported by the system package aggregator.
+#
+# Owner:
+#   Willis Ivali
+################################################################################
 
-# Packages Desktop
+{ pkgs, ... }:
 
-# Purpose
+with pkgs; [
+  # Web Browsers
+  firefox
+  microsoft-edge
 
-# -------
+  # Communication
+  zoom-us
 
-# Defines the set of desktop applications (Firefox, VLC, LibreOffice,
+  # Productivity
+  libreoffice-fresh
+  obsidian
+  notion-app-enhanced
 
-# Obsidian, Zoom, etc.) included in the system package set.
+  # Media
+  mpv
 
-# Ownership
-
-# ---------
-
-# Willis Ivali
-
-# Responsibilities
-
-# ----------------
-
-# - Provide a curated list of desktop application packages
-
-# - Be importable by the system package aggregator
-
-\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#\#
-
-# Desktop applications — combined into system package set by aggregator.
-
-\{ pkgs \\ \ }:
-
-with pkgs; \[ localsend zoom-us obsidian mpv firefox libreoffice-fresh brightnessctl xdg-utils mission-center notion-app-enhanced **microsoft-edge** \ ]
-
+  # Utilities
+  brightnessctl
+  localsend
+  mission-center
+  xdg-utils
+]

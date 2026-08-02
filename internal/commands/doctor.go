@@ -228,7 +228,10 @@ not fail the gate), so it can be used in CI and the GitOps reconciler.`,
 					Category: "Architecture",
 					Checks: func() []terminal.CheckItem {
 						var items []terminal.CheckItem
-						domains := []string{"boot", "networking", "desktop", "security", "services", "developer", "observability", "recovery", "automation", "packages", "home"}
+						// packages/ is package sets, not a module (see
+						// configuration.nix), so it is not expected to have
+						// a barrel default.nix.
+						domains := []string{"boot", "networking", "desktop", "security", "services", "developer", "observability", "recovery", "automation", "home"}
 						for _, d := range domains {
 							path := filepath.Join(r.Root, d, "default.nix")
 							if _, err := os.Stat(path); err != nil {

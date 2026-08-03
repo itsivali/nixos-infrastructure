@@ -34,6 +34,12 @@
 
 {
   config = lib.mkIf (config.ivali.desktop.hyprland.enable or false) {
+    # Required by the Home Manager dconf module (home/theming.nix): without
+    # it the dconf database service and GSettings plumbing are not declared,
+    # so per-user dconf settings (e.g. color-scheme) are not guaranteed to be
+    # served to GNOME/GTK applications.
+    programs.dconf.enable = true;
+
     environment.systemPackages = with pkgs; [
       # File manager + GTK application stack
       nautilus

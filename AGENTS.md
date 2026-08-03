@@ -96,6 +96,17 @@ If the task modifies CI workflows (e.g., GitHub Actions or GitLab CI):
 - Ensure cache optimization is preserved.
 - Jobs must run independently where possible, failing fast on syntax or formatting errors.
 
+### 3.4 Commit & Push Gate
+
+The work is not released until every verification gate passes **and** the change is pushed to GitLab:
+
+1. Clear all gates in §3.2. Never skip a failing gate.
+2. Commit with a concise, conventional message and no local-only changes, secrets, or debug artifacts.
+3. Push to **GitLab** (`git push origin main`) — GitLab is the single source of truth. Never push to GitHub directly; the GitHub mirror updates automatically from GitLab.
+4. Confirm the GitHub Actions run on the mirror goes green before declaring the work complete.
+
+If a gate fails after a commit, fix the issue and create a new commit; do not amend the failed one.
+
 ---
 
 ## PART 4: Security, Desktop Architecture & Maintenance

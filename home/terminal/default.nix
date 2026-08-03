@@ -4,8 +4,8 @@
 #
 # Purpose
 # -------
-# Barrel for terminal emulator configuration. Currently hosts Konsole
-# (KDE Frameworks terminal with the Gruvbox design system).
+# Barrel for terminal emulator configuration. Currently hosts Kitty
+# (default terminal with the Gruvbox design system).
 #
 # Ownership
 # ---------
@@ -17,6 +17,6 @@
 
 {
   imports = [
-    ./konsole.nix
+    ./kitty.nix
   ];
 }

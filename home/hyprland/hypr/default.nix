@@ -35,8 +35,14 @@ in
       inherit (keybindings) bind binde bindl bindm;
 
       exec-once = [
+        # Propagate Wayland/X11 env to systemd user services (portals, keyring)
+        "dbus-update-activation-environment --systemd --all"
         "waybar"
         "hypridle"
+        # GNOME Keyring secret service (secrets for libsecret/NetworkManager,
+        # ssh component for SSH key passphrases). Idempotent alongside the
+        # PAM auto_start configured in desktop/login/ly.nix.
+        "${pkgs.gnome-keyring}/bin/gnome-keyring-daemon --start --components=secrets,ssh"
         "${pkgs.polkit_gnome}/libexec/polkit-gnome-authentication-agent-1"
       ];
 

@@ -10,14 +10,14 @@
 
 {
   bind = [
-    "SUPER, Q, exec, konsole"
-    "SUPER, T, exec, konsole"
+    "SUPER, Q, exec, kitty"
+    "SUPER, T, exec, kitty"
     "SUPER, C, killactive,"
-    "SUPER, E, exec, dolphin"
+    "SUPER, E, exec, nautilus"
     "SUPER, B, exec, firefox"
-    "SUPER, SPACE, exec, krunner"
-    "SUPER, A, exec, krunner"
-    "SUPER, R, exec, krunner"
+    "SUPER, SPACE, exec, rofi -show drun"
+    "SUPER, A, exec, rofi -show drun"
+    "SUPER, R, exec, rofi -show drun"
     "SUPER, L, exec, hyprlock"
     "SUPER, BACKSPACE, exec, wlogout"
     "SUPER, X, exec, wlogout"

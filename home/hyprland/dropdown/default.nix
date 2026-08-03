@@ -13,14 +13,14 @@
 {
   wayland.windowManager.hyprland.settings = {
     windowrule = [
-      "float 1, match:title ^(Dropdown)$"
-      "size 80% 50%, match:title ^(Dropdown)$"
-      "move 10% 5%, match:title ^(Dropdown)$"
-      "animation slide, match:title ^(Dropdown)$"
+      "float 1, match:class ^(kitty-dropdown)$"
+      "size 80% 50%, match:class ^(kitty-dropdown)$"
+      "move 10% 5%, match:class ^(kitty-dropdown)$"
+      "animation slide, match:class ^(kitty-dropdown)$"
     ];
 
     bind = [
-      "SUPER, grave, exec, konsole --profile Dropdown"
+      "SUPER, grave, exec, kitty --class kitty-dropdown"
     ];
   };
 }

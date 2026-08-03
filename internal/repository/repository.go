@@ -3,6 +3,7 @@ package repository
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -431,17 +432,31 @@ func (r *Repository) FindModule(query string) (scanner.Module, *parser.ModuleInf
 }
 
 func (r *Repository) computeHash() string {
-	files, _ := filepath.Glob(filepath.Join(r.Root, "**/*.nix"))
-	if len(files) > 50 {
-		files = files[:50]
-	}
+	var files []string
+	_ = filepath.WalkDir(r.Root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if d.Name() == ".git" || d.Name() == "results" || d.Name() == "secrets" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if strings.HasSuffix(d.Name(), ".nix") {
+			files = append(files, path)
+		}
+		return nil
+	})
+	sort.Strings(files)
+
 	var hash string
 	for _, f := range files {
 		info, err := os.Stat(f)
 		if err != nil {
 			continue
 		}
-		hash += fmt.Sprintf("%s:%d;", f, info.ModTime().UnixNano())
+		hash += fmt.Sprintf("%s:%d:%d;", f, info.ModTime().UnixNano(), info.Size())
 	}
 	return hash
 }

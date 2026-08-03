@@ -6,8 +6,8 @@
 # -------
 # Aggregate view of the Gruvbox design system. Backwards-compatible with the
 # former home/hyprland/themes/gruvbox.nix interface (colors/css/fonts/gtk/
-# wallpaper), extended with per-consumer slices (qt, kvantum, konsole,
-# waybar, hyprland, cursor, icons, ly, plymouth).
+# wallpaper), extended with per-consumer slices (qt, kitty, waybar,
+# hyprland, cursor, icons, ly, plymouth).
 #
 # Ownership
 # ---------
@@ -27,8 +27,8 @@ let
   icons = import ./icons.nix;
   fonts = import ./fonts.nix;
 
-  # Qt style + role palette (single palette source for Qt surfaces).
-  qt = import ./qt.nix { inherit (palette) colors; };
+  # Qt style for GNOME platform theme (single style source for Qt surfaces).
+  qt = import ./qt.nix;
 in
 {
   inherit (palette) raw colors css toRgba toRgb toLy toLyBold;
@@ -39,9 +39,7 @@ in
   inherit cursor icons fonts qt;
 
   gtk = import ./gtk.nix { inherit cursor icons; };
-  kvantum = import ./kvantum.nix { inherit (palette) colors; };
-  konsole = import ./konsole.nix { inherit (palette) colors; };
-  kde = import ./kde.nix { inherit (palette) colors; inherit (qt) palette; };
+  kitty = import ./kitty.nix { inherit (palette) colors; };
   waybar = import ./waybar.nix { inherit (palette) colors css; };
   hyprland = import ./hyprland.nix { inherit (palette) colors; };
   ly = import ./ly.nix { inherit (palette) colors toLy toLyBold; };

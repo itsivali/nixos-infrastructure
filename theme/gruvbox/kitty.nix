@@ -1,11 +1,11 @@
 ##############################################################################
 #
-# Theme — Gruvbox Konsole
+# Theme — Gruvbox Kitty
 #
 # Purpose
 # -------
-# Konsole color scheme: background, foreground and the full 16-color ANSI
-# palette (dark -> bright). Consumed by home/terminal/konsole.nix (Phase 2).
+# Kitty color scheme: background, foreground and the full 16-color ANSI
+# palette (dark -> bright). Consumed by home/terminal/kitty.nix.
 #
 ##############################################################################
 

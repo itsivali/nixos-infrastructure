@@ -80,8 +80,8 @@ let
     in
     "rgba(${toString r}, ${toString g}, ${toString b}, ${toString a})";
 
-  # Decimal comma-separated RGB ("R,G,B") — used by Konsole color schemes
-  # and KDE .colors palettes.
+  # Decimal comma-separated RGB ("R,G,B") — generic color helper (kept for
+  # consumers that cannot take hex directly, e.g. some legacy configs).
   toRgb = hex:
     let
       r = hexByte (builtins.substring 1 2 hex);

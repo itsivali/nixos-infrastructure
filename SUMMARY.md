@@ -21,8 +21,8 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        User Interface Layer                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
-│  │  Telegram Bot │  │  SSH Access  │  │  GNOME Desktop           │  │
-│  │  (37 commands)│  │  (Tailscale) │  │  (Wayland, GDM)          │  │
+│  │  Telegram Bot │  │  SSH Access  │  │  Hyprland Desktop        │  │
+│  │  (37 commands)│  │  (Tailscale) │  │  (Wayland, Ly)           │  │
 │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │
@@ -44,7 +44,7 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 │  └──────────────────────────────────────────────────────────────┘  │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │  Boot    │  │  Desktop │  │  Security│  │  Observability   │  │
-│  │  Kernel  │  │  GNOME   │  │  Harden  │  │  Prometheus      │  │
+│  │  Kernel  │  │ Hyprland │  │  Harden  │  │  Prometheus      │  │
 │  │  zRAM    │  │  AMD GPU │  │  SOPS    │  │  Grafana         │  │
 │  │  systemd │  │  Power   │  │  Tailscale│ │  Loki            │  │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘  │
@@ -205,14 +205,13 @@ Prometheus ─→ node exporter ──────────┘
 
 | Feature | Configuration |
 |---------|---------------|
-| **Environment** | GNOME on Wayland |
-| **Display** | GDM |
+| **Environment** | Hyprland (Wayland) |
+| **Display** | Ly (TUI login manager) |
 | **GPU** | AMD acceleration (amdgpu) |
 | **Power** | Lid suspend, idle suspend, UPower |
 | **Bluetooth** | Enabled with battery reporting |
 | **Fonts** | Nerd Fonts, MS Office fonts, Noto |
-
-**Bloat removed:** Online accounts, Tracker, GNOME Software, games, Epiphany, Tour, Music, Photos, Weather, Maps, Contacts, Evolution, PackageKit, geoclue2, printing
+| **Apps** | Nautilus (files), Loupe (images), Papers (PDF), File Roller (archives), GNOME Text Editor/Calculator, Kitty (terminal), Rofi (launcher), Waybar (status), SwayNC (notifications), Wlogout (power) |
 
 ### 9. Developer Toolchain
 
@@ -332,7 +331,7 @@ nixos-infrastructure/
 ├── automation/                  # GitOps and notifications
 ├── boot/                        # Kernel, bootloader, zRAM
 ├── networking/                  # NetworkManager, DNS, Tailscale
-├── desktop/                     # GNOME, AMD GPU, power management
+├── desktop/                     # Hyprland, GNOME apps, AMD GPU, power
 ├── security/                    # Hardening, firewall, SOPS
 ├── observability/               # Prometheus, Grafana, Loki
 ├── services/                    # Nginx, PostgreSQL, Valkey
@@ -407,7 +406,7 @@ scripts/install-fresh-nixos.sh  # Universal bootstrap
 
 ## Fresh Install
 
-From a normal NixOS GNOME installation:
+From a normal NixOS installation:
 
 ```bash
 nix --extra-experimental-features "nix-command flakes" \

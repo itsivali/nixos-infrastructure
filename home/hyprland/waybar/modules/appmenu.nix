@@ -2,6 +2,6 @@
   "custom/appmenu" = {
     format = " 󱄅 ";
     tooltip = false;
-    on-click = "krunner";
+    on-click = "rofi -show drun";
   };
 }

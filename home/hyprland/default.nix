@@ -6,8 +6,8 @@
 # -------
 # Aggregates all user-level Hyprland desktop environment modules: Window Manager,
 # Waybar status bar, SwayNC notification center, Hyprlock screen locker, Hypridle,
-# Rofi (dmenu plumbing), KRunner launcher, Wlogout power menu, Konsole terminal,
-# and theme engine.
+# Rofi launcher, Wlogout power menu, GNOME application settings, and the theme
+# engine.
 #
 # Ownership
 # ---------
@@ -29,8 +29,7 @@
     ./hyprlock
     ./hypridle
     ./rofi
-    ./krunner
-    ./kde
+    ./gnome
     ./wlogout
     ./hyprpaper
     ./clipboard

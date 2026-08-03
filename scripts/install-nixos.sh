@@ -1,8 +1,8 @@
 #!/run/current-system/sw/bin/bash
-# install-fresh-nixos.sh v6 — GNOME NixOS bootstrap
+# install-fresh-nixos.sh v6 — Hyprland NixOS bootstrap
 #
-# Bootstrap a fresh NixOS machine with GNOME from the infrastructure flake.
-# Designed to run on a freshly installed NixOS with the GNOME desktop option.
+# Bootstrap a fresh NixOS machine with the Hyprland desktop from the
+# infrastructure flake. Designed to run on a freshly installed NixOS.
 # Clones the repo, detects hardware, registers the host, sets up secrets,
 # generates SSH keys, and deploys.
 #
@@ -14,7 +14,7 @@
 # Flags:
 #   --host NAME          Host name (default: current hostname)
 #   --user NAME          Username (default: current user)
-#   --desktop gnome      Desktop environment (default: gnome)
+#   --desktop hyprland   Desktop environment (default: hyprland)
 #   --push-url URL       Git push URL
 #   --branch BRANCH      Git branch (default: main)
 #   --age-key-file PATH  Path to existing age key file (default: extract from sops-setup.sh)
@@ -36,7 +36,7 @@ NIX_FEATURES="nix-command flakes"
 HOST="${HOST:-}"
 USER_NAME="${USER_NAME:-}"
 YES="${YES:-false}"
-DESKTOP="${DESKTOP:-gnome}"
+DESKTOP="${DESKTOP:-hyprland}"
 FEATURES="${FEATURES:-secrets,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh}"
 TAILNET_DOMAIN="${TAILNET_DOMAIN:-codlet-trench.ts.net}"
 SSH_KEYS="${SSH_KEYS:-}"
@@ -64,7 +64,7 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --host NAME          Host name (default: current hostname)"
       echo "  --user NAME          Username (default: current user)"
-      echo "  --desktop TYPE       Desktop: gnome (default)"
+      echo "  --desktop TYPE       Desktop: hyprland (default)"
       echo "  --push-url URL       Git push URL"
       echo "  --branch BRANCH      Git branch (default: main)"
       echo "  --age-key-file PATH  Path to existing age key file"
@@ -507,22 +507,16 @@ post_install() {
   1. Reboot to load all services:
        sudo reboot
 
-  2. After reboot, verify GNOME session:
+  2. After reboot, verify the Hyprland session:
        echo \$XDG_SESSION_TYPE    # should say "wayland"
 
   3. Bring up Tailscale:
        sudo tailscale up --ssh
 
-  4. Verify pre-installed GNOME Shell extensions:
-       gnome-extensions list
-     Expected: appindicatorsupport@rgcjonas.gmail.com,
-               dash-to-dock@micxgx.gmail.com,
-               blur-my-shell@aunetx,
-               user-theme@gnome-shell-extensions.gcampax.github.com,
-               caffeine@patapon.info,
-               clipboard-indicator@tudmotu.com,
-               Vitals@CoreCoding.com,
-               sound-output-device-chooser@kgshank.net
+  4. Verify the desktop stack:
+       kitty --version             # default terminal
+       nautilus --version          # file manager
+       super + space               # Rofi app launcher
 
   5. Add your SSH public key to GitHub and GitLab:
        GitHub: https://github.com/settings/ssh/new

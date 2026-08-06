@@ -77,8 +77,7 @@ configuration.nix                 ← stable registry of top-level domains
 │   └── redis/                    ← placeholder
 │
 ├── ./storage                     → storage/default.nix
-│   ├── btrfs.nix                 ← auto-discovered ✓
-│   └── encryption.nix            ← placeholder
+│   └── btrfs.nix                 ← auto-discovered ✓
 │
 ├── ./system                      → system/default.nix
 │   ├── nix.nix                   ← auto-discovered ✓

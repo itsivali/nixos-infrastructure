@@ -1,10 +1,18 @@
-#!/run/current-system/sw/bin/bash
-# install-fresh-nixos.sh v6 — Hyprland NixOS bootstrap
+#!/usr/bin/env bash
+# install-fresh-nixos.sh — NixOS + Hyprland/GNOME bootstrap
 #
-# Bootstrap a fresh NixOS machine with the Hyprland desktop from the
-# infrastructure flake. Designed to run on a freshly installed NixOS.
-# Clones the repo, detects hardware, registers the host, sets up secrets,
-# generates SSH keys, and deploys.
+# Bootstrap a freshly installed NixOS machine with the desktop and
+# infrastructure flake. Designed to run on a new NixOS system (as your normal
+# user with sudo). The script:
+#
+#   1. Enables the nix-command/flakes experimental features
+#   2. Installs git, age, and sops into your user profile (the repo's NixOS
+#      config also ships them system-wide after the first switch)
+#   3. Clones the infrastructure repo and detects hardware
+#   4. Copies your SOPS age key from your old system and guarantees the
+#      ~/.config/sops/age/keys.txt path exists
+#   5. Registers the host in the flake, validates, and deploys
+#   6. Generates SSH keys and reports next steps
 #
 # Usage:
 #   nix --extra-experimental-features "nix-command flakes" \
@@ -17,12 +25,13 @@
 #   --desktop hyprland   Desktop environment (default: hyprland)
 #   --push-url URL       Git push URL
 #   --branch BRANCH      Git branch (default: main)
-#   --age-key-file PATH  Path to existing age key file (default: extract from sops-setup.sh)
+#   --age-key-file PATH  Path to an existing age key file to copy
 #   --ssh-email EMAIL    Email for SSH key comment (default: itsivali@outlook.com)
 #   --yes, -y            Non-interactive mode
 #   --tailnet-domain     Tailscale domain (default: codlet-trench.ts.net)
 #   --ssh-keys KEYS      Comma-separated SSH public keys
 #   --no-ssh-keys        Skip SSH key generation
+#   --features LIST      Comma-separated features (default: secrets,bitwarden,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh)
 #   --help, -h           Show this help
 set -euo pipefail
 
@@ -37,7 +46,7 @@ HOST="${HOST:-}"
 USER_NAME="${USER_NAME:-}"
 YES="${YES:-false}"
 DESKTOP="${DESKTOP:-hyprland}"
-FEATURES="${FEATURES:-secrets,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh}"
+FEATURES="${FEATURES:-secrets,bitwarden,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh}"
 TAILNET_DOMAIN="${TAILNET_DOMAIN:-codlet-trench.ts.net}"
 SSH_KEYS="${SSH_KEYS:-}"
 AGE_KEY_FILE="${AGE_KEY_FILE:-}"
@@ -58,6 +67,7 @@ while [[ $# -gt 0 ]]; do
     --tailnet-domain)  TAILNET_DOMAIN="$2"; shift 2 ;;
     --ssh-keys)        SSH_KEYS="$2";  shift 2 ;;
     --no-ssh-keys)     NO_SSH_KEYS="true"; shift ;;
+    --features)        FEATURES="$2";  shift 2 ;;
     --help|-h)
       echo "Usage: install-fresh-nixos.sh [OPTIONS]"
       echo ""
@@ -67,12 +77,13 @@ while [[ $# -gt 0 ]]; do
       echo "  --desktop TYPE       Desktop: hyprland (default)"
       echo "  --push-url URL       Git push URL"
       echo "  --branch BRANCH      Git branch (default: main)"
-      echo "  --age-key-file PATH  Path to existing age key file"
+      echo "  --age-key-file PATH  Path to an existing age key file to copy"
       echo "  --ssh-email EMAIL    Email for SSH key comment"
       echo "  --yes, -y            Non-interactive mode"
       echo "  --tailnet-domain     Tailscale domain"
       echo "  --ssh-keys KEYS      Comma-separated SSH public keys"
       echo "  --no-ssh-keys        Skip SSH key generation"
+      echo "  --features LIST      Comma-separated feature flags"
       echo "  --help, -h           Show this help"
       exit 0
       ;;
@@ -97,7 +108,7 @@ banner() {
   printf '%s\n' "${C_CYAN}"
   cat <<'BANNER'
 ╔══════════════════════════════════════════════════════════╗
-║        NixOS + GNOME  ·  Infrastructure Bootstrap          ║
+║      NixOS + Hyprland/GNOME · Infrastructure Bootstrap     ║
 ╚══════════════════════════════════════════════════════════╝
 BANNER
   printf '%s\n' "${C_RESET}"
@@ -116,12 +127,6 @@ die()  { printf '%s│%s  %s✗ ERROR%s %s\n\n' "${C_CYAN}" "${C_RESET}" "${C_RE
 # ── Nix wrappers ─────────────────────────────────────────────────────────────
 nix() {
   command nix --extra-experimental-features "$NIX_FEATURES" "$@"
-}
-
-nix_with_git() {
-  command nix --extra-experimental-features "$NIX_FEATURES" \
-    shell nixpkgs#git --command \
-    nix --extra-experimental-features "$NIX_FEATURES" "$@"
 }
 
 # ── Step 1: Validate environment ─────────────────────────────────────────────
@@ -172,34 +177,73 @@ enable_nix_features() {
   log "Experimental features active for this session and future ones"
 }
 
-# ── Step 4: Clone or update repo ─────────────────────────────────────────────
+# ── Step 4: Install git, age, sops (bootstrap prerequisites) ────────────────
+install_tools() {
+  section "Installing bootstrap tools (git, age, sops)"
+  note "This installs into your Nix user profile; the flake also ships them system-wide after the first switch."
+
+  # Make the bootstrap profile available for the rest of this session.
+  export PATH="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+
+  if command -v git >/dev/null 2>&1 && command -v age-keygen >/dev/null 2>&1 && command -v sops >/dev/null 2>&1; then
+    log "git, age, and sops already available"
+    return
+  fi
+
+  local missing=""
+  for pkg in git age sops; do
+    command -v "$pkg" >/dev/null 2>&1 || missing+=" nixpkgs#${pkg}"
+  done
+  missing="${missing## }"
+
+  if [[ -n "$missing" ]]; then
+    note "Installing: ${missing}"
+    if ! nix profile install $missing; then
+      warn "nix profile install failed — falling back to nix-env"
+      local attrs=()
+      for pkg in $missing; do
+        attrs+=("-A" "nixpkgs.${pkg#nixpkgs#}")
+      done
+      nix-env -i "${attrs[@]}"
+    fi
+    log "Bootstrap tools installed into $HOME/.nix-profile"
+  fi
+
+  command -v git >/dev/null 2>&1 || die "git is required (install failed)"
+  command -v age-keygen >/dev/null 2>&1 || warn "age-keygen not found — age key validation will be limited"
+  command -v sops >/dev/null 2>&1 || warn "sops not found — secret re-encryption step will be skipped"
+}
+
+# ── Step 5: Clone or update repo ─────────────────────────────────────────────
 clone_or_update_repo() {
   section "Fetching infrastructure repo"
   note "$REPO_URL"
   if [[ -d "$REPO_DIR/.git" ]]; then
-    nix shell nixpkgs#git --command git -C "$REPO_DIR" fetch --prune origin "$BRANCH"
-    nix shell nixpkgs#git --command git -C "$REPO_DIR" checkout "$BRANCH"
-    nix shell nixpkgs#git --command git -C "$REPO_DIR" merge --ff-only "origin/$BRANCH"
+    git -C "$REPO_DIR" fetch --prune origin "$BRANCH"
+    git -C "$REPO_DIR" checkout "$BRANCH"
+    git -C "$REPO_DIR" merge --ff-only "origin/$BRANCH"
   else
     mkdir -p "$(dirname "$REPO_DIR")"
-    nix shell nixpkgs#git --command git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+    git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
   fi
-  nix shell nixpkgs#git --command git -C "$REPO_DIR" remote set-url --push origin "$GIT_PUSH_URL"
+  git -C "$REPO_DIR" remote set-url --push origin "$GIT_PUSH_URL"
   log "Repo ready at $REPO_DIR (branch: $BRANCH)"
 }
 
-# ── Step 5: Detect hardware ─────────────────────────────────────────────────
+# ── Step 6: Detect hardware ─────────────────────────────────────────────────
 detect_hardware() {
   section "Capturing hardware configuration"
-  local dst="$REPO_DIR/hosts/hardware-configuration.nix"
+  local host_dir="$REPO_DIR/hosts/${HOST}"
+  local dst="$host_dir/hardware-configuration.nix"
   local hw_src="/etc/nixos/hardware-configuration.nix"
+
+  mkdir -p "$host_dir"
 
   if [[ ! -f "$hw_src" ]]; then
     warn "$hw_src not found — generating"
-    hw_src=$(sudo nixos-generate-config --show-hardware-config 2>/dev/null) || {
-      die "Failed to generate hardware configuration"
-    }
-    printf '%s\n' "$hw_src" > /tmp/hardware-configuration.nix
+    local gen_out
+    gen_out=$(sudo nixos-generate-config --show-hardware-config 2>/dev/null) || die "Failed to generate hardware configuration"
+    printf '%s\n' "$gen_out" > /tmp/hardware-configuration.nix
     hw_src=/tmp/hardware-configuration.nix
   fi
 
@@ -207,13 +251,15 @@ detect_hardware() {
   log "Hardware config written to $dst"
 }
 
-# ── Step 6: Install SOPS age key ─────────────────────────────────────────────
+# ── Step 7: Install SOPS age key (copied from existing system) ──────────────
 setup_age_key() {
   section "Installing SOPS age key"
   local key_dir="$HOME/.config/sops/age"
   local key_file="$key_dir/keys.txt"
 
-  # Priority: --age-key-file > $AGE_KEY env > sops-setup.sh > prompt
+  # Priority: --age-key-file > $AGE_KEY env > interactive paste. The age key
+  # is the SAME key used on your existing system — do not generate a new one
+  # or existing secrets cannot be decrypted.
   if [[ -n "$AGE_KEY_FILE" ]]; then
     note "Source: --age-key-file ${AGE_KEY_FILE}"
     [[ -f "$AGE_KEY_FILE" ]] || die "Age key file not found: $AGE_KEY_FILE"
@@ -223,16 +269,8 @@ setup_age_key() {
     note "Source: AGE_KEY env var"
     mkdir -p "$key_dir"
     printf '%s\n' "$AGE_KEY" > "$key_file"
-  elif [[ -f "$REPO_DIR/scripts/sops-setup.sh" ]]; then
-    note "Source: scripts/sops-setup.sh"
-    bash "$REPO_DIR/scripts/sops-setup.sh"
-    # sops-setup.sh has hardcoded /home/ivali — symlink if user differs
-    if [[ "$USER_NAME" != "ivali" ]]; then
-      mkdir -p "$key_dir"
-      ln -sf "/home/ivali/.config/sops/age/keys.txt" "$key_file"
-    fi
-    log "Age key installed via sops-setup.sh"
-    return
+  elif [[ -f "$key_file" ]] && grep -q 'AGE-SECRET-KEY-' "$key_file"; then
+    note "Age key already present at $key_file — leaving it untouched"
   elif [[ "$YES" == "true" ]]; then
     warn "Non-interactive mode and no age key source — skipping"
     warn "Provide --age-key-file or AGE_KEY env var"
@@ -258,28 +296,79 @@ setup_age_key() {
   chmod 600 "$key_file"
 
   # Verify it looks like an age key
-  if head -1 "$key_file" | grep -q 'AGE-SECRET-KEY-'; then
-    log "Age key installed at $key_file"
-    local pub
-    pub=$(age-keygen -y "$key_file" 2>/dev/null || true)
-    [[ -n "$pub" ]] && log "Public key: ${pub}"
+  if grep -q 'AGE-SECRET-KEY-' "$key_file"; then
+    log "Age key installed at $key_file (path guaranteed for sops-nix)"
+    register_sops_key
   else
     warn "File does not look like a valid age key — check content"
   fi
 }
 
-# ── Step 7: Register host ────────────────────────────────────────────────────
+# Register the installed age key's public key in .sops.yaml so sops-nix can
+# decrypt the repo secrets on this host. When the key differs from the primary
+# (prague) key, warn that secrets must be re-encrypted from the old machine.
+register_sops_key() {
+  local key_file="$HOME/.config/sops/age/keys.txt"
+  local sops_yaml="$REPO_DIR/.sops.yaml"
+  [[ -f "$sops_yaml" ]] || { warn ".sops.yaml not found in repo — skipping key registration"; return; }
+
+  command -v age-keygen >/dev/null 2>&1 || { warn "age-keygen missing — cannot derive public key"; return; }
+  local pub anchor primary_pub
+  pub=$(age-keygen -y "$key_file" 2>/dev/null) || { warn "Could not derive public key from age key"; return; }
+  anchor="${HOST}"
+  log "Age public key: ${pub}"
+
+  # Primary key currently listed in .sops.yaml (captured before any change).
+  primary_pub=$(grep -oE 'age1[0-9a-z]+' "$sops_yaml" | head -1 || true)
+
+  if grep -q "$pub" "$sops_yaml" 2>/dev/null; then
+    note "Public key already registered in .sops.yaml"
+    if [[ -n "$primary_pub" && "$primary_pub" != "$pub" ]]; then
+      warn "This host uses a different key than the primary (${primary_pub})."
+    fi
+    return
+  fi
+
+  note "Registering public key in .sops.yaml (anchor: ${anchor})"
+
+  # Add the key to the top-level keys list.
+  if ! grep -q "&${anchor} " "$sops_yaml" 2>/dev/null; then
+    sed -i "0,/^keys:/s|^keys:|keys:\n  - \\&${anchor} ${pub}|" "$sops_yaml"
+  fi
+
+  # Reference the anchor from the first age key group in creation_rules.
+  if ! grep -q "\\*${anchor}" "$sops_yaml" 2>/dev/null; then
+    awk -v a="$anchor" '
+      /^[ ]+- \*.*/ && !done { print; print "          - *" a; done=1; next }
+      { print }
+    ' "$sops_yaml" > "$sops_yaml.tmp" && mv "$sops_yaml.tmp" "$sops_yaml"
+  fi
+
+  # If this is a different key than the primary, the repo secrets are only
+  # encrypted for the primary key — they must be re-encrypted from a machine
+  # that holds the old key (after this one is added to .sops.yaml).
+  if [[ -n "$primary_pub" && "$primary_pub" != "$pub" ]]; then
+    warn "This host uses a DIFFERENT age key than the primary (${primary_pub})."
+    warn "Re-encrypt the secrets from your old machine so both keys can decrypt:"
+    warn "  sops -e -i secrets/*.yaml   (with both keys listed in .sops.yaml)"
+  else
+    log "Primary key matches — secrets will decrypt on this host"
+  fi
+}
+
+# ── Step 8: Register host ────────────────────────────────────────────────────
 register_host() {
   section "Creating host spec: hosts/${HOST}.nix"
 
   local host_spec="$REPO_DIR/hosts/${HOST}.nix"
 
   # Build feature flags
-  local f_secrets="true" f_runner="true" f_bot="true"
+  local f_secrets="true" f_bitwarden="true" f_runner="true" f_bot="true"
   local f_tailscale="true" f_exitnode="true" f_ssh="true"
 
   case ",${FEATURES}," in
     *,no-secrets,*)             f_secrets="false" ;;
+    *,no-bitwarden,*)           f_bitwarden="false" ;;
     *,no-gitlab-runner,*)       f_runner="false" ;;
     *,no-bot,*)                 f_bot="false" ;;
     *,no-tailscale,*)           f_tailscale="false" ;;
@@ -296,6 +385,8 @@ register_host() {
     done
   fi
 
+  local sops_key_path="${HOME}/.config/sops/age/keys.txt"
+
   # If the host spec already exists, offer to preserve it
   if [[ -f "$host_spec" ]]; then
     log "Host spec '${host_spec}' already exists"
@@ -306,7 +397,6 @@ register_host() {
     [[ "${overwrite,,}" == "y" ]] || return 0
   fi
 
-  # Create hosts/ directory if it doesn't exist
   mkdir -p "$(dirname "$host_spec")"
 
   cat > "$host_spec" <<EOF
@@ -317,7 +407,7 @@ register_host() {
 # Purpose
 # -------
 # Host spec for ${HOST}. Auto-discovered by hosts/hosts.nix aggregator.
-# Generated by: scripts/install-nixos.sh
+# Generated by: scripts/install-fresh-nixos.sh
 #
 ##############################################################################
 
@@ -332,46 +422,71 @@ register_host() {
   gitlabRunnerTags = [ "nixos" "${HOST}" "self-hosted" ];
   sshAuthorizedKeys = [
 ${keys_block}  ];
-  sopsKeyPath = "/home/${USER_NAME}/.config/sops/age/keys.txt";
+  sopsKeyPath = "${sops_key_path}";
   features = {
     secrets = ${f_secrets};
+    bitwarden = ${f_bitwarden};
     gitlabRunner = ${f_runner};
     bot = ${f_bot};
     tailscale = ${f_tailscale};
     tailscaleExitNode = ${f_exitnode};
     ssh = ${f_ssh};
   };
-  config = { };
+  config = {
+    ivali.desktop.hyprland.enable = true;
+  };
 }
 EOF
+
+  # Create a placeholder per-host secrets file (mirrors secrets/hosts/prague.yaml).
+  local host_secrets="$REPO_DIR/secrets/hosts/${HOST}.yaml"
+  if [[ ! -f "$host_secrets" ]]; then
+    mkdir -p "$(dirname "$host_secrets")"
+    cat > "$host_secrets" <<EOF
+# SOPS secrets for ${HOST}
+#
+# Encrypt with: sops --encrypt --age <age-public-key> secrets/hosts/${HOST}.yaml
+#
+# Example structure:
+# ssh_authorized_keys:
+#   - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... user@device"
+# tailscale_authkey: "tskey-auth-..."
+# gitlab_runner_token: "glrt-..."
+EOF
+    log "Per-host secrets placeholder created: ${host_secrets}"
+  fi
 
   log "Host spec created: ${host_spec}"
 }
 
-# ── Step 8: Validate host spec syntax ────────────────────────────────────────
+# ── Step 9: Validate host spec syntax ────────────────────────────────────────
 validate_registry_syntax() {
   section "Checking host spec syntax"
   local host_spec="$REPO_DIR/hosts/${HOST}.nix"
 
-  if ! command -v nix-instantiate >/dev/null 2>&1; then
-    warn "nix-instantiate not found — skipping syntax check"
-    return
-  fi
-
   local err
-  if ! err=$(nix-instantiate --parse "$host_spec" 2>&1 >/dev/null); then
-    die "Host spec has a syntax error — stopping before any deploy step:
+  if command -v nix-instantiate >/dev/null 2>&1; then
+    if ! err=$(nix-instantiate --parse "$host_spec" 2>&1 >/dev/null); then
+      die "Host spec has a syntax error — stopping before any deploy step:
 ${err}
 
 Open ${host_spec} and check the entry for '${HOST}' for a stray brace."
+    fi
+  else
+    warn "nix-instantiate not found — skipping syntax check"
   fi
 
   log "Host spec parses cleanly"
 }
 
-# ── Step 9: Optimize BTRFS (single NVMe) ────────────────────────────────────
+# ── Step 10: Optimize BTRFS (single NVMe) ───────────────────────────────────
 optimize_btrfs() {
   section "Optimizing BTRFS filesystem"
+  if ! command -v btrfs >/dev/null 2>&1; then
+    warn "btrfs not found — skipping filesystem optimization"
+    return
+  fi
+
   local devices
   devices=$(sudo btrfs filesystem show / 2>/dev/null | grep -c 'devid') || true
 
@@ -392,7 +507,7 @@ optimize_btrfs() {
   log "BTRFS optimization complete"
 }
 
-# ── Step 10: Install format hook ─────────────────────────────────────────────
+# ── Step 11: Install format hook ─────────────────────────────────────────────
 install_format_hook() {
   section "Installing pre-commit formatter hook"
   local hook_src="$REPO_DIR/hooks/pre-commit"
@@ -405,7 +520,7 @@ install_format_hook() {
   fi
 }
 
-# ── Step 11: Validate flake ──────────────────────────────────────────────────
+# ── Step 12: Validate flake ─────────────────────────────────────────────────
 validate_flake() {
   section "Validating flake"
   note "Running flake check (no build)"
@@ -413,24 +528,28 @@ validate_flake() {
 
   note "Evaluating nixosConfigurations.${HOST} (dry-run)"
   local drv
-  drv=$( cd "$REPO_DIR" && nix_with_git eval --raw ".#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath" 2>/dev/null ) || {
+  drv=$( cd "$REPO_DIR" && nix eval --raw ".#nixosConfigurations.${HOST}.config.system.build.toplevel.drvPath" 2>/dev/null ) || {
     warn "Config evaluation failed — check for errors above"
     return
   }
   log "Config evaluates cleanly → ${drv}"
 }
 
-# ── Step 12: Switch system ───────────────────────────────────────────────────
+# ── Step 13: Switch system ───────────────────────────────────────────────────
 switch_system() {
   section "Running nixos-rebuild switch"
   note "Target: ${HOST}"
+  if ! command -v nixos-rebuild >/dev/null 2>&1; then
+    warn "nixos-rebuild not on PATH — resolving via default profile"
+    export PATH="/nix/var/nix/profiles/default/bin:/run/current-system/sw/bin:$PATH"
+  fi
   sudo nixos-rebuild switch \
     --option experimental-features "$NIX_FEATURES" \
     --flake "$REPO_DIR#${HOST}"
   log "System switched to the new configuration"
 }
 
-# ── Step 13: Validate SOPS secrets ──────────────────────────────────────────
+# ── Step 14: Validate SOPS secrets ──────────────────────────────────────────
 validate_sops() {
   section "Validating SOPS secrets"
 
@@ -451,7 +570,7 @@ validate_sops() {
   fi
 }
 
-# ── Step 14: Generate SSH keys ───────────────────────────────────────────────
+# ── Step 15: Generate SSH keys ───────────────────────────────────────────────
 generate_ssh_keys() {
   section "Setting up SSH keys"
   if [[ "$NO_SSH_KEYS" == "true" ]]; then
@@ -491,7 +610,7 @@ generate_ssh_keys() {
   log "SSH key setup complete"
 }
 
-# ── Step 15: Post-install ────────────────────────────────────────────────────
+# ── Post-install ─────────────────────────────────────────────────────────────
 post_install() {
   printf '\n%s╔══════════════════════════════════════════════════════════╗%s\n' "${C_GREEN}${C_BOLD}" "${C_RESET}"
   printf '%s║%s  ✓ Install complete                                       %s║%s\n' "${C_GREEN}${C_BOLD}" "${C_RESET}" "${C_GREEN}${C_BOLD}" "${C_RESET}"
@@ -502,12 +621,19 @@ post_install() {
   printf '  %sDesktop%s  %s\n'    "${C_DIM}" "${C_RESET}" "$DESKTOP"
   printf '  %sRepo%s     %s\n\n'  "${C_DIM}" "${C_RESET}" "$REPO_DIR"
 
+  if [[ "$USER_NAME" != "$(whoami)" ]]; then
+    warn "Host user '${USER_NAME}' differs from the current user '$(whoami)'."
+    warn "After the switch creates '${USER_NAME}', copy the age key into their home:"
+    warn "  sudo install -Dm0600 $HOME/.config/sops/age/keys.txt /home/${USER_NAME}/.config/sops/age/keys.txt"
+    printf '\n'
+  fi
+
   printf '%sNext steps%s\n' "${C_BOLD}" "${C_RESET}"
   cat <<EOF
   1. Reboot to load all services:
        sudo reboot
 
-  2. After reboot, verify the Hyprland session:
+  2. After reboot, verify the Wayland session:
        echo \$XDG_SESSION_TYPE    # should say "wayland"
 
   3. Bring up Tailscale:
@@ -527,13 +653,14 @@ post_install() {
        ssh -T git@gitlab.com
 
   7. Verify the Telegram bot:
-        systemctl status ivali-bot-go
+       systemctl status ivali-bot-go
 
-  8. Commit and push generated files:
+  8. Commit and push the generated files (GitLab is the source of truth):
        cd "$REPO_DIR"
-       git add hosts/${HOST}.nix hosts/${HOST}/hardware-configuration.nix secrets/hosts/${HOST}.yaml
+       git status          # review what the installer changed
+       git add .sops.yaml hosts/${HOST}.nix hosts/${HOST}/hardware-configuration.nix secrets/hosts/${HOST}.yaml
        git commit -m "chore: add host configuration for $HOST"
-       git push all main
+       git push origin main
 
 EOF
 }
@@ -544,6 +671,7 @@ main() {
   require_nixos
   detect_identity
   enable_nix_features
+  install_tools
   clone_or_update_repo
   detect_hardware
   setup_age_key

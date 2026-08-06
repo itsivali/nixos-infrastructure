@@ -320,7 +320,6 @@ deployment-health.timer (every 5 min)
 │
 ├── storage/
 │   ├── btrfs.nix                    # BTRFS config
-│   ├── encryption.nix               # Disk encryption
 │   └── tmpfs.nix                    # Tmpfs mounts
 │
 ├── virtualization/

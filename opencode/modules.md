@@ -24,7 +24,7 @@
 | **security** | `security/` | apparmor.nix, audit.nix, fail2ban.nix, firewall.nix, hardening.nix, ... |
 | **services** | `services/` | ci-notify.nix, ivali-bot-go.nix, config.nix, options.nix, config.nix, ... |
 | **ssh** | `ssh/` | options.nix, client.nix, daemon.nix |
-| **storage** | `storage/` | btrfs.nix, encryption.nix, tmpfs.nix |
+| **storage** | `storage/` | btrfs.nix, tmpfs.nix |
 | **system** | `system/` | nix.nix, state.nix, users.nix |
 | **tests** | `tests/` | automation-smoke.nix, bitwarden-smoke.nix, bot-desktop-smoke.nix, bot-integration.nix, home-manager-smoke.nix, ... |
 | **virtualization** | `virtualization/` | docker.nix |

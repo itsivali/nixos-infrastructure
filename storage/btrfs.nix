@@ -14,7 +14,6 @@
 # ------------
 # - Specific mount points (hosts/hardware-configuration.nix)
 # - Logical volume management (storage/lvm.nix, future)
-# - Encryption (storage/encryption.nix, future)
 #
 ##############################################################################
 

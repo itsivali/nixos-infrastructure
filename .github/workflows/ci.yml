@@ -84,7 +84,6 @@ jobs:
       - uses: ludeeus/action-shellcheck@master
         with:
           scandir: scripts
-          additional_files: "diagnostic.sh home-migrate.sh"
           severity: error
 
   # ─────────────────────────────────────────────────

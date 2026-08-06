@@ -78,7 +78,7 @@ Features (enabled by default, use --no-* to disable):
 	cmd.Flags().StringVar(&tailnetDomain, "tailnet-domain", "codlet-trench.ts.net", "Tailnet DNS suffix")
 	cmd.Flags().StringSliceVar(&gitlabRunnerTags, "gitlab-runner-tags", nil, "GitLab Runner tags (default: [nixos, <host>, self-hosted])")
 	cmd.Flags().StringSliceVar(&sshKeys, "ssh-keys", nil, "SSH authorized keys (public keys)")
-	cmd.Flags().StringSliceVar(&features, "features", nil, "Features to enable (secrets,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh). Prefix with 'no-' to disable.")
+	cmd.Flags().StringSliceVar(&features, "features", nil, "Features to enable (secrets,bitwarden,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh). Prefix with 'no-' to disable.")
 	cmd.Flags().BoolVarP(&interactive, "interactive", "i", false, "Interactive mode with prompts")
 	cmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing host configuration")
 
@@ -105,9 +105,11 @@ func runHostBootstrap(a *app.App, hostName, userName, repoPath string, tags []st
 		gitlabRunnerTags = []string{"nixos", hostName, "self-hosted"}
 	}
 
-	// Parse features
+	// Parse features (canonical dashed names, mapped to host-spec field names
+	// in generateHostSpec).
 	featureMap := map[string]bool{
 		"secrets":             true,
+		"bitwarden":           true,
 		"gitlab-runner":       true,
 		"bot":                 true,
 		"tailscale":           true,
@@ -260,15 +262,28 @@ func generateHostSpec(spec template.HostSpec) string {
 	b.WriteString("  ];\n")
 	b.WriteString(fmt.Sprintf("  sopsKeyPath = \"/home/%s/.config/sops/age/keys.txt\";\n", spec.UserName))
 	b.WriteString("  features = {\n")
-	for _, name := range []string{"secrets", "gitlabRunner", "bot", "tailscale", "tailscaleExitNode", "ssh"} {
+	// Canonical dashed feature names → host-spec field names. Keep this list
+	// in sync with scripts/install-fresh-nixos.sh register_host.
+	featureFields := []struct{ flag, field string }{
+		{"secrets", "secrets"},
+		{"bitwarden", "bitwarden"},
+		{"gitlab-runner", "gitlabRunner"},
+		{"bot", "bot"},
+		{"tailscale", "tailscale"},
+		{"tailscale-exit-node", "tailscaleExitNode"},
+		{"ssh", "ssh"},
+	}
+	for _, f := range featureFields {
 		val := "false"
-		if spec.Features[name] {
+		if spec.Features[f.flag] {
 			val = "true"
 		}
-		b.WriteString(fmt.Sprintf("    %s = %s;\n", name, val))
+		b.WriteString(fmt.Sprintf("    %s = %s;\n", f.field, val))
 	}
 	b.WriteString("  };\n")
-	b.WriteString("  config = { };\n")
+	b.WriteString("  config = {\n")
+	b.WriteString("    ivali.desktop.hyprland.enable = true;\n")
+	b.WriteString("  };\n")
 	b.WriteString("}\n")
 
 	return b.String()

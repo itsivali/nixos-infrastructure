@@ -42,10 +42,11 @@
     fleet.deploymentHealth.enableRollback = true;
     # Outlook/Office365 SMTP OAuth2: register an Entra ID *public* client
     # app (Mobile & desktop), grant delegated `SMTP.Send` for
-    # https://outlook.office365.com, then paste its Application (client) ID
-    # here. One-time `sudo oauth2ms --email=itsivali@outlook.com
-    # --client-id=<id> --tenant=consumers authorize` caches the token.
-    fleet.notifications.oauthClientId = "PASTE_ENTRA_CLIENT_ID_HERE";
+    # https://outlook.office365.com, then set oauthClientId and run the
+    # one-time `sudo oauth2ms --email=itsivali@outlook.com --client-id=<id>
+    # --tenant=consumers authorize` to cache the token. Leave empty until
+    # then; msmtp simply skips authenticated sending until configured.
+    fleet.notifications.oauthClientId = "";
 
     # ── Proposed features enabled 2026-07-19 (#4, #5, #6) ──────────
     # #4 Lite observability: /proc collector + Telegram/email alerts.

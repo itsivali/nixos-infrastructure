@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# install-fresh-nixos.sh — NixOS + Hyprland/GNOME bootstrap
+# install-fresh-nixos.sh — NixOS + GNOME bootstrap
 #
 # Bootstrap a freshly installed NixOS machine with the desktop and
 # infrastructure flake. Designed to run on a new NixOS system (as your normal
@@ -22,7 +22,7 @@
 # Flags:
 #   --host NAME          Host name (default: current hostname)
 #   --user NAME          Username (default: current user)
-#   --desktop hyprland   Desktop environment (default: hyprland)
+#   --desktop gnome     Desktop environment (default: gnome)
 #   --push-url URL       Git push URL
 #   --branch BRANCH      Git branch (default: main)
 #   --age-key-file PATH  Path to an existing age key file to copy
@@ -45,7 +45,7 @@ NIX_FEATURES="nix-command flakes"
 HOST="${HOST:-}"
 USER_NAME="${USER_NAME:-}"
 YES="${YES:-false}"
-DESKTOP="${DESKTOP:-hyprland}"
+DESKTOP="${DESKTOP:-gnome}"
 FEATURES="${FEATURES:-secrets,bitwarden,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh}"
 TAILNET_DOMAIN="${TAILNET_DOMAIN:-codlet-trench.ts.net}"
 SSH_KEYS="${SSH_KEYS:-}"
@@ -74,7 +74,7 @@ while [[ $# -gt 0 ]]; do
       echo "Options:"
       echo "  --host NAME          Host name (default: current hostname)"
       echo "  --user NAME          Username (default: current user)"
-      echo "  --desktop TYPE       Desktop: hyprland (default)"
+      echo "  --desktop TYPE       Desktop: gnome (default)"
       echo "  --push-url URL       Git push URL"
       echo "  --branch BRANCH      Git branch (default: main)"
       echo "  --age-key-file PATH  Path to an existing age key file to copy"
@@ -433,7 +433,7 @@ ${keys_block}  ];
     ssh = ${f_ssh};
   };
   config = {
-    ivali.desktop.hyprland.enable = true;
+    ivali.desktop.gnome.enable = true;
   };
 }
 EOF

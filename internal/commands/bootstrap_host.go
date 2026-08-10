@@ -282,7 +282,7 @@ func generateHostSpec(spec template.HostSpec) string {
 	}
 	b.WriteString("  };\n")
 	b.WriteString("  config = {\n")
-	b.WriteString("    ivali.desktop.hyprland.enable = true;\n")
+	b.WriteString("    ivali.desktop.gnome.enable = true;\n")
 	b.WriteString("  };\n")
 	b.WriteString("}\n")
 

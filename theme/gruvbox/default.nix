@@ -29,6 +29,9 @@ let
 
   # Qt style for GNOME platform theme (single style source for Qt surfaces).
   qt = import ./qt.nix;
+
+  # Garuda-terminal look (Mokka / Catppuccin Mocha) for the Kitty emulator.
+  mokka = import ./mokka.nix;
 in
 {
   inherit (palette) raw colors css toRgba toRgb toLy toLyBold;
@@ -36,9 +39,8 @@ in
   name = "gruvbox";
   displayName = "Gruvbox Dark";
 
-  inherit cursor icons fonts qt;
+  inherit cursor icons fonts qt mokka;
 
   gtk = import ./gtk.nix { inherit cursor icons; };
-  kitty = import ./kitty.nix { inherit (palette) colors; };
   plymouth = import ./plymouth.nix { inherit (palette) colors; };
 }

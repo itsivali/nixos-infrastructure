@@ -4,19 +4,21 @@
 #
 # Purpose
 # -------
-# Kitty terminal configured with the Gruvbox color scheme, MesloLGS NF font,
-# and 95% background opacity. Kitty is the default terminal for the whole
-# desktop (Hyprland keybindings, Rofi, Waybar, networkmanager-dmenu, and
-# Nautilus "Open in Terminal" all launch it).
+# Kitty terminal styled like the Garuda Linux default terminal: the Mokka
+# (Catppuccin Mocha) color scheme, JetBrainsMono Nerd Font, red block
+# cursor, and 90% background opacity. The rest of the desktop stays on the
+# Gruvbox design system — only the terminal emulator carries the Garuda
+# look. Kitty is the default terminal for the whole desktop (GNOME
+# keybindings, Rofi, and Nautilus "Open in Terminal" all launch it).
 #
 # Ownership
 # ---------
-# programs.kitty, ivali.theme
+# programs.kitty, ivali.theme.mokka
 #
 # Responsibilities
 # ----------------
 # - Install Kitty
-# - Write the Gruvbox color scheme into ~/.config/kitty/kitty.conf
+# - Write the Mokka color scheme into ~/.config/kitty/kitty.conf
 # - Provide the base profile reused by the dropdown terminal (launched with
 #   --class kitty-dropdown and floated by Hyprland window rules)
 #
@@ -26,9 +28,9 @@
 
 let
   theme = import ../../theme/gruvbox/default.nix;
-  k = theme.kitty;
+  m = theme.mokka;
 
-  palette = k.palette;
+  palette = m.palette;
   colorOf = i:
     let
       c = builtins.elemAt palette i;
@@ -40,19 +42,25 @@ in
     enable = true;
 
     settings = {
-      font_family = theme.fonts.monospace;
-      font_size = theme.fonts.size;
+      font_family = m.font;
+      font_size = m.fontSize;
 
-      background_opacity = "0.95";
+      # Garuda Konsole defaults to a 110-column window
+      window_size = "110x35";
+
+      # Konsole Opacity=0.9
+      background_opacity = m.opacity;
       dynamic_background_opacity = "yes";
 
-      background = k.background;
-      foreground = k.foreground;
-      cursor = theme.colors.orange;
-      cursor_text_color = theme.colors.bgHard;
-      selection_background = theme.colors.orange;
-      selection_foreground = theme.colors.bgHard;
-      url_color = theme.colors.blue;
+      background = m.background;
+      foreground = m.foreground;
+      cursor = m.cursor;
+      cursor_text_color = m.cursorText;
+      # Konsole CursorShape=2 (block)
+      cursor_shape = "block";
+      selection_background = m.selectionBackground;
+      selection_foreground = m.selectionForeground;
+      url_color = m.url;
 
       color0 = colorOf 0;
       color1 = colorOf 1;

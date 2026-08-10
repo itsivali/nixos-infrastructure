@@ -142,6 +142,9 @@
             ++ [ self.packages.${system}.bw-tui self.packages.${system}.ivali ];
         };
 
+        # Gruvbox recolor of the GNOME Shell theme (user-themes compatible)
+        gnome-shell-gruvbox-theme = pkgs.callPackage ./packages/gnome-shell-gruvbox-theme { };
+
         bw-tui = pkgs.buildGoModule {
           name = "bw-tui";
           src = goSrc;

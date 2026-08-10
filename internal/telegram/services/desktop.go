@@ -62,11 +62,14 @@ func (s *DesktopService) BrightnessSet(level string) string {
 	return fmt.Sprintf("Brightness set to %s", level)
 }
 
-// Screenshot captures the desktop to a file. Returns (filePath, success).
+// Screenshot captures the desktop to a file via the GNOME Shell screenshot
+// service. Returns (filePath, success).
 func (s *DesktopService) Screenshot() (string, bool) {
+	// org.gnome.Shell.Screenshot.Screenshot(include_cursor, flash, filename)
+	// writes to the given absolute path and returns (success, filename_used).
 	output := s.runner.RunAsUser(
-		"grim /tmp/screenshot.png 2>/dev/null && echo OK || echo FAIL", 10)
-	return "/tmp/screenshot.png", strings.Contains(output, "OK")
+		"gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Screenshot.Screenshot false false /tmp/screenshot.png 2>/dev/null || echo FAIL", 10)
+	return "/tmp/screenshot.png", strings.Contains(output, "true")
 }
 
 // ClipboardGet returns the clipboard contents.
@@ -86,9 +89,12 @@ func (s *DesktopService) Suspend() string {
 	return "Suspended"
 }
 
-// Lock locks the desktop session.
+// Lock locks the desktop session. loginctl is the canonical trigger on GNOME
+// (gnome-session listens for the Lock signal); the ScreenSaver D-Bus method is
+// the direct fallback.
 func (s *DesktopService) Lock() string {
-	s.runner.RunAsUser("hyprctl dispatch lock 2>/dev/null || loginctl lock-session", 5)
+	s.runner.RunAsUser(
+		"loginctl lock-session 2>/dev/null || gdbus call --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver --method org.gnome.ScreenSaver.Lock 2>/dev/null || true", 5)
 	return "Locked"
 }
 
@@ -98,19 +104,31 @@ func (s *DesktopService) OpenFirefox() string {
 	return "Opening Firefox..."
 }
 
-// ListWindows returns the list of open windows.
+// ListWindows returns the titles of the open windows, via GNOME Shell
+// introspection (works on Wayland; wmctrl is X11-only and not used).
 func (s *DesktopService) ListWindows() string {
-	return s.runner.RunAsUser("wmctrl -l 2>/dev/null || echo 'wmctrl not available'", 5)
+	out := strings.TrimSpace(s.runner.RunAsUser(
+		`gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell --method org.gnome.Shell.Introspect.GetWindows 2>/dev/null | grep -oP "'title': <'[^']*'>" | sed -e "s/^'title': <'//" -e "s/'>$//" | grep -v '^$' | sort -u`, 10))
+	if out == "" {
+		return "No open windows"
+	}
+	return out
 }
 
-// Workspaces returns Hyprland workspace information.
+// Workspaces reports the GNOME workspace configuration. GNOME uses dynamic
+// workspaces, so this reports the dynamic-workspaces flag plus the configured
+// workspace count rather than enumerating named workspaces.
 func (s *DesktopService) Workspaces() string {
-	return s.runner.RunAsUser(
-		"hyprctl workspaces -j 2>/dev/null | jq -r '.[].name' 2>/dev/null || echo 'Hyprland not available'", 5)
+	out := s.runner.RunAsUser(
+		"echo \"dynamic-workspaces=$(gsettings get org.gnome.mutter dynamic-workspaces 2>/dev/null) num-workspaces=$(gsettings get org.gnome.desktop.wm.preferences num-workspaces 2>/dev/null)\" 2>/dev/null || echo 'GNOME workspace info unavailable'", 5)
+	return out
 }
 
-// MonitorOn turns on the monitor.
+// MonitorOn wakes the monitor(s). On Wayland the screen is dimmed by the
+// gnome-session idler, so SetActive(false) re-activates the session; xset is
+// kept as an X11 fallback.
 func (s *DesktopService) MonitorOn() string {
-	s.runner.RunAsUser("hyprctl dispatch dpms on 2>/dev/null || xset dpms force on 2>/dev/null || true", 5)
+	s.runner.RunAsUser(
+		"gdbus call --session --dest org.gnome.ScreenSaver --object-path /org/gnome/ScreenSaver --method org.gnome.ScreenSaver.SetActive false 2>/dev/null || xset dpms force on 2>/dev/null || true", 5)
 	return "Monitor turned on"
 }

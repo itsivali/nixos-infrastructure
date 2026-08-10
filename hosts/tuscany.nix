@@ -37,12 +37,11 @@
     ssh = true;
   };
   config = {
-    ivali.desktop.hyprland.enable = true;
+    ivali.desktop.gnome.enable = true;
     fleet.gitopsReconciler.enable = true;
     fleet.deploymentHealth.enable = true;
     fleet.deploymentHealth.enableRollback = true;
     ivali.dev.databases.enable = true;
     ivali.cloud.enable = true;
-    ivali.desktop.clipboard.enable = true;
   };
 }

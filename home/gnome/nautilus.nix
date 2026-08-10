@@ -1,13 +1,13 @@
 ##############################################################################
 #
-# Home — GNOME Applications
+# Home — GNOME Applications (Nautilus & friends)
 #
 # Purpose
 # -------
-# User-level GNOME application configuration on top of the Hyprland desktop:
-# Nautilus file manager preferences, the "Open in Terminal" extension
-# (open-any-terminal -> kitty), and GTK file-chooser defaults. The packages
-# themselves are installed system-wide by desktop/gnome.
+# Per-user GNOME application configuration: Nautilus file manager preferences,
+# the "Open in Terminal" extension (open-any-terminal -> kitty), and GTK
+# file-chooser defaults. The packages themselves are installed system-wide by
+# desktop/gnome/session.nix.
 #
 # Ownership
 # ---------
@@ -18,6 +18,11 @@
 # - Set Nautilus default view + columns via dconf
 # - Point Nautilus "Open in Terminal" at Kitty
 # - Apply GTK file-chooser preferences
+#
+# Notes
+# -----
+# Migrated verbatim from the former home/hyprland/gnome module when Hyprland
+# was retired in favor of GNOME.
 #
 ##############################################################################
 

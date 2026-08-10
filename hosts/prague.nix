@@ -31,7 +31,7 @@
     ssh = true;
   };
   config = {
-    ivali.desktop.hyprland.enable = true;
+    ivali.desktop.gnome.enable = true;
     # Disable observability stack until laptop upgrade
     ivali.observability.enable = lib.mkForce false;
     # GitLab is the source of truth; the reconciler applies validated
@@ -66,8 +66,5 @@
     # ── Google Cloud SDK + GKE ──────────────────────────────────────
     ivali.cloud.enable = true;
     # ivali.cloud.projectId = "your-gcp-project-id";
-
-    # ── Wayland clipboard ───────────────────────────────────────────
-    ivali.desktop.clipboard.enable = true;
   };
 }

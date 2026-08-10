@@ -32,7 +32,7 @@
 { config, lib, pkgs, ... }:
 
 {
-  config = lib.mkIf (config.ivali.desktop.hyprland.enable or false) {
+  config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
     services.pipewire = {
       enable = true;
       audio.enable = true;

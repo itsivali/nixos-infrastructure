@@ -5,8 +5,8 @@
 # Purpose
 # -------
 # Shared desktop foundation used by every desktop environment: audio, portals,
-# clipboard, GPU, fonts, environment variables, base packages and the design
-# system theme. Desktop environments are thin wrappers over this layer.
+# GPU, fonts, environment variables, base packages and the design system
+# theme. Desktop environments are thin wrappers over this layer.
 #
 # Ownership
 # ---------
@@ -26,7 +26,6 @@
     ./colors.nix
     ./theme.nix
     ./audio.nix
-    ./clipboard.nix
     ./environment.nix
     ./fonts.nix
     ./gpu.nix

@@ -6,8 +6,8 @@
 # -------
 # Aggregate view of the Gruvbox design system. Backwards-compatible with the
 # former home/hyprland/themes/gruvbox.nix interface (colors/css/fonts/gtk/
-# wallpaper), extended with per-consumer slices (qt, kitty, waybar,
-# hyprland, cursor, icons, ly, plymouth).
+# wallpaper), extended with per-consumer slices (qt, kitty, cursor, icons,
+# plymouth).
 #
 # Ownership
 # ---------
@@ -40,9 +40,5 @@ in
 
   gtk = import ./gtk.nix { inherit cursor icons; };
   kitty = import ./kitty.nix { inherit (palette) colors; };
-  waybar = import ./waybar.nix { inherit (palette) colors css; };
-  hyprland = import ./hyprland.nix { inherit (palette) colors; };
-  ly = import ./ly.nix { inherit (palette) colors toLy toLyBold; };
   plymouth = import ./plymouth.nix { inherit (palette) colors; };
-  wallpaper = import ./wallpaper.nix;
 }

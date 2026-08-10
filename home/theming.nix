@@ -5,56 +5,45 @@
 # Purpose
 # -------
 # GTK, font, cursor, and icon configuration shared across all desktops.
-# When Hyprland is active, GTK settings follow the selected theme preset.
-# Falls back to adw-gtk3-dark when only GNOME is used.
+# Always follows the Gruvbox design system (single source of truth in
+# theme/gruvbox), and drives the GNOME color scheme + accent color so GTK4
+# and libadwaita apps (the GNOME 50 default) render in Gruvbox.
 #
 # Ownership
 # ---------
 # gtk.font, gtk.theme, gtk.iconTheme, gtk.cursorTheme,
-# home.sessionVariables (GTK_THEME, XCURSOR_*).
+# dconf.settings."org/gnome/desktop/interface",
+# home.sessionVariables (XCURSOR_*).
 #
 ##############################################################################
 
-{ config, lib, pkgs, hostSpec, ... }:
+{ config, lib, pkgs, ... }:
 
 let
-  hostConfig = hostSpec.config or { };
-  hyprlandEnabled = hostConfig.ivali.desktop.hyprland.enable or false;
-
-  hyprTheme = import ./hyprland/themes;
-
-  themeName = if hyprlandEnabled then hyprTheme.gtk.theme else "adw-gtk3-dark";
-  themePkg = pkgs.adw-gtk3;
-  iconName = if hyprlandEnabled then hyprTheme.gtk.iconTheme else "Tela-dark";
-  iconPkg = pkgs.tela-icon-theme;
-  cursorName = if hyprlandEnabled then hyprTheme.gtk.cursorTheme else "Bibata-Modern-Ice";
-  cursorPkg = pkgs.bibata-cursors;
-  cursorSize = if hyprlandEnabled then hyprTheme.gtk.cursorSize else 24;
-  fontName = if hyprlandEnabled then hyprTheme.fonts.sans else "Inter";
-  fontSize = if hyprlandEnabled then hyprTheme.fonts.size else 11;
+  theme = import ../theme/gruvbox;
 in
 {
   gtk = {
     enable = true;
 
     font = {
-      name = fontName;
-      size = fontSize;
+      name = theme.fonts.sans;
+      size = theme.fonts.size;
     };
 
     theme = {
-      name = themeName;
-      package = themePkg;
+      name = theme.gtk.theme;
+      package = pkgs.adw-gtk3;
     };
 
     iconTheme = {
-      name = iconName;
-      package = iconPkg;
+      name = theme.gtk.iconTheme;
+      package = pkgs.tela-icon-theme;
     };
 
     cursorTheme = {
-      name = cursorName;
-      package = cursorPkg;
+      name = theme.gtk.cursorTheme;
+      package = pkgs.bibata-cursors;
     };
 
     gtk3.extraConfig = {
@@ -62,14 +51,17 @@ in
     };
 
     gtk4.extraConfig = {
-      "gtk-theme-name" = themeName;
+      "gtk-theme-name" = theme.gtk.theme;
     };
   };
 
-  dconf.settings."org/gnome/desktop/interface".color-scheme = "prefer-dark";
+  dconf.settings."org/gnome/desktop/interface" = {
+    color-scheme = "prefer-dark";
+    accent-color = "orange";
+  };
 
   home.sessionVariables = {
-    XCURSOR_THEME = cursorName;
-    XCURSOR_SIZE = toString cursorSize;
+    XCURSOR_THEME = theme.gtk.cursorTheme;
+    XCURSOR_SIZE = toString theme.gtk.cursorSize;
   };
 }

@@ -4,10 +4,10 @@
 #
 # Purpose
 # -------
-# XDG desktop portal integration shared by every Wayland desktop: Hyprland
-# backend (screen sharing, global shortcuts) plus GTK fallback (file dialogs).
-# XDG_CURRENT_DESKTOP=Hyprland (from common/environment.nix) is what makes
-# portal requests route to the Hyprland backend.
+# XDG desktop portal integration shared by every Wayland desktop. The GNOME
+# desktop manager module already wires up xdg-desktop-portal with the GNOME +
+# GTK backends and ships the gnome-session portal configuration, so only the
+# file-chooser routing override is declared here.
 #
 # Ownership
 # ---------
@@ -18,19 +18,11 @@
 { config, lib, pkgs, ... }:
 
 {
-  config = lib.mkIf (config.ivali.desktop.hyprland.enable or false) {
-    xdg.portal = {
-      enable = true;
-      extraPortals = [
-        pkgs.xdg-desktop-portal-hyprland
-        pkgs.xdg-desktop-portal-gtk
-      ];
-      config = {
-        common = {
-          "org.freedesktop.impl.portal.FileChooser" = "gtk";
-        };
-        hyprland.default = "hyprland;gtk";
-      };
+  config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
+    xdg.portal.config.common = {
+      # GTK-native file chooser for portal file dialogs (the GNOME backend
+      # would otherwise render its own Switcheroo dialog for non-GNOME apps).
+      "org.freedesktop.impl.portal.FileChooser" = "gtk";
     };
   };
 }

@@ -14,7 +14,7 @@
 
 let
   hostConfig = hostSpec.config or { };
-  hyprlandEnabled = hostConfig.ivali.desktop.hyprland.enable or false;
+  gnomeEnabled = hostConfig.ivali.desktop.gnome.enable or false;
 in
 {
   imports = [
@@ -24,7 +24,7 @@ in
     ./theming.nix
     ./firefox
   ]
-  ++ (if hyprlandEnabled then [ ./hyprland ./terminal ] else [ ])
+  ++ (if gnomeEnabled then [ ./gnome ./terminal ] else [ ])
   ++ [
     ./shell
     ./git

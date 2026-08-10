@@ -5,8 +5,8 @@
 # Purpose
 # -------
 # Wayland session environment variables shared by every desktop. Setting
-# XDG_CURRENT_DESKTOP=Hyprland is what routes xdg-desktop-portal requests
-# (screen sharing, file dialogs) to the Hyprland backend.
+# XDG_CURRENT_DESKTOP=GNOME is what routes xdg-desktop-portal requests
+# (screen sharing, file dialogs) to the GNOME backend.
 #
 # Ownership
 # ---------
@@ -17,7 +17,7 @@
 { config, lib, ... }:
 
 {
-  config = lib.mkIf (config.ivali.desktop.hyprland.enable or false) {
+  config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
     environment.sessionVariables = {
       # Wayland-first applications
       NIXOS_OZONE_WL = "1";
@@ -28,7 +28,7 @@
       _JAVA_AWT_WM_NONREPARENTING = "1";
 
       # Portal routing + GTK file dialogs through the portal
-      XDG_CURRENT_DESKTOP = "Hyprland";
+      XDG_CURRENT_DESKTOP = "GNOME";
       XDG_SESSION_TYPE = "wayland";
       GTK_USE_PORTAL = "1";
     };

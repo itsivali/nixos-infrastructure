@@ -21,7 +21,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  theme = import ../hyprland/themes;
+  theme = import ../../theme/gruvbox;
   t = theme.colors;
 
   # Pinned Firefox extensions (hashes resolved from AMO latest xpi).
@@ -37,8 +37,8 @@ let
     in { inherit pkg; id = pkg.extid; };
 
   addons = {
-    ublock-origin = mkAddon "ublock-origin" "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi" "40c315b0da7871868155ecfae7a50a58dfa0920aebd865e008214986f1b7c578";
-    bitwarden-password-manager = mkAddon "bitwarden-password-manager" "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi" "7ba16c3d422ab287db17b014a4683bace36341e471e4d4fd58ac2b616c6ac17d";
+    ublock-origin = mkAddon "ublock-origin" "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi" "bccc51a773150af4af6e1fd62c7bfdeb7238b79ff2381b998fa9f2e38f64786a";
+    bitwarden-password-manager = mkAddon "bitwarden-password-manager" "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi" "11836eb9d2abc9914bb337b57e20c5a09cf44f24fa572f7e886384fd350a5112";
     darkreader = mkAddon "darkreader" "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi" "f4f047fe08e420b6d29617738ea00a7b784892b2262b7e6f38dd09b8ee958a44";
     sidebery = mkAddon "sidebery" "https://addons.mozilla.org/firefox/downloads/latest/sidebery/latest.xpi" "e8a0a4b556ab7dd536897c1816af9d0918030223068ea6683a04376103a6caf2";
   };
@@ -111,7 +111,7 @@ in
         # ── Audio / WebRTC ──────────────────────────────────────
         # Prevents audio suspension during video calls (Google Meet)
         "media.audio.suspend_on_video_visibility.enabled" = false;
-        # Enable screen sharing via PipeWire portal
+        # Enable screen sharing via the xdg-desktop-portal (Wayland)
         "media.getusermedia.screensharing.enabled" = true;
         # WebRTC for video/audio calls
         "media.webrtc.enabled" = true;
@@ -119,12 +119,20 @@ in
         "media.peerconnection.ice.default_address_only" = false;
         "media.peerconnection.ice.proxy_only" = false;
         "media.peerconnection.ice.no_host" = false;
-        # Allow device permission prompts (mic, camera)
+        # Hardware H.264 encode for Meet/Zoom via VA-API where available
+        "media.webrtc.hw.h264.enabled" = true;
+        # DMABUF / VA-API accelerated video decode on Wayland
+        "widget.dmabuf.force-enabled" = true;
+        "media.hardware-video-decoding.enabled" = true;
+        # Allow device permission prompts (mic, camera). The browser cannot
+        # grant the permission itself: the first use of Meet/zoom prompts
+        # once for mic + once for camera, and GNOME re-prompts via the
+        # portal. This cannot be pre-approved declaratively.
         "media.navigator.permission.device" = true;
         # Autoplay policy: block with exception for media
         "media.autoplay.default" = 5;
-        # DRM for streaming services
-        "media.hardwareedia.drm-enabled" = true;
+        # DRM (Widevine) for streaming services
+        "media.eme.enabled" = true;
 
         # ── UI / appearance (Gruvbox-dark, compact) ──────────────
         "ui.systemUsesDarkTheme" = 1;

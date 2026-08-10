@@ -43,16 +43,11 @@ with pkgs; [
   glab
   gnupg
   google-cloud-sdk
-  grim
   home-manager
   htop
   iproute2
   jq
   just
-  kubectl
-  kubernetes-helm
-  kubectx
-  kustomize
   lazygit
   nixd
   opencode
@@ -71,7 +66,6 @@ with pkgs; [
   vault
   vim
   watchexec
-  wmctrl
   wget
   zip
   zoxide

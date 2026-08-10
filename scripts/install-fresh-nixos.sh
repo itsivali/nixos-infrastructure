@@ -15,14 +15,22 @@
 #   6. Generates SSH keys and reports next steps
 #
 # Usage:
-#   nix --extra-experimental-features "nix-command flakes" \
-#     shell nixpkgs#curl --command bash -c \
-#     'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
+#   The repo is private, so it cannot be fetched over plain HTTPS/raw on a
+#   fresh system. Save this script to a USB stick, generate an SSH key, add
+#   it to GitLab (https://gitlab.com/-/user_settings/ssh_keys), then run:
+#
+#     ssh-keygen -t ed25519 -C "itsivali@outlook.com" -f ~/.ssh/id_ed25519 -N ""
+#     bash install-fresh-nixos.sh
+#
+#   The clone defaults to SSH (git@gitlab.com:...) which requires the key to
+#   be registered with GitLab BEFORE this script runs (the repo clone happens
+#   before SSH key generation).
 #
 # Flags:
 #   --host NAME          Host name (default: current hostname)
 #   --user NAME          Username (default: current user)
 #   --desktop gnome     Desktop environment (default: gnome)
+#   --repo-url URL       Git clone URL (default: git@gitlab.com:... over SSH)
 #   --push-url URL       Git push URL
 #   --branch BRANCH      Git branch (default: main)
 #   --age-key-file PATH  Path to an existing age key file to copy
@@ -36,7 +44,9 @@
 set -euo pipefail
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
-REPO_URL="${REPO_URL:-https://gitlab.com/willisivali/nixos-infrastructure.git}"
+# Private repo: clone over SSH (requires the key registered with GitLab first).
+# Override with --repo-url if you need HTTPS (e.g. a deploy token).
+REPO_URL="${REPO_URL:-git@gitlab.com:willisivali/nixos-infrastructure.git}"
 GIT_PUSH_URL="${GIT_PUSH_URL:-git@gitlab.com:willisivali/nixos-infrastructure.git}"
 REPO_DIR="${REPO_DIR:-$HOME/nixos-infrastructure}"
 BRANCH="${BRANCH:-main}"
@@ -58,6 +68,7 @@ while [[ $# -gt 0 ]]; do
     --host)            HOST="$2";      shift 2 ;;
     --user)            USER_NAME="$2"; shift 2 ;;
     --repo)            REPO_DIR="$2";  shift 2 ;;
+    --repo-url)        REPO_URL="$2";  shift 2 ;;
     --desktop)         DESKTOP="$2";   shift 2 ;;
     --push-url)        GIT_PUSH_URL="$2"; shift 2 ;;
     --branch)          BRANCH="$2";    shift 2 ;;
@@ -75,6 +86,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --host NAME          Host name (default: current hostname)"
       echo "  --user NAME          Username (default: current user)"
       echo "  --desktop TYPE       Desktop: gnome (default)"
+      echo "  --repo-url URL       Git clone URL (default: SSH git@gitlab.com:...)"
       echo "  --push-url URL       Git push URL"
       echo "  --branch BRANCH      Git branch (default: main)"
       echo "  --age-key-file PATH  Path to an existing age key file to copy"
@@ -218,6 +230,19 @@ install_tools() {
 clone_or_update_repo() {
   section "Fetching infrastructure repo"
   note "$REPO_URL"
+
+  # Seamless first-time SSH clone: pre-accept gitlab.com's host key so the
+  # non-interactive run does not hang on the "authenticity of host" prompt.
+  if [[ "$REPO_URL" == git@* || "$REPO_URL" == ssh://* ]]; then
+    mkdir -p "$HOME/.ssh"
+    chmod 700 "$HOME/.ssh"
+    touch "$HOME/.ssh/known_hosts"
+    chmod 600 "$HOME/.ssh/known_hosts"
+    if ! ssh-keygen -F gitlab.com >/dev/null 2>&1; then
+      ssh-keyscan -T 10 -t ed25519 gitlab.com >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+    fi
+  fi
+
   if [[ -d "$REPO_DIR/.git" ]]; then
     git -C "$REPO_DIR" fetch --prune origin "$BRANCH"
     git -C "$REPO_DIR" checkout "$BRANCH"

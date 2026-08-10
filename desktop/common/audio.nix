@@ -10,7 +10,7 @@
 #
 # Ownership
 # ---------
-# services.pipewire
+# services.pipewire, security.rtkit
 #
 # Responsibilities
 # ----------------
@@ -18,6 +18,8 @@
 # - WirePlumber session manager with Bluetooth codec preferences
 # - PulseAudio compatibility layer (PipeWire-Pulse)
 # - JACK support for professional audio
+# - rtkit realtime scheduling for PipeWire threads (low-latency, glitch-free
+#   audio — same realtime setup Garuda ships)
 #
 # Why adaptive quantum
 # --------------------
@@ -33,6 +35,11 @@
 
 {
   config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
+    # Realtime privileges for PipeWire: the rtkit daemon grants RT policy +
+    # memlock so audio threads run without scheduling jitter. Without this,
+    # calls under load crackle/drop frames (Garuda ships the same setup).
+    security.rtkit.enable = true;
+
     services.pipewire = {
       enable = true;
       audio.enable = true;

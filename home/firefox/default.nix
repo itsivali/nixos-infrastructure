@@ -121,6 +121,12 @@ in
         "media.peerconnection.ice.no_host" = false;
         # Hardware H.264 encode for Meet/Zoom via VA-API where available
         "media.webrtc.hw.h264.enabled" = true;
+        # Hardware VP8/VP9 decode for WebRTC (Google Meet uses VP8/VP9).
+        # media.webrtc.mediadatadecoder_vpx_enabled is the current pref;
+        # media.navigator.mediadatadecoder_vpx_enabled is the legacy name
+        # still read by older profiles.
+        "media.webrtc.mediadatadecoder_vpx_enabled" = true;
+        "media.navigator.mediadatadecoder_vpx_enabled" = true;
         # DMABUF / VA-API accelerated video decode on Wayland
         "widget.dmabuf.force-enabled" = true;
         "media.hardware-video-decoding.enabled" = true;

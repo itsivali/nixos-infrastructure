@@ -10,7 +10,16 @@
 # ---------
 # boot.kernelPackages, boot.blacklistedKernelModules,
 # boot.extraModulePackages, boot.initrd.kernelModules,
-# boot.kernelModules, boot.kernelParams
+# boot.kernelModules, boot.kernelParams, hardware.enableAllFirmware
+#
+# RTL8821CE WiFi (Lenovo AMD laptop)
+# ----------------------------------
+# The chipset is served by the in-kernel rtw88 driver
+# (rtw88_8821ce), exactly as on Garuda/Arch where it is stable. The
+# out-of-tree rtl8821ce module does not build against 7.x kernels, so it
+# must not be used; using it (or blacklisting rtw88) leaves no WiFi on
+# the latest kernels. rtw88 needs the rtl8821c firmware, provided by
+# hardware.enableAllFirmware.
 #
 # Does NOT Own
 # ------------
@@ -25,14 +34,10 @@
 
 {
   boot = {
-    # Pin to 6.18 — rtl8821ce out-of-tree driver does not build on 7.x.
-    kernelPackages = pkgs.linuxPackages_6_18;
-
-    # Blacklist the in-kernel rtw88_8821ce driver (broken for RTL8821CE chipsets)
-    # and use the out-of-tree rtl8821ce driver instead.
-    blacklistedKernelModules = [ "rtw88_8821ce" ];
-
-    extraModulePackages = with config.boot.kernelPackages; [ rtl8821ce ];
+    # Zen kernel: newest mainline base with zen patches — the same kernel
+    # line used by Garuda, where this hardware has no WiFi issues. Do NOT
+    # pin the out-of-tree rtl8821ce driver: it does not build on 7.x.
+    kernelPackages = pkgs.linuxPackages_zen;
 
     initrd.kernelModules = [
       "amdgpu"
@@ -44,7 +49,6 @@
       "vhost"
       "vhost_net"
       "vhost_vsock"
-      "8821ce"
       "overlay" #needed for docker
     ];
 
@@ -95,4 +99,8 @@
       "nowatchdog"
     ];
   };
+
+  # Ensure WiFi (rtw88/rtl8821c), Bluetooth, and other device firmware is
+  # installed — rtw88 fails to probe without its firmware.
+  hardware.enableAllFirmware = true;
 }

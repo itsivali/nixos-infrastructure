@@ -11,15 +11,18 @@
 { pkgs, lib, ... }:
 
 let
-  ivaliPurple = "bold #A78BFA";
-  ivaliCyan = "bold #22D3EE";
-  ivaliGreen = "bold #4ADE80";
-  ivaliGray = "#9CA3AF";
-  ivaliGold = "bold #FBBF24";
-  ivaliRed = "bold #F87171";
-  ivaliBlue = "bold #60A5FA";
-  ivaliPink = "bold #F472B6";
-  ivaliOrange = "bold #FB923C";
+  # Catppuccin-Mocha palette (matches the Mokka terminal scheme from
+  # theme/gruvbox/mokka.nix) so the prompt and the emulator share one look.
+  ivaliPurple = "bold #CBA6F7"; # mauve
+  ivaliCyan = "bold #89DCEB"; # sky
+  ivaliGreen = "bold #A6E3A1"; # green
+  ivaliGray = "#6C7086"; # overlay0
+  ivaliGold = "bold #F9E1AF"; # yellow
+  ivaliRed = "bold #F38BA8"; # red
+  ivaliBlue = "bold #89B4FA"; # blue
+  ivaliPink = "bold #F5C2E7"; # pink
+  ivaliOrange = "bold #FAB387"; # peach
+  ivaliText = "#CDD6F4"; # text
 in
 
 {
@@ -34,12 +37,12 @@ in
       format = lib.concatStrings [
         # ── Top line ────────────────────────────────────────────────
         "╭─"
-        "$os"
         "$username"
         "$container"
         "$hostname"
         "$directory"
         "$git_branch"
+        "$git_commit"
         "$git_state"
         "$git_status"
         "$git_metrics"
@@ -57,18 +60,13 @@ in
         "$docker_context"
         "$cmd_duration"
         "$status"
+        "$os"
         "$character"
       ];
 
       right_format = "";
 
       # ── Context ──────────────────────────────────────────────────
-
-      os = {
-        style = ivaliGray;
-        disabled = false;
-        format = "[ $symbol]($style) ";
-      };
 
       username = {
         show_always = true;
@@ -101,13 +99,23 @@ in
       # ── Git ──────────────────────────────────────────────────────
 
       git_branch = {
-        style = ivaliPurple;
-        format = "[  $branch]($style) ";
+        style = ivaliGreen;
+        format = "[ $symbol$branch]($style) ";
+        symbol = " ";
         only_attached = true;
       };
 
+      # Garuda-style commit display: last commit hash + current tag
+      git_commit = {
+        style = ivaliBlue;
+        format = "[\($hash$tag\)]($style) ";
+        tag_symbol = "  ";
+        tag_disabled = false;
+        only_detached = false;
+      };
+
       git_state = {
-        style = "bold yellow";
+        style = ivaliGold;
         format = "[  $state( $progress_current of $progress_total)]($style) ";
         cherry_pick = "cherry-pick";
         revert = "revert";
@@ -119,25 +127,25 @@ in
       };
 
       git_status = {
-        style = "bold yellow";
+        style = ivaliText;
         format = "[\\($all_status$ahead_behind\\)]($style) ";
         conflicted = " ";
-        ahead = " \${count}";
-        behind = " \${count}";
-        diverged = " \${ahead_count}  \${behind_count}";
+        ahead = "\${count}";
+        behind = "\${count}";
+        diverged = "\${ahead_count}\${behind_count}";
         up_to_date = " ";
         untracked = " ";
         stashed = " ";
         modified = " ";
         staged = " ";
         renamed = " ";
-        deleted = " ";
+        deleted = "x";
       };
 
       git_metrics = {
         disabled = false;
-        format = "[\(+$added -$deleted\)]($style) ";
-        added_style = "bold green";
+        format = "[+$added]($added_style)/[-$deleted]($deleted_style) ";
+        added_style = ivaliGreen;
         deleted_style = ivaliRed;
         only_nonzero_diffs = true;
       };
@@ -145,8 +153,8 @@ in
       # ── Nix ──────────────────────────────────────────────────────
 
       nix_shell = {
-        style = "bold yellow";
-        symbol = "❄";
+        style = ivaliGold;
+        symbol = " ";
         format = "[ $symbol]($style) ";
         impure_msg = "impure";
         pure_msg = "pure";
@@ -165,7 +173,7 @@ in
       # ── Languages (only shown when in relevant directory) ────────
 
       nodejs = {
-        style = "bold #22C55E";
+        style = ivaliGreen;
         format = "[  v$version]($style) ";
         detect_extensions = [ "js" "ts" "jsx" "tsx" "mjs" "cjs" ];
         detect_files = [ "package.json" ".node-version" "tsconfig.json" ];
@@ -221,7 +229,7 @@ in
       };
 
       shlvl = {
-        style = "bold yellow";
+        style = ivaliGold;
         format = "[  \${shlvl}]($style) ";
         disabled = false;
         repeat = true;
@@ -230,17 +238,24 @@ in
       };
 
       sudo = {
-        style = "bold white";
+        style = ivaliText;
         format = "[ as $user]($style) ";
         disabled = false;
+      };
+
+      # ── Garuda eagle (the "feather" glyph) right before the cursor ──
+      os = {
+        disabled = false;
+        style = ivaliPurple;
+        format = "[󰛓 ]($style)";
       };
 
       # ── Prompt character ─────────────────────────────────────────
 
       character = {
-        success_symbol = "[❯](bold #A78BFA)";
-        error_symbol = "[❯](bold #F87171)";
-        vicmd_symbol = "[❮](bold #4ADE80)";
+        success_symbol = "[❯](bold #A6E3A1)";
+        error_symbol = "[❯](bold #F38BA8)";
+        vicmd_symbol = "[❮](bold #A6E3A1)";
         format = " $symbol";
       };
     };

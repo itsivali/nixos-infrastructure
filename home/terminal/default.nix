@@ -4,8 +4,8 @@
 #
 # Purpose
 # -------
-# Barrel for terminal emulator configuration. Currently hosts Kitty
-# (default terminal with the Gruvbox design system).
+# Barrel for terminal emulator configuration: Kitty (default terminal),
+# plus the Mokka theme applied to GNOME Terminal and Konsole.
 #
 # Ownership
 # ---------
@@ -18,5 +18,6 @@
 {
   imports = [
     ./kitty.nix
+    ./mokka.nix
   ];
 }

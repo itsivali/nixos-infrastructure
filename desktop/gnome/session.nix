@@ -76,6 +76,10 @@
       # Nautilus "Open in Terminal" context-menu integration (-> kitty)
       nautilus-open-any-terminal
 
+      # GNOME Terminal (alternative to Kitty, themed "Mokka" in
+      # home/terminal/mokka.nix)
+      gnome-terminal
+
       # Thumbnailers: webp/heic image loaders + video thumbnails
       webp-pixbuf-loader
       libheif

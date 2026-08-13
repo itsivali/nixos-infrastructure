@@ -291,6 +291,15 @@ in
         GITOPS_WORKTREE =
           "/var/lib/gitops";
 
+        ########################################################################
+        ## nix flake evaluation needs a writable $HOME for ~/.cache/nix, which
+        ## ProtectHome + ProtectSystem=strict would otherwise deny. Point it at
+        ## the dedicated state dir (StateDirectory + ReadWritePaths).
+        ########################################################################
+
+        HOME =
+          "/var/lib/gitlab-runner-health";
+
       };
 
       ##########################################################################
@@ -318,6 +327,13 @@ in
           "gitlab-runner-health";
 
         ########################################################################
+        ## Writable $HOME for nix (see environment.HOME).
+        ########################################################################
+
+        StateDirectory =
+          "gitlab-runner-health";
+
+        ########################################################################
         ## Hardening
         ########################################################################
 
@@ -340,6 +356,15 @@ in
         ProtectKernelTunables = true;
 
         ProtectSystem = "strict";
+
+        # nix flake evaluation needs to write its cache under $HOME
+        # (/var/lib/gitlab-runner-health), which ProtectSystem=strict would
+        # otherwise mount read-only.
+        ReadWritePaths = [
+
+          "/var/lib/gitlab-runner-health"
+
+        ];
 
         ProtectProc = "invisible";
 

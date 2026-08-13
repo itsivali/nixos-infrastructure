@@ -134,8 +134,11 @@ func (c *GenerationsCommand) Execute(ctx context.Context, msg *telegram.Message)
 	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 }
 
-// sendConfirm asks the user to confirm a destructive action.
-func sendConfirm(api *telegram.API, chatID int64, action, text string, messageID int) error {
+// sendConfirm asks the user to confirm a destructive action. The prompt is
+// bound to the initiating user and expires after confirmationTTL; only the
+// same user can confirm it via the confirm: callback.
+func sendConfirm(api *telegram.API, chatID int64, userID int, action, text string, messageID int) error {
+	RequestConfirmation(userID, chatID, action)
 	buttons := []telegram.InlineButton{
 		{Text: "✅ Confirm", CallbackData: "confirm:" + action},
 		{Text: "❌ Cancel", CallbackData: "cancel"},
@@ -170,7 +173,7 @@ func (c *RebootCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 		svc.Run("sudo reboot", 5)
 		return nil
 	}
-	return sendConfirm(c.api, msg.ChatID, "reboot",
+	return sendConfirm(c.api, msg.ChatID, msg.UserID, "reboot",
 		"*Confirm reboot?*\n\nThe system will reboot immediately.", msg.MessageID)
 }
 
@@ -198,7 +201,7 @@ func (c *ShutdownCommand) Execute(ctx context.Context, msg *telegram.Message) er
 		svc.Run("sudo shutdown -h now", 5)
 		return nil
 	}
-	return sendConfirm(c.api, msg.ChatID, "shutdown",
+	return sendConfirm(c.api, msg.ChatID, msg.UserID, "shutdown",
 		"*Confirm shutdown?*\n\nThe system will power off immediately.", msg.MessageID)
 }
 
@@ -224,10 +227,10 @@ func (c *DeployCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 		} else {
 			_ = c.api.SendMarkdown(msg.ChatID, "Starting NixOS rebuild...")
 		}
-		output := c.svc.Nix.Rebuild("prague")
+		output := c.svc.Nix.Rebuild("")
 		return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 	}
-	return sendConfirm(c.api, msg.ChatID, "deploy",
+	return sendConfirm(c.api, msg.ChatID, msg.UserID, "deploy",
 		"*Confirm deploy?*\n\nThis runs `nixos-rebuild switch --flake .#prague`.", msg.MessageID)
 }
 
@@ -255,7 +258,7 @@ func (c *RollbackCommand) Execute(ctx context.Context, msg *telegram.Message) er
 		output := c.svc.Nix.RebuildWithRollback()
 		return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 	}
-	return sendConfirm(c.api, msg.ChatID, "rollback",
+	return sendConfirm(c.api, msg.ChatID, msg.UserID, "rollback",
 		"*Confirm rollback?*\n\nThis activates the previous NixOS generation.", msg.MessageID)
 }
 
@@ -385,6 +388,6 @@ func (c *GCCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 		output := c.svc.Nix.GarbageCollect()
 		return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 	}
-	return sendConfirm(c.api, msg.ChatID, "gc",
+	return sendConfirm(c.api, msg.ChatID, msg.UserID, "gc",
 		"*Confirm garbage collection?*\n\nThis will remove unused Nix store paths.", msg.MessageID)
 }

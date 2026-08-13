@@ -153,3 +153,51 @@ func TestNewSimpleLoggerDebug(t *testing.T) {
 	// Debug should work when debug is enabled
 	logger.Debug("debug message", "key", "value")
 }
+
+func TestNormalizeCommandText(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"/status", "/status"},
+		{"🖥 /status", "/status"},
+		{"💓 /health extra args", "/health extra args"},
+		{"  /status  ", "/status  "},
+		{"", ""},
+		{"   ", ""},
+		{"just text", "just text"},
+		{"🖥/status", "/status"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			if got := normalizeCommandText(tt.input); got != tt.want {
+				t.Errorf("normalizeCommandText(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDispatchReplyKeyboardEmoji(t *testing.T) {
+	bot := New(nil, NewAuth(t.TempDir()), NewSimpleLogger(false))
+	executed := false
+	bot.RegisterCommand(NewCommandFunc("status", "status", RoleGuest, func(ctx context.Context, msg *Message) error {
+		executed = true
+		if msg.Command != "status" {
+			t.Errorf("Command = %q, want %q", msg.Command, "status")
+		}
+		return nil
+	}))
+
+	// A reply-keyboard button label with a leading emoji must dispatch.
+	err := bot.Dispatch(context.Background(), &Message{
+		ChatID: 1,
+		UserID: 2,
+		Text:   "🖥 /status",
+	})
+	if err != nil {
+		t.Fatalf("Dispatch with emoji prefix failed: %v", err)
+	}
+	if !executed {
+		t.Error("expected command to execute for emoji-prefixed keyboard label")
+	}
+}

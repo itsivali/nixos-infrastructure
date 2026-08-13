@@ -34,6 +34,7 @@ func main() {
 	// Register all commands using the shared services.
 	bot.RegisterCommands(
 		handlers.NewHelpCommand(bot),
+		handlers.NewCancelCommand(bot.API()),
 		handlers.NewStatusCommand(bot.API(), svc),
 		handlers.NewHealthCommand(bot.API(), svc),
 		handlers.NewDiskCommand(bot.API(), svc),
@@ -156,6 +157,7 @@ func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, cha
 	api := h.bot.API()
 
 	if data == "cancel" {
+		handlers.CancelConfirmations(userID, chatID)
 		if messageID > 0 {
 			_ = api.EditMessageMarkdown(chatID, messageID, "❌ Cancelled")
 		}
@@ -170,6 +172,15 @@ func (h *confirmHandler) HandleCallback(ctx context.Context, queryID string, cha
 	cmd, ok := h.bot.CommandByName(action)
 	if !ok {
 		return api.AnswerCallback(queryID, "Unknown action: "+action)
+	}
+
+	// The prompt is user-bound and one-shot: only the user who requested the
+	// destructive action may confirm it, and only within confirmationTTL.
+	if !handlers.ConsumeConfirmation(userID, chatID, action) {
+		if messageID > 0 {
+			_ = api.EditMessageMarkdown(chatID, messageID, "⚠️ Confirmation expired or not found")
+		}
+		return api.AnswerCallback(queryID, "Confirmation expired or not found")
 	}
 
 	if !h.bot.Auth().GetUserRole(userID).HasPermission(cmd.RequiredPermission()) {

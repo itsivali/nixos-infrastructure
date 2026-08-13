@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 )
@@ -61,15 +60,12 @@ func (h *CmdCallbackHandler) HandleCallback(ctx context.Context, queryID string,
 	// Dismiss loading indicator
 	_ = api.AnswerCallback(queryID, "")
 
-	start := time.Now()
-	err := cmd.Execute(ctx, msg)
-	durationMs := time.Since(start).Milliseconds()
-
-	if err != nil {
+	// The command already sent (or edited) its own output — including
+	// confirmation prompts for destructive actions — so do not append a
+	// redundant "executed" card. Only surface genuine failures.
+	if err := cmd.Execute(ctx, msg); err != nil {
 		h.bot.API().SendMarkdown(chatID, fmt.Sprintf("🔴 *Command Failed: /%s*\n\n`%s`", cmdName, err.Error()))
-	} else {
-		h.bot.API().SendMarkdown(chatID, fmt.Sprintf("✅ *Executed: /%s* (%d ms)", cmdName, durationMs))
+		return err
 	}
-
-	return err
+	return nil
 }

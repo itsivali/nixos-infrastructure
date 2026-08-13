@@ -53,7 +53,7 @@ func (c *GitopsReconcileCommand) Execute(ctx context.Context, msg *telegram.Mess
 		output := c.svc.GitOps.Reconcile()
 		return c.api.SendLongMessage(msg.ChatID, "*Reconciliation*\n"+renderer.CodeBlock(output), 3500)
 	}
-	return sendConfirm(c.api, msg.ChatID, "reconcile",
+	return sendConfirm(c.api, msg.ChatID, msg.UserID, "reconcile",
 		"*Confirm reconcile?*\n\nThis will pull latest changes, rebuild, and verify.", msg.MessageID)
 }
 
@@ -102,7 +102,7 @@ func (c *GitopsBackupCommand) Execute(ctx context.Context, msg *telegram.Message
 		}
 		return c.api.SendMarkdown(msg.ChatID, "*Backup Error*\n`"+strings.TrimSpace(output)+"`")
 	}
-	return sendConfirm(c.api, msg.ChatID, "backup_now",
+	return sendConfirm(c.api, msg.ChatID, msg.UserID, "backup_now",
 		"*Confirm backup?*\n\nThis triggers `systemctl start restic-backup`.", msg.MessageID)
 }
 

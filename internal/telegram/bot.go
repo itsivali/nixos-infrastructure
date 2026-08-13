@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 )
 
 // Role represents a user permission level.
@@ -210,12 +212,15 @@ func (b *Bot) Dispatch(ctx context.Context, msg *Message) error {
 		return b.dispatchCallback(ctx, msg)
 	}
 
-	// Parse command from text
-	if !strings.HasPrefix(msg.Text, "/") {
+	// Parse command from text. Reply-keyboard buttons send their label
+	// verbatim (e.g. "🖥 /status"), so strip leading emoji/whitespace before
+	// checking for the command prefix.
+	text := normalizeCommandText(msg.Text)
+	if !strings.HasPrefix(text, "/") {
 		return nil
 	}
 
-	parts := strings.SplitN(strings.TrimPrefix(msg.Text, "/"), " ", 2)
+	parts := strings.SplitN(strings.TrimPrefix(text, "/"), " ", 2)
 	cmdName := strings.ToLower(parts[0])
 	args := ""
 	if len(parts) > 1 {
@@ -262,12 +267,34 @@ func (b *Bot) Dispatch(ctx context.Context, msg *Message) error {
 func (b *Bot) dispatchCallback(ctx context.Context, msg *Message) error {
 	for prefix, handler := range b.callbacks {
 		if strings.HasPrefix(msg.CallbackData(), prefix) {
-			return handler.HandleCallback(ctx, msg.CallbackID, msg.ChatID, msg.UserID, msg.CallbackData(), msg.MessageID)
+			// Apply the same rate-limit / audit hooks as text commands so a
+			// burst of inline-button taps is bounded and journaled.
+			if b.beforeExec != nil && !b.beforeExec(msg.UserID, msg.ChatID, msg.CallbackData()) {
+				return b.api.AnswerCallback(msg.CallbackID, "Too many requests")
+			}
+
+			start := time.Now()
+			err := handler.HandleCallback(ctx, msg.CallbackID, msg.ChatID, msg.UserID, msg.CallbackData(), msg.MessageID)
+			durationMs := time.Since(start).Milliseconds()
+
+			if b.afterExec != nil {
+				b.afterExec(msg.UserID, msg.ChatID, msg.CallbackData(), "", err == nil, durationMs)
+			}
+			return err
 		}
 	}
 
 	// Answer the callback query to dismiss the loading indicator
 	return b.api.AnswerCallback(msg.CallbackID, "")
+}
+
+// normalizeCommandText strips leading emoji and whitespace from a message so
+// reply-keyboard buttons (whose labels are sent verbatim, e.g. "🖥 /status")
+// resolve to commands. Plain typed commands are unaffected.
+func normalizeCommandText(s string) string {
+	return strings.TrimLeftFunc(s, func(r rune) bool {
+		return r >= utf8.RuneSelf || unicode.IsSpace(r)
+	})
 }
 
 // CallbackData returns the inline-keyboard callback payload, if any.

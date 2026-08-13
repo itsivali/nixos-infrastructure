@@ -117,6 +117,10 @@ in
 
         StateDirectory = "ivali-bot";
 
+        # Guarantee the watchdog heartbeat directory exists independent of the
+        # watchdog's own tmpfiles entry.
+        RuntimeDirectory = "ivali-bot";
+
         # Security hardening
         NoNewPrivileges = false;
         PrivateTmp = true;
@@ -125,8 +129,13 @@ in
         ReadWritePaths = [
           "/var/lib/ivali-bot"
           "/var/log"
+          "/run"
           "/run/secrets"
+          "/nix"
           "/etc/nixos"
+          # The flake repository: deploy/git pull/ivali reconcile must write
+          # the checkout, so it is exempted from ProtectHome=read-only.
+          "/home/ivali/nixos-infrastructure"
         ];
         ProtectKernelTunables = true;
         ProtectKernelModules = true;

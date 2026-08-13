@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"os"
 	"strings"
 )
 
@@ -46,8 +47,17 @@ func (s *NixService) SystemPackageCount() string {
 		"nix-store -q --requisites /run/current-system 2>/dev/null | wc -l", 30))
 }
 
-// Rebuild runs nixos-rebuild switch for the given host.
+// Rebuild runs nixos-rebuild switch for the given host. The host defaults to
+// the HOST_NAME env var (set on the systemd service) so the same binary works
+// on every managed host; "prague" remains the fallback.
 func (s *NixService) Rebuild(host string) string {
+	if host == "" {
+		if env := os.Getenv("HOST_NAME"); env != "" {
+			host = env
+		} else {
+			host = "prague"
+		}
+	}
 	return s.runner.Run(
 		fmt.Sprintf("sudo nixos-rebuild switch --flake %s#%s 2>&1", s.repoDir, host), 600)
 }

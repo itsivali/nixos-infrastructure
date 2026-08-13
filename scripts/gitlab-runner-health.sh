@@ -53,6 +53,10 @@ readonly GITOPS_BRANCH="${GITOPS_BRANCH:-main}"
 readonly HOST_NAME="${HOST_NAME:-unknown}"
 readonly WORKTREE="${GITOPS_WORKTREE:-/var/lib/gitops}"
 
+# GitLab Runner writes its config under the runner's $HOME. When this health
+# service runs as root its own $HOME differs, so an explicit path is required.
+readonly RUNNER_CONFIG="${GITLAB_RUNNER_CONFIG:-/var/lib/gitlab-runner/.gitlab-runner/config.toml}"
+
 readonly CURL_TIMEOUT=10
 
 ################################################################################
@@ -193,7 +197,7 @@ fi
 ## Runner Configuration
 ################################################################################
 
-CONFIG="/etc/gitlab-runner/config.toml"
+CONFIG="$RUNNER_CONFIG"
 
 if [[ -f "$CONFIG" ]]
 then
@@ -207,10 +211,10 @@ fi
 ################################################################################
 
 VERIFY_OUTPUT="$(
-    gitlab-runner verify 2>&1 || true
+    gitlab-runner verify --config "$CONFIG" 2>&1 || true
 )"
 
-if echo "$VERIFY_OUTPUT" | grep -qi "is alive"
+if echo "$VERIFY_OUTPUT" | grep -qiE "is (alive|valid)"
 then
     ok "Runner verified"
 else
@@ -326,12 +330,12 @@ fi
 ################################################################################
 
 RUNNERS="$(
-    gitlab-runner list 2>/dev/null || true
+    gitlab-runner --log-format json list --config "$CONFIG" 2>&1 || true
 )"
 
 COUNT="$(
     printf '%s\n' "$RUNNERS" |
-        grep -c '^Runner=' || true
+        grep -c '.*"Executor".*"URL".*' || true
 )"
 
 if (( COUNT > 0 ))

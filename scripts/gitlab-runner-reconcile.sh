@@ -12,9 +12,13 @@ set -Eeuo pipefail
 REPO_DIR="/home/ivali/nixos-infrastructure"
 SCRIPTS_DIR="${REPO_DIR}/scripts"
 NOTIFY="${SCRIPTS_DIR}/notify.sh"
-CONFIG="/etc/gitlab-runner/config.toml"
+CONFIG="/var/lib/gitlab-runner/.gitlab-runner/config.toml"
 TOKEN_FILE="${TOKEN_FILE:-/run/secrets/gitlab-runner-token}"
 SERVER="https://gitlab.com"
+
+# The runner service runs with HOME=/var/lib/gitlab-runner, so register and
+# verify must target that config explicitly instead of root's default $HOME.
+export CONFIG_FILE="$CONFIG"
 
 HOST="prague"
 LOCK_FILE="/run/gitlab-runner-reconcile.lock"

@@ -61,6 +61,10 @@
     "application/x-lzo" = "org.gnome.FileRoller.desktop";
     "application/x-zstd-compressed-tar" = "org.gnome.FileRoller.desktop";
 
+    # ── Media (mpv) ────────────────────────────────────────────────────
+    "video/*" = "mpv.desktop";
+    "audio/*" = "mpv.desktop";
+
     # ── Text ─────────────────────────────────────────────────────────────
     "text/plain" = "org.gnome.TextEditor.desktop";
 

@@ -48,5 +48,6 @@ with pkgs; [
   brightnessctl
   localsend
   mission-center
+  gnome-tweaks
   xdg-utils
 ]

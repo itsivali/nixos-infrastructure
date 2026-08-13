@@ -58,6 +58,14 @@ in
   dconf.settings."org/gnome/desktop/interface" = {
     color-scheme = "prefer-dark";
     accent-color = "orange";
+
+    # Subpixel antialiasing + full hinting for crisp text (matches the
+    # fontconfig defaults configured for the desktop).
+    font-antialiasing = "rgba";
+    font-hinting = "full";
+
+    # Match the XCURSOR_SIZE session variable (28px, accessibility).
+    cursor-size = theme.gtk.cursorSize;
   };
 
   home.sessionVariables = {

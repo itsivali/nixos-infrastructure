@@ -5,7 +5,7 @@
 # Purpose
 # -------
 # Barrel for terminal emulator configuration: Kitty (default terminal),
-# plus the Mokka theme applied to GNOME Terminal and Konsole.
+# plus the Mokka theme applied to GNOME Terminal.
 #
 # Ownership
 # ---------
@@ -18,6 +18,6 @@
 {
   imports = [
     ./kitty.nix
-    ./mokka.nix
+    ./gnome-terminal.nix
   ];
 }

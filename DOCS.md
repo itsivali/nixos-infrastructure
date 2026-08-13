@@ -1134,7 +1134,8 @@ Declarative Firefox managed by Home Manager:
 * Arkenfox-lite privacy/telemetry hardening (logins preserved)
 * Performance: Webrender + VAAPI + HTTP/3
 * Gruvbox-dark, compact UI via userChrome.css
-* Declarative extensions (uBlock Origin, Bitwarden, Dark Reader, Sidebery)
+* Declarative extensions (uBlock Origin, Bitwarden, Dark Reader)
+* Native vertical tabs (collapsed icon rail, expand on hover)
 * Profile stored on a dedicated btrfs subvolume (/home/ivali/.mozilla/
 firefox/ivali) so logged-in sessions survive a reinstall.
 Ownership

@@ -55,15 +55,13 @@
 
     # Trim the stock GNOME app set to a curated selection. Kept: Nautilus,
     # Loupe, Papers, GNOME Text Editor, Calculator, Characters, Logs,
-    # System Monitor, Clocks, Calendar, Contacts-free shell, File Roller.
-    # Removed: Epiphany browser, Maps, Music, Weather, Connections,
-    # Contacts, Console (Kitty is the default terminal), Tour.
+    # System Monitor, Clocks, Calendar, Maps, Weather, File Roller.
+    # Removed: Epiphany browser, Music, Connections, Contacts,
+    # Console (Kitty is the default terminal), Tour.
     environment.gnome.excludePackages = with pkgs; [
       epiphany
       gnome-tour
-      gnome-maps
       gnome-music
-      gnome-weather
       gnome-connections
       gnome-contacts
       gnome-console

@@ -8,7 +8,8 @@
 #   * Arkenfox-lite privacy/telemetry hardening (logins preserved)
 #   * Performance: Webrender + VAAPI + HTTP/3
 #   * Gruvbox-dark, compact UI via userChrome.css
-#   * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader, Sidebery)
+#   * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader)
+#   * Native vertical tabs (collapsed icon rail, expand on hover)
 #   * Profile stored on a dedicated btrfs subvolume (/home/ivali/.mozilla/
 #     firefox/ivali) so logged-in sessions survive a reinstall.
 #
@@ -40,7 +41,6 @@ let
     ublock-origin = mkAddon "ublock-origin" "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi" "bccc51a773150af4af6e1fd62c7bfdeb7238b79ff2381b998fa9f2e38f64786a";
     bitwarden-password-manager = mkAddon "bitwarden-password-manager" "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi" "11836eb9d2abc9914bb337b57e20c5a09cf44f24fa572f7e886384fd350a5112";
     darkreader = mkAddon "darkreader" "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi" "f4f047fe08e420b6d29617738ea00a7b784892b2262b7e6f38dd09b8ee958a44";
-    sidebery = mkAddon "sidebery" "https://addons.mozilla.org/firefox/downloads/latest/sidebery/latest.xpi" "e8a0a4b556ab7dd536897c1816af9d0918030223068ea6683a04376103a6caf2";
   };
 in
 {
@@ -71,8 +71,8 @@ in
         "datareporting.policy.dataSubmissionEnabled" = false;
         "browser.shell.checkDefaultBrowser" = false;
 
-        # Auto-enable declarative extensions (uBlock, Bitwarden, Dark Reader,
-        # Sidebery) instead of leaving them installed-but-disabled.
+        # Auto-enable declarative extensions (uBlock, Bitwarden, Dark Reader)
+        # instead of leaving them installed-but-disabled.
         "extensions.autoDisableScopes" = 0;
 
         "browser.pocket.enabled" = false;
@@ -148,21 +148,29 @@ in
         "browser.urlbar.suggest.quicksuggest" = false;
         "browser.urlbar.suggest.weather" = false;
         "browser.startup.homepage" = "about:home";
+
+        # ── Native vertical tabs (replaces Sidebery) ─────────────
+        # sidebar.revamp enables the modern sidebar; sidebar.verticalTabs moves
+        # the tab strip into it. sidebar.visibility = "expand-on-hover" keeps
+        # the sidebar collapsed to a slim icon rail (favicons of pinned tabs)
+        # and expands it on hover — matching the previous Sidebery compact
+        # look without any extension. Pinned tabs stay always visible as icons
+        # at the top of the rail.
+        "sidebar.revamp" = true;
+        "sidebar.verticalTabs" = true;
+        "sidebar.visibility" = "expand-on-hover";
+        # Snappier expand/collapse of the icon rail (default is slow)
+        "sidebar.animation.expand-on-hover.duration-ms" = 50;
       };
 
-      # Compact, Gruvbox-dark UI. Pairs with Sidebery (vertical tabs):
-      # the horizontal tab strip is hidden.
+      # Compact, Gruvbox-dark UI. Native vertical tabs (sidebar.verticalTabs)
+      # handle the tab strip; the horizontal strip is hidden by Firefox itself.
       userChrome = ''
         /* Gruvbox-dark compact Firefox */
         :root {
           --gruvbox-bg: ${t.bg};
           --gruvbox-fg: ${t.fg};
           --gruvbox-orange: ${t.orange};
-        }
-
-        /* Hide the horizontal tab strip (Sidebery provides vertical tabs) */
-        #TabsToolbar {
-          visibility: collapse;
         }
 
         /* Slim, dark urlbar / menus */

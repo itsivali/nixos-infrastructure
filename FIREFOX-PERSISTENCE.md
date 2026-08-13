@@ -17,7 +17,7 @@ recover from disaster.
   declarative via Home Manager and reproducible from a fresh clone.
 * Firefox **never** creates or prefers a transient default profile outside the
   persistent subvolume.
-* All four extensions are installed declaratively and auto-enabled on first
+* All three extensions are installed declaratively and auto-enabled on first
   launch.
 * Reproducible end-to-end: `git clone` → `nixos-rebuild switch --flake .#prague`.
 
@@ -30,9 +30,9 @@ NixOS flake
 └── home/firefox/default.nix        ← programs.firefox (Home Manager)
       ├─ configPath = ".mozilla/firefox"        (where nixpkgs Firefox reads)
       ├─ profiles.ivali.path = "ivali"          (RELATIVE → persistent subvolume)
-      ├─ profiles.ivali.extensions.packages     (4 declarative add-ons)
+      ├─ profiles.ivali.extensions.packages     (3 declarative add-ons)
       ├─ profiles.ivali.settings                (privacy/perf/session prefs)
-      └─ profiles.ivali.userChrome              (Gruvbox-dark, compact, Sidebery)
+      └─ profiles.ivali.userChrome              (Gruvbox-dark, compact, native vertical tabs)
 
 hosts/prague/hardware-configuration.nix
 └── fileSystems."/home/ivali/.mozilla/firefox/ivali"
@@ -138,26 +138,22 @@ re-applies and re-installs automatically.
 | uBlock Origin | `uBlock0@raymondhill.net` | `…/latest/ublock-origin/latest.xpi` |
 | Bitwarden | `{446900e4-71c2-419f-a6a7-df9c091e268b}` | `…/latest/bitwarden-password-manager/latest.xpi` |
 | Dark Reader | `addon@darkreader.org` | `…/latest/darkreader/latest.xpi` |
-| Sidebery | `{3c078156-979c-498b-8990-85f7987dd929}` | `…/latest/sidebery/latest.xpi` |
 
 These are the upstream Gecko ids (verified from each add-on's `manifest.json`),
 keyed exactly as Firefox expects in `ExtensionSettings`.
 
 ### UI customization
 
-* Gruvbox-dark theme + compact density via `userChrome.css`
-  (`#TabsToolbar` hidden; Sidebery provides vertical tabs). The sidebar
-  (Sidebery's host) is Gruvbox-themed and sized for comfortable vertical tabs.
+* Gruvbox-dark theme + compact density via `userChrome.css`.
 * `browser.uidensity = 1` (compact), `ui.systemUsesDarkTheme = 1`.
-* **Sidebery panel styling:** Sidebery's inner panel is its own web page, so
-  it cannot be themed from `userChrome.css`. A matching Gruvbox style lives in
-  `home/firefox/sidebery-style.css` — paste it into Sidebery settings → Help →
-  Styles → Custom CSS. Sidebery's *own* settings (panels, behaviour, container
-  rules) are intentionally **not** declared in Nix: Home Manager's
-  `extensions.settings` forcibly disables IndexedDB and writes the extension's
-  `storage.js` as a read-only symlink, which would wipe Sidebery's tab-tree /
-  panel state on every restart. Configure those in Sidebery's UI; they persist
-  normally on the `firefox-ivali` subvolume.
+* **Native vertical tabs** (`sidebar.revamp` + `sidebar.verticalTabs`): the tab
+  strip lives in the sidebar, replacing the horizontal strip (no extension
+  needed). `sidebar.visibility = "expand-on-hover"` keeps the sidebar collapsed
+  to a slim icon rail showing pinned-tab favicons, expanding to full tabs on
+  hover; pinned tabs stay visible as icons at the top of the rail. The
+  Gruvbox-dark chrome is themed from `userChrome.css`. Tab layout (pinned set,
+  collapse state) is Firefox state and persists normally on the `firefox-ivali`
+  subvolume.
 
 ---
 
@@ -215,7 +211,7 @@ regresses:
 
 * `configPath == ".mozilla/firefox"` — Bug 1 can never silently return.
 * `profilePath` is non-empty and **not** absolute — Bug 2 can never return.
-* Exactly four declarative add-ons present in `policies.ExtensionSettings`,
+* Exactly three declarative add-ons present in `policies.ExtensionSettings`,
   keyed by their real Gecko ids — a renamed/removed extension fails the build
   instead of silently dropping.
 
@@ -237,14 +233,14 @@ Runtime guards (executed on every `home-manager`/NixOS activation):
       `~/.mozilla/firefox/ivali`.
 - [ ] `~/.mozilla/firefox/profiles.ini` → `Name=ivali`, `Path=ivali`,
       `Default=1`, `IsRelative=1`.
-- [ ] Firefox shows uBlock Origin, Bitwarden, Dark Reader, Sidebery as
+- [ ] Firefox shows uBlock Origin, Bitwarden, Dark Reader as
       enabled in `about:addons` → Extensions (installed via policy on first
       launch — **restart Firefox once after a switch/reinstall** for the
       policy to take effect).
 - [ ] `~/.mozilla/firefox/ivali/extensions/` contains the staged extension
       directories (the `nixos@*.xpi` sideload drop-ins must be absent).
 - [ ] Gruvbox-dark theme + compact density applied (about:preferences →
-      "Density: Compact"; vertical tabs via Sidebery).
+      "Density: Compact"; native vertical tabs collapsed to the icon rail).
 - [ ] Sign into a test site + Firefox Account, then `nixos-rebuild switch`;
       session + FxA stay signed in.
 - [ ] No `*.default` profile appears under `~/.mozilla/firefox/`.
@@ -263,9 +259,9 @@ Runtime guards (executed on every `home-manager`/NixOS activation):
 2. `git clone` the repo and `sudo nixos-rebuild switch --flake .#prague`.
 3. Home Manager rewrites `profiles.ini` (pointing at `ivali`), `user.js`,
    `chrome/userChrome.css`, and re-applies the Firefox policy that
-   force-installs the four extensions. The existing profile data on the
+   force-installs the three extensions. The existing profile data on the
    subvolume (cookies, logins, FxA) is untouched.
-4. Launch/restart Firefox → the policy installs the four extensions from AMO
+4. Launch/restart Firefox → the policy installs the three extensions from AMO
    on first launch (network required once) and opens the `ivali` profile with
    all sessions intact.
 
@@ -304,36 +300,31 @@ Firefox re-creates profile state on first launch.
 
 ---
 
-## 11. Sidebery usage
+## 11. Native vertical tabs usage
 
-Sidebery is the vertical, tree-style tab sidebar (replaces the top tab bar).
-It is force-installed via policy; its **visual** theme is declarative, its
-**functional** settings are set in-app (see §4 note).
-
-**Apply the Gruvbox panel theme:** Sidebery settings (gear) → Help → Styles →
-paste `home/firefox/sidebery-style.css` → Save. (The sidebar chrome itself is
-themed by `userChrome.css` automatically.)
+Native vertical tabs (`sidebar.revamp` + `sidebar.verticalTabs`) replace the
+horizontal tab bar with a tab strip in the sidebar; no extension is involved.
+`sidebar.visibility = "expand-on-hover"` collapses the sidebar to a slim icon
+rail that expands on hover.
 
 **Everyday use**
-- The sidebar opens by default on the left showing Sidebery – Tabs. If Firefox
-  opened another panel, click the sidebar icon and pick **Sidebery – Tabs**
-  (Firefox remembers afterwards).
+- The sidebar sits collapsed on the left by default, showing the favicons of
+  your **pinned tabs** (and the active tab). Hover over the rail to expand the
+  full tab list; move the pointer away to collapse it again.
+- **Pin a tab:** right-click any tab → "Pin Tab". Pinned tabs stay at the top
+  of the rail, always visible as icons even when the sidebar is collapsed.
 - Open a link with middle-click / Ctrl+click → new **background** tab (no focus
   theft, per the browsing prefs).
-- A tab opened from another tab becomes its **child** (indented) — collapse the
-  parent to hide the whole subtree.
-- Hover a tab for inline actions (new child, close, mute, bookmark, move to
-  panel). Right-click for container / panel actions.
-- Drag a tab onto another to re-parent it.
+- Pinned / open tab state is Firefox session data and persists on the
+  `firefox-ivali` subvolume across restarts and reinstalls.
+- Window chrome (Gruvbox-dark) is themed via `userChrome.css`.
 
-**Panels (workspaces)**
-- Panel switcher (top of sidebar) → **+ New panel**; name it, pick a color/icon,
-  optionally lock it to a container (e.g. Work vs Personal).
-- Switch panels to context-switch browsing; each keeps its own tab tree.
-
-**Persistence:** Sidebery's tab tree, panels, and container assignments live in
-the profile on the `firefox-ivali` subvolume, so they survive a reinstall.
-Configure them once in-app; no need to re-declare.
+**Customization (declarative, in `home/firefox/default.nix`)**
+- `sidebar.visibility = "expand-on-hover"` — collapsed icon rail; alternatives:
+  `"always-show"` (full sidebar always open) or `"hide-sidebar"`.
+- `sidebar.animation.expand-on-hover.duration-ms = 50` — snappy expand/collapse.
+- Firefox's native vertical tabs are a first-class feature (stable since FF 137);
+  they need no per-profile state to be re-declared.
 
 ## 10. Production readiness summary
 
@@ -342,5 +333,5 @@ Btrfs subvolume design, profile wiring, extension installation, UI
 customization, session-persistence prefs, build-time assertions, and runtime
 guards are all in place and the flake evaluates cleanly. The remaining
 real-world proof is a single `nixos-rebuild switch` on the live host followed
-by confirming all four extensions are enabled and a re-login test survives a
+by confirming all three extensions are enabled and a re-login test survives a
 rebuild — see §8.

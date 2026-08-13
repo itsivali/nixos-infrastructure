@@ -31,7 +31,6 @@
     wl-clipboard
 
     # Audio / media key control
-    pavucontrol
     playerctl
     brightnessctl
 

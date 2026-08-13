@@ -40,6 +40,9 @@
         "org.gnome.Calculator.desktop"
         "org.gnome.Loupe.desktop"
         "org.gnome.Papers.desktop"
+        "org.gnome.Calendar.desktop"
+        "org.gnome.Maps.desktop"
+        "org.gnome.Weather.desktop"
         "org.gnome.SystemMonitor.desktop"
       ];
     };
@@ -48,6 +51,24 @@
     # macOS-style minimize/maximize window buttons + close on Meta+Q.
     "org/gnome/desktop/wm/preferences" = {
       button-layout = "appmenu:minimize,maximize,close";
+    };
+
+    # ── Workspaces & focus behavior ────────────────────────────────────
+    # Dynamic workspaces (created/removed on demand), dialogs attached to
+    # their parent window, hot-corner overview, and strict click-to-focus.
+    "org/gnome/mutter" = {
+      dynamic-workspaces = true;
+      workspaces-only-on-primary = false;
+      attach-modal-dialogs = true;
+    };
+
+    "org/gnome/desktop/wm/preferences" = {
+      focus-mode = "click";
+      raise-on-click = true;
+    };
+
+    "org/gnome/desktop/interface" = {
+      enable-hot-corners = true;
     };
 
     "org/gnome/desktop/wm/keybindings" = {

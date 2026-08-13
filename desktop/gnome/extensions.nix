@@ -31,6 +31,9 @@
 #                             Meet / Zoom device changes.
 #   impatience                Faster, snappier GNOME Shell animations (perf).
 #   battery-time              Battery % + time remaining in the top bar.
+#   vitals                    CPU / RAM / battery gauges in the top bar.
+#   caffeine                  Per-window display-sleep override (fullscreen
+#                             video never sleeps).
 #
 ##############################################################################
 
@@ -49,6 +52,8 @@
       sound-output-device-chooser
       impatience
       battery-time
+      vitals
+      caffeine
     ];
   };
 }

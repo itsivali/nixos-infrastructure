@@ -26,6 +26,8 @@
 #   sound-output-device-chooser   sound-output-device-chooser@kgshank.net
 #   impatience                    impatience@gfxmonk.net
 #   battery-time                  batime@martin.zurowietz.de
+#   vitals                        Vitals@CoreCoding.com
+#   caffeine                      caffeine@patapon.info
 #
 # Every value below was cross-checked against the extension GSettings schema
 # at the pinned nixpkgs revision (see the schema dumps in the migration notes).
@@ -48,6 +50,8 @@
         "sound-output-device-chooser@kgshank.net"
         "impatience@gfxmonk.net"
         "batime@martin.zurowietz.de"
+        "Vitals@CoreCoding.com"
+        "caffeine@patapon.info"
       ];
     };
 
@@ -111,5 +115,27 @@
 
     # battery-time has no GSettings schema at this rev; it uses its own
     # defaults (battery % + time remaining in the top bar). No dconf here.
+
+    # ── vitals: compact CPU / RAM / battery gauges in the top bar ──────
+    # hot-sensors selects what renders next to the icon; the *_usage_
+    # pseudo-sensors aggregate each category's readings.
+    "org/gnome/shell/extensions/vitals" = {
+      hot-sensors = [ "_processor_usage_" "_memory_usage_" ];
+      show-processor = true;
+      show-memory = true;
+      show-battery = true;
+      hide-icons = false;
+      update-time = 2;
+    };
+
+    # ── caffeine: keep the display awake on demand ─────────────────────
+    # Disabled at login (the user opts in via the indicator toggle);
+    # fullscreen media never sleeps the display; state persists across
+    # restarts via restore-state.
+    "org/gnome/shell/extensions/caffeine" = {
+      user-enabled = false;
+      enable-fullscreen = true;
+      restore-state = true;
+    };
   };
 }

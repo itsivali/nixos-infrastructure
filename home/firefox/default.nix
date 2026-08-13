@@ -10,8 +10,8 @@
 #   * Gruvbox-dark, compact UI via userChrome.css
 #   * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader)
 #   * Native vertical tabs (collapsed icon rail, expand on hover)
-#   * Profile stored on a dedicated btrfs subvolume (/home/ivali/.mozilla/
-#     firefox/ivali) so logged-in sessions survive a reinstall.
+#   * Profile lives as a plain directory (/home/ivali/.mozilla/firefox/ivali)
+#     on the /home btrfs subvolume, so sessions persist across rebuilds.
 #
 # Ownership
 # ---------
@@ -50,17 +50,15 @@ in
 
     # This Home Manager / nixpkgs combo defaults configPath to
     # ~/.config/mozilla/firefox, but the nixpkgs Firefox binary actually
-    # stores its profiles under ~/.mozilla/firefox (where the firefox-ivali
-    # subvolume is mounted). Override so HM-managed profiles.ini + the ivali
-    # profile land where Firefox reads them.
+    # stores its profiles under ~/.mozilla/firefox. Override so HM-managed
+    # profiles.ini + the ivali profile land where Firefox reads them.
     configPath = ".mozilla/firefox";
 
     profiles.ivali = {
-      # Lives on a dedicated btrfs subvolume (see hosts/prague/
-      # hardware-configuration.nix) so cookies/logins survive a reinstall.
+      # Plain directory under ~/.mozilla/firefox on the /home subvolume.
       # Path is RELATIVE to ~/.mozilla/firefox: Home Manager writes this as
-      # `Path=ivali` with `IsRelative=1` (valid), and drops profile files into
-      # the mounted subvolume. An absolute path here breaks both.
+      # `Path=ivali` with `IsRelative=1` (valid), and drops profile files
+      # there. An absolute path here breaks both.
       path = "ivali";
 
       settings = {
@@ -88,9 +86,9 @@ in
 
         # ── Keep logins + sessions: reject 3rd-party only, keep 1st-party ─
         # The whole `ivali` profile (cookies, key4.db, logins.json,
-        # signedInUser.json for the Firefox Account, cache2) lives on the
-        # persistent firefox-ivali subvolume, so site sessions AND the Firefox
-        # Account sign-in survive a full reinstall. Do NOT sanitize on shutdown.
+        # signedInUser.json for the Firefox Account, cache2) lives as a plain
+        # directory on the /home subvolume, so site sessions and the Firefox
+        # Account sign-in persist across rebuilds. Do NOT sanitize on shutdown.
         "network.cookie.cookieBehavior" = 1;
         "network.cookie.cookieBehavior.notify" = false;
         "network.cookie.lifetimePolicy" = 0;
@@ -204,7 +202,7 @@ in
     };
   };
 
-  # Install extensions directly into the persistent ivali profile. Each xpi is
+  # Install extensions directly into the ivali profile. Each xpi is
   # named by its gecko id ("nixos@<name>"), which is what Firefox expects in
   # <profile>/extensions/. extensions.autoDisableScopes=0 (above) keeps them
   # enabled on first launch.

@@ -1,22 +1,23 @@
 # Firefox Persistence Architecture
 
-Production-grade, declarative, persistent Firefox profile for the `prague`
-host. This document explains how the `ivali` Firefox profile survives a full
-NixOS reinstall, why the original setup failed, what was fixed, and how to
-recover from disaster.
+Production-grade, declarative Firefox profile for the `prague` host. This
+document explains how the `ivali` Firefox profile is managed, what was tried,
+what was fixed, and how to recover from disaster.
 
 ---
 
 ## 1. Goals
 
 * Firefox profile **data** (logins, cookies, Firefox Account session, history,
-  extension state, local storage) survives a complete NixOS reinstall.
-* Profile data lives on a dedicated **Btrfs subvolume** mounted at
-  `~/.mozilla/firefox/ivali`.
+  extension state, local storage) persists across NixOS rebuilds and is backed
+  up together with the user's home.
+* Profile data lives in a **plain directory** at
+  `~/.mozilla/firefox/ivali` on the `/home` Btrfs subvolume (no dedicated
+  profile subvolume — that design was tried and dropped, see §2).
 * **Configuration** (profile definition, extensions, preferences, UI) is fully
   declarative via Home Manager and reproducible from a fresh clone.
 * Firefox **never** creates or prefers a transient default profile outside the
-  persistent subvolume.
+  managed one.
 * All three extensions are installed declaratively and auto-enabled on first
   launch.
 * Reproducible end-to-end: `git clone` → `nixos-rebuild switch --flake .#prague`.
@@ -29,16 +30,10 @@ recover from disaster.
 NixOS flake
 └── home/firefox/default.nix        ← programs.firefox (Home Manager)
       ├─ configPath = ".mozilla/firefox"        (where nixpkgs Firefox reads)
-      ├─ profiles.ivali.path = "ivali"          (RELATIVE → persistent subvolume)
+      ├─ profiles.ivali.path = "ivali"          (RELATIVE, plain directory)
       ├─ profiles.ivali.extensions.packages     (3 declarative add-ons)
       ├─ profiles.ivali.settings                (privacy/perf/session prefs)
       └─ profiles.ivali.userChrome              (Gruvbox-dark, compact, native vertical tabs)
-
-hosts/prague/hardware-configuration.nix
-└── fileSystems."/home/ivali/.mozilla/firefox/ivali"
-      device = btrfs top-level (same disk as /nix)
-      options = subvol=firefox-ivali, compress-force=zstd:3, noatime
-└── systemd.services.create-firefox-subvol     (idempotent subvolume creation)
 ```
 
 ### Data flow
@@ -47,24 +42,29 @@ hosts/prague/hardware-configuration.nix
   is written by Home Manager into the Firefox config dir
   (`~/.mozilla/firefox`), which is a normal directory on the user's home
   subvolume.
-* The `ivali` **profile directory** (`~/.mozilla/firefox/ivali`) is the
-  **mount point of the `firefox-ivali` Btrfs subvolume**. Everything Firefox
-  writes there (cookies, `key4.db`, `logins.json`, `signedInUser.json`,
-  `places.sqlite`, extension state) is stored on that subvolume and therefore
-  outlives a reinstall of the OS (the subvolume is a sibling of `/nix` and
-  `/home`, not nested inside them).
-* Extensions are copied by Home Manager into
+* The `ivali` **profile directory** (`~/.mozilla/firefox/ivali`) is a **plain
+  directory** on the `/home` subvolume. Everything Firefox writes there
+  (cookies, `key4.db`, `logins.json`, `signedInUser.json`, `places.sqlite`,
+  extension state) persists across rebuilds and is covered by whatever backup
+  strategy protects `/home`.
+* Extensions are installed by Home Manager into
   `<profile>/extensions/<gecko-id>.xpi` and enabled via
   `extensions.autoDisableScopes = 0`.
 
-### Why a sibling subvolume (not nested under `/home`)
+### Why a plain directory (not a dedicated subvolume)
 
-`/home` is itself a Btrfs subvolume. If `firefox-ivali` were nested inside
-`/home`, wiping `/home` on reinstall would also wipe it. Mounting
-`firefox-ivali` as a **sibling** (same backing device, separate subvolume)
-means a reinstall that reformats/snapshots `/home` leaves the Firefox data
-untouched — provided the installer re-creates/remounts the same
-`subvol=firefox-ivali`.
+An earlier iteration declared a sibling `firefox-ivali` Btrfs subvolume mounted
+at `~/.mozilla/firefox/ivali`, on the theory that profile data would survive a
+full reinstall. That design was **dropped** because it was not supportable on
+the live host: the subvolume and its mount/oneshot service were baked into
+`hardware-configuration.nix` with a phantom disk UUID that does not exist on
+this machine, which caused the filesystem-mount failure that put the host into
+emergency mode during a switch. The plain-directory layout is the reality on
+disk and is what this configuration declares.
+
+Profile data therefore survives upgrades and rollbacks, and should be backed
+up as part of `/home`. Reinstalls that wipe `/home` will also wipe the profile
+data — restore it from backup.
 
 ---
 
@@ -75,7 +75,7 @@ Home Manager, in that nixpkgs/HM combination, defaulted Firefox's config path
 to `~/.config/mozilla/firefox`, but the nixpkgs Firefox binary reads/writes
 profiles from `~/.mozilla/firefox`. Result: HM built the `ivali` profile in a
 directory Firefox never looked at, and Firefox created its own default profile
-in `~/.mozilla/firefox`, completely bypassing the persistent subvolume.
+in `~/.mozilla/firefox`, completely bypassing the managed profile.
 
 **Fix:** `configPath = ".mozilla/firefox"`.
 
@@ -114,15 +114,15 @@ is the only mechanism current Firefox honours for unattended, reproducible
 extension install. Each entry keys on the add-on's real Gecko id and sets
 `installation_mode = "force_installed"` with an `install_url` pointing at the
 AMO download. On first launch Firefox fetches and installs each add-on and
-keeps it installed (and updated) thereafter. On a reinstall the same policy
-re-applies and re-installs automatically.
+keeps it installed (and updated) thereafter.
 
 ---
 
 ## 4. Applied fixes (current generation)
 
 1. `configPath = ".mozilla/firefox"` — HM writes where Firefox reads.
-2. `path = "ivali"` — valid relative profile path → persistent subvolume.
+2. `path = "ivali"` — valid relative profile path → plain dir under
+   `~/.mozilla/firefox`.
 3. `policies.ExtensionSettings` — declarative, force-installed from AMO via
    Firefox Policies (the only mechanism modern Firefox honours).
 4. `extensions.autoDisableScopes = 0` — belt-and-braces so any add-on added by
@@ -152,8 +152,8 @@ keyed exactly as Firefox expects in `ExtensionSettings`.
   to a slim icon rail showing pinned-tab favicons, expanding to full tabs on
   hover; pinned tabs stay visible as icons at the top of the rail. The
   Gruvbox-dark chrome is themed from `userChrome.css`. Tab layout (pinned set,
-  collapse state) is Firefox state and persists normally on the `firefox-ivali`
-  subvolume.
+  collapse state) is Firefox state and persists normally in the `ivali`
+  profile directory.
 
 ---
 
@@ -199,8 +199,8 @@ grep -E '^(Name|Path|Default|IsRelative)=' ~/.mozilla/firefox/profiles.ini
 ```
 
 These ensure cookies, logins, and the Firefox Account session
-(`signedInUser.json`) persist. All of these files live on the
-`firefox-ivali` subvolume, so they survive a reinstall.
+(`signedInUser.json`) persist. All of these files live in the `ivali` profile
+directory on the `/home` subvolume.
 
 ---
 
@@ -229,8 +229,6 @@ Runtime guards (executed on every `home-manager`/NixOS activation):
 
 ## 8. Verification checklist (run after every reinstall)
 
-- [ ] `mount | grep firefox-ivali` shows the subvolume mounted at
-      `~/.mozilla/firefox/ivali`.
 - [ ] `~/.mozilla/firefox/profiles.ini` → `Name=ivali`, `Path=ivali`,
       `Default=1`, `IsRelative=1`.
 - [ ] Firefox shows uBlock Origin, Bitwarden, Dark Reader as
@@ -249,31 +247,15 @@ Runtime guards (executed on every `home-manager`/NixOS activation):
 
 ## 9. Disaster recovery
 
-### 9.1 After a full reinstall (data subvolume preserved)
-
-1. Install NixOS, reusing the same disk layout. Ensure
-   `hardware-configuration.nix` still declares the
-   `firefox-ivali` subvolume mount **and** `create-firefox-subvol`
-   (which recreates the sibling subvolume if missing — but if the data
-   subvolume still exists on disk, just remount it).
-2. `git clone` the repo and `sudo nixos-rebuild switch --flake .#prague`.
-3. Home Manager rewrites `profiles.ini` (pointing at `ivali`), `user.js`,
-   `chrome/userChrome.css`, and re-applies the Firefox policy that
-   force-installs the three extensions. The existing profile data on the
-   subvolume (cookies, logins, FxA) is untouched.
-4. Launch/restart Firefox → the policy installs the three extensions from AMO
-   on first launch (network required once) and opens the `ivali` profile with
-   all sessions intact.
-
-### 9.2 If the data subvolume was lost (true bare-metal restore)
+### 9.1 If the profile directory is lost or corrupted
 
 1. The declarative config restores extensions, UI, and preferences
-   automatically — only **user data** (cookies/logins/FxA) is lost, because
-   that lives only on the subvolume.
+   automatically on the next switch — only **user data** (cookies/logins/FxA)
+   is lost, because that lives only in the profile directory.
 2. Re-sign into sites and the Firefox Account. Consider enabling Firefox
    Sync as a secondary backup for critical credentials.
 
-### 9.3 If Firefox creates a transient default profile
+### 9.2 If Firefox creates a transient default profile
 
 1. Close Firefox.
 2. Inspect: `cat ~/.mozilla/firefox/profiles.ini`.
@@ -285,22 +267,9 @@ Runtime guards (executed on every `home-manager`/NixOS activation):
    ```
    and confirm `profiles.ini` again references only `ivali`.
 
-### 9.4 Manual subvolume recreation (fallback)
-
-```bash
-DEV=/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c
-MP=/run/btrfs-root-firefox
-sudo mount "$DEV" "$MP"
-sudo btrfs subvolume create "$MP/firefox-ivali"
-sudo umount "$MP"
-```
-
-Then re-run the switch so Home Manager populates the (empty) subvolume and
-Firefox re-creates profile state on first launch.
-
 ---
 
-## 11. Native vertical tabs usage
+## 10. Native vertical tabs usage
 
 Native vertical tabs (`sidebar.revamp` + `sidebar.verticalTabs`) replace the
 horizontal tab bar with a tab strip in the sidebar; no extension is involved.
@@ -315,8 +284,8 @@ rail that expands on hover.
   of the rail, always visible as icons even when the sidebar is collapsed.
 - Open a link with middle-click / Ctrl+click → new **background** tab (no focus
   theft, per the browsing prefs).
-- Pinned / open tab state is Firefox session data and persists on the
-  `firefox-ivali` subvolume across restarts and reinstalls.
+- Pinned / open tab state is Firefox session data and persists in the `ivali`
+  profile directory across restarts and rebuilds.
 - Window chrome (Gruvbox-dark) is themed via `userChrome.css`.
 
 **Customization (declarative, in `home/firefox/default.nix`)**
@@ -326,12 +295,12 @@ rail that expands on hover.
 - Firefox's native vertical tabs are a first-class feature (stable since FF 137);
   they need no per-profile state to be re-declared.
 
-## 10. Production readiness summary
+---
 
-**Ready**, subject to one operational verification: the declarative config,
-Btrfs subvolume design, profile wiring, extension installation, UI
+## 11. Production readiness summary
+
+**Ready.** The declarative config, profile wiring, extension installation, UI
 customization, session-persistence prefs, build-time assertions, and runtime
-guards are all in place and the flake evaluates cleanly. The remaining
-real-world proof is a single `nixos-rebuild switch` on the live host followed
-by confirming all three extensions are enabled and a re-login test survives a
-rebuild — see §8.
+guards are all in place. Real-world verification is a `nixos-rebuild switch`
+on the live host followed by confirming all three extensions are enabled and a
+re-login test survives a rebuild — see §8.

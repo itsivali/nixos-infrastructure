@@ -26,103 +26,33 @@
 
   fileSystems."/" =
     {
-      device = "/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c";
+      device = "/dev/disk/by-uuid/c7b280c1-b42e-43aa-bb6f-625378e36894";
       fsType = "btrfs";
     };
 
   fileSystems."/home" =
     {
-      device = "/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c";
+      device = "/dev/disk/by-uuid/c7b280c1-b42e-43aa-bb6f-625378e36894";
       fsType = "btrfs";
       options = [ "subvol=home" ];
     };
 
   fileSystems."/nix" =
     {
-      device = "/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c";
+      device = "/dev/disk/by-uuid/c7b280c1-b42e-43aa-bb6f-625378e36894";
       fsType = "btrfs";
       options = [ "subvol=nix" ];
     };
 
   fileSystems."/boot" =
     {
-      device = "/dev/disk/by-uuid/C0A3-6F5B";
+      device = "/dev/disk/by-uuid/272E-2D98";
       fsType = "vfat";
       options = [ "fmask=0077" "dmask=0077" ];
     };
 
-  # Dedicated btrfs subvolume for the Firefox profile. Kept as a SIBLING of
-  # the home subvolume so logged-in sessions/cookies survive even if /home is
-  # wiped on reinstall. Creation is now automatic (see the systemd oneshot
-  # below) so a fresh install needs no manual btrfs step — the subvolume is
-  # created at first boot / first `nixos-rebuild switch` before this mount
-  # unit runs. Manual fallback if ever needed:
-  #   sudo btrfs subvolume create /firefox-ivali
-  fileSystems."/home/ivali/.mozilla/firefox/ivali" =
-    {
-      device = "/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c";
-      fsType = "btrfs";
-      options = [ "subvol=firefox-ivali" "compress-force=zstd:3" "noatime" ];
-    };
-
-  # ── Idempotent creation of the firefox-ivali btrfs subvolume ──────────────
-  # Runs immediately before the mount unit above (the mount pulls this service
-  # in via `wantedBy`, NOT `local-fs.target`, to avoid an ordering cycle that
-  # would force systemd to drop systemd-tmpfiles-setup and break /run/opengl-driver).
-  # Mounts the btrfs top-level transiently, creates the sibling subvolume if
-  # absent, then unmounts. Safe to run on every boot; no-ops once present.
-  systemd.services.create-firefox-subvol =
-    {
-      description = "Create firefox-ivali btrfs subvolume if missing";
-      # The mount unit pulls this in and orders it first. DefaultDependencies
-      # are off so this oneshot does not depend back on local-fs.target (which
-      # would create a cycle and delete tmpfiles-setup).
-      wantedBy = [ "home-ivali-.mozilla-firefox-ivali.mount" ];
-      before = [ "home-ivali-.mozilla-firefox-ivali.mount" ];
-      unitConfig.DefaultDependencies = false;
-      serviceConfig =
-        {
-          Type = "oneshot";
-          RemainAfterExit = true;
-        };
-      # Run only after block devices (by-uuid symlink) are available.
-      after = [ "local-fs-pre.target" ];
-      script = ''
-        DEV=/dev/disk/by-uuid/9630c2bf-6d1f-4c5e-acdc-386bc054712c
-        MP=/run/btrfs-root-firefox
-        BTRFS=${pkgs.btrfs-progs}/bin/btrfs
-        MOUNT=${pkgs.util-linux}/bin/mount
-        UMOUNT=${pkgs.util-linux}/bin/umount
-        FINDMNT=${pkgs.util-linux}/bin/findmnt
-        USER=ivali
-        GROUP=users
-
-        # Create the mountpoint parent tree and hand it to the user. Home
-        # Manager runs as ivali and must be able to write the Firefox profile
-        # and sibling dirs (e.g. native-messaging-hosts). The subvolume itself
-        # is created as root further down, so we chown it to the user too.
-        mkdir -p /home/ivali/.mozilla/firefox
-        chown -R "$USER:$GROUP" /home/ivali/.mozilla
-
-        mkdir -p "$MP"
-        if ! $FINDMNT -n "$MP" >/dev/null; then
-          $MOUNT "$DEV" "$MP" || exit 0
-        fi
-
-        if ! $BTRFS subvolume show "$MP/firefox-ivali" >/dev/null 2>&1; then
-          $BTRFS subvolume create "$MP/firefox-ivali"
-        fi
-
-        # The subvolume is created as root; give it to the user so Home Manager
-        # can populate the profile on activation.
-        chown -R "$USER:$GROUP" "$MP/firefox-ivali"
-
-        $UMOUNT "$MP" 2>/dev/null || true
-      '';
-    };
-
   swapDevices =
-    [{ device = "/dev/disk/by-uuid/e6685d2c-1195-45bf-adfd-7c0470156d2a"; }];
+    [{ device = "/dev/disk/by-uuid/24e85f67-b7fe-4d4b-b6df-19428e040569"; }];
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;

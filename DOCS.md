@@ -1136,8 +1136,8 @@ Declarative Firefox managed by Home Manager:
 * Gruvbox-dark, compact UI via userChrome.css
 * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader)
 * Native vertical tabs (collapsed icon rail, expand on hover)
-* Profile stored on a dedicated btrfs subvolume (/home/ivali/.mozilla/
-firefox/ivali) so logged-in sessions survive a reinstall.
+* Profile stored as a plain directory (/home/ivali/.mozilla/firefox/ivali)
+on the /home btrfs subvolume, so sessions persist across rebuilds.
 Ownership
 ---------
 programs.firefox (Home Manager)

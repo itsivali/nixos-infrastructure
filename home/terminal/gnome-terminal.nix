@@ -51,7 +51,11 @@ in
     theme-variant = "dark";
   };
 
-  dconf.settings."org/gnome/terminal/legacy/profiles:/" = {
+  # The ProfilesList schema lives at `/org/gnome/terminal/legacy/profiles:/`.
+  # Home Manager joins the dir and the `default` key with a `/`, so the dir
+  # must be `profiles:` (no trailing slash) — otherwise the joined path
+  # `profiles://default` is rejected ("two consecutive slashes").
+  dconf.settings."org/gnome/terminal/legacy/profiles:" = {
     default = "/org/gnome/terminal/legacy/profiles:/:${gnomeProfileId}";
   };
 }

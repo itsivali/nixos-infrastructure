@@ -454,6 +454,8 @@ in
 
         util-linux
 
+        inetutils
+
       ];
 
       environment = {

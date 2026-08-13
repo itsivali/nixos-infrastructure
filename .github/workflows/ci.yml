@@ -23,8 +23,15 @@ jobs:
   go-lint:
     name: Go Lint
     runs-on: ubuntu-latest
+    # golangci-lint's goanalysis_metalinter needs cgo (gcc) to load package
+    # export data (runtime/cgo). ubuntu-latest ships gcc by default, but
+    # declare it explicitly so the lint build never silently loses cgo.
+    env:
+      CGO_ENABLED: "1"
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure gcc (cgo) is available
+        run: sudo apt-get update && sudo apt-get install -y gcc
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod

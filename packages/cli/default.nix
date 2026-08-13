@@ -36,6 +36,7 @@ with pkgs; [
   fastfetch
   fd
   fzf
+  gcc
   gh
   git
   gitui

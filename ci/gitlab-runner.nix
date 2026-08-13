@@ -165,6 +165,10 @@ in
 
     sops.secrets.gitlab-runner-token = { };
 
+    sops.secrets.gitlab_token = {
+      sopsFile = ../secrets/gitlab.yaml;
+    };
+
     ##############################################################################
     ## GitLab Runner
     ##############################################################################
@@ -270,6 +274,13 @@ in
 
         HOST_NAME =
           config.networking.hostName;
+
+        ########################################################################
+        ## Private repository access (GitLab API token)
+        ########################################################################
+
+        GITLAB_TOKEN_FILE =
+          config.sops.secrets.gitlab_token.path;
 
         ########################################################################
         ## Repository location
@@ -454,6 +465,13 @@ in
 
         GITOPS_WORKTREE =
           "/var/lib/gitops";
+
+        ########################################################################
+        ## Private repository access (GitLab API token)
+        ########################################################################
+
+        GITLAB_TOKEN_FILE =
+          config.sops.secrets.gitlab_token.path;
 
       };
 

@@ -16,6 +16,10 @@ CONFIG="/var/lib/gitlab-runner/.gitlab-runner/config.toml"
 TOKEN_FILE="${TOKEN_FILE:-/run/secrets/gitlab-runner-token}"
 SERVER="https://gitlab.com"
 
+# GitLab API token for checking the private repository (path to the sops
+# secret, so the value is never baked into the unit).
+GITLAB_TOKEN="${GITLAB_TOKEN:-$(cat "${GITLAB_TOKEN_FILE:-/run/secrets/gitlab_token}" 2>/dev/null || true)}"
+
 # The runner service runs with HOME=/var/lib/gitlab-runner, so register and
 # verify must target that config explicitly instead of root's default $HOME.
 export CONFIG_FILE="$CONFIG"
@@ -131,7 +135,17 @@ else
   FAILURES=$((FAILURES + 1))
 fi
 
-if git ls-remote --heads "$SERVER/willisivali/nixos-infrastructure.git" main >/dev/null 2>&1; then
+if [[ -n "${GITLAB_TOKEN:-}" ]]; then
+  if curl --silent --fail --connect-timeout 10 --max-time 15 \
+    --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+    "https://gitlab.com/api/v4/projects/willisivali%2Fnixos-infrastructure/repository/branches/main" \
+    >/dev/null 2>&1; then
+    log "  ✓ Repository reachable (via API)"
+  else
+    log "  ✗ Cannot access repository"
+    FAILURES=$((FAILURES + 1))
+  fi
+elif git ls-remote --heads "$SERVER/willisivali/nixos-infrastructure.git" main >/dev/null 2>&1; then
   log "  ✓ Repository reachable"
 else
   log "  ✗ Cannot access repository"
@@ -154,8 +168,12 @@ if [[ -d "$WORKTREE" ]]; then
 else
   log "  ⚠ Worktree missing — creating"
   mkdir -p "$WORKTREE"
+  CLONE_URL="$SERVER/willisivali/nixos-infrastructure.git"
+  if [[ -n "${GITLAB_TOKEN:-}" ]]; then
+    CLONE_URL="https://oauth2:${GITLAB_TOKEN}@gitlab.com/willisivali/nixos-infrastructure.git"
+  fi
   run_step "Cloning repository" git clone \
-    "$SERVER/willisivali/nixos-infrastructure.git" \
+    "$CLONE_URL" \
     "$WORKTREE"
 fi
 

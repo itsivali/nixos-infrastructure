@@ -57,6 +57,10 @@ readonly WORKTREE="${GITOPS_WORKTREE:-/var/lib/gitops}"
 # service runs as root its own $HOME differs, so an explicit path is required.
 readonly RUNNER_CONFIG="${GITLAB_RUNNER_CONFIG:-/var/lib/gitlab-runner/.gitlab-runner/config.toml}"
 
+# GitLab API token for checking private repositories. Like the bot, accept the
+# path to the sops-decrypted secret so the value is never baked into the unit.
+readonly GITLAB_TOKEN="${GITLAB_TOKEN:-$(cat "${GITLAB_TOKEN_FILE:-/run/secrets/gitlab_token}" 2>/dev/null || true)}"
+
 readonly CURL_TIMEOUT=10
 
 ################################################################################
@@ -241,12 +245,42 @@ else
 fi
 
 ################################################################################
-## Repository Reachability
+## GitOps Repository
 ################################################################################
 
 section "GitOps Repository"
 
-if git ls-remote \
+if [[ -n "${GITLAB_TOKEN:-}" ]] && [[ "$GITOPS_REPO" =~ ^https://([^/]+)/(.+)$ ]]
+then
+
+    # Private repository: verify reachability through the GitLab API, which
+    # accepts the same PRIVATE-TOKEN the CI pipeline uses.
+    GITLAB_HOST="${BASH_REMATCH[1]}"
+    GITLAB_PROJECT="$(
+        printf '%s\n' "${BASH_REMATCH[2]}" |
+            sed 's#/#%2F#g'
+    )"
+
+    if curl \
+        --silent \
+        --fail \
+        --location \
+        --connect-timeout 5 \
+        --max-time "$CURL_TIMEOUT" \
+        --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
+        "https://${GITLAB_HOST}/api/v4/projects/${GITLAB_PROJECT}/repository/branches/${GITOPS_BRANCH}" \
+        >/dev/null
+    then
+
+        ok "Repository reachable (via API)"
+
+    else
+
+        fail "Cannot access repository (API returned an error or the token is invalid)"
+
+    fi
+
+elif git ls-remote \
     --heads \
     "$GITOPS_REPO" \
     "$GITOPS_BRANCH" \

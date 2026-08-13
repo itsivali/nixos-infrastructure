@@ -118,10 +118,14 @@ func (r *Runner) RunAsUserWithContext(ctx context.Context, command string, timeo
 		uid = u.Uid
 	}
 	xdg := "/run/user/" + uid
+	if _, err := os.Stat(xdg); os.IsNotExist(err) {
+		return fmt.Sprintf("🖥 DESKTOP UNAVAILABLE\n\nNo active graphical user session found at %s for user %s.", xdg, targetUser)
+	}
+
 	dbus := "unix:path=" + xdg + "/bus"
 	inner := fmt.Sprintf(
 		"export PATH=/run/current-system/sw/bin:/run/wrappers/bin:/usr/bin:/bin "+
-			"XDG_RUNTIME_DIR=%s DBUS_SESSION_ADDRESS=%s WAYLAND_DISPLAY=wayland-0 DISPLAY=:0; %s",
+			"XDG_RUNTIME_DIR=%s DBUS_SESSION_BUS_ADDRESS=%s WAYLAND_DISPLAY=wayland-0 DISPLAY=:0; %s",
 		xdg, dbus, command,
 	)
 	full := "sudo -u " + targetUser + " sh -c " + QuoteSh(inner)

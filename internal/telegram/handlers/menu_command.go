@@ -61,6 +61,7 @@ func (c *MenuInlineCommand) sendMainMenu(chatID int64) error {
 		{Text: "📊 Monitoring", CallbackData: "menu:monitoring"},
 		{Text: "💾 Backup", CallbackData: "menu:backup"},
 		{Text: "⚙️ Services", CallbackData: "menu:services"},
+		{Text: "🖥️ Desktop", CallbackData: "menu:desktop"},
 		{Text: "🤖 AI", CallbackData: "menu:ai"},
 		{Text: "📁 Repository", CallbackData: "menu:repository"},
 		{Text: "🔥 Firewall", CallbackData: "menu:firewall"},
@@ -92,6 +93,7 @@ func (c *MenuInlineCommand) handleMenuCallback(msg *telegram.Message) error {
 				{Text: "📊 Monitoring", CallbackData: "menu:monitoring"},
 				{Text: "💾 Backup", CallbackData: "menu:backup"},
 				{Text: "⚙️ Services", CallbackData: "menu:services"},
+				{Text: "🖥️ Desktop", CallbackData: "menu:desktop"},
 				{Text: "🤖 AI", CallbackData: "menu:ai"},
 				{Text: "📁 Repository", CallbackData: "menu:repository"},
 				{Text: "🔥 Firewall", CallbackData: "menu:firewall"},
@@ -119,6 +121,8 @@ func (c *MenuInlineCommand) handleMenuCallback(msg *telegram.Message) error {
 		return c.showBackup(msg)
 	case "services":
 		return c.showServices(msg)
+	case "desktop":
+		return c.showDesktop(msg)
 	case "ai":
 		return c.showAI(msg)
 	case "repository":
@@ -308,6 +312,37 @@ func (c *MenuInlineCommand) showServices(msg *telegram.Message) error {
 	}
 
 	return c.editOrSend(msg.ChatID, msg.MessageID, strings.Join(lines, "\n"), buttons)
+}
+
+func (c *MenuInlineCommand) showDesktop(msg *telegram.Message) error {
+	vol := strings.TrimSpace(c.svc.Desktop.VolumeGet())
+	bright := strings.TrimSpace(c.svc.Desktop.BrightnessGet())
+	wins := strings.TrimSpace(c.svc.Desktop.ListWindows())
+
+	text := renderer.BuildCard(renderer.Card{
+		Title: "Desktop Control",
+		Icon:  "🖥️",
+		Lines: []string{
+			renderer.KeyValue("Volume", vol),
+			renderer.KeyValue("Brightness", bright),
+			renderer.KeyValue("Windows", wins),
+		},
+		Footer: "Control interactive GUI session",
+	})
+
+	buttons := []telegram.InlineButton{
+		{Text: "📱 Apps", CallbackData: "cmd:apps"},
+		{Text: "📸 Screenshot", CallbackData: "cmd:screenshot"},
+		{Text: "📋 Clipboard", CallbackData: "cmd:clipboard"},
+		{Text: "🔊 Volume", CallbackData: "cmd:volume"},
+		{Text: "🔆 Brightness", CallbackData: "cmd:brightness"},
+		{Text: "🗔 Windows", CallbackData: "cmd:windows"},
+		{Text: "🖥️ Workspaces", CallbackData: "cmd:workspace"},
+		{Text: "🦊 Firefox", CallbackData: "cmd:firefox"},
+		backButton(),
+	}
+
+	return c.editOrSend(msg.ChatID, msg.MessageID, text, buttons)
 }
 
 func (c *MenuInlineCommand) showAI(msg *telegram.Message) error {

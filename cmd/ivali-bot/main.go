@@ -124,7 +124,9 @@ func main() {
 
 	// Register callback handlers.
 	menuInline := handlers.NewMenuInlineCommand(bot.API(), svc)
+	cmdHandler := handlers.NewCmdCallbackHandler(bot)
 	bot.RegisterCallback("menu:", menuInline)
+	bot.RegisterCallback("cmd:", cmdHandler)
 	bot.RegisterCallback("confirm:", &confirmHandler{bot: bot})
 	bot.RegisterCallback("cancel", &confirmHandler{bot: bot})
 

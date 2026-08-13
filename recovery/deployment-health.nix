@@ -133,6 +133,11 @@ in
 
         GITOPS_WORKTREE = "/var/lib/gitops";
 
+        # nix needs a writable $HOME (its flake cache lives in ~/.cache/nix).
+        # ProtectHome + ProtectSystem=strict make /root and /var/lib read-only,
+        # so point it at the dedicated state dir (StateDirectory + ReadWritePaths).
+        HOME = "/var/lib/deployment-health";
+
         # Periodic observer: connectivity blips must NOT trip the FAIL/rollback
         # path. Critical-service-down still FAILs and triggers rollback-on-failure.
         STRICT_HEALTH = "false";
@@ -150,6 +155,9 @@ in
         ExecStart = deploymentHealthScript;
 
         TimeoutStartSec = "90s";
+
+        # Persistent writable $HOME for nix (see environment.HOME).
+        StateDirectory = "deployment-health";
 
         Nice = 10;
         IOSchedulingClass = "idle";
@@ -180,6 +188,13 @@ in
         ProcSubset = "pid";
 
         ProtectSystem = "strict";
+
+        # nix flake evaluation needs to write its cache under $HOME
+        # (/var/lib/deployment-health), which ProtectSystem=strict would
+        # otherwise mount read-only.
+        ReadWritePaths = [
+          "/var/lib/deployment-health"
+        ];
 
         LockPersonality = true;
         MemoryDenyWriteExecute = true;

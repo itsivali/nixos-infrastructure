@@ -33,7 +33,7 @@ let
     set -euo pipefail
 
     HOST="${config.networking.hostName}"
-    METRICS_FILE="/tmp/security-scan-metrics.prom"
+    METRICS_FILE="/var/lib/security-scanner/security-scan-metrics.prom"
     TIMESTAMP=$(date +%s)
 
     echo "=== Security Scan Report ==="
@@ -125,7 +125,7 @@ let
       SCAN_STATUS=0
     fi
 
-    # Write Prometheus metrics
+    # Write Prometheus metrics (metrics endpoint reads the same path)
     mkdir -p /var/lib/security-scanner
     cat > "$METRICS_FILE" <<EOF
     # HELP security_scan_status Security scan status (1=pass, 0=fail)
@@ -149,6 +149,32 @@ let
     if [ "$SCAN_STATUS" -eq 0 ]; then
       exit 1
     fi
+  '';
+
+  # Minimal Prometheus text-format HTTP server serving the scan metrics file.
+  securityMetricsServerScript = pkgs.writeScript "security-metrics-server.py" ''
+    #!${pkgs.python3}/bin/python3
+    import http.server, os, sys
+
+    METRICS = "/var/lib/security-scanner/security-scan-metrics.prom"
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if os.path.exists(METRICS):
+                body = open(METRICS, "rb").read()
+            else:
+                body = b"# No metrics available\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain; version=0.0.4")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, format, *args):
+            sys.stderr.write(format % args + "\n")
+
+    port = int(sys.argv[1])
+    http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
   '';
 
 in
@@ -181,6 +207,14 @@ in
         TimeoutStartSec = "300s";
         Nice = 10;
         IOSchedulingClass = "idle";
+
+        # nix flake metadata needs a writable ~/.cache/nix, which
+        # ProtectHome + ProtectSystem=strict would otherwise deny.
+        StateDirectory = "security-scanner";
+        ReadWritePaths = [ "/var/lib/security-scanner" ];
+        Environment = [
+          "HOME=/var/lib/security-scanner"
+        ];
 
         # Hardening
         NoNewPrivileges = true;
@@ -227,7 +261,11 @@ in
 
       serviceConfig = {
         Type = "simple";
-        ExecStart = "${pkgs.bash}/bin/bash -c 'while true; do echo \"HTTP/1.1 200 OK\"; echo \"Content-Type: text/plain\"; echo \"\"; cat /var/lib/security-scanner/security-scan-metrics.prom 2>/dev/null || echo \"# No metrics available\"; sleep 10; done' | ${pkgs.coreutils}/bin/tee /dev/null";
+
+        # Minimal Prometheus text-format HTTP server. The previous bash
+        # echo-loop never bound a port, so the endpoint was unreachable.
+        ExecStart = "${securityMetricsServerScript} ${toString cfg.metricsPort}";
+
         Restart = "always";
         RestartSec = 10;
       };

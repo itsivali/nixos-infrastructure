@@ -64,7 +64,7 @@ func (h *CmdCallbackHandler) HandleCallback(ctx context.Context, queryID string,
 	// confirmation prompts for destructive actions — so do not append a
 	// redundant "executed" card. Only surface genuine failures.
 	if err := cmd.Execute(ctx, msg); err != nil {
-		h.bot.API().SendMarkdown(chatID, fmt.Sprintf("🔴 *Command Failed: /%s*\n\n`%s`", cmdName, err.Error()))
+		_ = h.bot.API().SendMarkdown(chatID, fmt.Sprintf("🔴 *Command Failed: /%s*\n\n`%s`", cmdName, err.Error()))
 		return err
 	}
 	return nil

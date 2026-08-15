@@ -1,21 +1,22 @@
 ##############################################################################
 #
-# Home — GNOME Terminal Theming (Mokka)
+# Home — GNOME Terminal Theming (Gruvbox)
 #
 # Purpose
 # -------
-# Applies the Garuda "Mokka" look (Catppuccin-Mocha palette,
-# JetBrainsMono Nerd Font, red block cursor, 90% opacity) to GNOME Terminal.
+# Applies the Gruvbox design system to GNOME Terminal: JetBrainsMono Nerd
+# Font, orange cursor, solid Gruvbox background and the Gruvbox 16-color ANSI
+# palette. GNOME Terminal is the sole terminal emulator on the desktop
+# (Super+Enter, Nautilus "Open in Terminal", and the MIME terminal handler all
+# launch it).
 #
-#   - Kitty            → see ./kitty.nix (the default terminal)
-#   - GNOME Terminal   → dconf profile ("Mokka", default profile)
-#
-# The single source of truth for every color is theme/gruvbox/mokka.nix;
-# the GNOME Terminal profile is generated from that slice so it cannot drift.
+# The single source of truth for every color is theme/gruvbox/terminal.nix,
+# which derives its palette from theme/gruvbox/colors.nix — nothing is
+# hard-coded here.
 #
 # Ownership
 # ---------
-# programs.kitty (./kitty.nix), dconf (GNOME Terminal)
+# dconf (GNOME Terminal profile)
 #
 ##############################################################################
 
@@ -23,25 +24,29 @@
 
 let
   theme = import ../../theme/gruvbox/default.nix;
-  m = theme.mokka;
+  t = theme.terminal;
 
   # GNOME Terminal profile UUID (fixed so the dconf paths are stable).
   gnomeProfileId = "b1dcc9dd-5262-4d8d-a863-c897e6d979b9";
 in
 {
-  # ── GNOME Terminal: Mokka profile set as the default ──────────────
+  # ── GNOME Terminal: Gruvbox profile set as the default ──────────────
+  # Schema keys verified against gnome-terminal 3.60.0 (pinned nixpkgs rev):
+  # per-profile transparency was removed upstream, so the profile uses solid
+  # Gruvbox colors + theme-variant "dark" (window opacity is no longer a
+  # terminal profile setting).
   dconf.settings."org/gnome/terminal/legacy/profiles:/:${gnomeProfileId}" = {
-    visible-name = "Mokka";
+    visible-name = "Gruvbox";
     use-theme-colors = false;
-    background-color = m.background;
-    foreground-color = m.foreground;
-    cursor-color = m.cursor;
-    bold-color = m.selectionBackground;
-    palette = m.palette;
-    use-transparent-background = true;
-    background-transparency-percent = 10;
+    background-color = t.background;
+    foreground-color = t.foreground;
+    cursor-colors-set = true;
+    cursor-background-color = t.cursor;
+    cursor-foreground-color = t.foreground;
+    bold-color = t.selectionBackground;
+    palette = t.palette;
     bold-is-bright = false;
-    font = "${m.font} ${toString m.fontSize}";
+    font = "${t.font} ${toString t.fontSize}";
     scrollback-lines = 5000;
     default-size-columns = 110;
   };

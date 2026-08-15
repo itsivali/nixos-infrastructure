@@ -8,8 +8,8 @@
 #   * Arkenfox-lite privacy/telemetry hardening (logins preserved)
 #   * Performance: Webrender + VAAPI + HTTP/3
 #   * Gruvbox-dark, compact UI via userChrome.css
-#   * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader)
-#   * Native vertical tabs (collapsed icon rail, expand on hover)
+#   * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader, Sidebery)
+#   * Native collapsible sidebar (container) + Sidebery tab tree
 #   * Profile lives as a plain directory (/home/ivali/.mozilla/firefox/ivali)
 #     on the /home btrfs subvolume, so sessions persist across rebuilds.
 #
@@ -41,6 +41,7 @@ let
     ublock-origin = mkAddon "ublock-origin" "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi" "bccc51a773150af4af6e1fd62c7bfdeb7238b79ff2381b998fa9f2e38f64786a";
     bitwarden-password-manager = mkAddon "bitwarden-password-manager" "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi" "11836eb9d2abc9914bb337b57e20c5a09cf44f24fa572f7e886384fd350a5112";
     darkreader = mkAddon "darkreader" "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi" "f4f047fe08e420b6d29617738ea00a7b784892b2262b7e6f38dd09b8ee958a44";
+    sidebery = mkAddon "sidebery" "https://addons.mozilla.org/firefox/downloads/latest/sidebery/latest.xpi" "1wnalq1n2dq479lad3h64c106609knpic63wi4vdazdbasss9878";
   };
 in
 {
@@ -69,8 +70,8 @@ in
         "datareporting.policy.dataSubmissionEnabled" = false;
         "browser.shell.checkDefaultBrowser" = false;
 
-        # Auto-enable declarative extensions (uBlock, Bitwarden, Dark Reader)
-        # instead of leaving them installed-but-disabled.
+        # Auto-enable declarative extensions (uBlock, Bitwarden, Dark Reader,
+        # Sidebery) instead of leaving them installed-but-disabled.
         "extensions.autoDisableScopes" = 0;
 
         "browser.pocket.enabled" = false;
@@ -147,28 +148,30 @@ in
         "browser.urlbar.suggest.weather" = false;
         "browser.startup.homepage" = "about:home";
 
-        # ── Native vertical tabs (replaces Sidebery) ─────────────
-        # sidebar.revamp enables the modern sidebar; sidebar.verticalTabs moves
-        # the tab strip into it. sidebar.visibility = "expand-on-hover" keeps
-        # the sidebar collapsed to a slim icon rail (favicons of pinned tabs)
-        # and expands it on hover — matching the previous Sidebery compact
-        # look without any extension. Pinned tabs stay always visible as icons
-        # at the top of the rail.
+        # ── Native sidebar as container + Sidebery tab tree ────────
+        # sidebar.revamp enables the modern native sidebar; it hosts Sidebery,
+        # which owns the actual tab strip. verticalTabs stays OFF so Firefox
+        # keeps its (hidden) horizontal strip as fallback and Sidebery renders
+        # the tab tree inside the sidebar. expand-on-hover collapses the
+        # sidebar to a slim rail and expands it on hover — a compact look
+        # without losing access to the tab tree.
         "sidebar.revamp" = true;
-        "sidebar.verticalTabs" = true;
+        "sidebar.verticalTabs" = false;
         "sidebar.visibility" = "expand-on-hover";
         # Snappier expand/collapse of the icon rail (default is slow)
         "sidebar.animation.expand-on-hover.duration-ms" = 50;
       };
 
-      # Compact, Gruvbox-dark UI. Native vertical tabs (sidebar.verticalTabs)
-      # handle the tab strip; the horizontal strip is hidden by Firefox itself.
+      # Compact, Gruvbox-dark UI. The native sidebar hosts Sidebery (tab
+      # tree); Firefox hides its own horizontal strip when the sidebar tab
+      # tree is active.
       userChrome = ''
         /* Gruvbox-dark compact Firefox */
         :root {
           --gruvbox-bg: ${t.bg};
           --gruvbox-fg: ${t.fg};
           --gruvbox-orange: ${t.orange};
+          --gruvbox-bgSoft: ${t.bgSoft};
         }
 
         /* Slim, dark urlbar / menus */
@@ -183,7 +186,7 @@ in
         }
 
         #urlbar-background {
-          background: #32302f !important;
+          background: var(--gruvbox-bgSoft) !important;
           border: 1px solid var(--gruvbox-orange) !important;
         }
 
@@ -205,7 +208,8 @@ in
   # Install extensions directly into the ivali profile. Each xpi is
   # named by its gecko id ("nixos@<name>"), which is what Firefox expects in
   # <profile>/extensions/. extensions.autoDisableScopes=0 (above) keeps them
-  # enabled on first launch.
+  # enabled on first launch. Sidebery's id is "nixos@sidebery" (the fetch
+  # helper re-derives it from the xpi's install manifest).
   home.file = lib.mkMerge (lib.mapAttrsToList
     (n: a: {
       ".mozilla/firefox/ivali/extensions/${a.id}.xpi" = {

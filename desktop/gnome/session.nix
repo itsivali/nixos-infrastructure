@@ -57,7 +57,7 @@
     # Loupe, Papers, GNOME Text Editor, Calculator, Characters, Logs,
     # System Monitor, Clocks, Calendar, Maps, Weather, File Roller.
     # Removed: Epiphany browser, Music, Connections, Contacts,
-    # Console (Kitty is the default terminal), Tour.
+    # Console (GNOME Terminal is the default terminal), Tour.
     environment.gnome.excludePackages = with pkgs; [
       epiphany
       gnome-tour
@@ -71,11 +71,11 @@
       # Archive manager (Nautilus integration)
       file-roller
 
-      # Nautilus "Open in Terminal" context-menu integration (-> kitty)
+      # Nautilus "Open in Terminal" context-menu integration (-> gnome-terminal)
       nautilus-open-any-terminal
 
-      # GNOME Terminal (alternative to Kitty, themed "Mokka" in
-      # home/terminal/mokka.nix)
+      # GNOME Terminal: the sole terminal emulator, themed Gruvbox in
+      # home/terminal/gnome-terminal.nix
       gnome-terminal
 
       # Thumbnailers: webp/heic image loaders + video thumbnails

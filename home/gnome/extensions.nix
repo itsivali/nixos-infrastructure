@@ -16,16 +16,14 @@
 #
 # Extension UUID reference
 # ------------------------
-#   dash-to-dock                  dash-to-dock@micxgx.gmail.com
+#   dash-to-panel                 dash-to-panel@jderose9.github.com
 #   blur-my-shell                 blur-my-shell@aunetx
 #   appindicator                  appindicatorsupport@rgcjonas.gmail.com
 #   user-themes                   user-theme@gnome-shell-extensions.gcampax.github.com
 #   just-perfection               just-perfection-desktop@just-perfection
 #   tiling-assistant              tiling-assistant@leleat-on-github
 #   clipboard-indicator           clipboard-indicator@tudmotu.com
-#   sound-output-device-chooser   sound-output-device-chooser@kgshank.net
 #   impatience                    impatience@gfxmonk.net
-#   battery-time                  batime@martin.zurowietz.de
 #   vitals                        Vitals@CoreCoding.com
 #   caffeine                      caffeine@patapon.info
 #
@@ -40,31 +38,61 @@
   dconf.settings = {
     "org/gnome/shell" = {
       enabled-extensions = [
-        "dash-to-dock@micxgx.gmail.com"
+        "dash-to-panel@jderose9.github.com"
         "blur-my-shell@aunetx"
         "appindicatorsupport@rgcjonas.gmail.com"
         "user-theme@gnome-shell-extensions.gcampax.github.com"
         "just-perfection-desktop@just-perfection"
         "tiling-assistant@leleat-on-github"
         "clipboard-indicator@tudmotu.com"
-        "sound-output-device-chooser@kgshank.net"
         "impatience@gfxmonk.net"
-        "batime@martin.zurowietz.de"
         "Vitals@CoreCoding.com"
         "caffeine@patapon.info"
       ];
     };
 
-    # ── dash-to-dock: fixed macOS-style dock at the bottom ──────────────
-    "org/gnome/shell/extensions/dash-to-dock" = {
-      dock-fixed = true;
-      dock-position = "BOTTOM";
-      dash-max-icon-size = 48;
-      height-fraction = 0.9;
-      show-running = true;
+    # ── dash-to-panel: full-width top panel with a centered taskbar ────
+    # Replaces both the stock top bar and the dash. Panel color = Gruvbox
+    # bgHard (#1d2021) at 90% opacity so the blur-my-shell frosted effect
+    # keeps the desktop readable underneath. The per-monitor JSON keys
+    # below mirror what dash-to-panel's own preferences write for the
+    # primary monitor ("0"); element names/positions come from
+    # panelPositions.js at the pinned rev.
+    "org/gnome/shell/extensions/dash-to-panel" = {
+      panel-size = 44;
+      # Per-monitor panel state (JSON strings): "0" = primary monitor.
+      panel-positions = ''{"0":"TOP"}'';
+      panel-lengths = ''{"0":100}'';
+      panel-anchors = ''{"0":"MIDDLE"}'';
+      panel-sizes = ''{"0":44}'';
+      panel-element-positions = ''
+        {"0":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centered"},{"element":"centerBox","visible":false,"position":"centered"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":false,"position":"stackedBR"}]}
+      '';
+
+      # Group windows of the same app into one launcher entry (default).
+      group-apps = true;
+
+      # Never let Super+(0-9) launch apps from the taskbar — the number row
+      # stays free for normal typing.
+      hot-keys = false;
+
+      # Own the whole top edge: drop the stock GNOME dash and top bar.
+      stockgs-keep-dash = false;
+      stockgs-keep-top-panel = false;
+
+      # Gruvbox translucent panel: bgHard at 90% opacity.
+      trans-use-custom-bg = true;
+      trans-bg-color = "#1d2021";
+      trans-use-custom-opacity = true;
+      trans-panel-opacity = 0.9;
+
+      # Metro running-window dots (matches the top-bar accent).
+      dot-style-focused = "METRO";
+      dot-style-unfocused = "METRO";
+      dot-position = "BOTTOM";
     };
 
-    # ── blur-my-shell: frost the panel + dock (Gruvbox translucency) ───
+    # ── blur-my-shell: frost the panel (Gruvbox translucency) ─────────
     # Global enable is on by default; declared explicitly so a settings
     # reset cannot silently disable it. Panel keeps the default sigma 30.
     "org/gnome/shell/extensions/blur-my-shell" = {
@@ -81,10 +109,12 @@
 
     # ── just-perfection: declutter the overview ──────────────────────────
     # Boot straight to the desktop (no overview), hide the window-picker
-    # icon clutter, keep the dash (dash-to-dock owns the dock).
+    # icon clutter, and disable the stock overview dash (dash-to-panel owns
+    # app launching in the top panel).
     "org/gnome/shell/extensions/just-perfection" = {
       startup-status = 0;
       window-picker-icon = false;
+      dash = false;
     };
 
     # ── tiling-assistant: comfortable window gaps ────────────────────────
@@ -102,21 +132,12 @@
       notify-on-copy = false;
     };
 
-    # ── sound-output-device-chooser: fold sinks/sources into the volume
-    #    quick-settings slider (no separate tray icon) ─────────────────────
-    "org/gnome/shell/extensions/sound-output-device-chooser" = {
-      integrate-with-slider = true;
-    };
-
-    # ── impatience: 4x faster Shell animations (0.25 vs default 0.75) ───
+    # ── impatience: 2x faster Shell animations (0.5 vs default 0.75) ────
     "org/gnome/shell/extensions/net/gfxmonk/impatience" = {
-      speed-factor = 0.25;
+      speed-factor = 0.5;
     };
 
-    # battery-time has no GSettings schema at this rev; it uses its own
-    # defaults (battery % + time remaining in the top bar). No dconf here.
-
-    # ── vitals: compact CPU / RAM / battery gauges in the top bar ──────
+    # ── vitals: compact CPU / RAM / battery gauges in the top panel ─────
     # hot-sensors selects what renders next to the icon; the *_usage_
     # pseudo-sensors aggregate each category's readings.
     "org/gnome/shell/extensions/vitals" = {

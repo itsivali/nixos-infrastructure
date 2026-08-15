@@ -29,20 +29,18 @@
 {
   dconf.settings = {
     # ── Dock favorites (launcher order) ────────────────────────────────
-    # Kitty is the terminal; firefox the browser; the rest are the GNOME
-    # core apps. dash-to-dock's favorites read this same list.
+    # GNOME Terminal is the sole terminal; firefox the browser; the rest are
+    # the GNOME core apps. dash-to-panel's taskbar reads this same list.
     "org/gnome/shell" = {
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
-        "kitty.desktop"
+        "org.gnome.Terminal.desktop"
         "firefox.desktop"
         "org.gnome.TextEditor.desktop"
         "org.gnome.Calculator.desktop"
         "org.gnome.Loupe.desktop"
         "org.gnome.Papers.desktop"
         "org.gnome.Calendar.desktop"
-        "org.gnome.Maps.desktop"
-        "org.gnome.Weather.desktop"
         "org.gnome.SystemMonitor.desktop"
       ];
     };
@@ -86,7 +84,7 @@
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       name = "Terminal";
-      command = "kitty";
+      command = "gnome-terminal";
       binding = "<Super>Return";
     };
 
@@ -148,10 +146,12 @@
     "org/gnome/desktop/a11y/applications" = {
       screen-keyboard-enabled = true;
     };
-    # Sticky keys: press-and-release modifiers instead of holding them
-    # (single-handed shortcuts). Note the schema key spelling has no hyphen.
+    # Sticky keys disabled: GNOME Shell's overview overlay-key handler returns
+    # early when org.gnome.desktop.a11y.keyboard.stickykeys-enable is set
+    # (gnome-shell overviewControls.js), which breaks the Super/overview key.
+    # Note the schema key spelling has no hyphen.
     "org/gnome/desktop/a11y/keyboard" = {
-      stickykeys-enable = true;
+      stickykeys-enable = false;
     };
   };
 }

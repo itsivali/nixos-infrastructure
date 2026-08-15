@@ -14,13 +14,13 @@
 #
 # Responsibilities
 # ----------------
-# - Define the 18 raw Gruvbox Dark hex colors
+# - Define the raw Gruvbox Dark palette (core + dim ANSI variants)
 # - Provide RGBA conversion for CSS (transparent surfaces)
 # - Provide Ly (0xSSRRGGBB) true-color conversion for the display manager
 # - Derive accent, border and shadow colors used by Hyprland
+# - Provide the 16-color ANSI terminal palette (GNOME Terminal, etc.)
 #
 ##############################################################################
-
 let
   hexDigit = d: {
     "0" = 0;
@@ -69,7 +69,39 @@ let
     gray = "#928374";
     bgHard = "#1d2021";
     bgSoft = "#32302f";
+
+    # Dim variants used by the terminal ANSI palette (lower contrast than the
+    # bright foreground/background-facing colors).
+    redDim = "#cc241d";
+    greenDim = "#98971a";
+    yellowDim = "#d79921";
+    blueDim = "#458588";
+    purpleDim = "#b16286";
+    aquaDim = "#689d6a";
+    grayDim = "#a89984";
   };
+
+  # Gruvbox Dark ANSI terminal palette (16 colors). Standard canonical order:
+  # 0-7 = black red green yellow blue purple aqua white, 8-15 = the bright
+  # variants. Every value is pulled from the raw palette above.
+  terminalPalette = [
+    raw.bg # 0  black
+    raw.redDim # 1  red
+    raw.greenDim # 2  green
+    raw.yellowDim # 3  yellow
+    raw.blueDim # 4  blue
+    raw.purpleDim # 5  purple
+    raw.aquaDim # 6  aqua
+    raw.grayDim # 7  white
+    raw.gray # 8  bright black
+    raw.red # 9  bright red
+    raw.green # 10 bright green
+    raw.yellow # 11 bright yellow
+    raw.blue # 12 bright blue
+    raw.purple # 13 bright purple
+    raw.aqua # 14 bright aqua
+    raw.fg # 15 bright white
+  ];
 
   toRgba = hex: alphaHex:
     let
@@ -109,5 +141,5 @@ let
   };
 in
 {
-  inherit raw colors css toRgba toRgb toLy toLyBold;
+  inherit raw colors css toRgba toRgb toLy toLyBold terminalPalette;
 }

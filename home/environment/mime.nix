@@ -17,7 +17,7 @@
 # ----------------
 # - Map content types to the GNOME/GTK application stack
 # - Route http(s) to Firefox and directories to Nautilus
-# - Bind text/plain to GNOME Text Editor and x-scheme-handler/terminal to Kitty
+# - Bind text/plain to GNOME Text Editor and x-scheme-handler/terminal to GNOME Terminal
 #
 ##############################################################################
 
@@ -69,6 +69,6 @@
     "text/plain" = "org.gnome.TextEditor.desktop";
 
     # ── Terminal ─────────────────────────────────────────────────────────
-    "x-scheme-handler/terminal" = "kitty.desktop";
+    "x-scheme-handler/terminal" = "org.gnome.Terminal.desktop";
   };
 }

@@ -11,8 +11,8 @@
 { pkgs, lib, ... }:
 
 let
-  # Catppuccin-Mocha palette (matches the Mokka terminal scheme from
-  # theme/gruvbox/mokka.nix) so the prompt and the emulator share one look.
+  # Starship's prompt accent palette. Kept as its own Garuda-style accent set
+  # (it predates the Gruvbox terminal theme; no longer tied to the emulator).
   ivaliPurple = "bold #CBA6F7"; # mauve
   ivaliCyan = "bold #89DCEB"; # sky
   ivaliGreen = "bold #A6E3A1"; # green

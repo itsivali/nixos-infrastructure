@@ -5,9 +5,9 @@
 # Purpose
 # -------
 # Per-user GNOME application configuration: Nautilus file manager preferences,
-# the "Open in Terminal" extension (open-any-terminal -> kitty), and GTK
-# file-chooser defaults. The packages themselves are installed system-wide by
-# desktop/gnome/session.nix.
+# the "Open in Terminal" extension (open-any-terminal -> gnome-terminal), and
+# GTK file-chooser defaults. The packages themselves are installed system-wide
+# by desktop/gnome/session.nix.
 #
 # Ownership
 # ---------
@@ -16,7 +16,7 @@
 # Responsibilities
 # ----------------
 # - Set Nautilus default view + columns via dconf
-# - Point Nautilus "Open in Terminal" at Kitty
+# - Point Nautilus "Open in Terminal" at GNOME Terminal
 # - Apply GTK file-chooser preferences
 #
 # Notes
@@ -41,9 +41,10 @@
       default-zoom-level = "small";
     };
 
-    # Nautilus context menu "Open in Terminal" -> kitty (nautilus-open-any-terminal)
+    # Nautilus context menu "Open in Terminal" -> gnome-terminal
+    # (nautilus-open-any-terminal)
     "com/github/stunkymonkey/nautilus-open-any-terminal" = {
-      terminal = "kitty";
+      terminal = "gnome-terminal";
     };
 
     "org/gtk/settings/file-chooser" = {

@@ -11,7 +11,7 @@
 | **ci** | `ci/` | ci-deploy.nix, gitlab-runner.nix |
 | **cloud** | `cloud/` | options.nix |
 | **configuration.nix** | `configuration.nix/` | configuration.nix |
-| **desktop** | `desktop/` | audio.nix, clipboard.nix, colors.nix, environment.nix, fonts.nix, ... |
+| **desktop** | `desktop/` | audio.nix, colors.nix, environment.nix, fonts.nix, gpu.nix, ... |
 | **developer** | `developer/` | aliases.nix, antigravity.nix, databases.nix, devops.nix, freebuff.nix, ... |
 | **flake.nix** | `flake.nix/` | flake.nix |
 | **home** | `home/` | neovim.nix, zed.nix, locale.nix, mime.nix, packages.nix, ... |
@@ -48,33 +48,10 @@
 | delta | `home/git/delta.nix` | delta |
 | git | `home/git/git.nix` | Configure Git defaults for the develo... |
 | packages | `home/git/packages.nix` | packages |
-| default | `home/hyprland/default.nix` | default |
-| default | `home/hyprland/clipboard/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/dropdown/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/emoji/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/gamemode/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/gnome/default.nix` | default |
-| default | `home/hyprland/hypr/default.nix` | default |
-| animations | `home/hyprland/hypr/animations.nix` | animations |
-| keybindings | `home/hyprland/hypr/keybindings.nix` | Auto-generated module description. |
-| monitors | `home/hyprland/hypr/monitors.nix` | Declarative monitor configuration wit... |
-| rules | `home/hyprland/hypr/rules.nix` | Window rules, float rules, opacity, a... |
-| default | `home/hyprland/hypridle/default.nix` | default |
-| default | `home/hyprland/hyprlock/default.nix` | default |
-| default | `home/hyprland/hyprpaper/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/hyprsunset/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/keybindhint/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/networkmanager/default.nix` | default |
-| default | `home/hyprland/rofi/default.nix` | default |
-| default | `home/hyprland/screenshot/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/swaync/default.nix` | default |
-| default | `home/hyprland/swayosd/default.nix` | default |
-| default | `home/hyprland/themes/default.nix` | default |
-| gruvbox | `home/hyprland/themes/gruvbox.nix` | gruvbox |
-| default | `home/hyprland/wallpaper/default.nix` | Auto-generated module description. |
-| default | `home/hyprland/waybar/default.nix` | default |
-| style | `home/hyprland/waybar/style.nix` | style |
-| default | `home/hyprland/wlogout/default.nix` | default |
+| default | `home/gnome/default.nix` | default |
+| extensions | `home/gnome/extensions.nix` | extensions |
+| nautilus | `home/gnome/nautilus.nix` | nautilus |
+| shell | `home/gnome/shell.nix` | shell |
 | default | `home/identity/default.nix` | default |
 | default | `home/services/default.nix` | default |
 | auto-format | `home/services/auto-format.nix` | auto-format |
@@ -109,4 +86,4 @@
 | fastfetch | `home/shell/tools/fastfetch.nix` | fastfetch |
 | packages | `home/shell/tools/packages.nix` | packages |
 | default | `home/terminal/default.nix` | default |
-| kitty | `home/terminal/kitty.nix` | kitty |
+| gnome-terminal | `home/terminal/gnome-terminal.nix` | gnome-terminal |

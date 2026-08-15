@@ -49,8 +49,9 @@ configuration.nix                 ← stable registry of top-level domains
 │   │   ├── gpu.nix               ← auto-discovered ✓
 │   │   └── portals.nix           ← auto-discovered ✓
 │   ├── gnome/default.nix         ← auto-discovered ✓
-│   ├── hyprland/default.nix      ← auto-discovered ✓
-│   └── login/ly.nix              ← auto-discovered ✓
+│   │   ├── extensions.nix        ← auto-discovered ✓
+│   │   └── session.nix           ← auto-discovered ✓
+│   └── login/gdm.nix             ← auto-discovered ✓
 │
 ├── ./observability               → observability/default.nix
 │   ├── alloy.nix                 ← auto-discovered ✓

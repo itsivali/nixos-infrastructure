@@ -28,7 +28,7 @@ all wired together through a zero-touch auto-import module system.
 
 | Area | What's Included |
 |------|----------------|
-| **Desktop** | Hyprland on Wayland, GTK/GNOME applications, Ly login, AMD GPU acceleration, power management, Bluetooth |
+| **Desktop** | GNOME on Wayland, GTK/GNOME applications, GDM login, AMD GPU acceleration, power management, Bluetooth |
 | **Kernel** | `linuxPackages_6_18` (6.18 LTS — pinned for RTL8821CE wifi), custom sysctl hardening, zRAM with zstd compression |
 | **Security** | nftables firewall, AppArmor, fail2ban, Tailscale-only SSH, kernel hardening |
 | **Networking** | NetworkManager, systemd-resolved (DoT), Tailscale with exit node, BBR |
@@ -62,7 +62,7 @@ flake.nix
 ├── security/                     ← SOPS secrets, Tailscale, firewall, hardening
 ├── boot/                         ← kernel, systemd-boot, zram, sysctl tuning
 ├── networking/                   ← NetworkManager, DNS, timezone
-├── desktop/                      ← Hyprland + GNOME apps, GPU acceleration, Ly
+├── desktop/                      ← GNOME desktop + apps, GPU acceleration, GDM
 ├── home/                         ← Home Manager (shell, git, editors, fonts, services)
 │
 ├── observability/                ← Prometheus, Grafana, Loki, Alloy, Falco, OTEL
@@ -179,21 +179,20 @@ deployment-health.timer (every 5 min)
 ├── desktop/
 │   ├── default.nix                  # Desktop domain module
 │   ├── gnome/
-│   │   └── default.nix              # GNOME apps + services (system-wide)
-│   ├── hyprland/
-│   │   ├── default.nix              # Hyprland compositor module
-│   │   ├── compositor.nix           # Hyprland + core desktop daemons
-│   │   └── packages.nix             # Hyprland session packages
+│   │   ├── default.nix              # GNOME apps + services (system-wide)
+│   │   ├── session.nix              # GNOME session, GDM, Qt theming
+│   │   └── extensions.nix           # GNOME Shell extension packages
 │   ├── login/
 │   │   ├── default.nix
-│   │   └── ly.nix                   # Ly TUI display manager
+│   │   └── gdm.nix                  # GDM display manager + login theming
 │   └── common/
 │       ├── audio.nix                # PipeWire audio
-│       ├── clipboard.nix            # Wayland clipboard utilities
+│       ├── colors.nix               # Design-system color wiring
 │       ├── environment.nix          # Wayland session env vars
+│       ├── fonts.nix                # Desktop font stack
 │       ├── gpu.nix                  # AMD GPU acceleration (amdgpu, Vulkan)
 │       ├── packages.nix             # Shared desktop packages
-│       ├── portals.nix              # xdg-desktop-portal (Hyprland + GTK)
+│       ├── portals.nix              # xdg-desktop-portal (GNOME/GTK)
 │       └── theme.nix                # Active design-system theme
 │
 ├── home/
@@ -225,17 +224,15 @@ deployment-health.timer (every 5 min)
 │   │   ├── git.nix                  # Git config, delta, aliases
 │   │   ├── delta.nix                # Delta diff viewer (gruvbox)
 │   │   └── packages.nix             # git-lfs, gitui, lazygit
-│   ├── hyprland/
-│   │   ├── default.nix              # Hyprland window manager config
-│   │   ├── hypr/                    # Keybindings, rules, monitors, animations
-│   │   ├── waybar/                  # Waybar status bar + per-module configs
-│   │   ├── rofi/                    # Rofi application launcher
-│   │   ├── swaync/                  # SwayNC notification center
-│   │   ├── wlogout/                 # Wlogout power menu
-│   │   ├── gnome/                   # GNOME app user settings (dconf)
-│   │   └── ...                      # hyprlock, hypridle, screenshot, clipboard, ...
+│   ├── gnome/
+│   │   ├── default.nix              # GNOME user settings barrel
+│   │   ├── shell.nix                # Dock favorites, keybindings, a11y, wallpaper
+│   │   ├── extensions.nix           # GNOME Shell extension enablement + dconf
+│   │   └── nautilus.nix             # Nautilus list view, "Open in Terminal"
 │   ├── terminal/
-│   │   └── kitty.nix                # Kitty terminal (Gruvbox theme)
+│   │   └── gnome-terminal.nix       # GNOME Terminal (Gruvbox profile)
+│   ├── firefox/
+│   │   └── default.nix              # Firefox (privacy, perf, Sidebery, Gruvbox)
 │   ├── editors/
 │   │   └── zed.nix                  # Zed editor with extensions
 │   ├── environment/
@@ -681,8 +678,8 @@ Runtime secrets at `/run/secrets/` (symlinked by sops-nix).
 | `shell/` | Zsh, Powerlevel10k, FZF, zoxide, direnv, aliases (git, nix, navigation, etc.) |
 | `shell/bitwarden/` | Bitwarden CLI integration with fzf search |
 | `git/` | Delta diff, git-lfs, gitui, lazygit |
-| `hyprland/` | Hyprland config, Waybar, Rofi, SwayNC, Wlogout, GNOME app settings |
-| `terminal/kitty.nix` | Kitty terminal (Gruvbox theme) |
+| `gnome/` | Dock favorites, keybindings, a11y, wallpaper, GNOME Shell extensions, Nautilus |
+| `terminal/gnome-terminal.nix` | GNOME Terminal (Gruvbox profile) |
 | `environment/mime.nix` | XDG MIME default applications |
 | `editors/zed.nix` | Zed editor with Nix/Python/Go/TS extensions |
 | `environment/` | Session variables, XDG paths, packages |

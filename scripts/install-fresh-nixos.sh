@@ -120,7 +120,7 @@ banner() {
   printf '%s\n' "${C_CYAN}"
   cat <<'BANNER'
 ╔══════════════════════════════════════════════════════════╗
-║      NixOS + Hyprland/GNOME · Infrastructure Bootstrap     ║
+║        NixOS + GNOME · Infrastructure Bootstrap         ║
 ╚══════════════════════════════════════════════════════════╝
 BANNER
   printf '%s\n' "${C_RESET}"
@@ -665,9 +665,10 @@ post_install() {
        sudo tailscale up --ssh
 
   4. Verify the desktop stack:
-       kitty --version             # default terminal
-       nautilus --version          # file manager
-       super + space               # Rofi app launcher
+       gnome-terminal --version  # default terminal
+       nautilus --version        # file manager
+       super + enter             # launch the terminal
+       super + b                 # launch the browser
 
   5. Add your SSH public key to GitHub and GitLab:
        GitHub: https://github.com/settings/ssh/new

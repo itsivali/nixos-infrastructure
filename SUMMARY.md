@@ -21,8 +21,8 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        User Interface Layer                         │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
-│  │  Telegram Bot │  │  SSH Access  │  │  Hyprland Desktop        │  │
-│  │  (37 commands)│  │  (Tailscale) │  │  (Wayland, Ly)           │  │
+│  │  Telegram Bot │  │  SSH Access  │  │  GNOME Desktop        │  │
+│  │  (37 commands)│  │  (Tailscale) │  │  (Wayland, GDM)       │  │
 │  └──────────────┘  └──────────────┘  └──────────────────────────┘  │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │
@@ -44,7 +44,7 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 │  └──────────────────────────────────────────────────────────────┘  │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │  Boot    │  │  Desktop │  │  Security│  │  Observability   │  │
-│  │  Kernel  │  │ Hyprland │  │  Harden  │  │  Prometheus      │  │
+│  │  Kernel  │  │ GNOME    │  │  Harden  │  │  Prometheus      │  │
 │  │  zRAM    │  │  AMD GPU │  │  SOPS    │  │  Grafana         │  │
 │  │  systemd │  │  Power   │  │  Tailscale│ │  Loki            │  │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘  │
@@ -205,13 +205,13 @@ Prometheus ─→ node exporter ──────────┘
 
 | Feature | Configuration |
 |---------|---------------|
-| **Environment** | Hyprland (Wayland) |
-| **Display** | Ly (TUI login manager) |
+| **Environment** | GNOME (Wayland) |
+| **Display** | GDM (login manager) |
 | **GPU** | AMD acceleration (amdgpu) |
 | **Power** | Lid suspend, idle suspend, UPower |
 | **Bluetooth** | Enabled with battery reporting |
 | **Fonts** | Nerd Fonts, MS Office fonts, Noto |
-| **Apps** | Nautilus (files), Loupe (images), Papers (PDF), File Roller (archives), GNOME Text Editor/Calculator, Kitty (terminal), Rofi (launcher), Waybar (status), SwayNC (notifications), Wlogout (power) |
+| **Apps** | Nautilus (files), Loupe (images), Papers (PDF), File Roller (archives), GNOME Text Editor/Calculator, GNOME Terminal, Firefox (with Sidebery), dash-to-panel taskbar |
 
 ### 9. Developer Toolchain
 
@@ -331,7 +331,7 @@ nixos-infrastructure/
 ├── automation/                  # GitOps and notifications
 ├── boot/                        # Kernel, bootloader, zRAM
 ├── networking/                  # NetworkManager, DNS, Tailscale
-├── desktop/                     # Hyprland, GNOME apps, AMD GPU, power
+├── desktop/                     # GNOME, GDM, AMD GPU, power
 ├── security/                    # Hardening, firewall, SOPS
 ├── observability/               # Prometheus, Grafana, Loki
 ├── services/                    # Nginx, PostgreSQL, Valkey

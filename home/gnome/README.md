@@ -14,7 +14,7 @@ System-level bits (the GNOME session, GDM, extension *packages*) live in
 
 | File | Scope |
 |------|-------|
-| `nautilus.nix` | Nautilus list view + columns, "Open in Terminal" → kitty, GTK file-chooser |
+| `nautilus.nix` | Nautilus list view + columns, "Open in Terminal" → gnome-terminal, GTK file-chooser |
 | `extensions.nix` | Enabled extensions (the 10 curated UUIDs) + per-extension preferences |
 | `shell.nix` | Dock favorites, window buttons, custom keybindings, touchpad, power/idle, Gruvbox wallpaper, accessibility |
 

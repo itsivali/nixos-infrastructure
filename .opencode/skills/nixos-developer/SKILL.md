@@ -68,7 +68,7 @@ must remain modular, composable, reproducible, and always in a working state.
 - **Duplicate imports:** the barrel/auto-import pattern expects exactly one
   import of each module; `ivali verify` reports duplicates.
 - **Hardcoded colors/values:** use `theme/gruvbox` slices (colors, fonts, gtk,
-  kitty, waybar, hyprland, ly, plymouth, qt) instead of magic literals.
+  qt, terminal, plymouth) instead of magic literals.
 
 ## Delivery Contract
 

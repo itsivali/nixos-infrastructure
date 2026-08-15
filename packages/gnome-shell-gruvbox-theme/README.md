@@ -6,8 +6,8 @@ the **user-themes** extension under the name `gruvbox-shell`.
 ## Purpose
 
 Give GNOME Shell the same Gruvbox Dark surfaces as the rest of the desktop
-(GTK apps, Kitty, Firefox, the GDM login screen) without hand-maintaining a
-thousand lines of shell CSS.
+(GTK apps, GNOME Terminal, Firefox, the GDM login screen) without
+hand-maintaining a thousand lines of shell CSS.
 
 ## How it works
 

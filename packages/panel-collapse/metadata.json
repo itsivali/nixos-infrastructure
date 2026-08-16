@@ -1,0 +1,12 @@
+{
+  "name": "Panel Collapse",
+  "description": "Collapses the right-side panel indicators (quick settings, vitals, clipboard indicator and tray icons) behind a chevron arrow so the date and time stay always visible on a minimal panel.",
+  "uuid": "panel-collapse@ivali",
+  "shell-version": [
+    "50"
+  ],
+  "version": 1,
+  "url": "https://gitlab.com/willisivali/nixos-infrastructure",
+  "gettext-domain": "panel-collapse",
+  "settings-schema": "org.gnome.shell.extensions.panel-collapse"
+}

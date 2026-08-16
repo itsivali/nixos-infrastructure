@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.panel-collapse"
+          path="/org/gnome/shell/extensions/panel-collapse/">
+    <key name="collapsed" type="b">
+      <default>true</default>
+      <summary>Collapse the right-side panel indicators</summary>
+      <description>Whether the quick settings, vitals gauges, clipboard indicator and tray icons are hidden behind the collapse arrow, leaving only the date and time visible.</description>
+    </key>
+  </schema>
+</schemalist>

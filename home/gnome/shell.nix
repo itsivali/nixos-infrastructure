@@ -29,19 +29,19 @@
 {
   dconf.settings = {
     # ── Dock favorites (launcher order) ────────────────────────────────
-    # GNOME Terminal is the sole terminal; firefox the browser; the rest are
-    # the GNOME core apps. dash-to-panel's taskbar reads this same list.
+    # The always-visible dash-to-panel taskbar row: the daily driver apps.
+    # Remaining desktop apps (Edge, LibreOffice, Notion, mpv, mission-center,
+    # gnome-tweaks, ...) stay in the Super-key app grid.
     "org/gnome/shell" = {
       favorite-apps = [
         "org.gnome.Nautilus.desktop"
         "org.gnome.Terminal.desktop"
         "firefox.desktop"
         "org.gnome.TextEditor.desktop"
-        "org.gnome.Calculator.desktop"
-        "org.gnome.Loupe.desktop"
-        "org.gnome.Papers.desktop"
-        "org.gnome.Calendar.desktop"
-        "org.gnome.SystemMonitor.desktop"
+        "dev.zed.Zed.desktop"
+        "LocalSend.desktop"
+        "obsidian.desktop"
+        "Zoom.desktop"
       ];
     };
 
@@ -67,6 +67,12 @@
 
     "org/gnome/desktop/interface" = {
       enable-hot-corners = true;
+      # Date and time always visible in the top panel (24h): date + weekday
+      # shown next to the clock so the collapsed indicator arrow never hides it.
+      clock-show-date = true;
+      clock-show-weekday = true;
+      clock-show-seconds = false;
+      clock-format = "24h";
     };
 
     "org/gnome/desktop/wm/keybindings" = {

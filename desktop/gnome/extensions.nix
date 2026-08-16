@@ -35,7 +35,7 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, self, ... }:
 
 {
   config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
@@ -50,6 +50,10 @@
       impatience
       vitals
       caffeine
+      # Custom: collapses the right-side indicators (quick settings, vitals,
+      # clipboard, tray) behind a chevron; clock stays visible. Source in
+      # packages/panel-collapse.
+      self.packages.${pkgs.stdenv.hostPlatform.system}.panel-collapse
     ];
   };
 }

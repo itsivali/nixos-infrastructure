@@ -26,6 +26,7 @@
 #   impatience                    impatience@gfxmonk.net
 #   vitals                        Vitals@CoreCoding.com
 #   caffeine                      caffeine@patapon.info
+#   panel-collapse                panel-collapse@ivali (custom, packages/panel-collapse)
 #
 # Every value below was cross-checked against the extension GSettings schema
 # at the pinned nixpkgs revision (see the schema dumps in the migration notes).
@@ -48,15 +49,16 @@
         "impatience@gfxmonk.net"
         "Vitals@CoreCoding.com"
         "caffeine@patapon.info"
+        "panel-collapse@ivali"
       ];
     };
 
-    # ── dash-to-panel: full-width top panel with a centered taskbar ────
-    # Replaces both the stock top bar and the dash. Panel color = Gruvbox
-    # bgHard (#1d2021) at 90% opacity so the blur-my-shell frosted effect
-    # keeps the desktop readable underneath. The per-monitor JSON keys
-    # below mirror what dash-to-panel's own preferences write for the
-    # primary monitor ("0"); element names/positions come from
+    # ── dash-to-panel: full-width top panel with a left taskbar ───────
+    # Replaces both the stock top bar and the dash. The pinned app launchers
+    # sit on the left; the right edge keeps the date/time and a chevron that
+    # collapses the remaining indicators (see panel-collapse below). The
+    # per-monitor JSON keys below mirror what dash-to-panel's own preferences
+    # write for the primary monitor ("0"); element names/positions come from
     # panelPositions.js at the pinned rev.
     "org/gnome/shell/extensions/dash-to-panel" = {
       panel-size = 44;
@@ -66,7 +68,7 @@
       panel-anchors = ''{"0":"MIDDLE"}'';
       panel-sizes = ''{"0":44}'';
       panel-element-positions = ''
-        {"0":[{"element":"showAppsButton","visible":true,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"centered"},{"element":"centerBox","visible":false,"position":"centered"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":false,"position":"stackedBR"}]}
+        {"0":[{"element":"showAppsButton","visible":false,"position":"stackedTL"},{"element":"activitiesButton","visible":false,"position":"stackedTL"},{"element":"leftBox","visible":true,"position":"stackedTL"},{"element":"taskbar","visible":true,"position":"stackedTL"},{"element":"centerBox","visible":false,"position":"centered"},{"element":"rightBox","visible":true,"position":"stackedBR"},{"element":"dateMenu","visible":true,"position":"stackedBR"},{"element":"systemMenu","visible":true,"position":"stackedBR"},{"element":"desktopButton","visible":false,"position":"stackedBR"}]}
       '';
 
       # Group windows of the same app into one launcher entry (default).
@@ -157,6 +159,15 @@
       user-enabled = false;
       enable-fullscreen = true;
       restore-state = true;
+    };
+
+    # ── panel-collapse: hide the right-side indicators behind a chevron ─
+    # Custom extension (packages/panel-collapse, installed system-wide).
+    # Collapsed by default: the date/time (dash-to-panel dateMenu) stays
+    # always visible, while quick settings, vitals, clipboard-indicator and
+    # tray icons are one chevron click away.
+    "org/gnome/shell/extensions/panel-collapse" = {
+      collapsed = true;
     };
   };
 }

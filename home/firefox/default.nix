@@ -261,6 +261,14 @@ in
         "sidebar.visibility" = "expand-on-hover";
         # Snappier expand/collapse of the icon rail (default is slow)
         "sidebar.animation.expand-on-hover.duration-ms" = 50;
+        # Open Sidebery tabs in the sidebar by default instead of sitting on
+        # the launcher rail ("extensions" view). sidebar.backupState is the
+        # startup fallback state; it only applies when session restore does
+        # not override it, so sidebery-flyout.js also re-opens Sidebery after
+        # the restored window state settles (see sidebery-flyout.js).
+        # Command id is makeWidgetId({3c078156-979c-498b-8990-85f7987dd929})
+        # + "-sidebar-action" (see ext-sidebarAction.js).
+        "sidebar.backupState" = ''{"command":"_3c078156-979c-498b-8990-85f7987dd929_-sidebar-action","panelOpen":true,"launcherVisible":true,"launcherExpanded":false}'';
       };
 
       # Compact, Gruvbox-dark UI. The native sidebar hosts Sidebery (tab

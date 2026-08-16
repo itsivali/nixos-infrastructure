@@ -1,11 +1,17 @@
 /*
- * Sidebery hover-flyout for the collapsed sidebar launcher rail.
+ * Sidebery flyout for the collapsed sidebar launcher rail.
  *
  * Runs once per browser window (injected by the autoconfig loader in
  * home/firefox/default.nix). While the native sidebar is in
  * "expand-on-hover" mode, hovering the collapsed rail opens the Sidebery
  * panel, and the panel closes again once the pointer leaves the rail or the
  * panel (grace period for the pointer crossing into the panel itself).
+ *
+ * Additionally, once the window's restored UI state settles (session
+ * restore or the sidebar.backupState fallback), the Sidebery panel is
+ * opened so the sidebar shows the tab tree by default instead of the
+ * launcher rail's extension buttons. This makes "show tabs" the persistent
+ * default across restarts and generations.
  *
  * Notes:
  *  - The Sidebery panel is rendered inside a remote <browser>, so the chrome
@@ -138,6 +144,45 @@
     clearTimeout(openTimer);
   }
 
+  /*
+   * Open Sidebery in the sidebar once the window's UI state has settled, so
+   * the panel shows the tab tree instead of the launcher rail. Session
+   * restore / backup state is applied asynchronously (updateUIState); wait
+   * for it (capped) before deciding so we don't race it:
+   *  - If another sidebar (e.g. bookmarks) was restored, leave it alone.
+   *  - If the current command is Sidebery with the panel closed, open it.
+   *  - If no command is set (fresh profile), open Sidebery as the default.
+   */
+  function ensureSideberyOpen() {
+    const ctrl = window.SidebarController;
+    const id = findCommandID();
+    if (!ctrl || !id || ctrl.isOpen) {
+      return;
+    }
+    let state = null;
+    try {
+      state = ctrl.getUIState();
+    } catch (e) {}
+    const cmd = state ? state.command : null;
+    if (cmd && cmd !== id) {
+      return;
+    }
+    try {
+      ctrl.show(id);
+    } catch (e) {}
+  }
+
+  function waitForSettledState() {
+    let polls = 0;
+    const settleTimer = setInterval(() => {
+      const ctrl = window.SidebarController;
+      if (!ctrl || ctrl.uiStateInitialized || ++polls > 16) {
+        clearInterval(settleTimer);
+        ensureSideberyOpen();
+      }
+    }, 500);
+  }
+
   function init() {
     const ctrl = window.SidebarController;
     const rail = getRail();
@@ -158,9 +203,10 @@
 
   let attempts = 0;
   (function tick() {
-    if (init() || ++attempts > 40) {
+    if (!init() && ++attempts <= 40) {
+      setTimeout(tick, 250);
       return;
     }
-    setTimeout(tick, 250);
+    waitForSettledState();
   })();
 })();

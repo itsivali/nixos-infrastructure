@@ -152,11 +152,12 @@ exact id, which is what Firefox matches when loading `<profile>/extensions/`.
 * Gruvbox-dark theme + compact density via `userChrome.css`.
 * `browser.uidensity = 1` (compact), `ui.systemUsesDarkTheme = 1`.
 * **Native sidebar as container + Sidebery tab tree**: `sidebar.revamp` +
-  `sidebar.verticalTabs = false` keeps the native collapsible sidebar; Sidebery
-  renders the tab tree inside it. `sidebar.visibility = "expand-on-hover"`
-  keeps the sidebar collapsed to a slim rail that expands on hover. Tab layout
-  (tree state, pinned set) is Sidebery state and persists in the `ivali`
-  profile directory.
+  `sidebar.verticalTabs = true` + `sidebar.visibility = "always-show"` keeps
+  the native sidebar permanently expanded; `userChrome.css` hides the launcher
+  rail (`#sidebar-main`, `#sidebar-launcher-splitter`) so the Sidebery panel
+  fills the sidebar, and `sidebery-default-open.js` (autoconfig bootstrap)
+  re-opens Sidebery after session restore. Tab layout (tree state, pinned set)
+  is Sidebery state and persists in the `ivali` profile directory.
 
 ---
 
@@ -208,15 +209,17 @@ directory on the `/home` subvolume.
 
 ## 7. Sidebery tab tree usage
 
-The native sidebar (`sidebar.revamp` = true, `sidebar.verticalTabs` = false)
+The native sidebar (`sidebar.revamp` = true, `sidebar.verticalTabs` = true)
 acts as the container; **Sidebery** owns the tabs and renders a tree inside
-it. `sidebar.visibility = "expand-on-hover"` collapses the sidebar to a slim
-rail that expands on hover.
+it. `sidebar.visibility = "always-show"` keeps the sidebar permanently
+expanded, and `userChrome.css` hides the launcher rail so the Sidebery panel
+fills the sidebar edge-to-edge.
 
 **Everyday use**
-- The sidebar sits collapsed on the left by default, showing a slim icon rail.
-  Hover over the rail to expand the full Sidebery tab tree; move the pointer
-  away to collapse it again.
+- The sidebar is always visible on the left, showing the full Sidebery tab
+  tree. There is no collapsed rail and nothing expands on hover.
+- The panel header (sidebar-switcher-target) still drops down to switch to
+  other extensions in the sidebar.
 - Sidebery's own UI (tabs on top, panels on the right of the tree) is themed
   dark to match Gruvbox; its settings are stored in the `ivali` profile
   (`storage`) and persist across rebuilds.
@@ -227,11 +230,16 @@ rail that expands on hover.
 - Window chrome (Gruvbox-dark) is themed via `userChrome.css`.
 
 **Customization (declarative, in `home/firefox/default.nix`)**
-- `sidebar.verticalTabs = false` — Firefox's native tab strip stays off-screen;
-  Sidebery renders the tree in the sidebar.
-- `sidebar.visibility = "expand-on-hover"` — collapsed icon rail; alternatives:
-  `"always-show"` (full sidebar always open) or `"hide-sidebar"`.
-- `sidebar.animation.expand-on-hover.duration-ms = 50` — snappy expand/collapse.
+- `sidebar.verticalTabs = true` — Firefox relocates its native tab strip into
+  the launcher rail; `#sidebar-main { display: none }` hides both.
+- `sidebar.visibility = "always-show"` — full sidebar always open (native
+  `"expand-on-hover"` and `"hide-sidebar"` collapse it).
+- `#sidebar-main, #sidebar-launcher-splitter { display: none !important; }` —
+  removes the launcher rail so only the Sidebery panel shows.
+- `sidebery-default-open.js` — per-window bootstrap (injected via
+  mozilla.cfg) that re-opens Sidebery after session restore races and reapplies
+  a closed panel. It respects a different restored sidebar and stops polling
+  once the panel is open and UI state settled.
 
 ---
 
@@ -244,8 +252,8 @@ rail that expands on hover.
 - [ ] `~/.mozilla/firefox/ivali/extensions/` contains the four
       `nixos@<name>.xpi` files (real files, not symlinks into the store).
 - [ ] Gruvbox-dark theme + compact density applied (about:preferences →
-      "Density: Compact"; native sidebar collapsed to the icon rail, Sidebery
-      tab tree on hover).
+      "Density: Compact"; native sidebar permanently visible, Sidebery tab
+      tree fills it with no launcher rail).
 - [ ] Sign into a test site + Firefox Account, then `nixos-rebuild switch`;
       session + FxA stay signed in.
 - [ ] No `*.default` profile appears under `~/.mozilla/firefox/`.

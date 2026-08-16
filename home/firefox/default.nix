@@ -9,7 +9,7 @@
 #   * Performance: Webrender + VAAPI + HTTP/3
 #   * Gruvbox-dark, compact UI via userChrome.css
 #   * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader, Sidebery)
-#   * Native collapsible sidebar (container) + Sidebery tab tree
+#   * Native sidebar (always-visible) + Sidebery tab tree
 #   * Profile lives as a plain directory (/home/ivali/.mozilla/firefox/ivali)
 #     on the /home btrfs subvolume, so sessions persist across rebuilds.
 #
@@ -25,13 +25,15 @@ let
   theme = import ../../theme/gruvbox;
   t = theme.colors;
 
-  # Hover-flyout for the collapsed launcher rail (see sidebery-flyout.js).
+  # Default-open bootstrap for the Sidebery tab tree (see
+  # sidebery-default-open.js).
   #
-  # Firefox's own "expand-on-hover" grows the rail to reveal the native pinned
-  # tab grid, which userChrome.css hides — leaving an empty strip on hover. To
-  # make hovering the rail open the Sidebery panel instead, a privileged
-  # autoconfig bootstrap (mozilla.cfg) injects sidebery-flyout.js into every
-  # browser window. Bootstrap mechanics rely on nixpkgs' firefox wrapper:
+  # The native sidebar runs in "always-show" mode with the launcher rail
+  # hidden (userChrome.css), so the Sidebery panel should be open showing the
+  # tab tree whenever a browser window loads. A privileged autoconfig
+  # bootstrap (mozilla.cfg) injects sidebery-default-open.js into every
+  # browser window to re-open Sidebery if session restore races and reapplies
+  # a closed panel. Bootstrap mechanics rely on nixpkgs' firefox wrapper:
   #   * extraAutoConfig  -> appends a pref to <app>/defaults/pref/autoconfig.js,
   #                         which is what lets us disable the config sandbox so
   #                         mozilla.cfg runs with full chrome privileges.
@@ -39,35 +41,35 @@ let
   #                         autoconfig.js above tells Firefox to execute.
   # The per-window script is embedded as a JSON string literal so no extra
   # files or store-path coupling are needed.
-  flyoutCfg = pkgs.writeText "mozilla.cfg" ''
-    /* Sidebery hover-flyout loader. Runs once at startup in the privileged
+  sideberyDefaultOpenCfg = pkgs.writeText "mozilla.cfg" ''
+    /* Sidebery default-open loader. Runs once at startup in the privileged
        autoconfig scope (general.config.sandbox_enabled=false). It injects
-       sidebery-flyout.js into every browser window so the script can reach
-       window.SidebarController. */
+       sidebery-default-open.js into every browser window so the script can
+       reach window.SidebarController. */
 
-    var SIDEBERY_FLYOUT_SCRIPT = ${builtins.toJSON (builtins.readFile ./sidebery-flyout.js)};
+    var SIDEBERY_DEFAULT_OPEN_SCRIPT = ${builtins.toJSON (builtins.readFile ./sidebery-default-open.js)};
 
     /* Write the per-window script into the profile dir so the subscript
        loader can eval it (DOM script injection does not work in the XHTML
        browser chrome document). Returns its file:// URI or null. */
-    function writeFlyoutScript() {
+    function writeDefaultOpenScript() {
       try {
         var scriptFile = Services.dirsvc.get("ProfD", Ci.nsIFile);
-        scriptFile.append("sidebery-flyout.js");
+        scriptFile.append("sidebery-default-open.js");
         var fout = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
         fout.init(scriptFile, 0x02 | 0x08 | 0x20, 420, 0);
-        fout.write(SIDEBERY_FLYOUT_SCRIPT, SIDEBERY_FLYOUT_SCRIPT.length);
+        fout.write(SIDEBERY_DEFAULT_OPEN_SCRIPT, SIDEBERY_DEFAULT_OPEN_SCRIPT.length);
         fout.close();
         return Services.io.newFileURI(scriptFile).spec;
       } catch (e) {
-        Services.console.logStringMessage("sidebery-flyout write: " + e);
+        Services.console.logStringMessage("sidebery-default-open write: " + e);
         return null;
       }
     }
-    var SIDEBERY_FLYOUT_URI = writeFlyoutScript();
+    var SIDEBERY_DEFAULT_OPEN_URI = writeDefaultOpenScript();
     var SIDEBERY_SCRIPTLOADER = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
 
-    function injectSideberyFlyout(win) {
+    function injectSideberyDefaultOpen(win) {
       try {
         var doc = win && win.document;
         if (!doc || !doc.documentElement) {
@@ -76,33 +78,33 @@ let
         if (doc.documentElement.getAttribute("windowtype") !== "navigator:browser") {
           return;
         }
-        SIDEBERY_SCRIPTLOADER.loadSubScript(SIDEBERY_FLYOUT_URI, win);
+        SIDEBERY_SCRIPTLOADER.loadSubScript(SIDEBERY_DEFAULT_OPEN_URI, win);
       } catch (e) {
-        Services.console.logStringMessage("sidebery-flyout: " + e);
+        Services.console.logStringMessage("sidebery-default-open: " + e);
       }
     }
 
-    function sideberyFlyoutObserve(subject) {
+    function sideberyDefaultOpenObserve(subject) {
       try {
         var win = subject && (subject.window || subject);
         if (win && win.document) {
           win.addEventListener(
             "load",
             function () {
-              injectSideberyFlyout(win);
+              injectSideberyDefaultOpen(win);
             },
             { once: true }
           );
           if (win.document.readyState === "complete") {
-            injectSideberyFlyout(win);
+            injectSideberyDefaultOpen(win);
           }
         }
       } catch (e) {
-        Services.console.logStringMessage("sidebery-flyout: " + e);
+        Services.console.logStringMessage("sidebery-default-open: " + e);
       }
     }
     Services.obs.addObserver(
-      sideberyFlyoutObserve,
+      sideberyDefaultOpenObserve,
       "chrome-document-global-created",
       false
     );
@@ -110,7 +112,7 @@ let
     /* Windows that already exist when this config runs (normally none). */
     var existingWindows = Services.wm.getEnumerator("navigator:browser");
     while (existingWindows.hasMoreElements()) {
-      injectSideberyFlyout(existingWindows.getNext());
+      injectSideberyDefaultOpen(existingWindows.getNext());
     }
   '';
 
@@ -137,10 +139,11 @@ in
   programs.firefox = {
     enable = true;
     # Override the stock wrapper so autoconfig can run our chrome bootstrap:
-    # mozilla.cfg (flyoutCfg above) gets injected into every browser window,
-    # and the config sandbox is disabled so that loader has full privileges.
+    # mozilla.cfg (sideberyDefaultOpenCfg above) gets injected into every
+    # browser window, and the config sandbox is disabled so that loader has
+    # full privileges.
     package = (pkgs.firefox.override {
-      extraPrefsFiles = [ flyoutCfg ];
+      extraPrefsFiles = [ sideberyDefaultOpenCfg ];
       extraAutoConfig = ''
         pref("general.config.sandbox_enabled", false);
       '';
@@ -252,20 +255,19 @@ in
         # verticalTabs is false, which would hide the whole revamped sidebar
         # (and with it Sidebery). With verticalTabs=true the native tab strip
         # is merely relocated into the sidebar, where userChrome.css hides it
-        # (see below), so only Sidebery's tree is visible. expand-on-hover
-        # collapses the sidebar to a slim launcher rail; userChrome.css keeps
-        # the rail at its collapsed width, and sidebery-flyout.js makes
-        # hovering the rail open the Sidebery panel (see sidebery-flyout.js).
+        # (see below), so only Sidebery's tree is visible. always-show keeps
+        # the sidebar permanently expanded (no collapsed launcher rail to
+        # hover), and userChrome.css hides the rail itself, leaving only the
+        # Sidebery panel. sidebery-default-open.js re-opens Sidebery if
+        # session restore races and reapplies a closed panel.
         "sidebar.revamp" = true;
         "sidebar.verticalTabs" = true;
-        "sidebar.visibility" = "expand-on-hover";
-        # Snappier expand/collapse of the icon rail (default is slow)
-        "sidebar.animation.expand-on-hover.duration-ms" = 50;
+        "sidebar.visibility" = "always-show";
         # Open Sidebery tabs in the sidebar by default instead of sitting on
         # the launcher rail ("extensions" view). sidebar.backupState is the
         # startup fallback state; it only applies when session restore does
-        # not override it, so sidebery-flyout.js also re-opens Sidebery after
-        # the restored window state settles (see sidebery-flyout.js).
+        # not override it, so sidebery-default-open.js also re-opens Sidebery
+        # after the restored window state settles (see sidebery-default-open.js).
         # Command id is makeWidgetId({3c078156-979c-498b-8990-85f7987dd929})
         # + "-sidebar-action" (see ext-sidebarAction.js).
         "sidebar.backupState" = ''{"command":"_3c078156-979c-498b-8990-85f7987dd929_-sidebar-action","panelOpen":true,"launcherVisible":true,"launcherExpanded":false}'';
@@ -311,32 +313,15 @@ in
           color: var(--gruvbox-fg) !important;
         }
 
-        /* Sidebery is the tab tree: hide the native vertical tab list that
-         * Firefox relocates into the sidebar when sidebar.verticalTabs=true.
-         * The launcher rail (icon buttons) stays, so expand-on-hover still
-         * collapses the sidebar to a slim strip. */
-        #vertical-tabs {
+        /* Sidebery is the tab tree: the launcher rail is removed entirely
+         * (always-show) so the Sidebery panel fills the sidebar. Hiding
+         * #sidebar-main also hides the native vertical tab list Firefox
+         * relocates into the rail when sidebar.verticalTabs=true. The panel
+         * header (sidebar-switcher-target) still provides access to other
+         * extensions. */
+        #sidebar-main,
+        #sidebar-launcher-splitter {
           display: none !important;
-        }
-
-        /* Hover-flyout for the launcher rail (sidebery-flyout.js opens the
-         * Sidebery panel instead). Lock the rail to its collapsed width so
-         * the native expand-on-hover growth does not reveal the empty strip
-         * where the (hidden) native tab grid would be. */
-        :root[sidebar-expand-on-hover] #sidebar-main[sidebar-launcher-expanded],
-        :root[sidebar-expand-on-hover] #sidebar-main[sidebar-ongoing-animations]:not([sidebar-launcher-expanded]) {
-          width: var(--sidebar-launcher-collapsed-width, 51px) !important;
-          min-width: var(--sidebar-launcher-collapsed-width, 51px) !important;
-          max-width: var(--sidebar-launcher-collapsed-width, 51px) !important;
-        }
-
-        /* While the flyout panel is open, keep the rail's strip reserved so
-         * the rail stays visible (and clickable) next to the panel. */
-        :root[sidebar-expand-on-hover] #sidebar-box[sidebar-panel-open]:not([sidebar-positionend]) {
-          margin-inline-start: var(--sidebar-launcher-collapsed-width, 51px) !important;
-        }
-        :root[sidebar-expand-on-hover] #sidebar-box[sidebar-panel-open][sidebar-positionend] {
-          margin-inline-end: var(--sidebar-launcher-collapsed-width, 51px) !important;
         }
       '';
     };

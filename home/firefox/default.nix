@@ -25,6 +25,95 @@ let
   theme = import ../../theme/gruvbox;
   t = theme.colors;
 
+  # Hover-flyout for the collapsed launcher rail (see sidebery-flyout.js).
+  #
+  # Firefox's own "expand-on-hover" grows the rail to reveal the native pinned
+  # tab grid, which userChrome.css hides — leaving an empty strip on hover. To
+  # make hovering the rail open the Sidebery panel instead, a privileged
+  # autoconfig bootstrap (mozilla.cfg) injects sidebery-flyout.js into every
+  # browser window. Bootstrap mechanics rely on nixpkgs' firefox wrapper:
+  #   * extraAutoConfig  -> appends a pref to <app>/defaults/pref/autoconfig.js,
+  #                         which is what lets us disable the config sandbox so
+  #                         mozilla.cfg runs with full chrome privileges.
+  #   * extraPrefsFiles  -> appends the loader to <app>/mozilla.cfg, which the
+  #                         autoconfig.js above tells Firefox to execute.
+  # The per-window script is embedded as a JSON string literal so no extra
+  # files or store-path coupling are needed.
+  flyoutCfg = pkgs.writeText "mozilla.cfg" ''
+    /* Sidebery hover-flyout loader. Runs once at startup in the privileged
+       autoconfig scope (general.config.sandbox_enabled=false). It injects
+       sidebery-flyout.js into every browser window so the script can reach
+       window.SidebarController. */
+
+    var SIDEBERY_FLYOUT_SCRIPT = ${builtins.toJSON (builtins.readFile ./sidebery-flyout.js)};
+
+    /* Write the per-window script into the profile dir so the subscript
+       loader can eval it (DOM script injection does not work in the XHTML
+       browser chrome document). Returns its file:// URI or null. */
+    function writeFlyoutScript() {
+      try {
+        var scriptFile = Services.dirsvc.get("ProfD", Ci.nsIFile);
+        scriptFile.append("sidebery-flyout.js");
+        var fout = Cc["@mozilla.org/network/file-output-stream;1"].createInstance(Ci.nsIFileOutputStream);
+        fout.init(scriptFile, 0x02 | 0x08 | 0x20, 420, 0);
+        fout.write(SIDEBERY_FLYOUT_SCRIPT, SIDEBERY_FLYOUT_SCRIPT.length);
+        fout.close();
+        return Services.io.newFileURI(scriptFile).spec;
+      } catch (e) {
+        Services.console.logStringMessage("sidebery-flyout write: " + e);
+        return null;
+      }
+    }
+    var SIDEBERY_FLYOUT_URI = writeFlyoutScript();
+    var SIDEBERY_SCRIPTLOADER = Cc["@mozilla.org/moz/jssubscript-loader;1"].getService(Ci.mozIJSSubScriptLoader);
+
+    function injectSideberyFlyout(win) {
+      try {
+        var doc = win && win.document;
+        if (!doc || !doc.documentElement) {
+          return;
+        }
+        if (doc.documentElement.getAttribute("windowtype") !== "navigator:browser") {
+          return;
+        }
+        SIDEBERY_SCRIPTLOADER.loadSubScript(SIDEBERY_FLYOUT_URI, win);
+      } catch (e) {
+        Services.console.logStringMessage("sidebery-flyout: " + e);
+      }
+    }
+
+    function sideberyFlyoutObserve(subject) {
+      try {
+        var win = subject && (subject.window || subject);
+        if (win && win.document) {
+          win.addEventListener(
+            "load",
+            function () {
+              injectSideberyFlyout(win);
+            },
+            { once: true }
+          );
+          if (win.document.readyState === "complete") {
+            injectSideberyFlyout(win);
+          }
+        }
+      } catch (e) {
+        Services.console.logStringMessage("sidebery-flyout: " + e);
+      }
+    }
+    Services.obs.addObserver(
+      sideberyFlyoutObserve,
+      "chrome-document-global-created",
+      false
+    );
+
+    /* Windows that already exist when this config runs (normally none). */
+    var existingWindows = Services.wm.getEnumerator("navigator:browser");
+    while (existingWindows.hasMoreElements()) {
+      injectSideberyFlyout(existingWindows.getNext());
+    }
+  '';
+
   # Pinned Firefox extensions (hashes resolved from AMO latest xpi).
   #
   # nixpkgs' fetchFirefoxAddon emits a single <id>.xpi at the package root
@@ -47,7 +136,15 @@ in
 {
   programs.firefox = {
     enable = true;
-    package = pkgs.firefox;
+    # Override the stock wrapper so autoconfig can run our chrome bootstrap:
+    # mozilla.cfg (flyoutCfg above) gets injected into every browser window,
+    # and the config sandbox is disabled so that loader has full privileges.
+    package = (pkgs.firefox.override {
+      extraPrefsFiles = [ flyoutCfg ];
+      extraAutoConfig = ''
+        pref("general.config.sandbox_enabled", false);
+      '';
+    });
 
     # This Home Manager / nixpkgs combo defaults configPath to
     # ~/.config/mozilla/firefox, but the nixpkgs Firefox binary actually
@@ -150,13 +247,17 @@ in
 
         # ── Native sidebar as container + Sidebery tab tree ────────
         # sidebar.revamp enables the modern native sidebar; it hosts Sidebery,
-        # which owns the actual tab strip. verticalTabs stays OFF so Firefox
-        # keeps its (hidden) horizontal strip as fallback and Sidebery renders
-        # the tab tree inside the sidebar. expand-on-hover collapses the
-        # sidebar to a slim rail and expands it on hover — a compact look
-        # without losing access to the tab tree.
+        # which owns the actual tab strip. verticalTabs must be ON: Firefox's
+        # SidebarManager forces sidebar.visibility to "hide-sidebar" whenever
+        # verticalTabs is false, which would hide the whole revamped sidebar
+        # (and with it Sidebery). With verticalTabs=true the native tab strip
+        # is merely relocated into the sidebar, where userChrome.css hides it
+        # (see below), so only Sidebery's tree is visible. expand-on-hover
+        # collapses the sidebar to a slim launcher rail; userChrome.css keeps
+        # the rail at its collapsed width, and sidebery-flyout.js makes
+        # hovering the rail open the Sidebery panel (see sidebery-flyout.js).
         "sidebar.revamp" = true;
-        "sidebar.verticalTabs" = false;
+        "sidebar.verticalTabs" = true;
         "sidebar.visibility" = "expand-on-hover";
         # Snappier expand/collapse of the icon rail (default is slow)
         "sidebar.animation.expand-on-hover.duration-ms" = 50;
@@ -200,6 +301,34 @@ in
         findbar {
           background: var(--gruvbox-bg) !important;
           color: var(--gruvbox-fg) !important;
+        }
+
+        /* Sidebery is the tab tree: hide the native vertical tab list that
+         * Firefox relocates into the sidebar when sidebar.verticalTabs=true.
+         * The launcher rail (icon buttons) stays, so expand-on-hover still
+         * collapses the sidebar to a slim strip. */
+        #vertical-tabs {
+          display: none !important;
+        }
+
+        /* Hover-flyout for the launcher rail (sidebery-flyout.js opens the
+         * Sidebery panel instead). Lock the rail to its collapsed width so
+         * the native expand-on-hover growth does not reveal the empty strip
+         * where the (hidden) native tab grid would be. */
+        :root[sidebar-expand-on-hover] #sidebar-main[sidebar-launcher-expanded],
+        :root[sidebar-expand-on-hover] #sidebar-main[sidebar-ongoing-animations]:not([sidebar-launcher-expanded]) {
+          width: var(--sidebar-launcher-collapsed-width, 51px) !important;
+          min-width: var(--sidebar-launcher-collapsed-width, 51px) !important;
+          max-width: var(--sidebar-launcher-collapsed-width, 51px) !important;
+        }
+
+        /* While the flyout panel is open, keep the rail's strip reserved so
+         * the rail stays visible (and clickable) next to the panel. */
+        :root[sidebar-expand-on-hover] #sidebar-box[sidebar-panel-open]:not([sidebar-positionend]) {
+          margin-inline-start: var(--sidebar-launcher-collapsed-width, 51px) !important;
+        }
+        :root[sidebar-expand-on-hover] #sidebar-box[sidebar-panel-open][sidebar-positionend] {
+          margin-inline-end: var(--sidebar-launcher-collapsed-width, 51px) !important;
         }
       '';
     };

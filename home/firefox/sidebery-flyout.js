@@ -32,8 +32,11 @@
   const SIDEBERY_EXT_ID = "{3c078156-979c-498b-8990-85f7987dd929}";
   const OPEN_DELAY_MS = 120;
   const CLOSE_GRACE_MS = 350;
+  const ENSURE_INTERVAL_MS = 1000;
+  const ENSURE_MAX_ATTEMPTS = 60;
 
   let openedByHover = false;
+  let userInteracted = false;
   let lastPointer = null;
   let openTimer = null;
   let closeTimer = null;
@@ -139,48 +142,71 @@
 
   function onRailMouseDown() {
     // The user is taking manual control via the launcher buttons: stop the
-    // hover-close behavior so the panel can be pinned open or toggled.
+    // hover-close behavior so the panel can be pinned open or toggled, and
+    // stop the startup ensure-loop from reopening the panel.
     openedByHover = false;
+    userInteracted = true;
     clearTimeout(openTimer);
   }
 
   /*
    * Open Sidebery in the sidebar once the window's UI state has settled, so
    * the panel shows the tab tree instead of the launcher rail. Session
-   * restore / backup state is applied asynchronously (updateUIState); wait
-   * for it (capped) before deciding so we don't race it:
+   * restore / backup state is applied asynchronously (updateUIState) and the
+   * extension sidebars are registered asynchronously too (startup cache),
+   * so a single one-shot check races both. Instead, poll for a bounded
+   * window:
    *  - If another sidebar (e.g. bookmarks) was restored, leave it alone.
-   *  - If the current command is Sidebery with the panel closed, open it.
-   *  - If no command is set (fresh profile), open Sidebery as the default.
+   *  - If the current command is Sidebery (or none yet) with the panel
+   *    closed, open it. Re-attempt while the panel is still closed, so a
+   *    late restore that reapplies panelOpen:false self-heals.
+   *  - Stop once the panel is open and the UI state has initialized, or the
+   *    user takes manual control of the launcher.
    */
   function ensureSideberyOpen() {
     const ctrl = window.SidebarController;
-    const id = findCommandID();
-    if (!ctrl || !id || ctrl.isOpen) {
+    if (!ctrl) {
       return;
     }
-    let state = null;
-    try {
-      state = ctrl.getUIState();
-    } catch (e) {}
-    const cmd = state ? state.command : null;
-    if (cmd && cmd !== id) {
-      return;
-    }
-    try {
-      ctrl.show(id);
-    } catch (e) {}
-  }
-
-  function waitForSettledState() {
-    let polls = 0;
-    const settleTimer = setInterval(() => {
-      const ctrl = window.SidebarController;
-      if (!ctrl || ctrl.uiStateInitialized || ++polls > 16) {
-        clearInterval(settleTimer);
-        ensureSideberyOpen();
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      if (userInteracted) {
+        clearInterval(timer);
+        return;
       }
-    }, 500);
+      const id = findCommandID();
+      if (!id) {
+        // Sidebery's sidebar-action not registered yet (startup cache still
+        // loading): keep polling until it is or the cap expires.
+        if (attempts >= ENSURE_MAX_ATTEMPTS) {
+          clearInterval(timer);
+        }
+        return;
+      }
+      let state = null;
+      try {
+        state = ctrl.getUIState();
+      } catch (e) {}
+      const cmd = state ? state.command : null;
+      if (cmd && cmd !== id) {
+        // A different sidebar was restored: respect it.
+        clearInterval(timer);
+        return;
+      }
+      if (!ctrl.isOpen) {
+        try {
+          ctrl.show(id);
+        } catch (e) {}
+      } else if (ctrl.uiStateInitialized) {
+        // Panel open and UI state settled: done. Don't fight the user.
+        clearInterval(timer);
+        return;
+      }
+      if (attempts >= ENSURE_MAX_ATTEMPTS) {
+        clearInterval(timer);
+      }
+    }, ENSURE_INTERVAL_MS);
   }
 
   function init() {
@@ -207,6 +233,6 @@
       setTimeout(tick, 250);
       return;
     }
-    waitForSettledState();
+    ensureSideberyOpen();
   })();
 })();

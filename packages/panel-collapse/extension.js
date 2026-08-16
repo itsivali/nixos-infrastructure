@@ -1,11 +1,11 @@
-import Gio from 'gi://Gio'
 import St from 'gi://St'
 
+import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js'
 import * as Main from 'resource:///org/gnome/shell/ui/main.js'
 
-export default class PanelCollapse {
+export default class PanelCollapse extends Extension {
   enable() {
-    this._settings = Gio.Settings.new('org.gnome.shell.extensions.panel-collapse')
+    this._settings = this.getSettings()
 
     this._chevron = new St.Button({
       style_class: 'panel-button',

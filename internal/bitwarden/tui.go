@@ -1188,17 +1188,3 @@ func isPrintableKey(msg tea.KeyMsg) bool {
 func styleRed(s string) string {
 	return lipgloss.NewStyle().Foreground(clrRed).Render(s)
 }
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

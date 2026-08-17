@@ -241,7 +241,7 @@ func TestEdgeCaseInputs(t *testing.T) {
 	}
 }
 
-// Security: Verify quoteSh properly escapes single quotes.
+// Security: Verify QuoteSh properly escapes single quotes.
 func TestQuoteShSecurity(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -257,9 +257,9 @@ func TestQuoteShSecurity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			result := quoteSh(tt.input)
+			result := services.QuoteSh(tt.input)
 			if tt.contains != "" && !strings.Contains(result, tt.contains) {
-				t.Errorf("quoteSh(%q) = %q, should contain %q", tt.input, result, tt.contains)
+				t.Errorf("QuoteSh(%q) = %q, should contain %q", tt.input, result, tt.contains)
 			}
 		})
 	}

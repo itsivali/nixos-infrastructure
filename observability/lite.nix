@@ -55,13 +55,8 @@ let
 
     alerts=""
     if [ "$diskRoot" -ge "$diskTh" ]; then alerts="''${alerts}disk_root=''${diskRoot}% "; fi
-    if [ "$
-    memPct " -ge "$
-    memTh " ]; then alerts=" ''${alerts}mem=''${memPct}% "; fi
-    if awk "
-    BEGIN
-    {
-      exit !($l1 > $loadTh)}"; then alerts="''${alerts}load1=''${l1} "; fi
+    if [ "$memPct" -ge "$memTh" ]; then alerts=" ''${alerts}mem=''${memPct}% "; fi
+    if awk "BEGIN{exit !($l1 > $loadTh)}"; then alerts="''${alerts}load1=''${l1} "; fi
 
     cat > "$OUT" <<JSON
     {"host":"$HOST","gen":"$GEN","ts":$ts,"uptime":$up,"load":[$l1,$l5,$l15],"memPct":$memPct,"diskRootPct":$diskRoot,"bot":"$svc_bot","net":"$svc_net","alerts":"$alerts"}

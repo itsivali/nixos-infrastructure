@@ -185,8 +185,3 @@ type AIStatus struct {
 	OpenHands     string
 	KnowledgeBase string
 }
-
-// RouteTask routes a task description to the appropriate AI system.
-func (s *AIService) RouteTask(description string) string {
-	return "opencode"
-}

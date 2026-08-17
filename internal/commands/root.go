@@ -26,10 +26,6 @@ a beautiful interactive terminal experience.`,
 			a.SetVerbose(verbose)
 			a.SetJSON(jsonOutput)
 
-			_ = a.Events
-			_ = a.State
-			_ = a.Metrics
-
 			if a.Metrics != nil {
 				a.Metrics.CommandStarted(cmd.Name())
 			}

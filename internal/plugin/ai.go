@@ -73,10 +73,6 @@ func (p *AIPlugin) Status() *state.ComponentStatus {
 
 func (p *AIPlugin) Shutdown() error { return nil }
 
-func (p *AIPlugin) RouteTask(description string) string {
-	return "opencode"
-}
-
 func AISystemStatus() string {
 	var parts []string
 	if _, err := exec.LookPath("openhands"); err == nil {

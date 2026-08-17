@@ -137,6 +137,15 @@ Every code change must be verified before committing. No exceptions.
 - Edge cases (empty input, missing files, permission errors) must be tested where applicable.
 - Tests must be deterministic — no flaky tests, no time-dependent assertions.
 
+**Code completeness:**
+
+- No stub implementations (e.g., `return nil`, `return "default"`) in production code.
+- No `TODO`/`FIXME`/`HACK` comments indicating incomplete work.
+- No dead code (unexported functions never called, unused variables, unreachable branches).
+- No duplicate implementations — extract shared logic to utility packages.
+- All options declared in Nix modules must be consumed by at least one configuration path.
+- Every registered check/test must have a non-trivial implementation (not a no-op).
+
 **Commit discipline:**
 
 - One logical change per commit. Never bundle unrelated concerns.

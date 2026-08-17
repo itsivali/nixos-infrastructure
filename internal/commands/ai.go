@@ -118,5 +118,23 @@ func aiRoute(a *app.App) *cobra.Command {
 }
 
 func routeTask(description string) string {
+	desc := strings.ToLower(description)
+
+	if _, err := exec.LookPath("openhands"); err != nil {
+		return "opencode"
+	}
+
+	autonomousKeywords := []string{
+		"autonomous", "long-running", "batch", "automate", "refactor",
+		"migrate", "sweep", "bulk", "parallel", "background", "overnight",
+		"full codebase", "all files", "every file", "entire repository",
+	}
+
+	for _, kw := range autonomousKeywords {
+		if strings.Contains(desc, kw) {
+			return "openhands"
+		}
+	}
+
 	return "opencode"
 }

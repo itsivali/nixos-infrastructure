@@ -358,7 +358,18 @@ func (l *Linter) checkUndeclaredDependencies() []Violation {
 	// Only flag tools that are NOT typically on the system PATH via NixOS
 	// systemPackages. The ivali CLI, gitlab-runner, and sendmail are
 	// installed declaratively and available in script environments.
-	undeclaredTools := map[string]string{}
+	undeclaredTools := map[string]string{
+		"curl":      "HTTP client - declare in environment.systemPackages or use pkgs.curl in scripts",
+		"wget":      "HTTP client - declare in environment.systemPackages or use pkgs.wget in scripts",
+		"jq":        "JSON processor - declare in environment.systemPackages or use pkgs.jq in scripts",
+		"openssl":   "TLS/crypto toolkit - declare in environment.systemPackages or use pkgs.openssl in scripts",
+		"rsync":     "File sync - declare in environment.systemPackages or use pkgs.rsync in scripts",
+		"git":       "Version control - declare in environment.systemPackages or use pkgs.git in scripts",
+		"docker":    "Container runtime - declare in virtualisation.docker.enable or use pkgs.docker in scripts",
+		"podman":    "Container runtime - declare in virtualisation.podman.enable or use pkgs.podman in scripts",
+		"kubectl":   "Kubernetes CLI - declare in environment.systemPackages or use pkgs.kubectl in scripts",
+		"terraform": "Infrastructure as code - declare in environment.systemPackages or use pkgs.terraform in scripts",
+	}
 
 	for _, script := range scripts {
 		content, err := os.ReadFile(script)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/adrg/xdg"
 
+	"github.com/itsivali/nixos-infrastructure/internal/nixutil"
 	"github.com/itsivali/nixos-infrastructure/internal/parser"
 	"github.com/itsivali/nixos-infrastructure/internal/scanner"
 )
@@ -555,13 +556,5 @@ func (r *Repository) saveCache() error {
 }
 
 func resolveImportRel(moduleRel, imp string) string {
-	if strings.HasPrefix(imp, "./") || strings.HasPrefix(imp, "../") {
-		resolved := filepath.Join(filepath.Dir(moduleRel), imp)
-		resolved = filepath.Clean(resolved)
-		if !strings.HasSuffix(resolved, ".nix") {
-			resolved += "/default.nix"
-		}
-		return resolved
-	}
-	return imp
+	return nixutil.ResolveImportRel(moduleRel, imp)
 }

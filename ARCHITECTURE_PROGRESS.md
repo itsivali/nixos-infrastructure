@@ -39,10 +39,11 @@
 - [x] **Firefox** — Launcher rail unhidden + Gruvbox-themed
 - [x] **Phase 28** — Dead code audit complete (38 findings resolved)
 - [x] **Phase 29** — NixOS validation complete (all configurations evaluate, no errors)
+- [x] **Phase 30** — No architectural magic verification complete (57 findings, high-priority resolved)
 
 ## In Progress
 
-- [ ] **Phase 30** — No architectural magic verification
+- [ ] **Phase 31** — Runtime service contracts
 - [ ] **Phase 31** — Runtime service contracts
 - [ ] **Phase 32** — Full documentation
 - [ ] **Phase 33** — Context handoff document
@@ -101,10 +102,10 @@
 ## Remaining Work
 
 **Next session should:**
-1. Begin Phase 30: no architectural magic verification
+1. Begin Phase 31: runtime service contracts (define explicit interfaces for Telegram, GitOps, Backup, Monitoring)
 2. Resolve remaining MEDIUM violations (cross-domain coupling, filesystem access)
 3. Consider making architecture-check blocking once linter passes clean
 
 ## Exact Next Action
 
-Begin Phase 30: no architectural magic verification. Verify no coupling via giant shared modules, global mutable state, hidden environment variables, undocumented shell scripts, arbitrary symlinks, implicit dependencies, or filesystem hacks.
+Begin Phase 31: runtime service contracts. Define explicit interfaces for Telegram, GitOps, Backup, and Monitoring services to eliminate cross-domain coupling.

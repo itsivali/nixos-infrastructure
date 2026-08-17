@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
+
+	"github.com/itsivali/nixos-infrastructure/internal/secrets"
 )
 
 // SimpleLogger is a basic logger implementation.
@@ -55,8 +58,8 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{
 		BotToken:   os.Getenv("BOT_TOKEN"),
 		ChatID:     0,
-		StateDir:   "/var/lib/ivali-bot",
-		RepoDir:    "/home/ivali/nixos-infrastructure",
+		StateDir:   getEnvOrDefault("IVALI_STATE_DIR", "/var/lib/ivali-bot"),
+		RepoDir:    getEnvOrDefault("REPO_DIR", defaultRepoDir()),
 		Hostname:   mustHostname(),
 		Debug:      os.Getenv("DEBUG") == "true",
 		MaxAgeSecs: 300,
@@ -73,17 +76,15 @@ func LoadConfig() (*Config, error) {
 
 	// Try reading from SOPS secrets if not in environment
 	if cfg.BotToken == "" {
-		data, err := os.ReadFile("/run/secrets/telegram_bot_token")
-		if err == nil {
-			cfg.BotToken = strings.TrimSpace(string(data))
+		if token, err := secrets.ReadTelegramBotToken(); err == nil {
+			cfg.BotToken = token
 		}
 	}
 
 	if cfg.ChatID == 0 {
-		data, err := os.ReadFile("/run/secrets/telegram_chat_id")
-		if err == nil {
+		if chatIDStr, err := secrets.ReadTelegramChatID(); err == nil {
 			var chatID int64
-			if _, err := fmt.Sscanf(strings.TrimSpace(string(data)), "%d", &chatID); err == nil {
+			if _, err := fmt.Sscanf(chatIDStr, "%d", &chatID); err == nil {
 				cfg.ChatID = chatID
 			}
 		}
@@ -106,4 +107,24 @@ func mustHostname() string {
 		return "unknown"
 	}
 	return hostname
+}
+
+func getEnvOrDefault(key, defaultValue string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultValue
+}
+
+func defaultRepoDir() string {
+	if exe, err := os.Executable(); err == nil {
+		if dir := filepath.Dir(exe); filepath.Base(dir) == "bin" {
+			return filepath.Dir(dir)
+		}
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "/var/lib/ivali"
+	}
+	return filepath.Join(home, "nixos-infrastructure")
 }

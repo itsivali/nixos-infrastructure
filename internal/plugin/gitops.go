@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/itsivali/nixos-infrastructure/internal/events"
@@ -91,7 +92,18 @@ func (p *GitOpsPlugin) Shutdown() error { return nil }
 func GitOpsPluginFromEnv() *GitOpsPlugin {
 	repo := os.Getenv("REPO_DIR")
 	if repo == "" {
-		repo = "/home/ivali/nixos-infrastructure"
+		if exe, err := os.Executable(); err == nil {
+			if dir := filepath.Dir(exe); filepath.Base(dir) == "bin" {
+				repo = filepath.Dir(dir)
+			}
+		}
+		if repo == "" {
+			if home, err := os.UserHomeDir(); err == nil {
+				repo = filepath.Join(home, "nixos-infrastructure")
+			} else {
+				repo = "/var/lib/ivali"
+			}
+		}
 	}
 	return NewGitOpsPlugin(repo)
 }

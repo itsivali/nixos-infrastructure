@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/itsivali/nixos-infrastructure/internal/observability"
 	"github.com/itsivali/nixos-infrastructure/internal/repository"
 	"github.com/itsivali/nixos-infrastructure/internal/scanner"
 	"github.com/itsivali/nixos-infrastructure/internal/terminal"
@@ -1196,13 +1197,13 @@ func (m *model) renderObservability() string {
 		check string
 		port  string
 	}{
-		{"Prometheus", "curl -s http://127.0.0.1:9090/-/healthy", "9090"},
-		{"Grafana", "curl -s http://127.0.0.1:3000/grafana/api/health", "3000"},
-		{"Loki", "curl -s http://127.0.0.1:3100/ready", "3100"},
+		{"Prometheus", "curl -s " + observability.PrometheusURL() + "/-/healthy", strconv.Itoa(observability.DefaultPrometheusPort)},
+		{"Grafana", "curl -s " + observability.GrafanaURL() + "api/health", strconv.Itoa(observability.DefaultGrafanaPort)},
+		{"Loki", "curl -s " + observability.LokiURL() + "/ready", strconv.Itoa(observability.DefaultLokiPort)},
 		{"Alloy", "systemctl is-active alloy 2>/dev/null", "N/A"},
 		{"Falco", "systemctl is-active falco 2>/dev/null", "N/A"},
-		{"Node Exporter", "curl -s http://127.0.0.1:9100/metrics >/dev/null 2>&1 && echo up || echo down", "9100"},
-		{"NixOS Exporter", "ss -tlnp 2>/dev/null | grep -q :9101 && echo up || echo down", "9101"},
+		{"Node Exporter", "curl -s http://127.0.0.1:" + strconv.Itoa(observability.DefaultNodeExporterPort) + "/metrics >/dev/null 2>&1 && echo up || echo down", strconv.Itoa(observability.DefaultNodeExporterPort)},
+		{"NixOS Exporter", "ss -tlnp 2>/dev/null | grep -q :" + strconv.Itoa(observability.DefaultNixOSExporterPort) + " && echo up || echo down", strconv.Itoa(observability.DefaultNixOSExporterPort)},
 	}
 
 	b.WriteString("  " + m.term.Section("Services") + "\n")

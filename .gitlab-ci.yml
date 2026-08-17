@@ -1,0 +1,71 @@
+stages:
+  - lint
+  - architecture
+  - test
+  - check
+  - build
+
+# ── Lint ──────────────────────────────────────────────────────────────────
+
+nix-format:
+  stage: lint
+  image: nixos/nix:latest
+  script:
+    - nix fmt -- --check .
+  allow_failure: true
+
+shellcheck:
+  stage: lint
+  image: koalaman/shellcheck-alpine:stable
+  script:
+    - shellcheck scripts/*.sh
+  allow_failure: true
+
+# ── Architecture ──────────────────────────────────────────────────────────
+
+architecture-check:
+  stage: architecture
+  image: golang:1.22
+  script:
+    - go build ./cmd/check-architecture/
+    - go run ./cmd/check-architecture/
+  artifacts:
+    when: always
+    paths:
+      - architecture/
+
+# ── Test ──────────────────────────────────────────────────────────────────
+
+go-build:
+  stage: test
+  image: golang:1.22
+  script:
+    - go build ./...
+
+go-test:
+  stage: test
+  image: golang:1.22
+  script:
+    - go test ./...
+
+# ── Check ─────────────────────────────────────────────────────────────────
+
+nix-flake-check:
+  stage: check
+  image: nixos/nix:latest
+  script:
+    - nix flake check --no-build
+
+# ── Build ─────────────────────────────────────────────────────────────────
+
+nixos-eval-prague:
+  stage: build
+  image: nixos/nix:latest
+  script:
+    - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
+
+nixos-eval-cz:
+  stage: build
+  image: nixos/nix:latest
+  script:
+    - nix eval .#nixosConfigurations.cz.config.system.build.toplevel.name

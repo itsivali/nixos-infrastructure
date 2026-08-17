@@ -1,0 +1,202 @@
+# Architecture Manifest: Dependency Graph
+# Documents actual cross-domain dependencies found in the repository.
+# Each entry represents a real dependency from source analysis.
+
+nix_imports:
+  - source: boot/plymouth.nix
+    target: shared.theme
+    type: import
+    severity: allowed
+
+  - source: desktop/common/colors.nix
+    target: shared.theme
+    type: import
+    severity: allowed
+
+  - source: home/theming.nix
+    target: shared.theme
+    type: import
+    severity: allowed
+
+  - source: home/firefox/default.nix
+    target: shared.theme
+    type: import
+    severity: allowed
+
+  - source: home/terminal/gnome-terminal.nix
+    target: shared.theme
+    type: import
+    severity: allowed
+
+  - source: services/bot/ivali-bot-go.nix
+    target: shared.lib
+    type: import
+    severity: allowed
+
+  - source: desktop/login/gdm.nix
+    target: shared.wallpapers
+    type: import
+    severity: allowed
+
+  - source: home/gnome/shell.nix
+    target: shared.wallpapers
+    type: import
+    severity: allowed
+
+script_references:
+  - source: automation/gitops-reconciler.nix
+    target: shared.scripts/gitops-reconcile.sh
+    type: path_ref
+    severity: allowed
+
+  - source: ci/gitlab-runner.nix
+    target: shared.scripts/gitlab-runner-health.sh
+    type: path_ref
+    severity: allowed
+
+  - source: ci/gitlab-runner.nix
+    target: shared.scripts/gitlab-runner-reconcile.sh
+    type: path_ref
+    severity: allowed
+
+  - source: ci/ci-deploy.nix
+    target: shared.scripts/ci-deploy.sh
+    type: path_ref
+    severity: allowed
+
+  - source: services/bot/ci-notify.nix
+    target: shared.scripts/notify.sh
+    type: path_ref
+    severity: allowed
+
+  - source: observability/lite.nix
+    target: shared.scripts/notify.sh
+    type: builtins.readFile
+    severity: questionable
+
+  - source: recovery/deployment-health.nix
+    target: shared.scripts/deployment-health.sh
+    type: path_ref
+    severity: allowed
+
+  - source: recovery/rollback.nix
+    target: shared.scripts/deployment-health.sh
+    type: path_ref
+    severity: allowed
+
+  - source: recovery/rollback.nix
+    target: shared.scripts/rollback.sh
+    type: path_ref
+    severity: allowed
+
+sops_references:
+  - source: lib/host-templates/laptop.nix
+    target: shared.secrets/tailscale.yaml
+    type: sops_ref
+    severity: allowed
+
+  - source: lib/host-templates/laptop.nix
+    target: shared.secrets/gitlab-runner.yaml
+    type: sops_ref
+    severity: allowed
+
+  - source: lib/host-templates/laptop.nix
+    target: shared.secrets/telegram.yaml
+    type: sops_ref
+    severity: allowed
+
+  - source: lib/host-templates/laptop.nix
+    target: shared.secrets/gitlab.yaml
+    type: sops_ref
+    severity: allowed
+
+  - source: lib/host-templates/laptop.nix
+    target: shared.secrets/bitwarden.yaml
+    type: sops_ref
+    severity: allowed
+
+  - source: ci/gitlab-runner.nix
+    target: shared.secrets/gitlab.yaml
+    type: sops_ref
+    severity: allowed
+
+  - source: recovery/backup.nix
+    target: shared.secrets/restic.yaml
+    type: sops_ref
+    severity: allowed
+
+  - source: recovery/backup.nix
+    target: shared.secrets/rclone.yaml
+    type: sops_ref
+    severity: allowed
+
+option_namespace_reads:
+  - source: services/bot/ivali-bot-go.nix
+    target: runtime.automation
+    option: fleet.bot
+    severity: allowed
+
+  - source: services/bot/ci-notify.nix
+    target: runtime.ci
+    option: fleet.gitlabRunner.enable
+    severity: questionable
+
+  - source: ci/gitlab-runner.nix
+    target: runtime.automation
+    option: fleet.gitops
+    severity: questionable
+
+  - source: recovery/deployment-health.nix
+    target: runtime.automation
+    option: fleet.gitops
+    severity: questionable
+
+filesystem_access:
+  - source: ci/gitlab-runner.nix
+    target: /var/lib/gitops
+    access: read_write
+    owner: runtime.automation (implicit)
+    severity: violation
+
+  - source: recovery/deployment-health.nix
+    target: /var/lib/gitops
+    access: read
+    owner: runtime.automation (implicit)
+    severity: questionable
+
+  - source: recovery/deployment-health.sh
+    target: /var/lib/gitops
+    access: read
+    owner: runtime.automation (implicit)
+    severity: questionable
+
+  - source: ci/gitlab-runner-health.sh
+    target: /var/lib/gitops
+    access: read
+    owner: runtime.automation (implicit)
+    severity: questionable
+
+  - source: security/apparmor.nix
+    target: /var/lib/ivali-bot
+    access: grant_rw
+    owner: runtime.services
+    severity: questionable
+
+  - source: security/apparmor.nix
+    target: /var/log/ivali-bot
+    access: grant_rw
+    owner: runtime.services
+    severity: questionable
+
+  - source: internal/commands/status.go
+    target: /var/lib/observability/state.json
+    access: read
+    owner: runtime.observability
+    severity: questionable
+
+cross_service_state:
+  - source: ci/gitlab-runner-reconcile.service
+    target: /var/lib/gitops
+    access: creates_and_manages
+    owner: runtime.automation (implicit)
+    severity: violation

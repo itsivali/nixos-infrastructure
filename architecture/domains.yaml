@@ -1,0 +1,423 @@
+# Architecture Manifest: Domain Definitions
+# Each domain declares its paths, public interface, and dependency rules.
+# Level indicates the dependency hierarchy (0=core, 4=host composition).
+
+domains:
+  # ── LEVEL 0: Core ──────────────────────────────────────────────
+  core.system:
+    level: 0
+    paths:
+      - system/
+    public:
+      - system/default.nix
+    internal:
+      - system/nix.nix
+      - system/users.nix
+      - system/state.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  core.i18n:
+    level: 0
+    paths:
+      - i18n/
+    public:
+      - i18n/default.nix
+    internal:
+      - i18n/locale.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  core.storage:
+    level: 0
+    paths:
+      - storage/
+    public:
+      - storage/default.nix
+    internal:
+      - storage/btrfs.nix
+      - storage/tmpfs.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  core.boot:
+    level: 0
+    paths:
+      - boot/
+    public:
+      - boot/default.nix
+    internal:
+      - boot/kernel.nix
+      - boot/loader.nix
+      - boot/sysctl.nix
+      - boot/tpm.nix
+      - boot/zram.nix
+      - boot/plymouth.nix
+      - boot/resilience.nix
+    allowed_dependencies:
+      - shared.theme
+    forbidden_dependencies: ["*"]
+
+  # ── LEVEL 1: Platform ──────────────────────────────────────────
+  platform.networking:
+    level: 1
+    paths:
+      - networking/
+    public:
+      - networking/default.nix
+    internal:
+      - networking/networkmanager.nix
+      - networking/time.nix
+    allowed_dependencies:
+      - core.*
+    forbidden_dependencies: ["*"]
+
+  platform.security:
+    level: 1
+    paths:
+      - security/
+    public:
+      - security/default.nix
+    internal:
+      - security/apparmor.nix
+      - security/audit.nix
+      - security/fail2ban.nix
+      - security/firewall.nix
+      - security/hardening.nix
+      - security/packages.nix
+      - security/scanning.nix
+      - security/sops.nix
+      - security/sudo.nix
+      - security/tailscale.nix
+      - security/usb.nix
+    allowed_dependencies:
+      - core.*
+      - platform.networking
+    forbidden_dependencies: ["*"]
+
+  platform.ssh:
+    level: 1
+    paths:
+      - ssh/
+    public:
+      - ssh/default.nix
+    internal:
+      - ssh/client.nix
+      - ssh/daemon.nix
+      - ssh/options.nix
+    allowed_dependencies:
+      - core.*
+      - platform.networking
+      - platform.security
+    forbidden_dependencies: ["*"]
+
+  shared.theme:
+    level: 1
+    paths:
+      - theme/
+    public:
+      - theme/gruvbox/default.nix
+    internal:
+      - theme/gruvbox/colors.nix
+      - theme/gruvbox/cursor.nix
+      - theme/gruvbox/fonts.nix
+      - theme/gruvbox/gtk.nix
+      - theme/gruvbox/icons.nix
+      - theme/gruvbox/plymouth.nix
+      - theme/gruvbox/qt.nix
+      - theme/gruvbox/terminal.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  shared.packages:
+    level: 1
+    paths:
+      - packages/
+    public:
+      - packages/system/default.nix
+      - packages/cli/default.nix
+      - packages/desktop/default.nix
+      - packages/user/default.nix
+    internal:
+      - packages/gnome-shell-gruvbox-theme/default.nix
+      - packages/panel-collapse/default.nix
+    allowed_dependencies:
+      - shared.theme
+    forbidden_dependencies: ["*"]
+
+  shared.scripts:
+    level: 1
+    paths:
+      - scripts/
+    public:
+      - scripts/
+    internal: []
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  shared.secrets:
+    level: 1
+    paths:
+      - secrets/
+    public:
+      - secrets/
+    internal: []
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  shared.wallpapers:
+    level: 1
+    paths:
+      - wallpapers/
+    public:
+      - wallpapers/
+    internal: []
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  # ── LEVEL 2: Functional Domains ────────────────────────────────
+  functional.desktop:
+    level: 2
+    paths:
+      - desktop/
+    public:
+      - desktop/default.nix
+    internal:
+      - desktop/common/
+      - desktop/gnome/
+      - desktop/login/
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.theme
+      - shared.wallpapers
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.home:
+    level: 2
+    paths:
+      - home/
+    public:
+      - home/default.nix
+      - home/ivali.nix
+    internal:
+      - home/firefox/
+      - home/gnome/
+      - home/shell/
+      - home/git/
+      - home/editors/
+      - home/environment/
+      - home/terminal/
+      - home/identity/
+      - home/fonts.nix
+      - home/theming.nix
+      - home/services/
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.theme
+      - shared.wallpapers
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.developer:
+    level: 2
+    paths:
+      - developer/
+    public:
+      - developer/default.nix
+    internal:
+      - developer/go.nix
+      - developer/node.nix
+      - developer/python.nix
+      - developer/kotlin.nix
+      - developer/nix.nix
+      - developer/devops.nix
+      - developer/databases.nix
+      - developer/aliases.nix
+      - developer/shell.nix
+      - developer/openhands.nix
+      - developer/antigravity.nix
+      - developer/freebuff.nix
+      - developer/languages.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.cloud:
+    level: 2
+    paths:
+      - cloud/
+    public:
+      - cloud/default.nix
+    internal:
+      - cloud/options.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.virtualization:
+    level: 2
+    paths:
+      - virtualization/
+    public:
+      - virtualization/default.nix
+    internal:
+      - virtualization/docker.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+    forbidden_dependencies:
+      - runtime.*
+
+  # ── LEVEL 3: Runtime Services ──────────────────────────────────
+  runtime.services:
+    level: 3
+    paths:
+      - services/
+    public:
+      - services/default.nix
+    internal:
+      - services/bot/
+      - services/msmtp/
+      - services/nginx/
+      - services/postgres/
+      - services/redis/
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.*
+      - functional.home
+    forbidden_dependencies: []
+
+  runtime.observability:
+    level: 3
+    paths:
+      - observability/
+    public:
+      - observability/default.nix
+    internal:
+      - observability/alertmanager.nix
+      - observability/alerting.nix
+      - observability/alloy.nix
+      - observability/dashboards.nix
+      - observability/falco.nix
+      - observability/grafana.nix
+      - observability/health-endpoint.nix
+      - observability/journald.nix
+      - observability/lite.nix
+      - observability/loki.nix
+      - observability/nixos-exporter.nix
+      - observability/otel.nix
+      - observability/packages.nix
+      - observability/prometheus.nix
+      - observability/retention.nix
+      - observability/slo.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+    forbidden_dependencies: []
+
+  runtime.automation:
+    level: 3
+    paths:
+      - automation/
+    public:
+      - automation/default.nix
+    internal:
+      - automation/gitops-reconciler.nix
+      - automation/channel-bump.nix
+      - automation/bot-watchdog.nix
+      - automation/common.nix
+      - automation/options.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+    forbidden_dependencies: []
+
+  runtime.ci:
+    level: 3
+    paths:
+      - ci/
+    public:
+      - ci/default.nix
+    internal:
+      - ci/gitlab-runner.nix
+      - ci/ci-deploy.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+      - shared.secrets
+      - runtime.automation
+    forbidden_dependencies: []
+
+  runtime.recovery:
+    level: 3
+    paths:
+      - recovery/
+    public:
+      - recovery/default.nix
+    internal:
+      - recovery/deployment-health.nix
+      - recovery/rollback.nix
+      - recovery/backup.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+      - shared.secrets
+      - runtime.automation
+    forbidden_dependencies: []
+
+  runtime.cache:
+    level: 3
+    paths:
+      - cache/
+    public:
+      - cache/default.nix
+    internal: []
+    allowed_dependencies:
+      - core.*
+    forbidden_dependencies: ["*"]
+
+  runtime.caching:
+    level: 3
+    paths:
+      - caching/
+    public:
+      - caching/default.nix
+    internal: []
+    allowed_dependencies:
+      - core.*
+    forbidden_dependencies: ["*"]
+
+  # ── LEVEL 4: Host Composition ──────────────────────────────────
+  hosts:
+    level: 4
+    paths:
+      - hosts/
+      - lib/host-templates/
+    public:
+      - hosts/hosts.nix
+      - hosts/prague.nix
+      - hosts/tuscany.nix
+      - hosts/testvm.nix
+      - lib/host-templates/laptop.nix
+    internal:
+      - hosts/default.nix
+      - hosts/hardware-configuration.nix
+      - hosts/prague/hardware-configuration.nix
+    allowed_dependencies: ["*"]
+    forbidden_dependencies: []

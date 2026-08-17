@@ -1,0 +1,113 @@
+# Architecture Manifest: Documented Exceptions
+# Every cross-domain dependency that is allowed despite violating strict rules.
+# Each exception must have a reason, owner, and review date.
+
+exceptions:
+  - id: EXC-001
+    source: runtime.services/bot
+    target: shared.scripts/notify.sh
+    reason: >
+      The bot CI notification service needs to send Telegram alerts.
+      notify.sh is the shared notification interface. The bot calls it
+      as a subprocess rather than importing Telegram API code directly.
+    owner: services/bot
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-002
+    source: runtime.observability/lite.nix
+    target: shared.scripts/notify.sh
+    reason: >
+      Observability lite timer needs to send alerts when system health
+      degrades. Uses builtins.readFile to embed notify.sh at build time
+      rather than runtime reference, creating a compile-time dependency.
+    owner: observability
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-003
+    source: runtime.ci
+    target: /var/lib/gitops
+    reason: >
+      GitLab runner reconciler needs a local git worktree to run CI jobs.
+      This is the canonical gitops worktree path. The ci domain creates
+      and manages this directory, but recovery reads it for health checks.
+      Should be formalized with StateDirectory ownership.
+    owner: ci
+    review: 2026-09-01
+    status: needs_resolution
+
+  - id: EXC-004
+    source: runtime.recovery
+    target: /var/lib/gitops
+    reason: >
+      Deployment health checker reads the gitops worktree to verify the
+      current system generation matches the repo HEAD. Read-only access.
+    owner: recovery
+    review: 2026-09-01
+    status: needs_resolution
+
+  - id: EXC-005
+    source: security/apparmor.nix
+    target: /var/lib/ivali-bot
+    reason: >
+      AppArmor profile for the bot service needs to grant filesystem
+      access to the bot's state directory. The paths are hardcoded
+      rather than parameterized from bot service options.
+    owner: security
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-006
+    source: internal/commands/status.go
+    target: /var/lib/observability/state.json
+    reason: >
+      The ivali CLI reads observability state to display system status
+      in the TUI dashboard. Read-only access with no declared contract.
+    owner: observability
+    review: 2026-11-01
+    status: needs_contract
+
+  - id: EXC-007
+    source: runtime.services/bot/ci-notify.nix
+    target: runtime.ci/fleet.gitlabRunner.enable
+    reason: >
+      CI notification service is gated on the GitLab runner being enabled.
+      If the runner is disabled, notifications are silently skipped.
+      This is intentional but should be documented.
+    owner: services/bot
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-008
+    source: runtime.recovery/deployment-health.nix
+    target: runtime.automation/fleet.gitops
+    reason: >
+      Deployment health checker reads gitops repo/branch configuration
+      to verify the correct repository is deployed. Cross-domain option
+      read through the NixOS module system.
+    owner: recovery
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-009
+    source: runtime.ci/gitlab-runner.nix
+    target: runtime.automation/fleet.gitops
+    reason: >
+      GitLab runner needs the gitops repo URL and branch to configure
+      CI jobs. Cross-domain option read through the NixOS module system.
+    owner: ci
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-010
+    source: core.boot
+    target: shared.theme
+    reason: >
+      Boot/plymouth.nix imports the Gruvbox Plymouth theme from shared.theme
+      to configure the boot splash screen. This is a legitimate build-time
+      dependency where the boot domain consumes the theme domain's public
+      theme definition.
+    owner: boot
+    review: 2026-11-01
+    status: active

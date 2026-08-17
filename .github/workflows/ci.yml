@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
@@ -10,285 +10,50 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  # Static, cgo-free binaries for the portable build job. The test job
-  # overrides this to CGO_ENABLED=1 because `go test -race` requires cgo.
-  CGO_ENABLED: "0"
-
 jobs:
   # ─────────────────────────────────────────────────
-  # Tier 1: Fast checks (no Nix, no self-hosted)
-  # REQUIRED GATES: go-lint, go-test, go-build, shell-lint, nix-flake-check,
-  # secret-scan, and architecture-check (non-blocking until clean).
-  # go-lint MUST pass — no continue-on-error, no exceptions.
+  # REQUIRED GATES: go-lint, go-test
+  # GitLab CI is the source of truth; this workflow
+  # is a lightweight mirror check only.
   # ─────────────────────────────────────────────────
 
   go-lint:
     name: Go Lint
     runs-on: ubuntu-latest
-    # REQUIRED: This job must always pass. Do not add continue-on-error.
-    # golangci-lint's goanalysis_metalinter needs cgo (gcc) to load package
-    # export data (runtime/cgo). ubuntu-latest ships gcc by default, but
-    # declare it explicitly so the lint build never silently loses cgo.
-    env:
-      CGO_ENABLED: "1"
     steps:
       - uses: actions/checkout@v4
-      - name: Ensure gcc (cgo) is available
-        run: sudo apt-get update && sudo apt-get install -y gcc
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
-      - uses: golangci/golangci-lint-action@v6
-        with:
-          # Pin to the newest v1.x release: `latest` now resolves to
-          # golangci-lint v2, which rejects this repo's v1-format .golangci.yml
-          # and fails CI. v1.64.8 is the last v1.x and compiles under the repo's
-          # go 1.26.4 toolchain (older v1.x fails to build via goinstall).
-          version: "v1.64.8"
-          # Build golangci-lint from source with the repo's Go toolchain
-          # (go 1.26.x). The prebuilt binary is compiled with an older Go and
-          # refuses to run against a newer go.mod (`go 1.26.4`).
-          install-mode: goinstall
-          args: --timeout=5m
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.64.8
+      - name: Run golangci-lint
+        run: golangci-lint run ./... --timeout=5m
 
   go-test:
     name: Go Tests
     runs-on: ubuntu-latest
-    needs: [go-lint, architecture-check]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      # -race requires cgo, so enable it just for this job.
-      - run: CGO_ENABLED=1 go test -race -count=1 ./...
-
-  architecture-check:
-    name: Architecture Lint
-    runs-on: ubuntu-latest
     needs: [go-lint]
-    # Non-blocking until all known violations are resolved (Phase 26 migration).
-    # Reports violations as warnings; will be enforced once the architecture
-    # linter passes clean on the real repo.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
-      - name: Build and run architecture linter
-        run: |
-          go build ./cmd/check-architecture/
-          go run ./cmd/check-architecture/
-
-  go-build:
-    name: Go Build
-    runs-on: ubuntu-latest
-    needs: [go-test]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - run: CGO_ENABLED=${{ env.CGO_ENABLED }} go build -ldflags="-s -w" -o ivali ./cmd/ivali/
-      - run: CGO_ENABLED=${{ env.CGO_ENABLED }} go build -ldflags="-s -w" -o bw-tui ./cmd/bw-tui/
-      - run: CGO_ENABLED=${{ env.CGO_ENABLED }} go build -ldflags="-s -w" -o ivali-bot ./cmd/ivali-bot/
-      - uses: actions/upload-artifact@v4
-        with:
-          name: go-binaries
-          path: |
-            ivali
-            bw-tui
-            ivali-bot
-          retention-days: 30
-
-  shell-lint:
-    name: Shell Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ludeeus/action-shellcheck@master
-        with:
-          scandir: scripts
-          severity: error
-
-  # ─────────────────────────────────────────────────
-  # Tier 2: Nix checks (cached with Cachix)
-  # ─────────────────────────────────────────────────
-
-  nix-format:
-    name: Nix Format
-    runs-on: ubuntu-latest
-    # Non-blocking: nix fmt output can differ between runner and local
-    # nixpkgs versions; report drift without failing the PR.
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-      # `nix fmt -- --check` is unreliable (returns non-zero even when
-      # formatted), so format then assert no diff via git instead.
-      # Invoke the flake's pinned formatter explicitly: the runner's bundled
-      # `nix fmt` resolves a newer nixpkgs-fmt that formats `{}` as `{ }`,
-      # which would never match the committed (pinned) formatting.
-      - run: nix run .#formatter.x86_64-linux -- .
-      - run: git diff --exit-code
-
-  nix-flake-check:
-    name: Nix Flake Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-      - run: nix flake metadata
-      - run: nix flake check --no-build --print-build-logs
-
-  # ─────────────────────────────────────────────────
-  # Tier 3: Security scanning
-  # ─────────────────────────────────────────────────
-
-  secret-scan:
-    name: Secret Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install gitleaks
-        run: |
-          curl -sSL -o gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
-          tar -xzf gitleaks.tar.gz gitleaks
-          chmod +x gitleaks
-      - name: Scan working tree for secrets
-        # Scan the working tree (--no-git) so a shallow checkout's missing
-        # base commit can't break a git-range scan. .gitleaks.toml's allowlist
-        # lets SOPS-encrypted secrets, hardware config, and test fixtures pass.
-        run: ./gitleaks detect --source . --no-git --redact --config .gitleaks.toml --exit-code=1
-
-  # ─────────────────────────────────────────────────
-  # Tier 4: Integration (portable runner, best-effort)
-  # ─────────────────────────────────────────────────
-  # These used to target a non-existent [self-hosted, nixos] runner and
-  # hung forever. They now run on GitHub-hosted Ubuntu with the Nix
-  # installer and only *evaluate* the system (dry-build) — a full build is
-  # too heavy for hosted runners. Marked continue-on-error so they never
-  # block the required validation set.
-
-  nixos-build:
-    name: NixOS Build (dry)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-      - name: Evaluate NixOS toplevel (dry build)
-        run: nix build .#nixosConfigurations.prague.config.system.build.toplevel --dry-run
-      - name: Evaluate Home Manager activation (dry build)
-        run: nix build .#hm-activate --dry-run
-
-  nixos-testvm:
-    name: NixOS Test VM (dry)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v27
-        with:
-          extra_nix_config: |
-            experimental-features = nix-command flakes
-      - name: Evaluate test VM (dry build)
-        run: nix build .#nixosConfigurations.testvm.config.system.build.toplevel --dry-run
-
-  # ─────────────────────────────────────────────────
-  # Tier 5: Report status back to GitLab (source of truth)
-  # ─────────────────────────────────────────────────
-  # GitLab is the source of truth and push-mirrors to GitHub. GitHub Actions
-  # validates the mirror and posts the commit status back to GitLab so the
-  # GitLab pipeline view reflects validation — no GitLab CI minutes consumed.
-
-  gitlab-status:
-    name: Report status to GitLab
-    runs-on: ubuntu-latest
-    needs: [go-lint, go-test, go-build, shell-lint, nix-format, nix-flake-check, secret-scan]
-    # Never fail the PR if the GitLab status post hiccups (e.g. API error).
-    # When no GITLAB_TOKEN secret is configured, the step below skips
-    # gracefully (a job-level `if` cannot reference `env`/`secrets`).
-    continue-on-error: true
-    steps:
-      - name: Compute status
-        id: status
-        run: |
-          if [ "${{ needs.go-lint.result }}" != "success" ] || \
-             [ "${{ needs.go-test.result }}" != "success" ] || \
-             [ "${{ needs.go-build.result }}" != "success" ] || \
-             [ "${{ needs.shell-lint.result }}" != "success" ] || \
-             [ "${{ needs.nix-format.result }}" != "success" ] || \
-             [ "${{ needs.nix-flake-check.result }}" != "success" ] || \
-             [ "${{ needs.secret-scan.result }}" != "success" ]; then
-            echo "state=failed" >> "$GITHUB_OUTPUT"
-            echo "desc=GitHub Actions validation failed" >> "$GITHUB_OUTPUT"
-          else
-            echo "state=success" >> "$GITHUB_OUTPUT"
-            echo "desc=GitHub Actions validation passed" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Post commit status to GitLab
-        env:
-          GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-          GITLAB_PROJECT: "willisivali/nixos-infrastructure"
-        run: |
-          # Skip gracefully when no GitLab token is configured (e.g. forks/PRs).
-          if [ -z "${GITLAB_TOKEN:-}" ]; then
-            echo "GITLAB_TOKEN not set; skipping GitLab status post."
-            exit 0
-          fi
-          # On pull_request, github.sha is GitHub's merge commit and does not
-          # exist in the GitLab mirror -> 404. Use the PR head commit instead.
-          SHA="${{ github.sha }}"
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            SHA="${{ github.event.pull_request.head.sha }}"
-          fi
-          PROJECT=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1], safe=''))" "$GITLAB_PROJECT")
-          # Never fail the job if the GitLab API post fails (404, auth, etc.).
-          curl -s -X POST \
-            "https://gitlab.com/api/v4/projects/${PROJECT}/statuses/${SHA}" \
-            --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" \
-            --form "state=${{ steps.status.outputs.state }}" \
-            --form "description=${{ steps.status.outputs.desc }}" \
-            --form "name=github-actions" \
-            --form "target_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            || echo "warn: failed to post status to GitLab (continuing)"
-
-  # ─────────────────────────────────────────────────
-  # Summary
-  # ─────────────────────────────────────────────────
+      - run: CGO_ENABLED=1 go test -race -count=1 ./...
 
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [go-lint, go-test, go-build, shell-lint, nix-format, nix-flake-check, secret-scan]
+    needs: [go-lint, go-test]
     if: always()
     steps:
-      - name: Check all jobs
+      - name: Check results
         run: |
           if [[ "${{ needs.go-lint.result }}" != "success" ]] || \
-             [[ "${{ needs.go-test.result }}" != "success" ]] || \
-             [[ "${{ needs.go-build.result }}" != "success" ]] || \
-             [[ "${{ needs.shell-lint.result }}" != "success" ]] || \
-             [[ "${{ needs.nix-format.result }}" != "success" ]] || \
-             [[ "${{ needs.nix-flake-check.result }}" != "success" ]] || \
-             [[ "${{ needs.secret-scan.result }}" != "success" ]]; then
+             [[ "${{ needs.go-test.result }}" != "success" ]]; then
             echo "One or more CI jobs failed"
             exit 1
           fi

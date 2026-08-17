@@ -1,6 +1,5 @@
 run:
   timeout: 60s
-  modules-download-mode: readonly
 
 issues:
   exclude-dirs:

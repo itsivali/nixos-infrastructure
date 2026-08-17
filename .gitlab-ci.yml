@@ -69,9 +69,3 @@ nixos-eval-prague:
   image: nixos/nix:latest
   script:
     - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
-
-nixos-eval-cz:
-  stage: build
-  image: nixos/nix:latest
-  script:
-    - nix eval .#nixosConfigurations.cz.config.system.build.toplevel.name

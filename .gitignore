@@ -17,3 +17,4 @@ result
 secrets/grafana-secret-key
 *.test
 /vendor/
+/check-architecture

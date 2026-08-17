@@ -1,5 +1,13 @@
 
 *.bak.*
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+*secret*
+!secrets/
 bw
 /bw-tui
 /.cache/

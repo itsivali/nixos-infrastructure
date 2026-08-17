@@ -33,6 +33,11 @@ in
     owner = "grafana";
   };
 
+  assertions = [{
+    assertion = cfg.enable -> config.ivali.secrets.enable;
+    message = "Grafana requires ivali.secrets.enable = true (SOPS must manage credentials)";
+  }];
+
   services.grafana = lib.mkIf cfg.enable {
     enable = true;
     settings = {
@@ -46,11 +51,8 @@ in
       analytics.reporting_enabled = false;
       security = {
         admin_user = "admin";
-        admin_password = "ivali";
-        disable_gravatar = true;
-        secret_key = "SW2YcwTIb9zpOOhoPsMm";
-      } // lib.optionalAttrs config.ivali.secrets.enable {
         admin_password = "$__file{${config.sops.secrets.grafana_admin_password.path}}";
+        disable_gravatar = true;
         secret_key = "$__file{${config.sops.secrets.grafana_secret_key.path}}";
       };
       users.allow_sign_up = false;

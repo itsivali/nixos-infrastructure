@@ -184,10 +184,10 @@ in
   ############################################################################
   ivali.observability = lib.mkMerge [
     {
-      enable = true;
-      exporters.enable = true;
-      alertmanager.enable = true;
-      otel.enable = true;
+      enable = lib.mkDefault true;
+      exporters.enable = lib.mkDefault true;
+      alertmanager.enable = lib.mkDefault true;
+      otel.enable = lib.mkDefault true;
     }
     (lib.mkIf hasSecrets {
       alertmanager = {

@@ -27,5 +27,7 @@
     tailscaleExitNode = false;
     ssh = true;
   };
-  config = { };
+  config = {
+    ivali.observability.enable = false;
+  };
 }

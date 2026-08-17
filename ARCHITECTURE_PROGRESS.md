@@ -40,10 +40,11 @@
 - [x] **Phase 28** — Dead code audit complete (38 findings resolved)
 - [x] **Phase 29** — NixOS validation complete (all configurations evaluate, no errors)
 - [x] **Phase 30** — No architectural magic verification complete (57 findings, high-priority resolved)
+- [x] **Phase 31** — Runtime service contracts defined (5 interfaces: Notification, Backup, Metrics, Health, Platform)
 
 ## In Progress
 
-- [ ] **Phase 31** — Runtime service contracts
+- [ ] **Phase 32** — Full documentation
 - [ ] **Phase 31** — Runtime service contracts
 - [ ] **Phase 32** — Full documentation
 - [ ] **Phase 33** — Context handoff document
@@ -102,10 +103,11 @@
 ## Remaining Work
 
 **Next session should:**
-1. Begin Phase 31: runtime service contracts (define explicit interfaces for Telegram, GitOps, Backup, Monitoring)
-2. Resolve remaining MEDIUM violations (cross-domain coupling, filesystem access)
-3. Consider making architecture-check blocking once linter passes clean
+1. Begin Phase 32: full documentation (ARCHITECTURE.md, service contract docs)
+2. Implement concrete service types for the interfaces
+3. Refactor existing code to use the service contracts
+4. Consider making architecture-check blocking once linter passes clean
 
 ## Exact Next Action
 
-Begin Phase 31: runtime service contracts. Define explicit interfaces for Telegram, GitOps, Backup, and Monitoring services to eliminate cross-domain coupling.
+Begin Phase 32: full documentation. Create ARCHITECTURE.md with service contracts, dependency graphs, and migration guide.

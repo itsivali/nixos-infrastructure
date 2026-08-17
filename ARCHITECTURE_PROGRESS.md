@@ -38,12 +38,9 @@
 - [x] **AGENTS.md** — Architectural role added as PART 5
 - [x] **Firefox** — Launcher rail unhidden + Gruvbox-themed
 - [x] **Phase 28** — Dead code audit complete (38 findings resolved)
+- [x] **Phase 29** — NixOS validation complete (all configurations evaluate, no errors)
 
 ## In Progress
-
-- [ ] **Phase 29** — NixOS validation (nix flake check)
-
-## Not Started
 
 - [ ] **Phase 30** — No architectural magic verification
 - [ ] **Phase 31** — Runtime service contracts
@@ -104,10 +101,10 @@
 ## Remaining Work
 
 **Next session should:**
-1. Begin Phase 29: NixOS validation (verify all modules evaluate correctly)
+1. Begin Phase 30: no architectural magic verification
 2. Resolve remaining MEDIUM violations (cross-domain coupling, filesystem access)
 3. Consider making architecture-check blocking once linter passes clean
 
 ## Exact Next Action
 
-Begin Phase 29: NixOS validation. Run `nix flake check --no-build` and verify all modules evaluate correctly. Then resolve remaining MEDIUM violations.
+Begin Phase 30: no architectural magic verification. Verify no coupling via giant shared modules, global mutable state, hidden environment variables, undocumented shell scripts, arbitrary symlinks, implicit dependencies, or filesystem hacks.

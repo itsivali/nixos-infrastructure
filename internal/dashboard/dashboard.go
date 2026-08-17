@@ -154,7 +154,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.lastAction = "rebuild"
 				m.actionResult = "Rebuilding system..."
 				m.actionMode = false
-				return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "boot", "--flake", m.repo.Root+"#prague"), func(err error) tea.Msg {
+				host, _ := os.Hostname()
+				return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "boot", "--flake", m.repo.Root+"#"+host), func(err error) tea.Msg {
 					if err != nil {
 						return actionResultMsg{action: "rebuild", err: err}
 					}
@@ -206,7 +207,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.lastAction = "rollback"
 					m.actionResult = fmt.Sprintf("Rolling back to generation %d...", gen.Number)
 					profilePath := fmt.Sprintf("/nix/var/nix/profiles/system-%d-link", gen.Number)
-					return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "boot", "--flake", m.repo.Root+"#prague", "--profile", profilePath), func(err error) tea.Msg {
+					host, _ := os.Hostname()
+					return m, tea.ExecProcess(exec.Command("sudo", "nixos-rebuild", "boot", "--flake", m.repo.Root+"#"+host, "--profile", profilePath), func(err error) tea.Msg {
 						if err != nil {
 							return actionResultMsg{action: fmt.Sprintf("rollback to gen %d", gen.Number), err: err}
 						}

@@ -49,13 +49,13 @@ func (s *NixService) SystemPackageCount() string {
 
 // Rebuild runs nixos-rebuild switch for the given host. The host defaults to
 // the HOST_NAME env var (set on the systemd service) so the same binary works
-// on every managed host; "prague" remains the fallback.
+// on every managed host; os.Hostname() is the fallback.
 func (s *NixService) Rebuild(host string) string {
 	if host == "" {
 		if env := os.Getenv("HOST_NAME"); env != "" {
 			host = env
 		} else {
-			host = "prague"
+			host, _ = os.Hostname()
 		}
 	}
 	return s.runner.Run(

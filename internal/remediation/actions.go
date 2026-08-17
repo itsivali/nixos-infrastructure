@@ -2,6 +2,7 @@ package remediation
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -84,7 +85,8 @@ func (a *NixOSRebuildAction) CanFix(comp *state.ComponentStatus) bool {
 func (a *NixOSRebuildAction) Fix(comp *state.ComponentStatus) (*Result, error) {
 	start := time.Now()
 
-	cmd := exec.Command("sudo", "nixos-rebuild", "switch", "--flake", "/home/ivali/nixos-infrastructure#prague")
+	host, _ := os.Hostname()
+	cmd := exec.Command("sudo", "nixos-rebuild", "switch", "--flake", "/home/ivali/nixos-infrastructure#"+host)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return &Result{

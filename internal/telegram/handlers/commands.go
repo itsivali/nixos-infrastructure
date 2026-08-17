@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
@@ -230,8 +231,9 @@ func (c *DeployCommand) Execute(ctx context.Context, msg *telegram.Message) erro
 		output := c.svc.Nix.Rebuild("")
 		return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
 	}
+	host, _ := os.Hostname()
 	return sendConfirm(c.api, msg.ChatID, msg.UserID, "deploy",
-		"*Confirm deploy?*\n\nThis runs `nixos-rebuild switch --flake .#prague`.", msg.MessageID)
+		fmt.Sprintf("*Confirm deploy?*\n\nThis runs `nixos-rebuild switch --flake .#%s`.", host), msg.MessageID)
 }
 
 // RollbackCommand rolls back to the previous generation.

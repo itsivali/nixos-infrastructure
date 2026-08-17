@@ -11,7 +11,7 @@ NOTIFY="${REPO_DIR}/scripts/notify.sh"
 HEALTH="${REPO_DIR}/scripts/deployment-health.sh"
 IVALI="$(command -v ivali 2>/dev/null || echo "${REPO_DIR}/result/bin/ivali")"
 
-HOST="prague"
+HOST="${HOST_NAME:-$(hostname)}"
 
 log() { echo "[$(date -Iseconds)] $*"; }
 

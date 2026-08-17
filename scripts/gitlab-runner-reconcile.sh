@@ -24,7 +24,7 @@ GITLAB_TOKEN="${GITLAB_TOKEN:-$(cat "${GITLAB_TOKEN_FILE:-/run/secrets/gitlab_to
 # verify must target that config explicitly instead of root's default $HOME.
 export CONFIG_FILE="$CONFIG"
 
-HOST="prague"
+HOST="${HOST_NAME:-$(hostname)}"
 LOCK_FILE="/run/gitlab-runner-reconcile.lock"
 
 log() { echo "[$(date -Iseconds)] $*"; }

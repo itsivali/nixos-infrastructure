@@ -23,7 +23,7 @@ HEALTH="${SCRIPTS_DIR}/deployment-health.sh"
 ROLLBACK="${SCRIPTS_DIR}/rollback.sh"
 IVALI="$(command -v ivali 2>/dev/null || echo "${REPO_DIR}/result/bin/ivali")"
 
-HOST="prague"
+HOST="${HOST_NAME:-$(hostname)}"
 BRANCH="main"
 LOCK_FILE="/run/deploy.lock"
 LOCK_MAX_AGE=1800  # 30 min — if lock is older, assume crash and remove

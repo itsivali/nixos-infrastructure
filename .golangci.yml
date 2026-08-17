@@ -1,36 +1,56 @@
+version: "2"
+
 run:
   timeout: 60s
 
 issues:
-  exclude-dirs:
-    - vendor
   max-issues-per-linter: 0
   max-same-issues: 0
 
 linters:
+  default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
-    - goimports
     - misspell
     - revive
     - whitespace
-  disable:
-    - paralleltest
-
-linters-settings:
-  gofmt:
-    simplify: true
-  goimports:
-    local-prefixes: github.com/itsivali/nixos-infrastructure
-  revive:
+  exclusions:
+    paths:
+      - vendor
     rules:
-      - name: exported
-        severity: warning
-      - name: package-comments
-        disabled: true
+      - linters:
+          - staticcheck
+        text: "QF1012"
+      - linters:
+          - staticcheck
+        text: "QF1003"
+      - linters:
+          - staticcheck
+        text: "QF1002"
+      - linters:
+          - errcheck
+        text: "Error return value of `.*Close`"
+      - linters:
+          - errcheck
+        text: "Error return value of `os.Remove`"
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: exported
+          disabled: true
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes: github.com/itsivali/nixos-infrastructure

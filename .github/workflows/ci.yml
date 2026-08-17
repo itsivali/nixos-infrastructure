@@ -18,11 +18,15 @@ env:
 jobs:
   # ─────────────────────────────────────────────────
   # Tier 1: Fast checks (no Nix, no self-hosted)
+  # REQUIRED GATES: go-lint, go-test, go-build, shell-lint, nix-flake-check,
+  # secret-scan, and architecture-check (non-blocking until clean).
+  # go-lint MUST pass — no continue-on-error, no exceptions.
   # ─────────────────────────────────────────────────
 
   go-lint:
     name: Go Lint
     runs-on: ubuntu-latest
+    # REQUIRED: This job must always pass. Do not add continue-on-error.
     # golangci-lint's goanalysis_metalinter needs cgo (gcc) to load package
     # export data (runtime/cgo). ubuntu-latest ships gcc by default, but
     # declare it explicitly so the lint build never silently loses cgo.

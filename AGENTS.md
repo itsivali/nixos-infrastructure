@@ -88,6 +88,7 @@ Before considering any work complete, the agent MUST run and clear all applicabl
 - `nix flake check --no-build`: Validates the flake schema and syntax.
 - `ivali verify` & `ivali doctor`: Custom repository health checks.
 - `go test ./...`: Required whenever Go utilities or extensions are modified.
+- `golangci-lint run`: Required whenever Go code is modified. The `go-lint` CI job **must** pass — no `continue-on-error`, no exceptions. Fix all lint issues before pushing.
 
 ### 3.3 CI/CD Integration
 
@@ -101,10 +102,11 @@ If the task modifies CI workflows (e.g., GitHub Actions or GitLab CI):
 The work is not released until every verification gate passes **and** the change is pushed to GitLab:
 
 1. Clear all gates in §3.2. Never skip a failing gate.
-2. Commit with a concise, conventional message and no local-only changes, secrets, or debug artifacts.
-3. **One logical change per commit.** Do not bundle unrelated concerns (e.g., bug fixes, feature wiring, and secret rotations) into a single commit; split mixed changes into separate, independently buildable commits before pushing. `git reset --mixed HEAD~1` followed by `git add -p` is the standard way to recover an already-mixed commit.
-4. Push to **GitLab** (`git push origin main`) — GitLab is the single source of truth. Never push to GitHub directly; the GitHub mirror updates automatically from GitLab.
-5. Confirm the GitHub Actions run on the mirror goes green before declaring the work complete.
+2. **`golangci-lint run` must pass.** The `go-lint` CI job is a required gate — no `continue-on-error`, no exceptions. Fix all lint issues before pushing. If you cannot fix a lint issue, explain why in a comment and open an issue.
+3. Commit with a concise, conventional message and no local-only changes, secrets, or debug artifacts.
+4. **One logical change per commit.** Do not bundle unrelated concerns (e.g., bug fixes, feature wiring, and secret rotations) into a single commit; split mixed changes into separate, independently buildable commits before pushing. `git reset --mixed HEAD~1` followed by `git add -p` is the standard way to recover an already-mixed commit.
+5. Push to **GitLab** (`git push origin main`) — GitLab is the single source of truth. Never push to GitHub directly; the GitHub mirror updates automatically from GitLab.
+6. Confirm the GitHub Actions run on the mirror goes green before declaring the work complete.
 
 If a gate fails after a commit, fix the issue and create a new commit; do not amend the failed one.
 

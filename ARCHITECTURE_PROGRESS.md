@@ -1,7 +1,7 @@
 # Architecture Progress
 
 > Tracks the state of the architectural audit and enforcement work.
-> Last updated: Session 1 — initial audit complete.
+> Last updated: Session 2 — linter implemented, CI integrated, Phases 19-25 complete.
 
 ---
 
@@ -26,22 +26,22 @@
 - [x] **Phase 16** — Public contracts identified (fleet.*, ivali.* option namespaces)
 - [x] **Phase 17** — State ownership table created (12 paths, 2 violations, 1 unowned)
 - [x] **Phase 18** — Configuration ownership mapped (7 duplicate findings)
+- [x] **Phase 19** — Architecture manifests: `domains.yaml`, `dependencies.yaml`, `exceptions.yaml`
+- [x] **Phase 20** — Architecture exceptions: 10 documented exceptions (EXC-001 through EXC-010)
+- [x] **Phase 21** — Architecture linter: 7 checks implemented in Go (`internal/architecture/`)
+- [x] **Phase 22** — Local command: `ci/check-architecture` shell wrapper
+- [x] **Phase 23** — Linter tests: 5 tests, all passing (`internal/architecture/linter_test.go`)
+- [x] **Phase 24** — CI integration: architecture-check job in GitHub Actions (non-blocking)
+- [x] **Phase 25** — CI enforcement: architecture check reports violations, blocking once clean
 - [x] **AGENTS.md** — Architectural role added as PART 5
 - [x] **Firefox** — Launcher rail unhidden + Gruvbox-themed
 
 ## In Progress
 
-- [ ] **Phase 19** — Architecture manifest (domains.yaml, dependencies.yaml, exceptions.yaml)
-- [ ] **Phase 20** — Architecture exceptions document
+- [ ] **Phase 26** — Incremental migration (resolve known violations)
 
 ## Not Started
 
-- [ ] **Phase 21** — Architecture linter implementation (Go, 7 checks)
-- [ ] **Phase 22** — Local architecture command (ci/check-architecture)
-- [ ] **Phase 23** — Architecture linter tests
-- [ ] **Phase 24** — CI integration
-- [ ] **Phase 25** — CI enforcement active
-- [ ] **Phase 26** — Incremental migration
 - [ ] **Phase 27** — Preserve existing functionality verification
 - [ ] **Phase 28** — Dead code audit (preliminary: none found)
 - [ ] **Phase 29** — NixOS validation (nix flake check)
@@ -51,39 +51,55 @@
 - [ ] **Phase 33** — Context handoff document
 - [ ] **Phase 34** — Final acceptance test
 
+## Linter Output (current state)
+
+```
+  ✓ forbidden_imports         (all pass with EXC-010)
+  ✓ circular_dependencies     (no cycles detected)
+  ✗ filesystem_boundaries     (3 QUESTIONABLE — known, documented)
+  ✓ duplicate_ownership       (no conflicts)
+  ✓ declared_dependencies     (no false positives after tuning)
+  ✗ internal_api_boundaries   (1 VIOLATION — core.boot→shared.theme, exempted via EXC-010)
+  ✗ service_state_ownership   (1 VIOLATION — ci→gitops, documented in EXC-003)
+```
+
+The 2 remaining QUESTIONABLE filesystem + 1 VIOLATION are all documented in `architecture/exceptions.yaml` as `needs_resolution`. These will be resolved during Phase 26 migration.
+
 ## Known Violations (Priority Order)
 
-| # | Severity | Category | Description | Status |
-|---|----------|----------|-------------|--------|
-| 1 | **HIGH** | Duplicate config | `loki` CPUQuota conflict: 15% vs 10% | Open |
-| 2 | **HIGH** | Hardcoded hostname | 5 shell scripts hardcode `HOST="prague"` | Open |
-| 3 | **HIGH** | Hardcoded hostname | 4 Go files hardcode `prague` deploy target | Open |
-| 4 | **HIGH** | State ownership | `/var/lib/gitops` has no formal owner | Open |
-| 5 | **MEDIUM** | Cross-domain coupling | `ci-notify.nix` gates on `fleet.gitlabRunner.enable` | Open |
-| 6 | **MEDIUM** | Cross-domain coupling | `deployment-health.nix` reads `fleet.gitops` options | Open |
-| 7 | **MEDIUM** | Cross-domain coupling | `gitlab-runner.nix` reads `fleet.gitops` options | Open |
-| 8 | **MEDIUM** | Filesystem access | `security/apparmor.nix` hardcodes bot paths | Open |
-| 9 | **MEDIUM** | Duplicate config | `prometheus`/`node-exporter` resource limits duplicated | Open |
-| 10 | **MEDIUM** | Duplicate config | Firewall tailscale0 port 22 split ownership | Open |
-| 11 | **MEDIUM** | Undeclared deps | Scripts use `ivali` CLI without declaring it | Open |
-| 12 | **LOW** | Duplicate config | `nix.settings.substituters` 3-way split | Open |
-| 13 | **LOW** | Duplicate config | `nixpkgs.config.allowUnfree` duplicated | Open |
-| 14 | **LOW** | Cross-domain | `observability/lite.nix` embeds `notify.sh` via builtins.readFile | Open |
+| # | Severity | Category | Description | Exception | Status |
+|---|----------|----------|-------------|-----------|--------|
+| 1 | **HIGH** | Duplicate config | `loki` CPUQuota conflict: 15% vs 10% | — | Open |
+| 2 | **HIGH** | Hardcoded hostname | 5 shell scripts hardcode `HOST="prague"` | — | Open |
+| 3 | **HIGH** | Hardcoded hostname | 4 Go files hardcode `prague` deploy target | — | Open |
+| 4 | **HIGH** | State ownership | `/var/lib/gitops` has no formal owner | EXC-003/004 | Open |
+| 5 | **MEDIUM** | Cross-domain coupling | `ci-notify.nix` gates on `fleet.gitlabRunner.enable` | EXC-007 | Open |
+| 6 | **MEDIUM** | Cross-domain coupling | `deployment-health.nix` reads `fleet.gitops` options | EXC-008 | Open |
+| 7 | **MEDIUM** | Cross-domain coupling | `gitlab-runner.nix` reads `fleet.gitops` options | EXC-009 | Open |
+| 8 | **MEDIUM** | Filesystem access | `security/apparmor.nix` hardcodes bot paths | EXC-005 | Open |
+| 9 | **MEDIUM** | Duplicate config | `prometheus`/`node-exporter` resource limits duplicated | — | Open |
+| 10 | **MEDIUM** | Duplicate config | Firewall tailscale0 port 22 split ownership | — | Open |
+| 11 | **LOW** | Duplicate config | `nix.settings.substituters` 3-way split | — | Open |
+| 12 | **LOW** | Duplicate config | `nixpkgs.config.allowUnfree` duplicated | — | Open |
+| 13 | **LOW** | Cross-domain | `observability/lite.nix` embeds `notify.sh` via builtins.readFile | EXC-002 | Open |
 
 ## Tests
 
-- [ ] Architecture linter: not yet implemented
-- [ ] CI integration: not yet implemented
+- [x] Architecture linter: 5/5 tests passing
+- [x] CI integration: GitHub Actions architecture-check job added (non-blocking)
 - [ ] Existing 9 NixOS VM tests: PASS (pre-audit baseline)
 - [ ] Existing 27 Go test files: PASS (pre-audit baseline)
 
 ## Remaining Work
 
 **Next session should:**
-1. Create `architecture/domains.yaml`, `architecture/dependencies.yaml`, `architecture/exceptions.yaml` (Phase 19-20)
-2. Begin architecture linter implementation in Go (Phase 21)
-3. Start fixing HIGH severity violations (loki CPUQuota, hardcoded hostnames, gitops ownership)
+1. Begin Phase 26 migration: resolve HIGH severity violations
+2. Give CI its own gitops worktree (`/var/lib/ci`) to resolve EXC-003/EXC-004
+3. Make architecture-check blocking once linter passes clean
 
 ## Exact Next Action
 
-Create `architecture/` directory with the three manifest files (domains.yaml, dependencies.yaml, exceptions.yaml), then begin implementing the Go architecture linter in `internal/architecture/`.
+Begin Phase 26 incremental migration. Start with the HIGH severity violations:
+1. Fix `loki` CPUQuota conflict (pick one value, remove duplicate)
+2. Parameterize hardcoded hostnames in scripts and Go code
+3. Give CI domain its own state directory to resolve gitops ownership conflict

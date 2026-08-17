@@ -52,6 +52,7 @@ jobs:
   go-test:
     name: Go Tests
     runs-on: ubuntu-latest
+    needs: [go-lint, architecture-check]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -60,6 +61,25 @@ jobs:
           cache: true
       # -race requires cgo, so enable it just for this job.
       - run: CGO_ENABLED=1 go test -race -count=1 ./...
+
+  architecture-check:
+    name: Architecture Lint
+    runs-on: ubuntu-latest
+    needs: [go-lint]
+    # Non-blocking until all known violations are resolved (Phase 26 migration).
+    # Reports violations as warnings; will be enforced once the architecture
+    # linter passes clean on the real repo.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build and run architecture linter
+        run: |
+          go build ./cmd/check-architecture/
+          go run ./cmd/check-architecture/
 
   go-build:
     name: Go Build

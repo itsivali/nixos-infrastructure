@@ -32,8 +32,10 @@
   };
   config = {
     ivali.desktop.gnome.enable = true;
-    # Disable observability stack until laptop upgrade
-    ivali.observability.enable = lib.mkForce false;
+    # Observability stack: Prometheus + Grafana + Loki (local only).
+    # Credentials are managed via SOPS (secrets/grafana.yaml).
+    # See docs/observability.md for login instructions.
+    ivali.observability.enable = true;
     # GitLab is the source of truth; the reconciler applies validated
     # commits (GitHub Actions validates the mirror and reports back).
     fleet.gitopsReconciler.enable = true;

@@ -313,13 +313,32 @@ in
           color: var(--gruvbox-fg) !important;
         }
 
-        /* Sidebery is the tab tree: the launcher rail is removed entirely
-         * (always-show) so the Sidebery panel fills the sidebar. Hiding
-         * #sidebar-main also hides the native vertical tab list Firefox
-         * relocates into the rail when sidebar.verticalTabs=true. The panel
-         * header (sidebar-switcher-target) still provides access to other
-         * extensions. */
-        #sidebar-main,
+        /* Launcher rail — visible on the left with extension icons for
+         * switching between Sidebery, bookmarks, history, etc. The rail
+         * shows a vertical strip of sidebar extension icons; clicking one
+         * switches the active panel. always-show keeps the sidebar expanded
+         * so the rail is always visible. */
+        #sidebar-main {
+          background: var(--gruvbox-bg) !important;
+          border-right: 1px solid var(--gruvbox-orange) !important;
+          min-width: 40px !important;
+          max-width: 40px !important;
+        }
+
+        #sidebar-main > .sidebar-launcher-icon {
+          opacity: 0.7;
+          transition: opacity 0.15s ease;
+        }
+        #sidebar-main > .sidebar-launcher-icon:hover {
+          opacity: 1;
+          background: var(--gruvbox-bgSoft) !important;
+        }
+        #sidebar-main > .sidebar-launcher-icon[active="true"] {
+          opacity: 1;
+          border-left: 2px solid var(--gruvbox-orange) !important;
+        }
+
+        /* No splitter needed between rail and panel */
         #sidebar-launcher-splitter {
           display: none !important;
         }

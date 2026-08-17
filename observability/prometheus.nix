@@ -104,23 +104,5 @@ in
         openFirewall = false;
       };
     };
-
-    # CPU limits for Prometheus
-    systemd.services.prometheus = {
-      serviceConfig = {
-        CPUQuota = "20%";
-        CPUWeight = 50;
-        # IO limits to prevent disk thrashing
-        IOWeight = 30;
-      };
-    };
-
-    # CPU limits for node exporter
-    systemd.services.prometheus-node-exporter = {
-      serviceConfig = {
-        CPUQuota = "10%";
-        CPUWeight = 30;
-      };
-    };
   };
 }

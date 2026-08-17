@@ -82,12 +82,4 @@ in
       analytics.reporting_enabled = false;
     };
   };
-
-  # CPU limits for Loki
-  systemd.services.loki = lib.mkIf cfg.loki.enable {
-    serviceConfig = {
-      CPUQuota = "15%";
-      CPUWeight = 40;
-    };
-  };
 }

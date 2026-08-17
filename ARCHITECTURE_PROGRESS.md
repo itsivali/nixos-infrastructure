@@ -42,10 +42,11 @@
 - [x] **Phase 30** — No architectural magic verification complete (57 findings, high-priority resolved)
 - [x] **Phase 31** — Runtime service contracts defined (5 interfaces: Notification, Backup, Metrics, Health, Platform)
 - [x] **Phase 32** — Full documentation complete (ARCHITECTURE.md with service contracts, dependency graphs, migration guide)
+- [x] **Phase 33** — Context handoff document created (CONTEXT_HANDOFF.md)
 
 ## In Progress
 
-- [ ] **Phase 33** — Context handoff document
+- [ ] **Phase 34** — Final acceptance test
 - [ ] **Phase 31** — Runtime service contracts
 - [ ] **Phase 32** — Full documentation
 - [ ] **Phase 33** — Context handoff document
@@ -104,11 +105,11 @@
 ## Remaining Work
 
 **Next session should:**
-1. Begin Phase 33: context handoff document
-2. Begin implementing concrete service types
-3. Begin refactoring existing code to use service contracts
-4. Consider making architecture-check blocking once linter passes clean
+1. Begin Phase 34: final acceptance test
+2. Implement concrete service types for the 5 interfaces
+3. Wire up service registry in cmd/ivali-bot/main.go
+4. Begin refactoring existing code to use service contracts
 
 ## Exact Next Action
 
-Begin Phase 33: context handoff document. Create a summary of all work completed, current state, and next steps for continuity.
+Begin Phase 34: final acceptance test. Verify all architectural requirements are met and document any remaining gaps.

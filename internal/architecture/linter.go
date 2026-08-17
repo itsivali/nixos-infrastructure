@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 )
 
@@ -17,9 +16,9 @@ import (
 type Severity string
 
 const (
-	SeverityViolation  Severity = "VIOLATION"
+	SeverityViolation    Severity = "VIOLATION"
 	SeverityQuestionable Severity = "QUESTIONABLE"
-	SeverityAllowed    Severity = "ALLOWED"
+	SeverityAllowed      Severity = "ALLOWED"
 )
 
 // Violation represents a single architectural violation found by a check.
@@ -35,16 +34,16 @@ type Violation struct {
 
 // Result holds the outcome of running all architecture checks.
 type Result struct {
-	Passed     bool        `json:"passed"`
-	Violations []Violation `json:"violations"`
+	Passed     bool         `json:"passed"`
+	Violations []Violation  `json:"violations"`
 	Summary    CheckSummary `json:"summary"`
 }
 
 // CheckSummary counts passes and failures per check.
 type CheckSummary struct {
-	ChecksRun    int `json:"checks_run"`
-	ChecksPassed int `json:"checks_passed"`
-	TotalViolations int `json:"total_violations"`
+	ChecksRun            int              `json:"checks_run"`
+	ChecksPassed         int              `json:"checks_passed"`
+	TotalViolations      int              `json:"total_violations"`
 	ViolationsBySeverity map[Severity]int `json:"violations_by_severity"`
 }
 
@@ -187,37 +186,6 @@ func (l *Linter) shellScripts() ([]string, error) {
 	return files, err
 }
 
-// goFiles returns all .go files under root, excluding vendor.
-func (l *Linter) goFiles() ([]string, error) {
-	var files []string
-	err := filepath.Walk(l.RepoRoot, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() && (info.Name() == ".git" || info.Name() == "vendor") {
-			return filepath.SkipDir
-		}
-		if info.IsDir() && info.Name() == "architecture" {
-			return filepath.SkipDir
-		}
-		if !info.IsDir() && strings.HasSuffix(path, ".go") {
-			files = append(files, path)
-		}
-		return nil
-	})
-	return files, err
-}
-
-// sortedKeys returns the keys of a map sorted alphabetically.
-func sortedKeys(m map[string]interface{}) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	return keys
-}
-
 // FormatViolation returns a human-readable violation string.
 func FormatViolation(v Violation) string {
 	msg := fmt.Sprintf("[%s] %s: %s", v.Severity, v.Check, v.Message)
@@ -251,17 +219,6 @@ func (l *Linter) isException(checkName, source, target string) bool {
 	}
 	return false
 }
-
-// ImportLine represents a parsed Nix import statement.
-type ImportLine struct {
-	File   string
-	Line   int
-	Path   string
-	Raw    string
-}
-
-// nixImportPattern matches Nix import statements.
-var nixImportPattern = regexp.MustCompile(`(?:import|source)\s+([\w./-]+\.(?:nix|sh|yaml))`)
 
 // filesystemPathPattern matches references to system paths.
 var filesystemPathPattern = regexp.MustCompile(`(/var/lib/[\w-]+|/run/[\w-]+|/etc/[\w-]+)`)

@@ -208,18 +208,18 @@ func (l *Linter) checkFilesystemBoundaries() []Violation {
 
 	// Known state paths and their owners
 	stateOwners := map[string]string{
-		"/var/lib/valkey":              "runtime.services",
-		"/var/lib/ivali-bot":           "runtime.services",
-		"/var/lib/security-scanner":    "platform.security",
-		"/var/lib/deployment-health":   "runtime.recovery",
-		"/var/lib/observability":       "runtime.observability",
-		"/var/lib/health-endpoint":     "runtime.observability",
-		"/var/lib/prometheus":          "runtime.observability",
-		"/var/lib/loki":                "runtime.observability",
-		"/var/lib/attic":               "runtime.cache",
+		"/var/lib/valkey":               "runtime.services",
+		"/var/lib/ivali-bot":            "runtime.services",
+		"/var/lib/security-scanner":     "platform.security",
+		"/var/lib/deployment-health":    "runtime.recovery",
+		"/var/lib/observability":        "runtime.observability",
+		"/var/lib/health-endpoint":      "runtime.observability",
+		"/var/lib/prometheus":           "runtime.observability",
+		"/var/lib/loki":                 "runtime.observability",
+		"/var/lib/attic":                "runtime.cache",
 		"/var/lib/gitlab-runner-health": "runtime.ci",
-		"/var/lib/tailscale-metrics":   "platform.security",
-		"/var/lib/gitops":              "runtime.automation",
+		"/var/lib/tailscale-metrics":    "platform.security",
+		"/var/lib/gitops":               "runtime.automation",
 	}
 
 	for _, file := range nixFiles {

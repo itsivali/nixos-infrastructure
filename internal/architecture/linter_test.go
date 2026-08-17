@@ -61,7 +61,7 @@ cross_service_state: []
 		"architecture/exceptions.yaml": `
 exceptions: []
 `,
-		"system/default.nix": `{ ... }: { }`,
+		"system/default.nix":     `{ ... }: { }`,
 		"networking/default.nix": `{ ... }: { }`,
 	}
 
@@ -116,7 +116,7 @@ cross_service_state: []
 exceptions: []
 `,
 		"services/bot/ivali-bot-go.nix": `{ ... }: { }`,
-		"system/nix.nix": `{ ... }: { }`,
+		"system/nix.nix":                `{ ... }: { }`,
 	}
 
 	dir := testRepo(t, files)

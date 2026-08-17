@@ -14,12 +14,12 @@ type DomainManifest struct {
 
 // Domain represents a single architectural domain.
 type Domain struct {
-	Name                 string   `yaml:"-"`
-	Level                int      `yaml:"level"`
-	Paths                []string `yaml:"paths"`
-	Public               []string `yaml:"public"`
-	Internal             []string `yaml:"internal"`
-	AllowedDependencies  []string `yaml:"allowed_dependencies"`
+	Name                  string   `yaml:"-"`
+	Level                 int      `yaml:"level"`
+	Paths                 []string `yaml:"paths"`
+	Public                []string `yaml:"public"`
+	Internal              []string `yaml:"internal"`
+	AllowedDependencies   []string `yaml:"allowed_dependencies"`
 	ForbiddenDependencies []string `yaml:"forbidden_dependencies"`
 }
 
@@ -30,23 +30,23 @@ type ExceptionManifest struct {
 
 // Exception represents a documented architectural exception.
 type Exception struct {
-	ID       string `yaml:"id"`
-	Source   string `yaml:"source"`
-	Target   string `yaml:"target"`
-	Reason   string `yaml:"reason"`
-	Owner    string `yaml:"owner"`
-	Review   string `yaml:"review"`
-	Status   string `yaml:"status"`
+	ID     string `yaml:"id"`
+	Source string `yaml:"source"`
+	Target string `yaml:"target"`
+	Reason string `yaml:"reason"`
+	Owner  string `yaml:"owner"`
+	Review string `yaml:"review"`
+	Status string `yaml:"status"`
 }
 
 // DependenciesManifest represents the dependencies.yaml file.
 type DependenciesManifest struct {
-	NixImports          []DependencyEntry `yaml:"nix_imports"`
-	ScriptReferences    []DependencyEntry `yaml:"script_references"`
-	SOPSReferences      []DependencyEntry `yaml:"sops_references"`
+	NixImports           []DependencyEntry `yaml:"nix_imports"`
+	ScriptReferences     []DependencyEntry `yaml:"script_references"`
+	SOPSReferences       []DependencyEntry `yaml:"sops_references"`
 	OptionNamespaceReads []OptionRead      `yaml:"option_namespace_reads"`
-	FilesystemAccess    []FilesystemEntry  `yaml:"filesystem_access"`
-	CrossServiceState   []StateEntry       `yaml:"cross_service_state"`
+	FilesystemAccess     []FilesystemEntry `yaml:"filesystem_access"`
+	CrossServiceState    []StateEntry      `yaml:"cross_service_state"`
 }
 
 // DependencyEntry is a single dependency relationship.
@@ -67,10 +67,10 @@ type OptionRead struct {
 
 // FilesystemEntry is a cross-domain filesystem access record.
 type FilesystemEntry struct {
-	Source string   `yaml:"source"`
-	Target string   `yaml:"target"`
-	Access string   `yaml:"access"`
-	Owner  string   `yaml:"owner"`
+	Source   string   `yaml:"source"`
+	Target   string   `yaml:"target"`
+	Access   string   `yaml:"access"`
+	Owner    string   `yaml:"owner"`
 	Severity Severity `yaml:"severity"`
 }
 

@@ -58,6 +58,7 @@
 | 1 | `loki` CPUQuota conflict (15% vs 10%) | Consolidated into `grafana.nix` (10%), removed from `loki.nix` | `3afddbf` |
 | 2 | Hardcoded `HOST="prague"` in scripts | Replaced with `${HOST_NAME:-$(hostname)}` pattern | `1b4d76e` |
 | 3 | `/var/lib/gitops` no formal owner | Added `StateDirectory = "gitops"` to `gitops-reconciler.service` | `f1ca0e9` |
+| 4 | Hardcoded `prague` in Go files | Replaced with `os.Hostname()` fallback | `549e2a4` |
 
 ## Known Violations (Priority Order)
 
@@ -65,7 +66,7 @@
 |---|----------|----------|-------------|-----------|--------|
 | ~~1~~ | ~~**HIGH**~~ | ~~Duplicate config~~ | ~~`loki` CPUQuota conflict: 15% vs 10%~~ | — | ~~Resolved~~ |
 | ~~2~~ | ~~**HIGH**~~ | ~~Hardcoded hostname~~ | ~~5 shell scripts hardcode `HOST="prague"`~~ | — | ~~Resolved~~ |
-| 3 | **HIGH** | Hardcoded hostname | 4 Go files hardcode `prague` deploy target | — | Open |
+| ~~3~~ | ~~**HIGH**~~ | ~~Hardcoded hostname~~ | ~~4 Go files hardcode `prague` deploy target~~ | — | ~~Resolved~~ |
 | ~~4~~ | ~~**HIGH**~~ | ~~State ownership~~ | ~~`/var/lib/gitops` has no formal owner~~ | EXC-003/004 | ~~Resolved~~ |
 | 5 | **MEDIUM** | Cross-domain coupling | `ci-notify.nix` gates on `fleet.gitlabRunner.enable` | EXC-007 | Open |
 | 6 | **MEDIUM** | Cross-domain coupling | `deployment-health.nix` reads `fleet.gitops` options | EXC-008 | Open |

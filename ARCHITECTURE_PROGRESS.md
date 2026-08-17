@@ -1,7 +1,7 @@
 # Architecture Progress
 
 > Tracks the state of the architectural audit and enforcement work.
-> Last updated: Session 3 — Phase 26 HIGH violations resolved.
+> Last updated: Session 4 — Phase 27 complete. All verification gates pass.
 
 ---
 
@@ -34,12 +34,13 @@
 - [x] **Phase 24** — CI integration: architecture-check job in GitHub Actions (non-blocking)
 - [x] **Phase 25** — CI enforcement: architecture check reports violations, blocking once clean
 - [x] **Phase 26** — Incremental migration: HIGH severity violations resolved
+- [x] **Phase 27** — Existing functionality verified (all gates pass)
 - [x] **AGENTS.md** — Architectural role added as PART 5
 - [x] **Firefox** — Launcher rail unhidden + Gruvbox-themed
 
 ## In Progress
 
-- [ ] **Phase 27** — Preserve existing functionality verification
+- [ ] **Phase 28** — Dead code audit
 
 ## Not Started
 
@@ -89,11 +90,10 @@
 ## Remaining Work
 
 **Next session should:**
-1. Resolve remaining HIGH: parameterize hardcoded `prague` in Go code
-2. Begin Phase 27: verify existing functionality still works
-3. Begin Phase 28: dead code audit
-4. Consider making architecture-check blocking once linter passes clean
+1. Begin Phase 28: dead code audit (identify unused modules, scripts, services)
+2. Resolve remaining MEDIUM violations (cross-domain coupling, filesystem access)
+3. Consider making architecture-check blocking once linter passes clean
 
 ## Exact Next Action
 
-Resolve the remaining HIGH severity violation: parameterize hardcoded `prague` in Go files. Then begin Phase 27 functionality verification.
+Begin Phase 28: dead code audit. Identify unused modules, scripts, services, packages, and configuration across the repository.

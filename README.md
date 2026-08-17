@@ -19,7 +19,7 @@ repository and applied through `nixos-rebuild`. The system manages itself throug
 GitOps control plane: it pulls changes, builds, deploys, and rolls back on failure.
 A Telegram bot gives you full remote control from your phone.
 
-The codebase spans **187 Nix modules**, **70 Go files**, and **79 shell scripts** —
+The codebase spans **220+ Nix modules**, **166 Go files**, and **79 shell scripts** —
 all wired together through a zero-touch auto-import module system.
 
 ---
@@ -109,6 +109,15 @@ configuration.nix
 
 **To skip a file from auto-import:**
 - Prefix with `_` (e.g., `_common.nix`)
+
+### Service Abstraction Layer
+
+The Go bot uses two service layers:
+
+- **`internal/services/`** — Clean interfaces (`NotificationService`, `BackupService`, `MetricsProvider`, `HealthChecker`, `PlatformService`) with a `Registry` for dependency injection.
+- **`internal/telegram/services/`** — Concrete implementations using shell commands via `Runner`.
+
+The `Registry` is wired alongside the existing `Container` in `main.go`, allowing gradual migration.
 
 ### Control Plane
 
@@ -390,6 +399,12 @@ deployment-health.timer (every 5 min)
 │   ├── gitlab-runner-health.sh      # GitLab Runner health check
 │   └── gitlab-runner-reconcile.sh   # GitLab Runner reconciliation
 │
+├── shared/
+│   └── notify.nix                # Shared Telegram notification script
+│
+├── docs/
+│   └── observability.md          # Observability stack login & configuration
+│
 ├── tests/
 │   ├── laptop-smoke.nix             # NixOS VM smoke test
 │   ├── security-smoke.nix           # Security config test
@@ -535,7 +550,7 @@ prague = {
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
   config = {
     ivali.desktop.gnome.enable = true;
-    ivali.observability.enable = lib.mkForce false;
+    ivali.observability.enable = true;
   };
 };
 ```
@@ -736,7 +751,6 @@ config = lib.mkIf cfg.enable { services.<name> = { ... }; };
 ## Safety Notes
 
 - Use `nixos-rebuild boot` (not `switch`) when the display might drop
-- Observability stack is currently disabled on `prague` (laptop hardware limit)
 - Tailscale DNS/routes default to off during setup
 - Grafana, Prometheus, Loki are localhost-only unless explicitly exposed
 - GitOps reconciler uses a lock file — avoid manual `nixos-rebuild` during reconciliation

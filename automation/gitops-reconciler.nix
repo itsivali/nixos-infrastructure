@@ -149,6 +149,11 @@ in
 
         SyslogIdentifier = "gitops-reconciler";
 
+        # Establish ownership of /var/lib/gitops — the single source of
+        # truth for the local git worktree. CI and recovery are read-only
+        # consumers through documented interfaces (EXC-003, EXC-004).
+        StateDirectory = "gitops";
+
         # Run unconfined: the reconciler is a root service that drives
         # nixos-rebuild/git and must load shared libs (bash -> libreadline).
         # AppArmor's exec-mmap mediation for shared libraries is unreliable in

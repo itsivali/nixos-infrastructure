@@ -43,9 +43,13 @@
 # a service explicitly sets AppArmorProfile = "ivali-cli".
 ##############################################################################
 
-{ pkgs, lib, ... }:
+{ pkgs, lib, config, ... }:
 
 let
+  cfg = config.ivali.security.apparmor;
+  repoPath = config.ivali.ssh.repoPath or "/home/ivali/nixos-infrastructure";
+  userName = config.users.users.ivali.name or "ivali";
+
   # Create profile derivations to avoid builtins.readFile Git tracking issues
   ivali-bot-profile = pkgs.writeText "ivali-bot" ''
     #include <tunables/global>
@@ -76,7 +80,7 @@ let
       /run/** r,
 
       # Repository (read/write — bot edits configs via /deploy)
-      /home/ivali/nixos-infrastructure/** rw,
+      ${repoPath}/** rw,
 
       # State directory (read/write)
       /var/lib/ivali-bot/ rw,
@@ -128,8 +132,8 @@ let
       # Read-only to the operator's deploy key + known_hosts so the bot
       # can run `git` as the user (sudo -u ivali). All other
       # writes under .ssh/.gnupg stay denied.
-      owner /home/ivali/.ssh/id_ed25519 r,
-      owner /home/ivali/.ssh/known_hosts r,
+      owner /home/${userName}/.ssh/id_ed25519 r,
+      owner /home/${userName}/.ssh/known_hosts r,
       deny /home/*/.ssh/** w,
       deny /home/*/.gnupg/** rw,
     }
@@ -151,7 +155,7 @@ let
       /run/current-system/sw/bin/** ux,
 
       # Repository (read-only)
-      /home/ivali/nixos-infrastructure/** r,
+      ${repoPath}/** r,
 
       # Device access
       /dev/null rw,

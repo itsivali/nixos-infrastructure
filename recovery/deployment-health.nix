@@ -42,7 +42,6 @@
 
 let
   cfg = config.fleet.deploymentHealth;
-  gitops = config.fleet.gitops;
 
   deploymentHealthScript =
     if builtins.pathExists ../scripts/deployment-health.sh then
@@ -77,6 +76,18 @@ in
     accuracy = lib.mkOption {
       type = lib.types.str;
       default = "1min";
+    };
+
+    gitopsRepo = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = "Git repository URL for GitOps operations.";
+    };
+
+    gitopsBranch = lib.mkOption {
+      type = lib.types.str;
+      default = "main";
+      description = "Git branch for GitOps operations.";
     };
 
   };
@@ -128,8 +139,8 @@ in
       environment = {
         HOST_NAME = config.networking.hostName;
 
-        GITOPS_REPO = gitops.repo;
-        GITOPS_BRANCH = gitops.branch;
+        GITOPS_REPO = cfg.gitopsRepo;
+        GITOPS_BRANCH = cfg.gitopsBranch;
 
         GITOPS_WORKTREE = "/var/lib/gitops";
 

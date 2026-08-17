@@ -145,15 +145,27 @@ in
     tokenFile = config.sops.secrets.gitlab-runner-token.path;
     tags = gitlabRunnerTags;
     concurrent = 1;
+    gitopsRepo = config.fleet.gitops.repo;
+    gitopsBranch = config.fleet.gitops.branch;
   };
 
   ############################################################################
-  # TELEGRAM BOT
+  # DEPLOYMENT HEALTH
+  ############################################################################
+  fleet.deploymentHealth = lib.mkIf (hasGitLabRunner && hasSecrets) {
+    enable = true;
+    gitopsRepo = config.fleet.gitops.repo;
+    gitopsBranch = config.fleet.gitops.branch;
+  };
+
+  ############################################################################
+  # TELEGRAM BOT + CI NOTIFICATIONS
   ############################################################################
   fleet.bot = lib.mkIf (hasBot && hasSecrets) {
     enable = true;
     gitlabUrl = config.fleet.gitops.repo or "https://gitlab.com/willisivali/nixos-infrastructure";
     defaultUser = userName;
+    ciNotify.enable = lib.mkDefault (hasGitLabRunner);
   };
 
   ############################################################################

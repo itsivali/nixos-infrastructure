@@ -31,7 +31,7 @@ in
       antigravityPkgs.google-antigravity-cli
     ];
 
-    # Allow Antigravity to use Chromium sandbox on NixOS
-    nixpkgs.config.allowUnfree = true;
+    # allowUnfree is set in system/nix.nix for all hosts.
+    # No need to duplicate it here.
   };
 }

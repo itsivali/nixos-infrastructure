@@ -25,7 +25,7 @@
 let
   cfg = config.fleet.observability.lite;
 
-  notifyScript = pkgs.writeScriptBin "notify" (builtins.readFile ../scripts/notify.sh);
+  notifyScript = import ../shared/notify.nix { inherit pkgs; };
 
   collector = pkgs.writeShellScript "observability-lite" ''
     #!/bin/sh

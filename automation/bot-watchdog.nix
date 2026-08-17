@@ -24,7 +24,7 @@
 let
   cfg = config.fleet.bot.watchdog;
 
-  notifyScript = pkgs.writeScriptBin "notify" (builtins.readFile ../scripts/notify.sh);
+  notifyScript = import ../shared/notify.nix { inherit pkgs; };
 
   watchdog = pkgs.writeShellScript "ivali-bot-watchdog" ''
     #!/bin/sh

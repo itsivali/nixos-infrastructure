@@ -12,17 +12,22 @@
 #
 # Dependencies
 # ------------
-# Requires fleet.gitlabRunner options (declared in ci/gitlab-runner.nix).
+# Declares own fleet.bot.ciNotify.enable option.
+# Wired in lib/host-templates/laptop.nix from hasGitLabRunner feature.
 #
 ##############################################################################
 
 { config, lib, pkgs, ... }:
 
 let
-  runnerCfg = config.fleet.gitlabRunner;
+  cfg = config.fleet.bot.ciNotify;
 in
 {
-  config = lib.mkIf runnerCfg.enable {
+  options.fleet.bot.ciNotify = {
+    enable = lib.mkEnableOption "CI pipeline notifications to Telegram";
+  };
+
+  config = lib.mkIf cfg.enable {
 
     systemd.services.ci-notify = {
       description = "CI Pipeline Notification";

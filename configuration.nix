@@ -50,6 +50,7 @@ let
     "packages"
     "scripts"
     "secrets"
+    "shared"
     "tests"
   ];
 

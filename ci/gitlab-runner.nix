@@ -31,8 +31,6 @@ let
 
   cfg = config.fleet.gitlabRunner;
 
-  gitops = config.fleet.gitops;
-
   healthScript =
     if builtins.pathExists ../scripts/gitlab-runner-health.sh then
       ../scripts/gitlab-runner-health.sh
@@ -151,6 +149,30 @@ in
 
     };
 
+    ##########################################################################
+    ## GitOps (owned by CI, wired from automation domain in host template)
+    ##########################################################################
+
+    gitopsRepo = lib.mkOption {
+
+      type = lib.types.str;
+
+      default = "";
+
+      description = "Git repository URL for GitOps operations.";
+
+    };
+
+    gitopsBranch = lib.mkOption {
+
+      type = lib.types.str;
+
+      default = "main";
+
+      description = "Git branch for GitOps operations.";
+
+    };
+
   };
 
   ##############################################################################
@@ -265,10 +287,10 @@ in
         ########################################################################
 
         GITOPS_REPO =
-          gitops.repo;
+          cfg.gitopsRepo;
 
         GITOPS_BRANCH =
-          gitops.branch;
+          cfg.gitopsBranch;
 
         ########################################################################
         ## Host
@@ -486,10 +508,10 @@ in
       environment = {
 
         GITOPS_REPO =
-          gitops.repo;
+          cfg.gitopsRepo;
 
         GITOPS_BRANCH =
-          gitops.branch;
+          cfg.gitopsBranch;
 
         HOST_NAME =
           config.networking.hostName;

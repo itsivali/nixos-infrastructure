@@ -31,6 +31,11 @@
     ssh = true;
   };
   config = {
+    # Skip installing HTML documentation (share/doc) for every package —
+    # notably python313.doc which is a huge Sphinx build. Man/info pages
+    # are still installed (documentation.man.enable / documentation.info.enable).
+    documentation.doc.enable = false;
+
     ivali.desktop.gnome.enable = true;
     # Observability stack: Prometheus + Grafana + Loki (local only).
     # Credentials are managed via SOPS (secrets/grafana.yaml).

@@ -50,6 +50,12 @@ let
   repoPath = config.ivali.ssh.repoPath or "/home/ivali/nixos-infrastructure";
   userName = config.users.users.ivali.name or "ivali";
 
+  # Bot service paths — must match StateDirectory and log location in
+  # services/bot/ivali-bot-go.nix. Keeping them here avoids hardcoding
+  # cross-domain paths inside the AppArmor profile string.
+  botStateDir = "/var/lib/ivali-bot";
+  botLogDir = "/var/log/ivali-bot";
+
   # Create profile derivations to avoid builtins.readFile Git tracking issues
   ivali-bot-profile = pkgs.writeText "ivali-bot" ''
     #include <tunables/global>
@@ -83,8 +89,8 @@ let
       ${repoPath}/** rw,
 
       # State directory (read/write)
-      /var/lib/ivali-bot/ rw,
-      /var/lib/ivali-bot/** rw,
+      ${botStateDir}/ rw,
+      ${botStateDir}/** rw,
 
       # SOPS secrets (read-only)
       /run/secrets/ r,
@@ -121,8 +127,8 @@ let
       /tmp/** rw,
 
       # Logs
-      /var/log/ivali-bot/ rw,
-      /var/log/ivali-bot/** rw,
+      ${botLogDir}/ rw,
+      ${botLogDir}/** rw,
       /var/log/** r,
 
       # Deny

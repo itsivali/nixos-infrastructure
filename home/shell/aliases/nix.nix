@@ -37,7 +37,7 @@ in
 {
   programs.zsh.shellAliases = {
     # ── NixOS Rebuild ─────────────────────────────────────────────────
-    rebuild = "git -C ${repoDir} fetch origin main && git -C ${repoDir} rebase origin/main && ${repoDir}/scripts/validate-hardware.sh && ${repoDir}/scripts/update-go-hashes.sh --verify-only && sudo nixos-rebuild switch --flake ${repoDir}#prague";
+    rebuild = "git -C ${repoDir} fetch origin main && git -C ${repoDir} rebase origin/main && ${repoDir}/scripts/validate-hardware.sh && ${repoDir}/scripts/update-go-hashes.sh && sudo nixos-rebuild switch --flake ${repoDir}#prague";
     hwcheck = "${repoDir}/scripts/validate-hardware.sh";
     check-hashes = "${repoDir}/scripts/update-go-hashes.sh --verify-only";
     fix-hashes = "${repoDir}/scripts/update-go-hashes.sh";
@@ -63,7 +63,7 @@ in
 
     # ── Quick Deploy ──────────────────────────────────────────────────
     # Pull + rebuild + push in one shot
-    deploy = "cd ${repoDir} && git fetch origin main && git rebase origin/main && ${repoDir}/scripts/validate-hardware.sh && sudo nixos-rebuild switch --flake ${repoDir}#prague && git push";
+    deploy = "cd ${repoDir} && git fetch origin main && git rebase origin/main && ${repoDir}/scripts/validate-hardware.sh && ${repoDir}/scripts/update-go-hashes.sh && git add flake.nix && git commit -m 'chore(build): refresh Go vendor hashes' || true && sudo nixos-rebuild switch --flake ${repoDir}#prague && git push";
 
     # ── Valkey (Redis) ────────────────────────────────────────────────
     valkey = status "valkey.service";

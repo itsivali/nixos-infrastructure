@@ -24,9 +24,6 @@ REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 FLAKE_NIX="${REPO_DIR}/flake.nix"
 VERIFY_ONLY="${1:-}"
 
-# Dummy hash that always triggers a mismatch (Nix fakeHash)
-FAKE_HASH="sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-
 log()  { echo "[update-hashes] $*"; }
 fail() { echo "[update-hashes] ❌ $*" >&2; }
 

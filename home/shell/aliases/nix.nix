@@ -37,7 +37,7 @@ in
 {
   programs.zsh.shellAliases = {
     # ── NixOS Rebuild ─────────────────────────────────────────────────
-    rebuild = "git -C ${repoDir} pull && ${repoDir}/scripts/validate-hardware.sh && sudo nixos-rebuild switch --flake ${repoDir}#prague";
+    rebuild = "git -C ${repoDir} fetch origin main && git -C ${repoDir} rebase origin/main && ${repoDir}/scripts/validate-hardware.sh && sudo nixos-rebuild switch --flake ${repoDir}#prague";
     hwcheck = "${repoDir}/scripts/validate-hardware.sh";
     rebuildn = "sudo nixos-rebuild switch --flake ${repoDir}#prague --no-build";
     test = "sudo nixos-rebuild test --flake ${repoDir}#prague";
@@ -61,7 +61,7 @@ in
 
     # ── Quick Deploy ──────────────────────────────────────────────────
     # Pull + rebuild + push in one shot
-    deploy = "cd ${repoDir} && git pull && ${repoDir}/scripts/validate-hardware.sh && sudo nixos-rebuild switch --flake ${repoDir}#prague && git push";
+    deploy = "cd ${repoDir} && git fetch origin main && git rebase origin/main && ${repoDir}/scripts/validate-hardware.sh && sudo nixos-rebuild switch --flake ${repoDir}#prague && git push";
 
     # ── Valkey (Redis) ────────────────────────────────────────────────
     valkey = status "valkey.service";

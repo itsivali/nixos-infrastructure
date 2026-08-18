@@ -4,17 +4,12 @@
 #
 # Purpose
 # -------
-# Developer tool shortcuts for Go, databases, clipboard, and general
-# productivity tools installed on this system.
+# Developer tool shortcuts for Go, databases, clipboard, cloud CLIs,
+# and general productivity tools installed on this system.
 #
 # Ownership
 # ---------
 # programs.zsh.shellAliases entries for development tools
-#
-# Note
-# ----
-# Only aliases for packages actually installed on the system are included.
-# Removed: kubectl, helm, terraform, ansible, docker (not installed).
 #
 ##############################################################################
 
@@ -35,30 +30,30 @@
     gow = "go work";
     gocov = "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out";
 
+    # ── Editors ───────────────────────────────────────────────────────
+    v = "nvim";
+    vi = "nvim";
+
+    # ── Finders ───────────────────────────────────────────────────────
+    f = "fd";
+    fzfh = "fzf --tac --height 40% --bind 'ctrl-x:execute(echo {} | xargs xdg-open)'";
+
     # ── Databases ─────────────────────────────────────────────────────
     vr = "valkey-cli";
 
     # ── OpenCode ──────────────────────────────────────────────────────
     oc = "opencode";
 
+    # ── Process Monitoring ────────────────────────────────────────────
+    lg = "lazygit";
+    gi = "gitui";
+
     # ── System Info ───────────────────────────────────────────────────
     ff = "fastfetch";
 
-    # ── Process Monitoring ────────────────────────────────────────────
-    lg = "lazygit";
-    bt = "btop";
-    gi = "gitui";
-
-    # ── Editors ───────────────────────────────────────────────────────
-    v = "nvim";
-    vi = "nvim";
-
-    # ── Shell ─────────────────────────────────────────────────────────
-    reload = "exec zsh";
-
     # ── Python ────────────────────────────────────────────────────────
-    py = "python";
-    serve = "python -m http.server";
+    py = "python3";
+    serve = "python3 -m http.server";
 
     # ── JSON / Data ───────────────────────────────────────────────────
     json = "jq";
@@ -66,12 +61,48 @@
     # ── Just ──────────────────────────────────────────────────────────
     j = "just";
 
-    # ── Secrets ───────────────────────────────────────────────────────
+    # ── Sync / Watch ──────────────────────────────────────────────────
+    rs = "rsync -avz --progress";
+    we = "watchexec";
+
+    # ── Encryption / Secrets ──────────────────────────────────────────
     sopsl = "sops --decrypt";
+    aged = "age --decrypt";
+    agee = "age -r";
+    gpge = "gpg --encrypt";
+    gpgd = "gpg --decrypt";
+
+    # ── GitHub CLI ────────────────────────────────────────────────────
+    ghpr = "gh pr list";
+    ghprc = "gh pr create";
+    ghi = "gh issue list";
+    ghic = "gh issue create";
+    ghr = "gh repo view";
 
     # ── GitLab CLI ────────────────────────────────────────────────────
     glmr = "glab mr list";
     glmrc = "glab mr create";
+
+    # ── Cloud CLIs ────────────────────────────────────────────────────
+    gcssh = "gcloud compute ssh";
+    gcls = "gcloud compute list";
+    vlt = "vault";
+    vread = "vault read";
+    vwrite = "vault write";
+    ar = "argocd";
+    arapp = "argocd app list";
+    arsync = "argocd app sync";
+
+    # ── Infrastructure ────────────────────────────────────────────────
+    pk = "packer";
+    con = "consul";
+
+    # ── Ansible ───────────────────────────────────────────────────────
+    an = "ansible";
+    ap = "ansible-playbook";
+
+    # ── Shell ─────────────────────────────────────────────────────────
+    reload = "exec zsh";
 
     # ── Nix Utilities ─────────────────────────────────────────────────
     nixsh = "nix-shell --packages";

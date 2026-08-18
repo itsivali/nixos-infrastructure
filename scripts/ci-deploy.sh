@@ -22,5 +22,15 @@ fi
 
 log "Lock acquired — deploying ${HOST}..."
 cd "$REPO_DIR"
+
+# Validate hardware UUIDs before rebuild to prevent boot failures
+HW_CHECK="${REPO_DIR}/scripts/validate-hardware.sh"
+if [[ -x "$HW_CHECK" ]]; then
+  if ! "$HW_CHECK" --quiet; then
+    log "🚨 Hardware UUID mismatch — aborting deploy"
+    exit 1
+  fi
+fi
+
 nixos-rebuild switch --flake ".#${HOST}" --show-trace
 log "Deployment complete."

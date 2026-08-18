@@ -255,14 +255,14 @@ in
         # verticalTabs is false, which would hide the whole revamped sidebar
         # (and with it Sidebery). With verticalTabs=true the native tab strip
         # is merely relocated into the sidebar, where userChrome.css hides it
-        # (see below), so only Sidebery's tree is visible. always-show keeps
-        # the sidebar permanently expanded (no collapsed launcher rail to
-        # hover), and userChrome.css hides the rail itself, leaving only the
-        # Sidebery panel. sidebery-default-open.js re-opens Sidebery if
-        # session restore races and reapplies a closed panel.
+        # (see below), so only Sidebery's tree is visible. expand-on-hover
+        # keeps the sidebar collapsed as a thin launcher rail; hovering over
+        # the rail expands the full Sidebery panel with tab tree (favicons +
+        # pinning). sidebery-default-open.js re-opens Sidebery if session
+        # restore races and applies a closed panel.
         "sidebar.revamp" = true;
         "sidebar.verticalTabs" = true;
-        "sidebar.visibility" = "always-show";
+        "sidebar.visibility" = "expand-on-hover";
         # Open Sidebery tabs in the sidebar by default instead of sitting on
         # the launcher rail ("extensions" view). sidebar.backupState is the
         # startup fallback state; it only applies when session restore does
@@ -270,7 +270,9 @@ in
         # after the restored window state settles (see sidebery-default-open.js).
         # Command id is makeWidgetId({3c078156-979c-498b-8990-85f7987dd929})
         # + "-sidebar-action" (see ext-sidebarAction.js).
-        "sidebar.backupState" = ''{"command":"_3c078156-979c-498b-8990-85f7987dd929_-sidebar-action","panelOpen":true,"launcherVisible":true,"launcherExpanded":false}'';
+        # launcherExpanded=false keeps the rail collapsed by default;
+        # hovering the rail expands the full Sidebery panel.
+        "sidebar.backupState" = ''{"command":"_3c078156-979c-498b-8990-85f7987dd929_-sidebar-action","panelOpen":false,"launcherVisible":true,"launcherExpanded":false}'';
       };
 
       # Compact, Gruvbox-dark UI. The native sidebar hosts Sidebery (tab
@@ -313,16 +315,15 @@ in
           color: var(--gruvbox-fg) !important;
         }
 
-        /* Launcher rail — visible on the left with extension icons for
-         * switching between Sidebery, bookmarks, history, etc. The rail
-         * shows a vertical strip of sidebar extension icons; clicking one
-         * switches the active panel. always-show keeps the sidebar expanded
-         * so the rail is always visible. */
+        /* Launcher rail — collapsed by default (expand-on-hover). A thin
+         * vertical strip shows extension icons; hovering the rail expands
+         * the full Sidebery panel with tab tree (favicons + pinning). */
         #sidebar-main {
           background: var(--gruvbox-bg) !important;
           border-right: 1px solid var(--gruvbox-orange) !important;
-          min-width: 40px !important;
-          max-width: 40px !important;
+          min-width: 32px !important;
+          max-width: 32px !important;
+          transition: min-width 0.2s ease, max-width 0.2s ease !important;
         }
 
         #sidebar-main > .sidebar-launcher-icon {

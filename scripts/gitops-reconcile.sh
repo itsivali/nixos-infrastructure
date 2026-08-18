@@ -200,6 +200,23 @@ fi
 step_ok
 
 ###########################################################################
+# Validate hardware UUIDs
+###########################################################################
+
+step "Validate hardware UUIDs"
+HW_CHECK="${REPO_DIR}/scripts/validate-hardware.sh"
+if [[ -x "$HW_CHECK" ]]; then
+  if ! "$HW_CHECK" --quiet; then
+    notify "🚨 Hardware UUID mismatch on ${HOST} — aborting deploy"
+    step_fail
+    exit 1
+  fi
+else
+  log "validate-hardware.sh not found or not executable, skipping"
+fi
+step_ok
+
+###########################################################################
 # Build
 ###########################################################################
 

@@ -4,7 +4,7 @@
 #
 # Purpose
 # -------
-# General shell utility aliases.
+# General shell utility aliases for daily use.
 #
 # Ownership
 # ---------
@@ -12,8 +12,9 @@
 #
 # Responsibilities
 # ----------------
-# - Clear screen (cls)
-# - History (h)
+# - Screen and history (cls, h)
+# - Safe defaults (mkdir, rm, df, free)
+# - System inspection (ports, ip, psg, du, top)
 #
 ##############################################################################
 
@@ -27,7 +28,11 @@
     rm = "rm -I";
     df = "df -h";
     free = "free -h";
-    ports = "ss -tulpn";
     ip = "ip -c addr";
+    du = "du -h --max-depth=1";
+    top = "btop";
+    grep = "grep --color=auto";
+    diff = "diff --color=auto";
+    path = "echo $PATH | tr ':' '\\n' | nl";
   };
 }

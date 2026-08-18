@@ -12,8 +12,8 @@
 #
 # Responsibilities
 # ----------------
-# - Directory shortcuts (.., ..., ...., home, cfg, edit)
-# - Listing commands (ls, ll, la, lt, l, cat)
+# - Directory shortcuts (.., ..., ...., home, cfg, edit, repo)
+# - Listing commands (ls, ll, la, lt, l, tree, cat)
 #
 ##############################################################################
 
@@ -32,16 +32,17 @@ in
     home = "cd ~";
     cfg = "cd ${repoDir}";
     dots = "cd ${repoDir}";
+    repo = "cd ${repoDir}";
     edit = "zeditor ${repoDir}";
     z = "zeditor";
 
     # Listing
     ls = "eza";
-    ll = "eza -lah --icons --git";
+    ll = "eza -lah --icons --git --group-directories-first";
     la = "eza -a";
-    lt = "eza --tree";
+    lt = "eza --tree --level=2";
     l = "eza -lh";
-    tree = "eza --tree";
-    cat = "bat";
+    tree = "eza --tree --level=3";
+    cat = "bat --paging=never";
   };
 }

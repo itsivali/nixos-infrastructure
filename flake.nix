@@ -152,7 +152,7 @@
         bw-tui = pkgs.buildGoModule {
           name = "bw-tui";
           src = goSrc;
-          vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+          vendorHash = "sha256-01J7ofVq2MWmIyvsYsxZeF2JmskiDlxijsHFtrcoFSM=";
           subPackages = [ "cmd/bw-tui" ];
           preBuild = "export CGO_ENABLED=0";
         };
@@ -160,7 +160,7 @@
         ivali-bot = pkgs.buildGoModule {
           name = "ivali-bot";
           src = goSrc;
-          vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+          vendorHash = "sha256-01J7ofVq2MWmIyvsYsxZeF2JmskiDlxijsHFtrcoFSM=";
           subPackages = [ "cmd/ivali-bot" ];
           # Static pure-Go binary: avoids linking libresolv.so.2, whose
           # PROT_EXEC mmap is denied by the ivali-bot AppArmor profile
@@ -171,7 +171,7 @@
         ivali = pkgs.buildGoModule {
           name = "ivali";
           src = goSrc;
-          vendorHash = "sha256-26Sj0Wx3u1tfgxjJey3fpa/wGqh+7/MCVEGJZgWzbzU=";
+          vendorHash = "sha256-01J7ofVq2MWmIyvsYsxZeF2JmskiDlxijsHFtrcoFSM=";
           subPackages = [ "cmd/ivali" ];
           preBuild = "export CGO_ENABLED=0";
         };

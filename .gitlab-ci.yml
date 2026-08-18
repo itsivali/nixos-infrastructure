@@ -23,7 +23,7 @@ shellcheck:
 
 go-lint:
   stage: lint
-  image: golangci/golangci-lint:v1.64.8
+  image: golangci/golangci-lint:v2.12.2
   script:
     - golangci-lint run ./... --timeout=5m
 

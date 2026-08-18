@@ -217,6 +217,23 @@ fi
 step_ok
 
 ###########################################################################
+# Validate Go vendor hashes
+###########################################################################
+
+step "Check Go vendor hashes"
+HASH_CHECK="${REPO_DIR}/scripts/update-go-hashes.sh"
+if [[ -x "$HASH_CHECK" ]]; then
+  if ! "$HASH_CHECK" --verify-only; then
+    notify "🚨 Stale Go vendorHash detected on ${HOST} — run update-go-hashes.sh to fix"
+    step_fail
+    exit 1
+  fi
+else
+  log "update-go-hashes.sh not found or not executable, skipping"
+fi
+step_ok
+
+###########################################################################
 # Build
 ###########################################################################
 

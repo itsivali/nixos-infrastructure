@@ -23,9 +23,8 @@ rollback readiness are first-class requirements (see AGENTS.md).
 4. **Fix:** Any fix must be declarative (edit Nix, rebuild). No imperative
    patching — if it is not in the configuration it does not exist.
 5. **Rollback:** If a change is suspect, roll back to the previous generation:
-   `nixos-rebuild switch --flake .#prague --rollback` or boot the prior
-   generation from the bootloader. Verify with `nixos-rebuild switch
-   --flake .#prague` only after the root cause is understood.
+   `sudo nixos-rebuild switch --rollback` or boot the prior
+   generation from the bootloader.
 
 ## Observability Stack (all under `observability/`)
 

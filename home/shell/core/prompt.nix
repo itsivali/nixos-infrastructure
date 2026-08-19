@@ -216,8 +216,8 @@ in
       # Starship has no built-in disk module; use a custom one.
       custom = {
         disk = {
-          command = "${pkgs.coreutils}/bin/df -h / | ${pkgs.gawk}/bin/awk 'NR==2 {printf \"%s/%s\", $3, $2}'";
-          shell = "bash";
+          command = "df -h / | awk 'NR==2{print $3\"/\"$2}'";
+          shell = [ "sh" "-c" ];
           style = ivaliGray;
           format = "[ 󰋊 Disk $output]($style) ";
         };

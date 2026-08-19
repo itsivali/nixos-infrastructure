@@ -38,7 +38,8 @@ elapsed() {
 
 render_bar() {
   local pct=$1 label=$2 icon=$3 color=$4
-  local width=$((COLUMNS - 20))
+  local cols="${COLUMNS:-80}"
+  local width=$((cols - 20))
   [[ $width -lt 20 ]] && width=40
   local filled=$((pct * width / 100))
   local empty=$((width - filled))

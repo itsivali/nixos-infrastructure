@@ -2,6 +2,8 @@ package bitwarden
 
 import (
 	"testing"
+
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 func TestApplyFilterCategoryAndText(t *testing.T) {
@@ -78,5 +80,57 @@ func TestVaultItemIconsAndLabels(t *testing.T) {
 	}
 	if noteItem.Icon() != "📝" || noteItem.TypeLabel() != "Note" {
 		t.Errorf("unexpected note icon/label: %s / %s", noteItem.Icon(), noteItem.TypeLabel())
+	}
+}
+
+func keyMsg(key string) tea.KeyMsg {
+	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(key)}
+}
+
+func TestUnlockSopsKey(t *testing.T) {
+	m := NewTUI(&Env{}, "")
+	m.mode = modeUnlock
+	m.unlock = &unlockModel{
+		status:      "locked",
+		activeField: 1,
+		hasSopsPass: true,
+	}
+
+	for _, key := range []string{"s", "S"} {
+		m.unlock.unlocking = false
+		m.unlock.err = ""
+		_, cmd := m.handleKey(keyMsg(key))
+
+		if !m.unlock.unlocking {
+			t.Errorf("pressing %q with SOPS pass should trigger unlock, unlocking=%v", key, m.unlock.unlocking)
+		}
+		if cmd == nil {
+			t.Errorf("pressing %q with SOPS pass should return an unlock command", key)
+		}
+		if len(m.unlock.password) != 0 {
+			t.Errorf("pressing %q with SOPS pass should not type into the password field, password=%q", key, string(m.unlock.password))
+		}
+	}
+}
+
+func TestUnlockShiftSTypesWithoutSopsPass(t *testing.T) {
+	m := NewTUI(&Env{}, "")
+	m.mode = modeUnlock
+	m.unlock = &unlockModel{
+		status:      "locked",
+		activeField: 1,
+		hasSopsPass: false,
+	}
+
+	_, cmd := m.handleKey(keyMsg("S"))
+
+	if m.unlock.unlocking {
+		t.Errorf("pressing %q without a SOPS pass should not trigger unlock", "S")
+	}
+	if cmd != nil {
+		t.Errorf("pressing %q without a SOPS pass should not return an unlock command", "S")
+	}
+	if string(m.unlock.password) != "S" {
+		t.Errorf("pressing %q without a SOPS pass should type into the password field, password=%q", "S", string(m.unlock.password))
 	}
 }

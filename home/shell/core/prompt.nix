@@ -48,6 +48,7 @@ in
         "$git_metrics"
         "$fill"
         "$sudo"
+        "$battery"
         "$time"
         "$line_break"
         # ── Bottom line ─────────────────────────────────────────────
@@ -58,6 +59,8 @@ in
         "$python"
         "$golang"
         "$docker_context"
+        "$memory_usage"
+        "$custom.disk"
         "$cmd_duration"
         "$status"
         "$os"
@@ -100,9 +103,10 @@ in
 
       git_branch = {
         style = ivaliGreen;
-        format = "[ $symbol$branch]($style) ";
+        format = "[ $symbol$branch(:$remote_branch)]($style) ";
         symbol = " ";
         only_attached = true;
+        always_show_remote = false;
       };
 
       # Garuda-style commit display: last commit hash + current tag
@@ -174,14 +178,14 @@ in
 
       nodejs = {
         style = ivaliGreen;
-        format = "[  v$version]($style) ";
+        format = "[  $version]($style) ";
         detect_extensions = [ "js" "ts" "jsx" "tsx" "mjs" "cjs" ];
         detect_files = [ "package.json" ".node-version" "tsconfig.json" ];
       };
 
       python = {
         style = ivaliGold;
-        format = "[  v$version]($style) ";
+        format = "[  $version]($style) ";
         pyenv_version_name = true;
         detect_extensions = [ "py" ];
         detect_files = [ "requirements.txt" "pyproject.toml" "Pipfile" "poetry.lock" ];
@@ -189,7 +193,7 @@ in
 
       golang = {
         style = ivaliCyan;
-        format = "[  v$version]($style) ";
+        format = "[  $version]($style) ";
         detect_extensions = [ "go" ];
         detect_files = [ "go.mod" "go.sum" ];
       };
@@ -198,6 +202,25 @@ in
         style = ivaliPink;
         only_with_files = false;
         format = "[  $context]($style) ";
+      };
+
+      # ── System resources ──────────────────────────────────────────
+
+      memory_usage = {
+        disabled = false;
+        threshold = -1;
+        style = ivaliGray;
+        format = "[ 󰍛 $ram_pct]($style) ";
+      };
+
+      # Starship has no built-in disk module; use a custom one.
+      custom = {
+        disk = {
+          command = "df -h / | awk 'NR==2 {printf \"%s/%s\", $3, $2}'";
+          shell = "sh";
+          style = ivaliGray;
+          format = "[ 󰋊 $output]($style) ";
+        };
       };
 
       rust = { disabled = true; };
@@ -243,11 +266,21 @@ in
         disabled = false;
       };
 
-      # ── Garuda eagle (the "feather" glyph) right before the cursor ──
+      battery = {
+        disabled = false;
+        format = "[$symbol$percentage]($style) ";
+        display = [
+          { threshold = 20; style = ivaliRed; }
+          { threshold = 50; style = ivaliGold; }
+          { threshold = 100; style = ivaliGreen; }
+        ];
+      };
+
+      # ── NixOS snowflake + Garuda eagle (the "feather" glyph) right before the cursor ──
       os = {
         disabled = false;
         style = ivaliPurple;
-        format = "[󰛓 ]($style)";
+        format = "[ 󰛓 ]($style)";
       };
 
       # ── Prompt character ─────────────────────────────────────────

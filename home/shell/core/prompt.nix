@@ -55,15 +55,15 @@ in
         "╰─"
         "$nix_shell"
         "$shell"
-        "$nodejs"
-        "$python"
-        "$golang"
-        "$docker_context"
-        "$memory_usage"
-        "$custom.disk"
-        "$cmd_duration"
-        "$status"
-        "$os"
+        "$nodejs│"
+        "$python│"
+        "$golang│"
+        "$docker_context│"
+        "$memory_usage│"
+        "$custom.disk│"
+        "$cmd_duration│"
+        "$status│"
+        "$os│"
         "$character"
       ];
 
@@ -193,7 +193,7 @@ in
 
       golang = {
         style = ivaliCyan;
-        format = "[  $version]($style) ";
+        format = "[ $version nix]($style) ";
         detect_extensions = [ "go" ];
         detect_files = [ "go.mod" "go.sum" ];
       };
@@ -210,16 +210,16 @@ in
         disabled = false;
         threshold = -1;
         style = ivaliGray;
-        format = "[ 󰍛 $ram_pct]($style) ";
+        format = "[ 󰍛 $ram_pct RAM]($style) ";
       };
 
       # Starship has no built-in disk module; use a custom one.
       custom = {
         disk = {
           command = "df -h / | awk 'NR==2 {printf \"%s/%s\", $3, $2}'";
-          shell = "sh";
+          shell = "bash";
           style = ivaliGray;
-          format = "[ 󰋊 $output]($style) ";
+          format = "[ 󰋊 Disk $output]($style) ";
         };
       };
 
@@ -276,11 +276,11 @@ in
         ];
       };
 
-      # ── NixOS snowflake + Garuda eagle (the "feather" glyph) right before the cursor ──
+      # ── NixOS snowflake ──────────────────────────────────────────
       os = {
         disabled = false;
         style = ivaliPurple;
-        format = "[ 󰛓 ]($style)";
+        format = "[ ]($style)";
       };
 
       # ── Prompt character ─────────────────────────────────────────
@@ -293,4 +293,12 @@ in
       };
     };
   };
+
+  programs.zsh.initContent = ''
+    # Refresh prompt every 10s so RAM/battery/time stay current
+    TMOUT=10
+    TRAPALRM() {
+        zle reset-prompt 2>/dev/null
+    }
+  '';
 }

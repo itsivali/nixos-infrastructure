@@ -1,0 +1,54 @@
+---
+# system-info.yml — gather system information from all hosts
+# Usage: ansible-playbook playbooks/system-info.yml
+# Or:    ansible-playbook playbooks/system-info.yml -l prague
+
+- name: System information
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Get NixOS generation
+      ansible.builtin.shell: |
+        nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | tail -1 | awk '{print $1}'
+      register: nixos_gen
+      changed_when: false
+      ignore_errors: true
+
+    - name: Get system uptime
+      ansible.builtin.shell: uptime -p
+      register: uptime_result
+      changed_when: false
+
+    - name: Get disk usage
+      ansible.builtin.shell: df -h / | awk 'NR==2 {print $5}'
+      register: disk_result
+      changed_when: false
+
+    - name: Get memory usage
+      ansible.builtin.shell: free -m | awk '/^Mem:/ {printf "%.0f%%", $3/$2*100}'
+      register: mem_result
+      changed_when: false
+
+    - name: Get load average
+      ansible.builtin.shell: cat /proc/loadavg | awk '{print $1}'
+      register: load_result
+      changed_when: false
+
+    - name: Get failed systemd units
+      ansible.builtin.shell: systemctl list-units --failed --no-legend --no-pager | wc -l
+      register: failed_units
+      changed_when: false
+
+    - name: Display system information
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════
+          Host:           {{ inventory_hostname }}
+          NixOS Gen:      {{ nixos_gen.stdout | default('unknown') }}
+          Uptime:         {{ uptime_result.stdout | default('unknown') }}
+          Disk /:         {{ disk_result.stdout | default('unknown') }}
+          Memory:         {{ mem_result.stdout | default('unknown') }}
+          Load (1m):      {{ load_result.stdout | default('unknown') }}
+          Failed Units:   {{ failed_units.stdout | default('0') }}
+          ═══════════════════════════════════════════════

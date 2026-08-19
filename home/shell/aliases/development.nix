@@ -100,6 +100,8 @@
     # ── Ansible ───────────────────────────────────────────────────────
     an = "ansible";
     ap = "ansible-playbook";
+    ali = "ansible-lint";
+    ag = "ansible-galaxy";
 
     # ── Shell ─────────────────────────────────────────────────────────
     reload = "exec zsh";

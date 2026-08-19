@@ -1,0 +1,29 @@
+---
+# ping.yml — connectivity check across all hosts
+# Usage: ansible-playbook playbooks/ping.yml
+# Or:    ansible-playbook playbooks/ping.yml -l prague
+
+- name: Connectivity check
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Ping host
+      ansible.builtin.ping:
+
+    - name: Gather basic system info
+      ansible.builtin.setup:
+        gather_subset:
+          - network
+          - hardware
+          - virtual
+      register: setup_result
+
+    - name: Display host info
+      ansible.builtin.debug:
+        msg: >
+          {{ inventory_hostname }}:
+          ansible={{ setup_result.ansible_facts.ansible_distribution }}
+          {{ setup_result.ansible_facts.ansible_distribution_version }},
+          kernel={{ setup_result.ansible_facts.ansible_kernel }},
+          cpus={{ setup_result.ansible_facts.ansible_processor_vcpus }},
+          ram={{ (setup_result.ansible_facts.ansible_memtotal_mb / 1024) | round(1) }}GB

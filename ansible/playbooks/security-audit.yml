@@ -1,0 +1,63 @@
+---
+# security-audit.yml — fleet security audit
+# Usage: ansible-playbook playbooks/security-audit.yml
+# Or:    ansible-playbook playbooks/security-audit.yml -l prague
+
+- name: Security audit
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Check SSH root login configuration
+      ansible.builtin.shell: |
+        grep -E "^PermitRootLogin" /etc/ssh/sshd_config 2>/dev/null || echo "not set"
+      register: ssh_root
+      changed_when: false
+
+    - name: Check firewall status
+      ansible.builtin.shell: |
+        if command -v nft >/dev/null 2>&1; then
+          nft list ruleset 2>/dev/null | head -5 || echo "no rules"
+        elif command -v iptables >/dev/null 2>&1; then
+          iptables -L -n 2>/dev/null | head -5 || echo "no rules"
+        else
+          echo "no firewall found"
+        fi
+      register: firewall
+      changed_when: false
+
+    - name: Check for failed login attempts
+      ansible.builtin.shell: |
+        journalctl -u sshd --since "24 hours ago" 2>/dev/null | grep -c "Failed password" || echo "0"
+      register: failed_logins
+      changed_when: false
+
+    - name: Check listening ports
+      ansible.builtin.shell: ss -tulpn | grep LISTEN | awk '{print $5}' | sort -u
+      register: listening
+      changed_when: false
+
+    - name: Check for world-writable files in /etc
+      ansible.builtin.shell: find /etc -maxdepth 2 -perm -o+w -type f 2>/dev/null | head -10 || echo "none"
+      register: world_writable
+      changed_when: false
+
+    - name: Check NixOS generation age
+      ansible.builtin.shell: |
+        nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | wc -l
+      register: gen_count
+      changed_when: false
+
+    - name: Display security audit results
+      ansible.builtin.debug:
+        msg: |
+          ═══════════════════════════════════════════════
+          SECURITY AUDIT: {{ inventory_hostname }}
+          ═══════════════════════════════════════════════
+          SSH Root Login:       {{ ssh_root.stdout | default('unknown') }}
+          Firewall:             {{ firewall.stdout_lines | default(['unknown']) | join(', ') }}
+          Failed Logins (24h):  {{ failed_logins.stdout | default('0') }}
+          Listening Ports:      {{ listening.stdout_lines | default(['unknown']) | join(', ') }}
+          World-Writable /etc:  {{ world_writable.stdout_lines | default(['none']) | join(', ') }}
+          NixOS Generations:    {{ gen_count.stdout | default('unknown') }}
+          ═══════════════════════════════════════════════

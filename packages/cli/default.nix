@@ -24,6 +24,7 @@
 with pkgs; [
   age
   ansible
+  ansible-lint
   argocd
   bat
   bitwarden-cli

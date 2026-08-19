@@ -24,7 +24,7 @@
     bindkey '^[[B' down-line-or-search
 
     ######################################################################
-    # Ctrl+G — open lazygit in the current git repository
+    # Ctrl+/ — open lazygit in the current git repository
     ######################################################################
     _lazygit_widget() {
       if git rev-parse --is-inside-work-tree &>/dev/null; then
@@ -34,6 +34,11 @@
       fi
     }
     zle -N _lazygit_widget
-    bindkey '^G' _lazygit_widget
+    bindkey '^/' _lazygit_widget
+
+    ######################################################################
+    # Auto-launch lazygit in every terminal session
+    ######################################################################
+    lazygit
   '';
 }

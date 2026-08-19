@@ -45,3 +45,34 @@ Key dconf paths written:
 - **dconf "unknown key" warnings:** schema keys are version-sensitive; the
   values here were verified against GNOME 50 at the pinned nixpkgs rev. On a
   newer rev, re-verify with `gsettings list-keys <schema>`.
+
+## Keyboard Shortcuts
+
+All shortcuts are designed for right-hand accessibility.
+
+### GNOME Desktop
+
+| Shortcut | Action |
+|----------|--------|
+| `Shift+Enter` | Launch GNOME Terminal |
+| `Super+B` | Launch Firefox |
+| `Super+E` | Launch Nautilus (Files) |
+| `Super+Q` | Close window |
+| `Alt+F4` | Close window |
+| `Super` | Toggle Overview |
+
+### Zsh Shell
+
+| Shortcut | Action |
+|----------|--------|
+| `Tab` | Menu expand or complete |
+| `↑` | Search history (prefix) |
+| `↓` | Search history (prefix) |
+| `Ctrl+/` | Open lazygit |
+| `Ctrl+C` | Cancel current command |
+| `Ctrl+D` | Exit shell |
+| `Ctrl+R` | Reverse history search |
+| `Ctrl+A` | Move to beginning of line |
+| `Ctrl+E` | Move to end of line |
+| `Ctrl+U` | Kill line before cursor |
+| `Ctrl+K` | Kill line after cursor |

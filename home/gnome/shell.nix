@@ -66,7 +66,7 @@
     };
 
     "org/gnome/desktop/interface" = {
-      enable-hot-corners = true;
+      enable-hot-corners = false;
       # Date and time always visible in the top panel (24h): date + weekday
       # shown next to the clock so the collapsed indicator arrow never hides it.
       clock-show-date = true;
@@ -91,7 +91,7 @@
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       name = "Terminal";
       command = "gnome-terminal";
-      binding = "<Super>Return";
+      binding = "<Ctrl>.";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {
@@ -150,7 +150,7 @@
     };
     # On-screen keyboard for pointer-driven input.
     "org/gnome/desktop/a11y/applications" = {
-      screen-keyboard-enabled = true;
+      screen-keyboard-enabled = false;
     };
     # Sticky keys disabled: GNOME Shell's overview overlay-key handler returns
     # early when org.gnome.desktop.a11y.keyboard.stickykeys-enable is set

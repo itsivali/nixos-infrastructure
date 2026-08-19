@@ -35,10 +35,5 @@
     }
     zle -N _lazygit_widget
     bindkey '^/' _lazygit_widget
-
-    ######################################################################
-    # Auto-launch lazygit in every terminal session
-    ######################################################################
-    lazygit
   '';
 }

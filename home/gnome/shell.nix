@@ -91,7 +91,7 @@
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       name = "Terminal";
       command = "gnome-terminal";
-      binding = "<Ctrl>.";
+      binding = "<Shift>Return";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {

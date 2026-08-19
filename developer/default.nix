@@ -31,7 +31,6 @@
 #
 #   AI Coding Agents:
 #   - openhands.nix  — Self-hosted AI coding agent (Docker-based)
-#   - antigravity.nix — Google Antigravity IDE
 #   - freebuff.nix   — Freebuff free AI coding agent
 #
 ##############################################################################

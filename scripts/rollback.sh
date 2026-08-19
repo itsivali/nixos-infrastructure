@@ -33,12 +33,11 @@ log "Rolling back from generation ${CURRENT_GEN}..."
 # Roll back
 ###########################################################################
 
-# Roll back to the previous generation. Use flake mode so nixos-rebuild does
-# not fall back to the legacy `<nixpkgs/nixos>` NIX_PATH lookup (this host is
-# flake-only and has no nixpkgs channel in NIX_PATH).
-if ! nixos-rebuild --flake "${REPO_DIR}#${HOST}" rollback; then
+# Use --rollback to revert to the previous generation. The --flake form
+# does not support rollback directly; --rollback is a standalone flag.
+if ! sudo nixos-rebuild switch --rollback; then
   notify "❌ Rollback command FAILED on ${HOST} — manual intervention required"
-  log "nixos-rebuild --rollback failed."
+  log "nixos-rebuild switch --rollback failed."
   exit 1
 fi
 

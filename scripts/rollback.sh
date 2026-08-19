@@ -35,16 +35,29 @@ log "Rolling back from generation ${CURRENT_GEN}..."
 
 # Use --rollback to revert to the previous generation. The --flake form
 # does not support rollback directly; --rollback is a standalone flag.
-ROLLBACK_OUTPUT=$(sudo nixos-rebuild switch --rollback 2>&1) || {
-  notify "❌ Rollback command FAILED on ${HOST} — manual intervention required
+if [[ "$(id -u)" -eq 0 ]]; then
+  ROLLBACK_OUTPUT=$(nixos-rebuild switch --rollback 2>&1) || {
+    notify "❌ Rollback command FAILED on ${HOST} — manual intervention required
 
 Generation: ${CURRENT_GEN}
 Error output:
 $(echo "$ROLLBACK_OUTPUT" | tail -10)"
-  log "nixos-rebuild switch --rollback failed."
-  log "$ROLLBACK_OUTPUT"
-  exit 1
-}
+    log "nixos-rebuild switch --rollback failed."
+    log "$ROLLBACK_OUTPUT"
+    exit 1
+  }
+else
+  ROLLBACK_OUTPUT=$(sudo nixos-rebuild switch --rollback 2>&1) || {
+    notify "❌ Rollback command FAILED on ${HOST} — manual intervention required
+
+Generation: ${CURRENT_GEN}
+Error output:
+$(echo "$ROLLBACK_OUTPUT" | tail -10)"
+    log "nixos-rebuild switch --rollback failed."
+    log "$ROLLBACK_OUTPUT"
+    exit 1
+  }
+fi
 
 ROLLED_TO="$(
   nix-env --list-generations --profile /nix/var/nix/profiles/system \

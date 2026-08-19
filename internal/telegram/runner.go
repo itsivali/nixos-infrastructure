@@ -272,7 +272,7 @@ func (r *Runner) writeHeartbeat() {
 
 	// Compute diff since last heartbeat
 	diff := heartbeatDiff{
-		WindowMinutes:     30,
+		WindowMinutes:    30,
 		MessagesReceived: r.messagesReceived,
 		CommandsExecuted: r.commandsExecuted,
 		Errors:           r.errors,
@@ -310,11 +310,11 @@ func (r *Runner) writeHeartbeat() {
 		"uptime_human": readUptime(),
 		"state":        "running",
 		"since_last_heartbeat": map[string]interface{}{
-			"window_minutes":     diff.WindowMinutes,
+			"window_minutes":    diff.WindowMinutes,
 			"messages_received": diff.MessagesReceived,
 			"commands_executed": diff.CommandsExecuted,
-			"errors":             diff.Errors,
-			"events":             diff.Events,
+			"errors":            diff.Errors,
+			"events":            diff.Events,
 		},
 		"totals": map[string]interface{}{
 			"commands_total": 0, // Will be enriched by metrics collector if wired
@@ -347,7 +347,7 @@ func (r *Runner) writeHeartbeat() {
 
 // heartbeatDiff tracks what changed since the last heartbeat.
 type heartbeatDiff struct {
-	WindowMinutes     int      `json:"window_minutes"`
+	WindowMinutes    int      `json:"window_minutes"`
 	MessagesReceived int      `json:"messages_received"`
 	CommandsExecuted int      `json:"commands_executed"`
 	Errors           int      `json:"errors"`

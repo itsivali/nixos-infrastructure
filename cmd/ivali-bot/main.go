@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/itsivali/nixos-infrastructure/internal/events"
 	"github.com/itsivali/nixos-infrastructure/internal/metrics"
 	"github.com/itsivali/nixos-infrastructure/internal/telegram"
 	"github.com/itsivali/nixos-infrastructure/internal/telegram/handlers"
@@ -25,7 +26,9 @@ func main() {
 	config.Debug = *debug
 
 	logger := telegram.NewSimpleLogger(config.Debug)
+	bus := events.NewWithHistory(100)
 	runner := telegram.NewRunner(config, logger)
+	runner.SetEventBus(bus)
 	bot := runner.Bot()
 
 	// Create the shared services container.
@@ -108,6 +111,7 @@ func main() {
 		handlers.NewSearchCommand(bot.API(), svc),
 		handlers.NewGraphCommand(bot.API(), svc),
 		handlers.NewSuggestCommand(bot.API(), svc),
+		handlers.NewRunnerCommand(bot.API()),
 	)
 
 	// Start metrics server.
@@ -136,10 +140,12 @@ func main() {
 	audit := handlers.NewAuditLogger("ivali-bot")
 
 	bot.SetBeforeExec(func(userID int, chatID int64, cmdName string) bool {
+		metricsSrv.Collector().CommandStarted(cmdName)
 		return rl.Allow(int64(userID))
 	})
 	bot.SetAfterExec(func(userID int, chatID int64, cmdName string, args string, success bool, durationMs int64) {
 		audit.Log(int64(userID), chatID, cmdName, args, success, durationMs)
+		metricsSrv.Collector().CommandFinished(cmdName, !success)
 	})
 
 	ctx := context.Background()

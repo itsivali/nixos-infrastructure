@@ -158,9 +158,9 @@ in
           RestartSec = "10s";
 
           # Hardening
-          MemoryMax = "64M";
-          MemoryHigh = "48M";
-          CPUQuota = "10%";
+          MemoryMax = "24M";
+          MemoryHigh = "16M";
+          CPUQuota = "0.5%";
           NoNewPrivileges = true;
           PrivateTmp = true;
           ProtectHome = true;

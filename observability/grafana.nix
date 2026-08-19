@@ -107,40 +107,40 @@ in
     };
   };
 
-  # CPU and memory limits for all observability services (1GB RAM budget)
+  # CPU and memory limits — 2% budget on 2-core / 14GB laptop
   systemd.services.grafana = lib.mkIf cfg.enable {
     serviceConfig = {
-      MemoryMax = "256M";
-      MemoryHigh = "200M";
-      CPUQuota = "15%";
-      CPUWeight = 50;
-      IOWeight = 30;
+      MemoryMax = "48M";
+      MemoryHigh = "36M";
+      CPUQuota = "1%";
+      CPUWeight = 30;
+      IOWeight = 20;
     };
   };
 
   systemd.services.loki = lib.mkIf cfg.loki.enable {
     serviceConfig = {
-      MemoryMax = "128M";
-      MemoryHigh = "100M";
-      CPUQuota = "10%";
-      CPUWeight = 40;
+      MemoryMax = "32M";
+      MemoryHigh = "24M";
+      CPUQuota = "0.5%";
+      CPUWeight = 20;
     };
   };
 
   systemd.services.prometheus = lib.mkIf cfg.enable {
     serviceConfig = {
-      MemoryMax = "128M";
-      MemoryHigh = "100M";
-      CPUQuota = "20%";
-      CPUWeight = 50;
+      MemoryMax = "48M";
+      MemoryHigh = "36M";
+      CPUQuota = "1%";
+      CPUWeight = 30;
     };
   };
 
   systemd.services."prometheus-node-exporter" = lib.mkIf cfg.enable {
     serviceConfig = {
-      MemoryMax = "32M";
-      CPUQuota = "10%";
-      CPUWeight = 30;
+      MemoryMax = "8M";
+      CPUQuota = "0.5%";
+      CPUWeight = 20;
     };
   };
 }

@@ -47,6 +47,9 @@ in
           job  = "systemd-journal"
         }
 
+        # Forward only error-level and above to reduce storage and CPU.
+        priority = ["err" "crit" "alert" "emerg"]
+
         relabel_rules = [
           {
             source_labels = ["__journal_priority_keyword"]
@@ -70,10 +73,10 @@ in
       ExecStart = "${pkgs.grafana-alloy}/bin/alloy run /etc/alloy/config.alloy";
       Restart = "always";
       RestartSec = "30s";
-      MemoryMax = "64M";
-      MemoryHigh = "48M";
-      CPUQuota = "10%";
-      CPUWeight = 30;
+      MemoryMax = "24M";
+      MemoryHigh = "16M";
+      CPUQuota = "0.5%";
+      CPUWeight = 20;
     };
   };
 }

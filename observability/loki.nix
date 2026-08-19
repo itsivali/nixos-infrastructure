@@ -54,7 +54,7 @@ in
       ];
       limits_config = {
         allow_structured_metadata = false;
-        retention_period = "48h";
+        retention_period = "4h";
         ingestion_rate_mb = 2;
         ingestion_burst_size_mb = 4;
         max_streams_per_user = 1000;
@@ -66,8 +66,8 @@ in
       compactor = {
         working_directory = "/var/lib/loki/compactor";
         retention_enabled = true;
-        compaction_interval = "2h";
-        retention_delete_delay = "2h";
+        compaction_interval = "1h";
+        retention_delete_delay = "30m";
         retention_delete_worker_count = 50;
         delete_request_store = "filesystem";
       };

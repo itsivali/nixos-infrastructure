@@ -123,9 +123,9 @@ in
         ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString cfg.port},fork,reuseaddr,bind=127.0.0.1 SYSTEM:'${nixosExporterScript}'";
         Restart = "always";
         RestartSec = 5;
-        MemoryMax = "64M";
-        CPUQuota = "5%";
-        CPUWeight = 20;
+        MemoryMax = "16M";
+        CPUQuota = "0.25%";
+        CPUWeight = 15;
 
         # Hardening
         CacheDirectory = "nixos-exporter";

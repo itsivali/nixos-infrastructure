@@ -206,9 +206,9 @@ in
         ExecStart = "${pkgs.socat}/bin/socat TCP-LISTEN:${toString cfg.port},fork,reuseaddr,bind=127.0.0.1 SYSTEM:'${healthScript}'";
         Restart = "always";
         RestartSec = 5;
-        MemoryMax = "32M";
-        CPUQuota = "5%";
-        CPUWeight = 20;
+        MemoryMax = "8M";
+        CPUQuota = "0.25%";
+        CPUWeight = 15;
 
         # Hardening
         StateDirectory = "health-endpoint";

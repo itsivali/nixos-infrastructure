@@ -36,12 +36,17 @@ while IFS= read -r line; do
   [[ -n "$uuid" ]] && LIVE_UUIDS["$uuid"]=1
 done < <(blkid 2>/dev/null || true)
 
-if [[ ${#LIVE_UUIDS[@]} -eq 0 ]]; then
+# Bash <4.4 treats empty associative arrays as unset under set -u.
+set +u
+LIVE_COUNT=${#LIVE_UUIDS[@]}
+set -u
+
+if [[ "$LIVE_COUNT" -eq 0 ]]; then
   log "⚠️  blkid returned no UUIDs — skipping validation (container/VM?)"
   exit 0
 fi
 
-log "Found ${#LIVE_UUIDS[@]} live block device UUIDs"
+log "Found ${LIVE_COUNT} live block device UUIDs"
 
 ###########################################################################
 # 2. Extract declared filesystem UUIDs from the NixOS configuration

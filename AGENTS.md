@@ -162,6 +162,7 @@ Every code change must be verified before committing. No exceptions.
 Security is a hard constraint.
 
 - **No Plaintext Secrets:** Never commit passwords, API keys, or tokens.
+- **No Hardcoded Secrets:** Never hardcode secret values — not even as fallbacks, defaults, or placeholder credentials. Every secret must live exclusively in SOPS-encrypted files under `secrets/`. This includes Grafana secret keys, admin passwords, API tokens, and any other credential. If a module needs a secret, declare it via `sops.secrets.<name>.sopsFile`. Test VMs that cannot decrypt SOPS must provide throwaway values directly on the NixOS service settings — never embed them in the module.
 - **Secrets Integration:** All sensitive data must be managed via secure deployment tools (e.g., `sops-nix` or `agenix`).
 - **Principle of Least Privilege:** Systemd services must be locked down using standard hardening parameters (`DynamicUser = true`, `ProtectSystem = "strict"`, etc.) unless absolutely necessary.
 

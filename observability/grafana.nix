@@ -34,8 +34,10 @@ in
   };
 
   assertions = [{
-    assertion = cfg.enable -> config.ivali.secrets.enable;
-    message = "Grafana requires ivali.secrets.enable = true (SOPS must manage credentials)";
+    assertion = cfg.enable -> (config.ivali.secrets.enable || cfg.grafana.allowDefaultCredentials);
+    message = "Grafana requires ivali.secrets.enable = true (SOPS must manage credentials). "
+      + "Set ivali.observability.grafana.allowDefaultCredentials = true only for CI/test VMs "
+      + "without key material.";
   }];
 
   services.grafana = lib.mkIf cfg.enable {
@@ -49,7 +51,7 @@ in
         serve_from_sub_path = true;
       };
       analytics.reporting_enabled = false;
-      security = {
+      security = lib.mkIf config.ivali.secrets.enable {
         admin_user = "admin";
         admin_password = "$__file{${config.sops.secrets.grafana_admin_password.path}}";
         disable_gravatar = true;

@@ -59,6 +59,16 @@ in
       description = "Enable local Loki log aggregation (overkill for single laptop; journald suffices).";
     };
 
+    grafana.allowDefaultCredentials = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Permit Grafana to run with its built-in default admin credentials when
+        SOPS secrets are disabled (ivali.secrets.enable = false). Intended for
+        CI/VMs and first installs only — never enable on a real host.
+      '';
+    };
+
     alloy.enable = lib.mkOption {
       type = lib.types.bool;
       default = false;

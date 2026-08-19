@@ -45,11 +45,16 @@ pkgs.testers.nixosTest {
       falco.enable = false;
       exporters.enable = true;
       healthEndpoint.enable = true;
+      # No SOPS key material in this test VM — Grafana is started with a
+      # throwaway secret key set directly on services.grafana (see below).
+      grafana.allowDefaultCredentials = true;
     };
 
-    # Keep SOPS secrets from being declared in this test (no key material present)
+    # No SOPS key material in this test VM.  The nixpkgs grafana module
+    # (26.05+) requires settings.security.secret_key to be set, so provide
+    # a throwaway test-only value directly.  Production hosts always have
+    # ivali.secrets.enable = true and receive the real key via SOPS.
     ivali.secrets.enable = false;
-    sops.defaultSopsFile = /tmp/test-sops.yaml;
 
     services.prometheus = {
       enable = true;
@@ -60,6 +65,7 @@ pkgs.testers.nixosTest {
     services.grafana = {
       enable = true;
       settings.server.http_addr = "127.0.0.1";
+      settings.security.secret_key = "test-only-not-a-real-secret";
     };
   };
 

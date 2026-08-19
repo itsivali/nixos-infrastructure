@@ -199,7 +199,7 @@
         observability-smoke = import ./tests/observability-smoke.nix { inherit pkgs sops-nix home-manager; };
         services-smoke = import ./tests/services-smoke.nix { inherit pkgs sops-nix home-manager; };
         home-manager-smoke = import ./tests/home-manager-smoke.nix { inherit pkgs sops-nix home-manager; };
-        bot-integration = import ./tests/bot-integration.nix { inherit pkgs sops-nix home-manager; };
+        bot-integration = import ./tests/bot-integration.nix { inherit pkgs sops-nix home-manager self; };
         automation-smoke = import ./tests/automation-smoke.nix { inherit pkgs sops-nix home-manager; };
         bitwarden-smoke = import ./tests/bitwarden-smoke.nix { inherit pkgs sops-nix home-manager; };
         bot-desktop-smoke = import ./tests/bot-desktop-smoke.nix { inherit pkgs sops-nix home-manager; };

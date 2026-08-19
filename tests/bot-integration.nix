@@ -9,12 +9,16 @@
 #
 ##############################################################################
 
-{ pkgs, sops-nix, home-manager }:
+{ pkgs, sops-nix, home-manager, self }:
 
 pkgs.testers.nixosTest {
   name = "bot-integration";
 
-  nodes.machine = { config, ... }: {
+  nodes.machine = { ... }: {
+    # services/bot/ivali-bot-go.nix references self.packages; inject the
+    # flake self so the module argument resolves inside the test VM.
+    _module.args.self = self;
+
     imports = [
       sops-nix.nixosModules.sops
       ../automation

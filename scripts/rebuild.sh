@@ -49,9 +49,9 @@ render_bar() {
 }
 
 # Stages: icon, label, color
-declare -a STAGES_ICONS=( " " " " " " " " " " " )
-declare -a STAGES_LABELS=( "Fetching" "Rebasing" "Validating" "Building" "Activating" "Complete" )
-declare -a STAGES_COLORS=( "$CYAN" "$CYAN" "$YELLOW" "$YELLOW" "$GREEN" "$GREEN" )
+STAGES_ICONS=( "󰓚" "󰓚" "󰓚" "󰙍" "󰙍" "󰖿" )
+STAGES_LABELS=( "Fetching" "Rebasing" "Validating" "Building" "Activating" "Complete" )
+STAGES_COLORS=( "$CYAN" "$CYAN" "$YELLOW" "$YELLOW" "$GREEN" "$GREEN" )
 NUM_STAGES=${#STAGES_LABELS[@]}
 
 CURRENT_STAGE=0
@@ -112,7 +112,7 @@ fi
 
 CHANGED_GO=$(git -C "$REPO_DIR" diff --name-only origin/main -- '*.go' 'go.mod' 'go.sum' 2>/dev/null | wc -l)
 if [[ "$CHANGED_GO" -gt 0 ]]; then
-  step " Go files changed (${CHANGED_GO}) — checking vendor hashes..."
+  step " Go files changed [${CHANGED_GO}] — checking vendor hashes..."
   if output=$("$REPO_DIR/scripts/update-go-hashes.sh" --verify-only 2>&1); then
     ok "Go vendor hashes valid"
   else
@@ -175,7 +175,7 @@ echo ""
 if [[ $EXIT_CODE -eq 0 ]]; then
   ok "System rebuilt successfully"
 else
-  fail "Build failed (exit code: $EXIT_CODE)"
+  fail "Build failed — exit code: $EXIT_CODE"
   exit 1
 fi
 

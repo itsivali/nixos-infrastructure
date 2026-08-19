@@ -120,7 +120,8 @@ Every code change must be verified before committing. No exceptions.
 2. **Nix evaluation:** `nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.name` — must evaluate without error.
 3. **Go compilation:** `go build ./...` — must compile cleanly.
 4. **Go tests:** `go test ./...` — all tests must pass.
-5. **Shell lint:** `shellcheck scripts/*.sh` — if scripts are modified.
+5. **Shell syntax:** `bash -n scripts/*.sh` — must parse without syntax errors (run BEFORE any other shell checks).
+6. **Shell lint:** `shellcheck scripts/*.sh` — if scripts are modified.
 
 **End-to-end feature testing:**
 

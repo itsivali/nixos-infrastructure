@@ -348,65 +348,109 @@ in
       after = [ "tailscaled.service" ];
       wants = [ "tailscaled.service" ];
 
-      serviceConfig = {
-        Type = "simple";
-        Restart = "always";
-        RestartSec = 30;
-      };
+      path = [ pkgs.jq pkgs.host pkgs.tailscale pkgs.bash pkgs.coreutils pkgs.socat ];
+
+      preStart = ''
+        set -euo pipefail
+        mkdir -p /var/lib/tailscale-metrics
+
+        METRICS_FILE="/var/lib/tailscale-metrics/metrics.prom"
+
+        # Initial metrics write
+        TIMESTAMP=$(date +%s)
+        EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
+        EXPIRY_DATE=$(echo "$EXPIRY_JSON" | jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
+        HOSTNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.HostName // empty' 2>/dev/null || echo "unknown")
+        Connected=$(echo "$EXPIRY_JSON" | jq -r '.Self.BackendState // empty' 2>/dev/null || echo "unknown")
+
+        KEY_EXPIRY_DAYS=999
+        if [ -n "$EXPIRY_DATE" ] && [ "$EXPIRY_DATE" != "none" ]; then
+          EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
+          NOW_EPOCH=$(date +%s)
+          KEY_EXPIRY_DAYS=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
+        fi
+
+        DNSNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
+        MAGICDNS_STATUS=1
+        if [ -n "$DNSNAME" ]; then
+          if ! host "$DNSNAME" >/dev/null 2>&1; then
+            MAGICDNS_STATUS=0
+          fi
+        fi
+
+        CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
+        {
+          echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
+          echo "# TYPE tailscale_connected gauge"
+          echo "tailscale_connected{host=\"$HOSTNAME\"} $CONNECTED_VAL"
+          echo "# HELP tailscale_key_expiry_days Days until Tailscale key expires"
+          echo "# TYPE tailscale_key_expiry_days gauge"
+          echo "tailscale_key_expiry_days{host=\"$HOSTNAME\"} $KEY_EXPIRY_DAYS"
+          echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
+          echo "# TYPE tailscale_magicdns_status gauge"
+          echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
+          echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
+          echo "# TYPE tailscale_metrics_timestamp gauge"
+          echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"
+        } > "$METRICS_FILE"
+      '';
 
       script = ''
         set -euo pipefail
-
         METRICS_FILE="/var/lib/tailscale-metrics/metrics.prom"
-        mkdir -p /var/lib/tailscale-metrics
 
-        while true; do
-          TIMESTAMP=$(date +%s)
+        # Background: update metrics every 60s
+        (
+          while true; do
+            sleep 60
+            TIMESTAMP=$(date +%s)
+            EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
+            EXPIRY_DATE=$(echo "$EXPIRY_JSON" | jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
+            HOSTNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.HostName // empty' 2>/dev/null || echo "unknown")
+            Connected=$(echo "$EXPIRY_JSON" | jq -r '.Self.BackendState // empty' 2>/dev/null || echo "unknown")
 
-          # Get key expiry info
-          EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
-          EXPIRY_DATE=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
-          HOSTNAME=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.HostName // empty' 2>/dev/null || echo "unknown")
-          Connected=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.BackendState // empty' 2>/dev/null || echo "unknown")
-
-          # Calculate days until expiry
-          KEY_EXPIRY_DAYS=999
-          if [ -n "$EXPIRY_DATE" ] && [ "$EXPIRY_DATE" != "none" ]; then
-            EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
-            NOW_EPOCH=$(date +%s)
-            KEY_EXPIRY_DAYS=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
-          fi
-
-          # MagicDNS check status — resolve this node's own MagicDNS name
-          # (e.g. prague-1.codlet-trench.ts.net), which is what MagicDNS
-          # actually serves. The bare tailnet domain does not resolve.
-          DNSNAME=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
-          MAGICDNS_STATUS=1
-          if [ -n "$DNSNAME" ]; then
-            if ! ${pkgs.host}/bin/host "$DNSNAME" >/dev/null 2>&1; then
-              MAGICDNS_STATUS=0
+            KEY_EXPIRY_DAYS=999
+            if [ -n "$EXPIRY_DATE" ] && [ "$EXPIRY_DATE" != "none" ]; then
+              EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
+              NOW_EPOCH=$(date +%s)
+              KEY_EXPIRY_DAYS=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
             fi
-          fi
 
-          # Write metrics
-          CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
-          {
-            echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
-            echo "# TYPE tailscale_connected gauge"
-            echo "tailscale_connected{host=\"$HOSTNAME\"} $CONNECTED_VAL"
-            echo "# HELP tailscale_key_expiry_days Days until Tailscale key expires"
-            echo "# TYPE tailscale_key_expiry_days gauge"
-            echo "tailscale_key_expiry_days{host=\"$HOSTNAME\"} $KEY_EXPIRY_DAYS"
-            echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
-            echo "# TYPE tailscale_magicdns_status gauge"
-            echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
-            echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
-            echo "# TYPE tailscale_metrics_timestamp gauge"
-            echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"
-          } > "$METRICS_FILE"
+            DNSNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
+            MAGICDNS_STATUS=1
+            if [ -n "$DNSNAME" ]; then
+              if ! host "$DNSNAME" >/dev/null 2>&1; then
+                MAGICDNS_STATUS=0
+              fi
+            fi
 
-          sleep 60
-        done
+            CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
+            {
+              echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
+              echo "# TYPE tailscale_connected gauge"
+              echo "tailscale_connected{host=\"$HOSTNAME\"} $CONNECTED_VAL"
+              echo "# HELP tailscale_key_expiry_days Days until Tailscale key expires"
+              echo "# TYPE tailscale_key_expiry_days gauge"
+              echo "tailscale_key_expiry_days{host=\"$HOSTNAME\"} $KEY_EXPIRY_DAYS"
+              echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
+              echo "# TYPE tailscale_magicdns_status gauge"
+              echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
+              echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
+              echo "# TYPE tailscale_metrics_timestamp gauge"
+              echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"
+            } > "$METRICS_FILE"
+          done
+        ) &
+        UPDATE_PID=$!
+
+        # Foreground: serve metrics via socat
+        socat TCP-LISTEN:9121,fork,reuseaddr,bind=127.0.0.1 SYSTEM:'echo "HTTP/1.1 200 OK"; echo "Content-Type: text/plain; version=0.0.4"; echo ""; cat /var/lib/tailscale-metrics/metrics.prom' &
+        SOCAT_PID=$!
+
+        # Wait for either to exit
+        wait -n $UPDATE_PID $SOCAT_PID 2>/dev/null || true
+        kill $UPDATE_PID $SOCAT_PID 2>/dev/null || true
+        exit 1
       '';
     };
 

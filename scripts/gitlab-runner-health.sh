@@ -431,6 +431,28 @@ log "Warnings           : ${WARN}"
 log "Failures           : ${FAIL}"
 
 ################################################################################
+## Write JSON state
+################################################################################
+
+STATE_FILE="/var/lib/gitlab-runner/health-state.json"
+mkdir -p "$(dirname "$STATE_FILE")"
+
+cat > "$STATE_FILE" <<EOF
+{
+  "timestamp": "$(date -Iseconds)",
+  "host": "${HOST_NAME}",
+  "result": "$([ "$FAIL" -eq 0 ] && echo "healthy" || echo "unhealthy")",
+  "checks": {
+    "total": ${TOTAL},
+    "pass": ${PASS},
+    "warn": ${WARN},
+    "fail": ${FAIL}
+  },
+  "details": []
+}
+EOF
+
+################################################################################
 ## Exit
 ################################################################################
 

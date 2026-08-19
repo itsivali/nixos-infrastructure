@@ -457,135 +457,32 @@ in
     ##############################################################################
     ## Reconciliation Service
     ##############################################################################
+    ##############################################################################
+    ## Reconciliation — health-failure trigger only
+    ##############################################################################
 
     systemd.services.gitlab-runner-reconcile = {
-
-      description =
-        "Fleet GitLab Runner Reconciliation";
-
-      wants = [
-
-        "network-online.target"
-
-      ];
-
-      after = [
-
-        "network-online.target"
-
-      ];
-
-      path = with pkgs; [
-
-        bash
-
-        git
-
-        gitlab-runner
-
-        nix
-
-        curl
-
-        jq
-
-        coreutils
-
-        gnugrep
-
-        gnused
-
-        gawk
-
-        systemd
-
-        util-linux
-
-        inetutils
-
-      ];
-
-      environment = {
-
-        GITOPS_REPO =
-          cfg.gitopsRepo;
-
-        GITOPS_BRANCH =
-          cfg.gitopsBranch;
-
-        HOST_NAME =
-          config.networking.hostName;
-
-        GITOPS_WORKTREE =
-          "/var/lib/gitops";
-
-        ########################################################################
-        ## Private repository access (GitLab API token)
-        ########################################################################
-
-        GITLAB_TOKEN_FILE =
-          config.sops.secrets.gitlab_token.path;
-
-      };
-
+      description = "GitLab Runner reconciliation (triggered by health failure)";
       serviceConfig = {
-
         Type = "oneshot";
-
-        User = "root";
-
-        Group = "root";
-
-        ExecStart =
-          reconcileScript;
-
-        TimeoutStartSec = "120s";
-
-        StandardOutput = "journal";
-
-        StandardError = "journal";
-
-        SyslogIdentifier =
-          "gitlab-runner-reconcile";
-
+        Environment = "TRIGGER=health-failure";
+        ExecStart = [ "${reconcileScript}" ];
       };
-
-    };
-
-    ##############################################################################
-    ## Reconciliation Timer
-    ##############################################################################
-
-    systemd.timers.gitlab-runner-reconcile = {
-
-      description =
-        "Periodic GitLab Runner Reconciliation";
-
-      wantedBy = [
-
-        "timers.target"
-
+      path = with pkgs; [
+        bash
+        git
+        gitlab-runner
+        nix
+        curl
+        jq
+        coreutils
+        gnugrep
+        gnused
+        gawk
+        systemd
+        util-linux
+        inetutils
       ];
-
-      timerConfig = {
-
-        Unit =
-          "gitlab-runner-reconcile.service";
-
-        OnBootSec = "10m";
-
-        OnUnitActiveSec =
-          cfg.reconcileInterval;
-
-        RandomizedDelaySec =
-          cfg.randomizedDelay;
-
-        AccuracySec = "1min";
-
-        Persistent = true;
-
-      };
-
     };
 
   };

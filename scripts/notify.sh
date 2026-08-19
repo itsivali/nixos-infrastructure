@@ -19,6 +19,21 @@ if [[ -z "$MESSAGE" ]]; then
   exit 1
 fi
 
+# Dedup: hash message body, skip if sent within last 10 minutes
+DEDUP_DIR="/tmp/notify-seen"
+mkdir -p "$DEDUP_DIR"
+MSG_HASH=$(echo "$MESSAGE" | md5sum | cut -d' ' -f1)
+DEDUP_FILE="${DEDUP_DIR}/${MSG_HASH}"
+
+if [[ -f "$DEDUP_FILE" ]]; then
+  AGE=$(( $(date +%s) - $(stat -c %Y "$DEDUP_FILE") ))
+  if [[ "$AGE" -lt 600 ]]; then
+    echo "notify.sh: duplicate message suppressed (${AGE}s < 600s)" >&2
+    exit 0
+  fi
+fi
+date -Iseconds > "$DEDUP_FILE"
+
 HOST="$(hostname)"
 TIMESTAMP="$(date -Iseconds)"
 FULL_MSG="[${HOST}] ${TIMESTAMP}"$'\n'"${MESSAGE}"

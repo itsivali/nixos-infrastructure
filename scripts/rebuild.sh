@@ -1,5 +1,5 @@
 #!/run/current-system/sw/bin/bash
-# rebuild — pretty system rebuild with step-by-step output
+# rebuild — pretty system rebuild with animated progress bar
 #
 # Usage: rebuild [flags]
 #   Runs: fetch → rebase → hw-check → hash-check → nixos-rebuild switch
@@ -24,7 +24,6 @@ ok()    { echo -e "${GREEN}✓${RESET} $*"; }
 warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 fail()  { echo -e "${RED}✗${RESET} $*"; }
 info()  { echo -e "${DIM}  $*${RESET}"; }
-lock()  { echo -e "${YELLOW}  $*${RESET}"; }
 
 divider() {
   echo -e "${DIM}──────────────────────────────────────────────${RESET}"
@@ -35,7 +34,41 @@ elapsed() {
   printf "%dm%02ds" $((s/60)) $((s%60))
 }
 
-START=$SECONDS
+# ── Progress bar ──────────────────────────────────────────────────────────
+
+render_bar() {
+  local pct=$1 label=$2 icon=$3 color=$4
+  local width=$((COLUMNS - 20))
+  [[ $width -lt 20 ]] && width=40
+  local filled=$((pct * width / 100))
+  local empty=$((width - filled))
+  local bar=""
+  for ((i = 0; i < filled; i++)); do bar+="━"; done
+  for ((i = 0; i < empty; i++)); do bar+="─"; done
+    printf "\r${color} ${bar} ${icon} %3d%%  %s${RESET}" "$pct" "$label"
+}
+
+# Stages: icon, label, color
+declare -a STAGES_ICONS=( " " " " " " " " " " " )
+declare -a STAGES_LABELS=( "Fetching" "Rebasing" "Validating" "Building" "Activating" "Complete" )
+declare -a STAGES_COLORS=( "$CYAN" "$CYAN" "$YELLOW" "$YELLOW" "$GREEN" "$GREEN" )
+NUM_STAGES=${#STAGES_LABELS[@]}
+
+CURRENT_STAGE=0
+
+show_progress() {
+  local stage=$1
+  if [[ $stage -gt $NUM_STAGES ]]; then stage=$NUM_STAGES; fi
+  if [[ $stage -ne $CURRENT_STAGE ]]; then
+    CURRENT_STAGE=$stage
+  fi
+  local pct=$((CURRENT_STAGE * 100 / NUM_STAGES))
+  render_bar "$pct" "${STAGES_LABELS[$CURRENT_STAGE]}" "${STAGES_ICONS[$CURRENT_STAGE]}" "${STAGES_COLORS[$CURRENT_STAGE]}"
+}
+
+advance_stage() {
+  show_progress $((CURRENT_STAGE + 1))
+}
 
 # ── Header ─────────────────────────────────────────────────────────────────
 
@@ -99,15 +132,50 @@ fi
 # ── Step 5: Build & activate ──────────────────────────────────────────────
 
 divider
-lock "  Authorizing..."
-step " Building and activating..."
-echo ""
-if sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace 2>&1 | tail -5; then
+
+  show_progress 0
+
+REBUILD_LOG=$(mktemp)
+EXIT_CODE=0
+
+sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace \
+  2>"$REBUILD_LOG" | while IFS= read -r line; do
+  case "$line" in
+    *"Fingerprint mismatch"* | *"error:"* | *"FAILED"*)
+      advance_stage
+      ;;
+    *"building the system configuration"* | *"computing new closure"*)
+      show_progress 4
+      ;;
+    *"activating the configuration"*)
+      show_progress 5
+      ;;
+    *"reloading the following units"* | *"restarting the following units"* | \
+    *"stopping the following units"* | *"starting the following units"* | \
+    *"the following new units were started"*)
+      advance_stage
+      ;;
+    *" flakes:"* | *"hierarchical fetching"* | *"copying path"* | \
+    *"downloading"* | *"fetching"* | *"unpacking"* | *"unpacking packages"*)
+      show_progress 1
+      ;;
+  esac
+done || EXIT_CODE=$?
+
+# Show build errors if any
+if [[ -s "$REBUILD_LOG" ]]; then
   echo ""
+  fail "Build errors:"
+  cat "$REBUILD_LOG"
+fi
+rm -f "$REBUILD_LOG"
+
+echo ""
+
+if [[ $EXIT_CODE -eq 0 ]]; then
   ok "System rebuilt successfully"
 else
-  echo ""
-  fail "Build failed"
+  fail "Build failed (exit code: $EXIT_CODE)"
   exit 1
 fi
 

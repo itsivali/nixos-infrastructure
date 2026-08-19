@@ -217,7 +217,7 @@ in
       custom = {
         disk = {
           command = "df -h / | awk 'NR==2{print $3\"/\"$2}'";
-          shell = [ "sh" "-c" ];
+          shell = "bash";
           style = ivaliGray;
           format = "[ 󰋊 Disk $output]($style) ";
         };

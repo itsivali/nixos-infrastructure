@@ -34,6 +34,8 @@ elapsed() {
   printf "%dm%02ds" $((s/60)) $((s%60))
 }
 
+START=$SECONDS
+
 # ── Progress bar ──────────────────────────────────────────────────────────
 
 render_bar() {

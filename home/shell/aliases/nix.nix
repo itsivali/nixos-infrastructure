@@ -37,7 +37,7 @@ in
 {
   programs.zsh.shellAliases = {
     # ── NixOS Rebuild ─────────────────────────────────────────────────
-    rebuild = "git -C ${repoDir} fetch origin main && git -C ${repoDir} rebase origin/main && ${repoDir}/scripts/validate-hardware.sh && ${repoDir}/scripts/update-go-hashes.sh && sudo nixos-rebuild switch --flake ${repoDir}#prague";
+    rebuild = "${repoDir}/scripts/rebuild.sh";
     hwcheck = "${repoDir}/scripts/validate-hardware.sh";
     check-hashes = "${repoDir}/scripts/update-go-hashes.sh --verify-only";
     fix-hashes = "${repoDir}/scripts/update-go-hashes.sh";

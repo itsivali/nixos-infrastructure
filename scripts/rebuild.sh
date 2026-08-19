@@ -24,6 +24,7 @@ ok()    { echo -e "${GREEN}✓${RESET} $*"; }
 warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
 fail()  { echo -e "${RED}✗${RESET} $*"; }
 info()  { echo -e "${DIM}  $*${RESET}"; }
+lock()  { echo -e "${YELLOW}  $*${RESET}"; }
 
 divider() {
   echo -e "${DIM}──────────────────────────────────────────────${RESET}"
@@ -39,12 +40,12 @@ START=$SECONDS
 # ── Header ─────────────────────────────────────────────────────────────────
 
 echo ""
-echo -e "${BOLD}⬢ NixOS Rebuild${RESET}  ${DIM}prague · main${RESET}"
+echo -e "${BOLD} NixOS Rebuild${RESET}  ${DIM}prague · main${RESET}"
 divider
 
 # ── Step 1: Git fetch ─────────────────────────────────────────────────────
 
-step "Fetching origin..."
+step " Fetching origin..."
 if output=$(git -C "$REPO_DIR" fetch origin main 2>&1); then
   ok "Fetch complete"
 else
@@ -55,7 +56,7 @@ fi
 
 # ── Step 2: Rebase ────────────────────────────────────────────────────────
 
-step "Rebasing on origin/main..."
+step " Rebasing on origin/main..."
 if output=$(git -C "$REPO_DIR" rebase origin/main 2>&1); then
   ok "Rebase complete"
 else
@@ -65,7 +66,7 @@ fi
 
 # ── Step 3: Hardware UUID check ───────────────────────────────────────────
 
-step "Validating hardware UUIDs..."
+step " Validating hardware UUIDs..."
 if output=$("$REPO_DIR/scripts/validate-hardware.sh" 2>&1); then
   ok "Hardware UUIDs valid"
 else
@@ -78,7 +79,7 @@ fi
 
 CHANGED_GO=$(git -C "$REPO_DIR" diff --name-only origin/main -- '*.go' 'go.mod' 'go.sum' 2>/dev/null | wc -l)
 if [[ "$CHANGED_GO" -gt 0 ]]; then
-  step "Go files changed (${CHANGED_GO}) — checking vendor hashes..."
+  step " Go files changed (${CHANGED_GO}) — checking vendor hashes..."
   if output=$("$REPO_DIR/scripts/update-go-hashes.sh" --verify-only 2>&1); then
     ok "Go vendor hashes valid"
   else
@@ -98,7 +99,8 @@ fi
 # ── Step 5: Build & activate ──────────────────────────────────────────────
 
 divider
-step "Building and activating..."
+lock "  Authorizing..."
+step " Building and activating..."
 echo ""
 if sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace 2>&1 | tail -5; then
   echo ""
@@ -113,5 +115,5 @@ fi
 
 divider
 DURATION=$(( SECONDS - START ))
-echo -e "${GREEN}${BOLD}⬢ Done${RESET}  ${DIM}$(elapsed $DURATION)${RESET}"
+echo -e "${GREEN}${BOLD} Done${RESET}  ${DIM}$(elapsed $DURATION)${RESET}"
 echo ""

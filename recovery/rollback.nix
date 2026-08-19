@@ -61,6 +61,8 @@ in
       };
 
       script = ''
+        # Wait for services to settle after the triggering health failure
+        sleep 30
         if ! ${./../scripts/deployment-health.sh}; then
           ${./../scripts/rollback.sh}
         fi

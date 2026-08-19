@@ -282,6 +282,14 @@ fi
 step_ok
 
 ###########################################################################
+# Grace period — let services settle after rebuild before health gate
+###########################################################################
+
+step "Waiting for services to settle..."
+sleep 30
+ok "Grace period complete"
+
+###########################################################################
 # Health gate — prefer runtime service health (deployment-health.sh); fall
 # back to ivali doctor (config quality) only if the runtime check is absent.
 ###########################################################################

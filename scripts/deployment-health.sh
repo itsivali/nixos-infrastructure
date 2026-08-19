@@ -285,7 +285,7 @@ check_unit_retry() {
   fail "${label} is NOT running"
 }
 
-check_unit_retry "ivali-bot-go.service" "Telegram bot (ivali-bot-go)" 6 5
+check_unit_retry "ivali-bot-go.service" "Telegram bot (ivali-bot-go)" 12 5
 check_unit "sshd.service" "SSH daemon (sshd)"
 check_unit "NetworkManager.service" "NetworkManager"
 check_unit "tailscaled.service" "Tailscale (tailscaled)"

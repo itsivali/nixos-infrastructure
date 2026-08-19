@@ -1,17 +1,35 @@
 # Observability Stack
 
-Local monitoring stack on Prague: **Prometheus + Grafana + Loki + Alloy**.
+Local monitoring stack on Prague: **Prometheus + Grafana + Loki + Alloy + Alertmanager**.
+
+## Quick Start
+
+```bash
+# Check service status
+systemctl status prometheus grafana loki alloy alertmanager
+
+# View Prometheus targets
+curl -s http://127.0.0.1:9090/api/v1/targets | jq '.data.activeTargets[].scrapeUrl'
+
+# Test Grafana login
+sops -d secrets/grafana.yaml | grep grafana_admin_password
+```
 
 ## Services
 
-| Service | Port | Purpose |
-|---------|------|---------|
-| Prometheus | `127.0.0.1:9090` | Metrics collection & alerting |
-| Grafana | `127.0.0.1:3000/grafana/` | Dashboards & visualization |
-| Loki | `127.0.0.1:3100` | Log aggregation (disabled by default) |
-| Alloy | — | Log forwarding to Loki (disabled by default) |
+| Service | Port | Purpose | Resource Budget |
+|---------|------|---------|-----------------|
+| Prometheus | `127.0.0.1:9090` | Metrics collection & alerting | 48M / 1% CPU |
+| Grafana | `127.0.0.1:3000/grafana/` | Dashboards & visualization | 48M / 1% CPU |
+| Loki | `127.0.0.1:3100` | Log aggregation (errors only) | 32M / 0.5% CPU |
+| Alloy | — | Log forwarding to Loki (errors only) | 24M / 0.5% CPU |
+| Alertmanager | `127.0.0.1:9093` | Alert routing to Telegram | 16M / 0.5% CPU |
+| Node Exporter | `127.0.0.1:9100` | System metrics | 8M / 0.5% CPU |
+| NixOS Exporter | `127.0.0.1:9101` | NixOS-specific metrics | 16M / 0.25% CPU |
+| Health Endpoint | `127.0.0.1:9102` | System health checks | 8M / 0.25% CPU |
+| OTel Collector | `127.0.0.1:8888` | OpenTelemetry traces/metrics | 24M / 0.5% CPU |
 
-All services bind to `127.0.0.1` only (no external access).
+All services bind to `127.0.0.1` only (no external access). Total budget: ~280M / 4% CPU.
 
 ## Login Credentials
 
@@ -38,25 +56,275 @@ sops -d secrets/grafana.yaml
 sops -d secrets/grafana.yaml | grep grafana_admin_password | awk '{print $2}'
 ```
 
-## Data Sources (auto-provisioned)
-
-- **Prometheus** — `http://127.0.0.1:9090` (default)
-- **Loki** — `http://127.0.0.1:3100`
-
-## Dashboards
+## Grafana Dashboards
 
 NixOS dashboards are provisioned from `/var/lib/grafana/dashboards/nixos/`.
 
-## Resource Limits
+### Accessing Grafana
 
-All observability services have CPU/memory limits to protect laptop performance:
+```bash
+# Via browser (GNOME)
+xdg-open http://localhost:3000/grafana/
 
-| Service | Memory Max | CPU Quota |
-|---------|-----------|-----------|
-| Grafana | 256M | 15% |
-| Prometheus | 128M | 20% |
-| Loki | 128M | 10% |
-| Node Exporter | 32M | 10% |
+# Via CLI (get version)
+curl -s http://admin:PASSWORD@localhost:3000/grafana/api/health
+```
+
+### Using Explore (PromQL & LogQL)
+
+1. Open Grafana → **Explore** (compass icon)
+2. Select **Prometheus** data source
+3. Try PromQL queries:
+
+```promql
+# CPU usage by service
+rate(process_cpu_seconds_total[5m]) * 100
+
+# Memory usage
+process_resident_memory_bytes / 1024 / 1024
+
+# Disk usage
+node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}
+
+# NixOS generation
+nixos_generation_current
+
+# Tailscale connection status
+tailscale_connected
+
+# Tailscale key expiry
+tailscale_key_expiry_days
+```
+
+4. Select **Loki** data source for LogQL queries:
+
+```logql
+# Errors from any service
+{job="systemd-journal"} |= "error"
+
+# Specific unit errors
+{unit="ivali-bot-go.service"} | level="err"
+
+# Grafana errors
+{unit="grafana.service"} |~ "(?i)error"
+
+# Failed systemd units
+{job="systemd-journal"} |= "Failed" | unit=~".*\\.service"
+```
+
+### Dashboard Tips
+
+- **Variables**: Use `$host`, `$job`, `$interval` dropdowns
+- **Time range**: Top-right corner, default 1h
+- **Auto-refresh**: Set to 30s for live monitoring
+- **Annotations**: Toggle to see deploy events
+
+## Prometheus Direct Access
+
+```bash
+# List all targets
+curl -s http://127.0.0.1:9090/api/v1/targets | jq '.data.activeTargets[].scrapeUrl'
+
+# Query metrics
+curl -s 'http://127.0.0.1:9090/api/v1/query?query=nixos_generation_current' | jq
+
+# Alert rules
+curl -s http://127.0.0.1:9090/api/v1/rules | jq '.data.groups[].rules[] | {name: .name, state: .state}'
+```
+
+## Loki & Alloy
+
+Loki receives **error-level logs only** from Alloy, which filters journal entries to:
+- `priority = ["err", "crit", "alert", "emerg"]`
+
+**Retention**: 4 hours (compacted every 1 hour).
+
+### Useful LogQL Queries
+
+```logql
+# All errors in the last hour
+{job="systemd-journal"} | level=~"err|crit|alert|emerg"
+
+# Bot errors
+{unit="ivali-bot-go.service"} |~ "(?i)(error|panic|fatal)"
+
+# NixOS rebuild failures
+{unit="nixos-rebuild.service"} |~ "error"
+
+# Systemd service failures
+{job="systemd-journal"} |= "Failed" | unit=~".*\\.service"
+```
+
+## Alertmanager
+
+Routes alerts to Telegram based on severity:
+- **critical**: Immediate notification
+- **warning**: Grouped with 5m wait
+
+### Silence an Alert
+
+```bash
+# Via API (example: silence "HighMemory" for 2 hours)
+curl -X POST http://127.0.0.1:9093/api/v2/silences \
+  -H "Content-Type: application/json" \
+  -d '{
+    "matchers": [{"name": "alertname", "value": "HighMemory"}],
+    "startsAt": "'$(date -u +%Y-%m-%dT%H:%M:%SZ)'",
+    "endsAt": "'$(date -u -d '+2 hours' +%Y-%m-%dT%H:%M:%SZ)'",
+    "createdBy": "admin",
+    "comment": "Silenced for maintenance"
+  }'
+```
+
+## Health Endpoint
+
+```bash
+# Get health status
+curl -s http://127.0.0.1:9102/health | jq
+
+# Quick check
+curl -s http://127.0.0.1:9102/health | jq -r '.status'
+```
+
+Returns JSON with system health, NixOS generation, disk, memory, and service status.
+
+## NixOS Exporter
+
+Custom metrics for NixOS-specific data:
+- `nixos_generation_current` — Current NixOS generation
+- `nixos_generation_total` — Total generations
+- `nixos_system_closure_size_bytes` — System closure size
+- `nixos_flake_inputs` — Flake input versions
+
+## Telegram Bot
+
+The bot provides real-time infrastructure access:
+
+### Runner Command
+
+```bash
+# Via Telegram
+/runner
+
+# Shows:
+# - Last reconcile status (trigger, result, duration)
+# - Step-by-step breakdown (token, service, config, connectivity)
+# - Health check results
+```
+
+### Other Commands
+
+| Command | Description |
+|---------|-------------|
+| `/status` | System status overview |
+| `/health` | Detailed health check |
+| `/deploy` | Trigger NixOS rebuild |
+| `/rollback` | Rollback to previous generation |
+| `/runner` | GitLab Runner status |
+| `/logs` | View systemd logs |
+| `/metrics` | Prometheus metrics summary |
+
+## Ansible
+
+Fleet-wide management via Tailscale dynamic inventory.
+
+```bash
+# Check connectivity to all hosts
+ansible-playbook ansible/playbooks/ping.yml
+
+# Gather system info from all hosts
+ansible-playbook ansible/playbooks/system-info.yml
+
+# Run security audit
+ansible-playbook ansible/playbooks/security-audit.yml
+
+# Target specific host
+ansible-playbook ansible/playbooks/ping.yml -l prague
+
+# Ad-hoc commands
+ansible all -m ping
+ansible all -a "uptime" -l prague
+```
+
+### Ansible Aliases
+
+```bash
+an          # ansible
+ap          # ansible-playbook
+ali         # ansible-lint
+ag          # ansible-galaxy
+```
+
+## Secrets Management
+
+All secrets are SOPS-encrypted in `secrets/`.
+
+```bash
+# Decrypt a secret
+sops -d secrets/grafana.yaml
+
+# Edit a secret
+sops secrets/grafana.yaml
+
+# Rotate Grafana credentials
+sops -d secrets/grafana.yaml | sed 's/grafana_admin_password:.*/grafrafana_admin_password: NEW_PASSWORD/' | sops secrets/grafana.yaml
+```
+
+## Troubleshooting
+
+### Service Won't Start
+
+```bash
+# Check logs
+journalctl -u grafana -n 50
+journalctl -u prometheus -n 50
+journalctl -u loki -n 50
+
+# Check resource limits
+systemctl show grafana.service -p MemoryMax -p CPUQuota
+
+# Verify configuration
+nixos-rebuild build --flake .#prague --dry-run
+```
+
+### Loki Not Receiving Logs
+
+```bash
+# Check Alloy is running
+systemctl status alloy
+
+# Check Alloy config
+cat /etc/alloy/config.alloy
+
+# Verify Loki is healthy
+curl -s http://127.0.0.1:3100/ready
+```
+
+### Prometheus Targets Down
+
+```bash
+# List all targets
+curl -s http://127.0.0.1:9090/api/v1/targets | jq '.data.activeTargets[] | {instance: .labels.instance, health: .health, lastError: .lastError}'
+
+# Check specific exporter
+curl -s http://127.0.0.1:9100/metrics | head -5
+curl -s http://127.0.0.1:9101/metrics | head -5
+```
+
+### Alertmanager Not Sending
+
+```bash
+# Check alertmanager config
+curl -s http://127.0.0.1:9093/api/v2/status | jq
+
+# List active alerts
+curl -s http://127.0.0.1:9093/api/v2/alerts | jq
+
+# Test Telegram webhook
+curl -X POST http://127.0.0.1:9093/api/v2/alerts \
+  -H "Content-Type: application/json" \
+  -d '[{"labels":{"alertname":"Test","severity":"warning"},"annotations":{"summary":"Test alert"}}]'
+```
 
 ## Disabling
 
@@ -64,6 +332,16 @@ To disable the full stack on a host:
 
 ```nix
 ivali.observability.enable = false;
+```
+
+To enable just Loki and Alloy:
+
+```nix
+ivali.observability = {
+  enable = true;
+  loki.enable = true;
+  alloy.enable = true;
+};
 ```
 
 The lite observer (`fleet.observability.lite.enable`) runs independently and provides basic health alerts via Telegram without Prometheus/Grafana.

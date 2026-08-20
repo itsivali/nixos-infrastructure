@@ -30,7 +30,6 @@
 #   - shell.nix      — Default login shell (zsh)
 #
 #   AI Coding Agents:
-#   - openhands.nix  — Self-hosted AI coding agent (Docker-based)
 #   - freebuff.nix   — Freebuff free AI coding agent
 #
 ##############################################################################

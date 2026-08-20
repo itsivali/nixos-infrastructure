@@ -240,7 +240,6 @@ domains:
       - developer/aliases.nix
       - developer/shell.nix
       - developer/openhands.nix
-      - developer/antigravity.nix
       - developer/freebuff.nix
       - developer/languages.nix
     allowed_dependencies:

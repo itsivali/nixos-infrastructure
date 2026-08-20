@@ -748,8 +748,6 @@ Developer Experience:
 - aliases.nix    — Shell aliases (k8s, helm, tf, docker, go, db)
 - shell.nix      — Default login shell (zsh)
 AI Coding Agents:
-- openhands.nix  — Self-hosted AI coding agent (Docker-based)
-- antigravity.nix — Google Antigravity CLI (agy)
 - freebuff.nix   — Freebuff free AI coding agent
 #############################################################################
 
@@ -763,24 +761,6 @@ NixOS-level developer utilities. Aliases are in
 home/shell/aliases/development.nix (Home Manager).
 This module provides system-level environment overrides if needed.
 It exists to satisfy auto-import but currently has no direct config.
-#############################################################################
-
-## developer/antigravity.nix
-
-#############################################################################
-Google Antigravity CLI (agy)
-Purpose
--------
-Install and configure Google Antigravity CLI (agy) — a terminal-based
-AI coding agent from Google, successor to Gemini CLI. Provides the `agy`
-command for agentic development workflows.
-Ownership
----------
-environment.systemPackages
-Does NOT Own
-------------
-- Editor configuration (home/editors/)
-- Language servers (developer/languages.nix)
 #############################################################################
 
 ## developer/databases.nix

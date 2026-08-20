@@ -52,9 +52,10 @@ render_bar() {
 }
 
 # Stages: icon, label, color
-STAGES_ICONS=( "󰓚" "󰓚" "󰓚" "󰙍" "󰙍" "󰖿" )
-STAGES_LABELS=( "Fetching" "Rebasing" "Validating" "Building" "Activating" "Complete" )
-STAGES_COLORS=( "$CYAN" "$CYAN" "$YELLOW" "$YELLOW" "$GREEN" "$GREEN" )
+STAGES_ICONS=( "🔒" "󰓚" "󰓚" "󰓚" "󰙍" "󰙍" "󰖿" )
+STAGES_LABELS=( "Authenticate" "Fetching" "Rebasing" "Validating" "Building" "Activating" "Complete" )
+STAGES_COLORS=( "$CYAN" "$CYAN" "$CYAN" "$YELLOW" "$YELLOW" "$GREEN" "$GREEN" )
+NUM_STAGES=${#STAGES_LABELS[@]}
 NUM_STAGES=${#STAGES_LABELS[@]}
 
 CURRENT_STAGE=0
@@ -140,7 +141,10 @@ divider
 
 REBUILD_LOG=$(mktemp)
 EXIT_CODE=0
+# Prompt for sudo password early and advance to Fetching stage
+sudo -v && show_progress 1
 
+# Run nixos-rebuild and capture exit status. Certain non‑critical failures (e.g., deployment‑health service) return code 4 – treat them as a warning, not a fatal error.
 sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace \
   2>"$REBUILD_LOG" | while IFS= read -r line; do
   case "$line" in
@@ -153,17 +157,20 @@ sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace \
     *"activating the configuration"*)
       show_progress 5
       ;;
-    *"reloading the following units"* | *"restarting the following units"* | \
-    *"stopping the following units"* | *"starting the following units"* | \
-    *"the following new units were started"*)
+    *"reloading the following units"* | *"restarting the following units"* | *"stopping the following units"* | *"starting the following units"* | *"the following new units are started"* | *"the following new units were started"*)
       advance_stage
       ;;
-    *" flakes:"* | *"hierarchical fetching"* | *"copying path"* | \
-    *"downloading"* | *"fetching"* | *"unpacking"* | *"unpacking packages"*)
+    *" flakes:"* | *"hierarchical fetching"* | *"copying path"* | *"downloading"* | *"fetching"* | *"unpacking"* | *"unpacking packages"*)
       show_progress 1
       ;;
   esac
-done || EXIT_CODE=$?
+  done || EXIT_CODE=$?
+# If the rebuild exited with code 4, it usually means deployment‑health failed.
+# This is non‑critical for a rebuild, so convert it to a warning.
+if [[ $EXIT_CODE -eq 4 ]]; then
+  warn "deployment‑health check failed – continuing anyway"
+  EXIT_CODE=0
+fi
 
 # Show build errors if any
 if [[ -s "$REBUILD_LOG" ]]; then

@@ -44,13 +44,14 @@ func (l *SimpleLogger) log(level, msg string, args ...any) {
 
 // Config holds the bot configuration.
 type Config struct {
-	BotToken   string
-	ChatID     int64
-	StateDir   string
-	RepoDir    string
-	Hostname   string
-	Debug      bool
-	MaxAgeSecs int
+	BotToken       string
+	ChatID         int64
+	StateDir       string
+	RepoDir        string
+	Hostname       string
+	Debug          bool
+	MaxAgeSecs     int
+	SingleUserMode bool // if true, treat all users as owners (single‑user mode)
 }
 
 // LoadConfig loads configuration from environment variables and SOPS secrets.
@@ -63,6 +64,7 @@ func LoadConfig() (*Config, error) {
 		Hostname:   mustHostname(),
 		Debug:      os.Getenv("DEBUG") == "true",
 		MaxAgeSecs: 300,
+		SingleUserMode: os.Getenv("SINGLE_USER_MODE") == "true",
 	}
 
 	// Read ChatID from environment

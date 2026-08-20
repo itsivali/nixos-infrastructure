@@ -26,6 +26,11 @@
     networkmanager.enable = true;
     useDHCP = lib.mkDefault true;
     nameservers = [ "1.1.1.1" "9.9.9.9" ];
+
+    # Bypass DNSSEC validation failure for freebuff.com (no DNSSEC signatures)
+    extraHosts = ''
+      216.24.57.15 freebuff.com
+    '';
   };
 
   services.resolved = {

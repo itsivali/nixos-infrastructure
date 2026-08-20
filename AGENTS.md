@@ -43,7 +43,8 @@ A task is complete **only** when all of the following are explicitly true:
 - [ ] The feature and its entire workflow function perfectly.
 - [ ] Code meshes perfectly with Home Manager, NixOS, existing modules, and services.
 - [ ] No `TODO`s, placeholders, magic values, or experimental hacks remain.
-- [ ] All verification gates pass (`nix fmt`, `ivali verify`, `ivali doctor`, `nix flake check`, etc.).
+- [ ] All verification gates pass (`nix fmt`, `nix eval`, `nix flake check`, `ivali verify`, `ivali doctor`, etc.).
+- [ ] **ALL gates pass BEFORE rebuild** — never run `rebuild.sh` or `nixos-rebuild` without first passing all evaluation gates.
 - [ ] The repository is left in a cleaner, better state than it was found.
 
 ---
@@ -86,9 +87,34 @@ Before considering any work complete, the agent MUST run and clear all applicabl
 
 - `nix fmt`: Enforces standard formatting.
 - `nix flake check --no-build`: Validates the flake schema and syntax.
+- `nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.name`: Validates configuration evaluates without error.
 - `ivali verify` & `ivali doctor`: Custom repository health checks.
 - `go test ./...`: Required whenever Go utilities or extensions are modified.
 - `golangci-lint run`: Required whenever Go code is modified. The `go-lint` CI job **must** pass — no `continue-on-error`, no exceptions. Fix all lint issues before pushing.
+
+### 3.2.1 MANDATORY: Gates Before Rebuild (Hard Rule)
+
+**ALL verification gates MUST pass BEFORE running `scripts/rebuild.sh` or any `nixos-rebuild` command.** This is a hard requirement with zero exceptions.
+
+The mandatory pre-rebuild sequence is:
+
+```bash
+# 1. Format check
+nix fmt
+
+# 2. Flake validity
+nix flake check --no-build
+
+# 3. Configuration evaluation
+nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.name
+
+# 4. Only then run rebuild
+./scripts/rebuild.sh
+```
+
+**Why this rule exists:** NixOS rebuilds are expensive (15-30 minutes). A configuration error discovered during build wastes significant time. Evaluation gates catch errors in seconds.
+
+**Enforcement:** If an agent runs `rebuild.sh` or `nixos-rebuild` without first passing all gates, the agent has violated this contract. The agent must fix the issue, re-run all gates, and only then rebuild.
 
 ### 3.3 CI/CD Integration
 

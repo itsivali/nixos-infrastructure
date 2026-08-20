@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -157,4 +158,21 @@ func (h *SystemHealthChecker) CheckDisk(ctx context.Context, mounts []string) (m
 		result[mount] = dh
 	}
 	return result, nil
+}
+
+// CheckDeploymentHealth runs deployment-health.sh --json and parses the results.
+func (h *SystemHealthChecker) CheckDeploymentHealth(ctx context.Context) (*services.DeploymentHealth, error) {
+	scriptPath := "/home/ivali/nixos-infrastructure/scripts/deployment-health.sh"
+	out, err := exec.CommandContext(ctx, scriptPath, "--json").CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("deployment-health failed: %w\n%s", err, string(out))
+	}
+
+	var dh services.DeploymentHealth
+	if err := json.Unmarshal(out, &dh); err != nil {
+		return nil, fmt.Errorf("parse deployment-health output: %w\n%s", err, string(out))
+	}
+
+	dh.Healthy = dh.Failed == 0
+	return &dh, nil
 }

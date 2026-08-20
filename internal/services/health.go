@@ -17,6 +17,9 @@ type HealthChecker interface {
 
 	// CheckDisk checks disk usage for specified mount points.
 	CheckDisk(ctx context.Context, mounts []string) (map[string]DiskHealth, error)
+
+	// CheckDeploymentHealth runs deployment-health.sh and returns structured results.
+	CheckDeploymentHealth(ctx context.Context) (*DeploymentHealth, error)
 }
 
 // SystemHealth represents the overall system health status.
@@ -44,4 +47,25 @@ type DiskHealth struct {
 	Available   uint64
 	Total       uint64
 	Message     string
+}
+
+// DeploymentHealth represents the full deployment-health.sh results.
+type DeploymentHealth struct {
+	Timestamp    string           `json:"timestamp"`
+	Host         string           `json:"host"`
+	StrictHealth bool             `json:"strict_health"`
+	Passed       int              `json:"passed"`
+	Warned       int              `json:"warned"`
+	Failed       int              `json:"failed"`
+	Total        int              `json:"total"`
+	Duration     int              `json:"duration_seconds"`
+	Healthy      bool             `json:"-"`
+	Checks       []DeploymentCheck `json:"checks"`
+}
+
+// DeploymentCheck represents a single check result from deployment-health.sh.
+type DeploymentCheck struct {
+	Name    string `json:"name"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
 }

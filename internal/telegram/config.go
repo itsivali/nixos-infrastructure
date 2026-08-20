@@ -57,13 +57,13 @@ type Config struct {
 // LoadConfig loads configuration from environment variables and SOPS secrets.
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		BotToken:   os.Getenv("BOT_TOKEN"),
-		ChatID:     0,
-		StateDir:   getEnvOrDefault("IVALI_STATE_DIR", "/var/lib/ivali-bot"),
-		RepoDir:    getEnvOrDefault("REPO_DIR", defaultRepoDir()),
-		Hostname:   mustHostname(),
-		Debug:      os.Getenv("DEBUG") == "true",
-		MaxAgeSecs: 300,
+		BotToken:       os.Getenv("BOT_TOKEN"),
+		ChatID:         0,
+		StateDir:       getEnvOrDefault("IVALI_STATE_DIR", "/var/lib/ivali-bot"),
+		RepoDir:        getEnvOrDefault("REPO_DIR", defaultRepoDir()),
+		Hostname:       mustHostname(),
+		Debug:          os.Getenv("DEBUG") == "true",
+		MaxAgeSecs:     300,
 		SingleUserMode: os.Getenv("SINGLE_USER_MODE") == "true",
 	}
 

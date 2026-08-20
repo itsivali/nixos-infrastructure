@@ -10,9 +10,9 @@ import (
 
 // Auth manages user authentication and authorization.
 type Auth struct {
-	mu       sync.RWMutex
-	users    map[int]*UserAuth
-	filePath string
+	mu             sync.RWMutex
+	users          map[int]*UserAuth
+	filePath       string
 	singleUserMode bool // if true, treat all users as owners regardless of stored users
 }
 

@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,9 +18,10 @@ import (
 
 // API handles communication with the Telegram Bot API.
 type API struct {
-	token   string
-	baseURL string
-	client  *http.Client
+	token       string
+	baseURL     string
+	client      *http.Client // long-poll client (90s timeout)
+	shortClient *http.Client // short requests (5s timeout)
 }
 
 // NewAPI creates a new Telegram API client.
@@ -32,11 +34,19 @@ func NewAPI(token string) *API {
 			// idle polls are cancelled by the client before Telegram returns.
 			Timeout: 90 * time.Second,
 		},
+		shortClient: &http.Client{
+			Timeout: 2 * time.Second,
+		},
 	}
 }
 
 // SendMessage sends a text message with optional parse mode.
 func (a *API) SendMessage(chatID int64, text string, parseMode string) error {
+	return a.SendMessageWithContext(context.Background(), chatID, text, parseMode)
+}
+
+// SendMessageWithContext sends a text message with optional parse mode and a parent context.
+func (a *API) SendMessageWithContext(ctx context.Context, chatID int64, text string, parseMode string) error {
 	params := url.Values{
 		"chat_id":                  {strconv.FormatInt(chatID, 10)},
 		"text":                     {text},
@@ -45,12 +55,17 @@ func (a *API) SendMessage(chatID int64, text string, parseMode string) error {
 	if parseMode != "" {
 		params.Set("parse_mode", parseMode)
 	}
-	return a.post("sendMessage", params)
+	return a.postWithContext(ctx, "sendMessage", params)
 }
 
 // SendMarkdown sends a message with Markdown formatting.
 func (a *API) SendMarkdown(chatID int64, text string) error {
-	return a.SendMessage(chatID, text, "Markdown")
+	return a.SendMarkdownWithContext(context.Background(), chatID, text)
+}
+
+// SendMarkdownWithContext sends a message with Markdown formatting and a parent context.
+func (a *API) SendMarkdownWithContext(ctx context.Context, chatID int64, text string) error {
+	return a.SendMessageWithContext(ctx, chatID, text, "Markdown")
 }
 
 // SendHTML sends a message with HTML formatting.
@@ -69,12 +84,17 @@ func (a *API) SendTyping(chatID int64) error {
 
 // SendLongMessage splits and sends a long message in chunks.
 func (a *API) SendLongMessage(chatID int64, text string, maxChars int) error {
+	return a.SendLongMessageWithContext(context.Background(), chatID, text, maxChars)
+}
+
+// SendLongMessageWithContext splits and sends a long message in chunks with a parent context.
+func (a *API) SendLongMessageWithContext(ctx context.Context, chatID int64, text string, maxChars int) error {
 	if maxChars <= 0 {
 		maxChars = 3500
 	}
 
 	if len(text) <= maxChars {
-		return a.SendMarkdown(chatID, text)
+		return a.SendMarkdownWithContext(ctx, chatID, text)
 	}
 
 	lines := strings.Split(text, "\n")
@@ -93,7 +113,7 @@ func (a *API) SendLongMessage(chatID int64, text string, maxChars int) error {
 			if inCodeBlock {
 				chunk += "\n```"
 			}
-			if err := a.SendMarkdown(chatID, chunk); err != nil {
+			if err := a.SendMarkdownWithContext(ctx, chatID, chunk); err != nil {
 				return err
 			}
 			candidate = line
@@ -110,7 +130,7 @@ func (a *API) SendLongMessage(chatID int64, text string, maxChars int) error {
 		if inCodeBlock {
 			chunk += "\n```"
 		}
-		return a.SendMarkdown(chatID, chunk)
+		return a.SendMarkdownWithContext(ctx, chatID, chunk)
 	}
 
 	return nil
@@ -154,7 +174,7 @@ func (a *API) SendPhoto(chatID int64, filePath string, caption string) error {
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := a.client.Do(req)
+	resp, err := a.shortClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("telegram API sendPhoto: %w", err)
 	}
@@ -348,7 +368,7 @@ func (a *API) GetUpdates(offset int, timeout int) ([]Update, error) {
 		"allowed_updates": {`["message","callback_query"]`},
 	}
 
-	resp, err := a.get("getUpdates", params)
+	resp, err := a.getLong("getUpdates", params)
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +427,17 @@ type Chat struct {
 
 // post sends a POST request to the Telegram API.
 func (a *API) post(method string, params url.Values) error {
-	resp, err := a.client.PostForm(a.baseURL+"/"+method, params)
+	return a.postWithContext(context.Background(), method, params)
+}
+
+func (a *API) postWithContext(ctx context.Context, method string, params url.Values) error {
+	reqURL := a.baseURL + "/" + method
+	req, err := http.NewRequestWithContext(ctx, "POST", reqURL, strings.NewReader(params.Encode()))
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := a.shortClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("telegram API %s: %w", method, err)
 	}
@@ -433,8 +463,8 @@ func (a *API) post(method string, params url.Values) error {
 	return nil
 }
 
-// get sends a GET request to the Telegram API.
-func (a *API) get(method string, params url.Values) ([]byte, error) {
+// getLong sends a GET request using the long-poll client (for getUpdates).
+func (a *API) getLong(method string, params url.Values) ([]byte, error) {
 	reqURL := a.baseURL + "/" + method + "?" + params.Encode()
 	resp, err := a.client.Get(reqURL)
 	if err != nil {

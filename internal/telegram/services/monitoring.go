@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -17,6 +18,11 @@ func NewMonitoringService(runner *Runner) *MonitoringService {
 
 // ServiceStatuses returns the status of monitoring services.
 func (s *MonitoringService) ServiceStatuses() map[string]string {
+	return s.ServiceStatusesWithContext(context.Background())
+}
+
+// ServiceStatusesWithContext returns the status of monitoring services with a parent context.
+func (s *MonitoringService) ServiceStatusesWithContext(ctx context.Context) map[string]string {
 	services := map[string]string{
 		"prometheus": "Prometheus",
 		"grafana":    "Grafana",
@@ -26,8 +32,8 @@ func (s *MonitoringService) ServiceStatuses() map[string]string {
 	}
 	result := make(map[string]string, len(services))
 	for svc := range services {
-		status := strings.TrimSpace(s.runner.Run(
-			fmt.Sprintf("systemctl is-active %s 2>/dev/null || echo inactive", svc), 5))
+		status := strings.TrimSpace(s.runner.RunWithContext(ctx,
+			fmt.Sprintf("systemctl is-active %s 2>/dev/null || echo inactive", svc), 2))
 		result[svc] = status
 	}
 	return result

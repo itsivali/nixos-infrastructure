@@ -117,7 +117,7 @@ func (c *TopCommand) Description() string               { return "Show system me
 func (c *TopCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *TopCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	uptime, memory, disk := c.svc.System.TopMetrics()
+	uptime, memory, disk := c.svc.System.TopMetricsWithContext(ctx)
 	return c.api.SendMarkdown(msg.ChatID, renderer.BuildCard(renderer.Card{
 		Title: "System Metrics",
 		Lines: []string{
@@ -160,16 +160,20 @@ func (c *MetricsCommand) Description() string               { return "Show Prome
 func (c *MetricsCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *MetricsCommand) Execute(ctx context.Context, msg *telegram.Message) error {
+	// Quick check if Prometheus service is active
+	statuses := c.svc.Monitoring.ServiceStatusesWithContext(ctx)
+	if status, ok := statuses["prometheus"]; !ok || status != "active" {
+		return c.api.SendMarkdown(msg.ChatID, "`Prometheus not available`")
+	}
+
 	var lines []string
 	lines = append(lines, "*Prometheus Metrics*")
-	lines = append(lines, "")
-
-	services := c.svc.Monitoring.PrometheusServices()
-	if services != "" && !strings.Contains(services, "not available") {
-		lines = append(lines, "*Service Health:*")
-		lines = append(lines, services)
-		lines = append(lines, "")
+	// Service health overview
+	lines = append(lines, "*Service Health:*")
+	for svc, st := range statuses {
+		lines = append(lines, fmt.Sprintf("%s: %s", svc, st))
 	}
+	lines = append(lines, "")
 
 	if cpu := c.svc.Monitoring.CPUUsage(); cpu != "" && cpu != "null" {
 		lines = append(lines, renderer.KeyValue("CPU Usage", cpu+"%"))
@@ -182,10 +186,6 @@ func (c *MetricsCommand) Execute(ctx context.Context, msg *telegram.Message) err
 	}
 	if load := c.svc.Monitoring.SystemLoad(); load != "" && load != "null" {
 		lines = append(lines, renderer.KeyValue("System Load (1m)", load))
-	}
-
-	if len(lines) == 1 {
-		lines = append(lines, "`Prometheus not available or no metrics found.`")
 	}
 
 	return c.api.SendLongMessage(msg.ChatID, strings.Join(lines, "\n"), 3500)

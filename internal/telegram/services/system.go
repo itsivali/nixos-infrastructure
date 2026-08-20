@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"strings"
 )
@@ -81,9 +82,14 @@ func (s *SystemService) Processes() string {
 
 // TopMetrics returns a combined system metrics view.
 func (s *SystemService) TopMetrics() (uptime, memory, disk string) {
-	uptime = s.runner.Run("uptime", 5)
-	memory = s.runner.Run("free -h | head -2", 5)
-	disk = s.runner.Run("df -h / | tail -1", 5)
+	return s.TopMetricsWithContext(context.Background())
+}
+
+// TopMetricsWithContext returns a combined system metrics view with a parent context.
+func (s *SystemService) TopMetricsWithContext(ctx context.Context) (uptime, memory, disk string) {
+	uptime = s.runner.RunWithContext(ctx, "uptime", 2)
+	memory = s.runner.RunWithContext(ctx, "free -h | head -2", 2)
+	disk = s.runner.RunWithContext(ctx, "df -h / | tail -1", 2)
 	return
 }
 

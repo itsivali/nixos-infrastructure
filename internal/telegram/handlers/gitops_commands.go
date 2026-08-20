@@ -27,7 +27,7 @@ func (c *DiffCommand) Execute(ctx context.Context, msg *telegram.Message) error 
 	if output == "" {
 		output = "(no issues found)"
 	}
-	return c.api.SendLongMessage(msg.ChatID, "*Flake Check*\n"+renderer.CodeBlock(output), 3500)
+	return c.api.SendLongMessageWithContext(ctx, msg.ChatID, "*Flake Check*\n"+renderer.CodeBlock(output), 3500)
 }
 
 type GitopsReconcileCommand struct {

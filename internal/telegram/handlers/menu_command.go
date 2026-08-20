@@ -25,7 +25,7 @@ func (c *MenuInlineCommand) RequiredPermission() telegram.Role { return telegram
 
 func (c *MenuInlineCommand) Execute(ctx context.Context, msg *telegram.Message) error {
 	if msg.IsCallback {
-		return c.handleMenuCallback(msg)
+		return c.handleMenuCallback(ctx, msg)
 	}
 	return c.sendMainMenu(msg.ChatID)
 }
@@ -34,7 +34,7 @@ func (c *MenuInlineCommand) HandleCallback(ctx context.Context, queryID string, 
 	if err := c.api.AnswerCallback(queryID, ""); err != nil {
 		return err
 	}
-	return c.handleMenuCallback(&telegram.Message{
+	return c.handleMenuCallback(ctx, &telegram.Message{
 		ChatID:          chatID,
 		UserID:          userID,
 		IsCallback:      true,
@@ -78,7 +78,7 @@ func backButton() telegram.InlineButton {
 	return telegram.InlineButton{Text: "⬅️ Back", CallbackData: "menu:main"}
 }
 
-func (c *MenuInlineCommand) handleMenuCallback(msg *telegram.Message) error {
+func (c *MenuInlineCommand) handleMenuCallback(ctx context.Context, msg *telegram.Message) error {
 	data := msg.CallbackPayload
 	category := strings.TrimPrefix(data, "menu:")
 
@@ -116,7 +116,7 @@ func (c *MenuInlineCommand) handleMenuCallback(msg *telegram.Message) error {
 	case "tailscale":
 		return c.showTailscale(msg)
 	case "monitoring":
-		return c.showMonitoring(msg)
+		return c.showMonitoring(ctx, msg)
 	case "backup":
 		return c.showBackup(msg)
 	case "services":
@@ -231,8 +231,8 @@ func (c *MenuInlineCommand) showTailscale(msg *telegram.Message) error {
 	return c.editOrSend(msg.ChatID, msg.MessageID, text, buttons)
 }
 
-func (c *MenuInlineCommand) showMonitoring(msg *telegram.Message) error {
-	statuses := c.svc.Monitoring.ServiceStatuses()
+func (c *MenuInlineCommand) showMonitoring(ctx context.Context, msg *telegram.Message) error {
+	statuses := c.svc.Monitoring.ServiceStatusesWithContext(ctx)
 	var lines []string
 	lines = append(lines, "📊 *Monitoring Status*")
 	lines = append(lines, "")

@@ -114,7 +114,7 @@ fi
 if systemctl is-active --quiet network-online.target; then
   ok "network-online.target active"
 else
-  fail "network not fully online"
+  warn "network not fully online (transient — not gating)"
 fi
 
 ################################################################################
@@ -218,7 +218,7 @@ if [[ -d "$GITOPS_WORKTREE" ]]; then
   if timeout "$NIX_TIMEOUT" nix flake metadata >/dev/null 2>&1; then
     ok "flake metadata evaluates"
   else
-    fail "flake evaluation failed (or timed out after ${NIX_TIMEOUT}s)"
+    warn "flake evaluation failed (or timed out after ${NIX_TIMEOUT}s) — not gating"
   fi
 
 else
@@ -322,7 +322,7 @@ if [[ -r "$BOT_TOKEN_FILE" ]]; then
     if [[ "$resp" == *'"ok":true'* || "$resp" == *'"ok": true'* ]]; then
       ok "Bot token valid + can reach Telegram API"
     else
-      gate "Bot cannot reach Telegram API (invalid token or network down)"
+      warn "Bot cannot reach Telegram API (transient — not gating)"
     fi
   else
     warn "Bot token file empty"

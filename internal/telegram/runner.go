@@ -165,13 +165,29 @@ func (r *Runner) handleUpdate(ctx context.Context, update *Update) {
 }
 
 // handleCallback processes a callback query from an inline keyboard.
+//
+// Telegram's CallbackQuery does NOT include a top-level "chat" field —
+// the chat lives inside query.Message.Chat instead.  Relying on
+// query.Chat (which is always nil) silently dropped every inline
+// keyboard callback.  We fall back to the configured ChatID when the
+// message is unavailable (e.g. deleted messages or inline-mode queries).
 func (r *Runner) handleCallback(ctx context.Context, query *CallbackQuery) {
-	if query.Chat == nil || query.Chat.ID != r.config.ChatID {
+	// Determine chat ID: prefer the original message's chat, fall back
+	// to the configured chat ID.
+	var chatID int64
+	if query.Message != nil && query.Message.Chat != nil {
+		chatID = query.Message.Chat.ID
+	} else {
+		chatID = r.config.ChatID
+	}
+
+	if chatID != r.config.ChatID {
+		r.logger.Info("unauthorized callback chat", "chat", chatID)
 		return
 	}
 
 	botMsg := &Message{
-		ChatID:          query.Chat.ID,
+		ChatID:          chatID,
 		UserID:          query.From.ID,
 		Username:        query.From.Username,
 		IsCallback:      true,

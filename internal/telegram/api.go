@@ -406,8 +406,11 @@ type UpdateMessage struct {
 
 // CallbackQuery represents a callback query.
 type CallbackQuery struct {
-	ID      string         `json:"id"`
-	From    *User          `json:"from"`
+	ID   string `json:"id"`
+	From *User  `json:"from"`
+	// Chat is always nil — Telegram's CallbackQuery API does not include a
+	// top-level "chat" field.  The chat lives inside Message.Chat instead.
+	// See runner.handleCallback for the correct extraction logic.
 	Chat    *Chat          `json:"chat,omitempty"`
 	Data    string         `json:"data"`
 	Message *UpdateMessage `json:"message,omitempty"`

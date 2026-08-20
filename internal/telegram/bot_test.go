@@ -2,6 +2,9 @@ package telegram
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -200,4 +203,137 @@ func TestDispatchReplyKeyboardEmoji(t *testing.T) {
 	if !executed {
 		t.Error("expected command to execute for emoji-prefixed keyboard label")
 	}
+}
+
+func mockTelegramAPI(t *testing.T) *API {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"ok":true}`))
+	}))
+	t.Cleanup(srv.Close)
+
+	// Create API and override the base URL to point at the mock server.
+	api := &API{
+		baseURL:     srv.URL,
+		client:      srv.Client(),
+		shortClient: srv.Client(),
+	}
+	return api
+}
+
+func TestDispatchCallback(t *testing.T) {
+	api := mockTelegramAPI(t)
+	bot := New(api, NewAuth(t.TempDir()), NewSimpleLogger(false))
+	executed := false
+	bot.RegisterCommand(NewCommandFunc("top", "top", RoleGuest, func(ctx context.Context, msg *Message) error {
+		executed = true
+		if msg.Command != "top" {
+			t.Errorf("Command = %q, want %q", msg.Command, "top")
+		}
+		if !msg.IsCallback {
+			t.Error("expected IsCallback = true")
+		}
+		if msg.MessageID != 42 {
+			t.Errorf("MessageID = %d, want 42", msg.MessageID)
+		}
+		return nil
+	}))
+
+	// Register a "cmd:" callback handler that resolves to registered commands.
+	bot.RegisterCallback("cmd:", &cmdCallbackAdapter{bot: bot})
+
+	// Simulate an inline keyboard callback (cmd:top).
+	// The old code silently dropped these because CallbackQuery.Chat is
+	// always nil — Telegram puts the chat inside Message.Chat.
+	err := bot.Dispatch(context.Background(), &Message{
+		ChatID:          1,
+		UserID:          2,
+		IsCallback:      true,
+		CallbackID:      "cb-1",
+		CallbackPayload: "cmd:top",
+		MessageID:       42,
+	})
+	if err != nil {
+		t.Fatalf("Dispatch callback failed: %v", err)
+	}
+	if !executed {
+		t.Error("expected callback command to execute")
+	}
+}
+
+func TestDispatchCallbackMenu(t *testing.T) {
+	api := mockTelegramAPI(t)
+	bot := New(api, NewAuth(t.TempDir()), NewSimpleLogger(false))
+	executed := false
+
+	// Register a callback handler for "menu:" prefix.
+	handler := NewCommandFunc("menu_system", "system menu", RoleGuest, func(ctx context.Context, msg *Message) error {
+		executed = true
+		if msg.CallbackPayload != "menu:system" {
+			t.Errorf("CallbackPayload = %q, want %q", msg.CallbackPayload, "menu:system")
+		}
+		return nil
+	})
+	bot.RegisterCallback("menu:", &callbackAdapter{handler: handler})
+
+	err := bot.Dispatch(context.Background(), &Message{
+		ChatID:          1,
+		UserID:          2,
+		IsCallback:      true,
+		CallbackID:      "cb-2",
+		CallbackPayload: "menu:system",
+	})
+	if err != nil {
+		t.Fatalf("Dispatch menu callback failed: %v", err)
+	}
+	if !executed {
+		t.Error("expected menu callback handler to execute")
+	}
+}
+
+// callbackAdapter wraps a CommandFunc as a CallbackHandler.
+type callbackAdapter struct {
+	handler *CommandFunc
+}
+
+func (a *callbackAdapter) HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string, messageID int) error {
+	msg := &Message{
+		ChatID:          chatID,
+		UserID:          userID,
+		IsCallback:      true,
+		CallbackID:      queryID,
+		CallbackPayload: data,
+		MessageID:       messageID,
+	}
+	return a.handler.Execute(ctx, msg)
+}
+
+// cmdCallbackAdapter resolves "cmd:<name>" callbacks to registered bot commands.
+// Mirrors the production CmdCallbackHandler logic.
+type cmdCallbackAdapter struct {
+	bot *Bot
+}
+
+func (a *cmdCallbackAdapter) HandleCallback(ctx context.Context, queryID string, chatID int64, userID int, data string, messageID int) error {
+	if !strings.HasPrefix(data, "cmd:") {
+		return a.bot.API().AnswerCallback(queryID, "Invalid callback")
+	}
+	cmdName := strings.TrimPrefix(data, "cmd:")
+	cmd, ok := a.bot.CommandByName(cmdName)
+	if !ok {
+		_ = a.bot.API().AnswerCallback(queryID, "Unknown command: "+cmdName)
+		return nil
+	}
+	_ = a.bot.API().AnswerCallback(queryID, "")
+	msg := &Message{
+		ChatID:          chatID,
+		UserID:          userID,
+		Command:         cmdName,
+		IsCallback:      true,
+		CallbackPayload: data,
+		CallbackID:      queryID,
+		MessageID:       messageID,
+	}
+	return cmd.Execute(ctx, msg)
 }

@@ -14,10 +14,11 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, inputs, ... }:
 
 let
   cfg = config.ivali.freebuff;
+  system = pkgs.stdenv.hostPlatform.system;
 in
 {
   options.ivali.freebuff = {
@@ -26,7 +27,7 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      pkgs.llm-agents.freebuff
+      inputs.llm-agents.packages.${system}.freebuff
     ];
   };
 }

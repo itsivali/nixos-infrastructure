@@ -42,6 +42,7 @@ type heartbeatEvent struct {
 func NewRunner(config *Config, logger Logger) *Runner {
 	api := NewAPI(config.BotToken)
 	auth := NewAuth(config.StateDir)
+	auth.singleUserMode = config.SingleUserMode // respect single‑user mode flag
 	bot := New(api, auth, logger)
 
 	return &Runner{

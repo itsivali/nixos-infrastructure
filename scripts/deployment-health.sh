@@ -333,7 +333,7 @@ check_services() {
 check_disk() {
   local disk_pct
   disk_pct="$(df -h / | awk 'NR==2 {print $5}' | tr -d '%')"
-  if [[ -n "$disk_pct" ]]; then
+  if [[ "$disk_pct" =~ ^[0-9]+$ ]]; then
     if (( disk_pct >= 90 )); then
       record_check "disk" "fail" "${disk_pct}% used (/)"
     elif (( disk_pct >= 80 )); then
@@ -348,7 +348,7 @@ check_disk() {
   # Nix store
   local nix_pct
   nix_pct="$(df -h /nix/store 2>/dev/null | awk 'NR==2 {print $5}' | tr -d '%')"
-  if [[ -n "$nix_pct" ]]; then
+  if [[ "$nix_pct" =~ ^[0-9]+$ ]]; then
     if (( nix_pct >= 90 )); then
       record_check "nix-store" "fail" "${nix_pct}% used (/nix/store)"
     elif (( nix_pct >= 80 )); then
@@ -365,12 +365,16 @@ check_disk() {
 
 check_generations() {
   local gen_count
-  gen_count="$(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | wc -l || echo 0)"
-  gen_count="$(echo "$gen_count" | tr -d ' ')"
-  if [[ "$gen_count" -ge 2 ]]; then
-    record_check "generations" "pass" "${gen_count} generations (rollback available)"
-  elif [[ "$gen_count" -eq 1 ]]; then
-    record_check "generations" "warn" "only 1 generation (no rollback possible)"
+  gen_count="$(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | wc -l)"
+  gen_count="$(echo "$gen_count" | tr -d '[:space:]')"
+  if [[ "$gen_count" =~ ^[0-9]+$ ]]; then
+    if (( gen_count >= 2 )); then
+      record_check "generations" "pass" "${gen_count} generations (rollback available)"
+    elif (( gen_count == 1 )); then
+      record_check "generations" "warn" "only 1 generation (no rollback possible)"
+    else
+      record_check "generations" "warn" "could not determine generation count"
+    fi
   else
     record_check "generations" "warn" "could not determine generation count"
   fi
@@ -478,10 +482,17 @@ emit_human() {
 
 write_results() {
   local results_dir="/var/lib/deployment-health"
-  mkdir -p "$results_dir/history"
+
+  # Try to create directory (may fail if not running as root)
+  if ! mkdir -p "$results_dir" 2>/dev/null; then
+    # Can't write results — skip silently
+    return 0
+  fi
+
+  mkdir -p "$results_dir/history" 2>/dev/null || true
 
   # Write current results
-  emit_json > "$results_dir/last-results.json"
+  emit_json > "$results_dir/last-results.json" 2>/dev/null || true
 
   # Write last-ok marker for Prometheus
   if [[ "$FAIL" -gt 0 ]]; then
@@ -507,13 +518,13 @@ $(echo -e "$failed_checks")
 Time: $(date -Iseconds)" 2>/dev/null || true
     fi
   else
-    touch /tmp/deployment-health-last-ok
+    touch /tmp/deployment-health-last-ok 2>/dev/null || true
   fi
 
   # History: keep last 10
   local ts
   ts="$(date +%s)"
-  cp "$results_dir/last-results.json" "$results_dir/history/result-${ts}.json"
+  cp "$results_dir/last-results.json" "$results_dir/history/result-${ts}.json" 2>/dev/null || true
   ls -t "$results_dir"/history/result-*.json 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
 }
 

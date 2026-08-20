@@ -63,7 +63,9 @@ in
       script = ''
         # Wait for services to settle after the triggering health failure
         sleep 30
-        if ! ${./../scripts/deployment-health.sh}; then
+        # Run health check in observer mode; suppress stderr to avoid noisy
+        # curl/nix warnings being treated as errors by the rebuild script.
+        if ! ${./../scripts/deployment-health.sh} 2>/dev/null; then
           ${./../scripts/rollback.sh}
         fi
       '';

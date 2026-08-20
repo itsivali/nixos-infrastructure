@@ -178,6 +178,10 @@ in
 
         SyslogIdentifier = "deployment-health";
 
+        # Suppress stderr to avoid noisy curl/nix warnings appearing as errors
+        # in the journal. The script handles errors internally.
+        StandardInput = "null";
+
         ####################################################################
         ## HARDENING (observer-only safe mode)
         ####################################################################

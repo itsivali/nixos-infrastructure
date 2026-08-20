@@ -144,7 +144,7 @@ check_system() {
 
 check_network() {
   local ping_out
-  if ping_out="$(ping -c 1 -W 2 1.1.1.1 2>&1)"; then
+  if ping_out="$(ping -c 1 -W 2 1.1.1.1 2>/dev/null)"; then
     local rtt
     rtt="$(sed -n 's/.*time=\([0-9.]*\).*/\1/p' <<< "$ping_out" | head -1)"
     record_check "ping" "pass" "1.1.1.1 reachable${rtt:+, ${rtt}ms}"

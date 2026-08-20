@@ -132,13 +132,13 @@ in
         show_always = true;
         style_user = "bold ${c.mauve}";
         style_root = "bold ${c.red}";
-        format = "[󰆩 $user]($style) ";
+        format = "[󰆎 $user]($style) ";
       };
 
       os = {
         disabled = false;
         style = "bold ${c.blue}";
-        format = "[󰣨 $os]($style) ";
+        format = "[󱄅 $os]($style) ";
       };
 
       hostname = {

@@ -1,15 +1,15 @@
 #!/run/current-system/sw/bin/bash
-# rebuild — pretty system rebuild with animated progress bar
+# rebuild — system rebuild with real-time progress
 #
 # Usage: rebuild [flags]
-#   Runs: fetch → rebase → hw-check → hash-check → nixos-rebuild switch
+#   Runs: fetch -> rebase -> hw-check -> hash-check -> eval gates -> nixos-rebuild switch
 
 set -Eeuo pipefail
 
 REPO_DIR="/home/ivali/nixos-infrastructure"
 HOST="prague"
 
-# ── Helpers ────────────────────────────────────────────────────────────────
+# -- Helpers -----------------------------------------------------------------
 
 BOLD="\033[1m"
 DIM="\033[2m"
@@ -17,17 +17,15 @@ GREEN="\033[32m"
 YELLOW="\033[33m"
 RED="\033[31m"
 CYAN="\033[36m"
+MAGENTA="\033[35m"
 RESET="\033[0m"
 
-step()  { echo -e "${CYAN}▸${RESET} $*"; }
-ok()    { echo -e "${GREEN}✓${RESET} $*"; }
-warn()  { echo -e "${YELLOW}⚠${RESET} $*"; }
-fail()  { echo -e "${RED}✗${RESET} $*"; }
-info()  { echo -e "${DIM}  $*${RESET}"; }
-
-divider() {
-  echo -e "${DIM}──────────────────────────────────────────────${RESET}"
-}
+step()  { echo -e "${CYAN}>>>${RESET} $*"; }
+ok()    { echo -e "${GREEN}  ✓${RESET} $*"; }
+warn()  { echo -e "${YELLOW}  !${RESET} $*"; }
+fail()  { echo -e "${RED}  ✗${RESET} $*"; }
+info()  { echo -e "${DIM}    $*${RESET}"; }
+divider() { echo -e "${DIM}──────────────────────────────────────────────${RESET}"; }
 
 elapsed() {
   local s=$1
@@ -36,53 +34,15 @@ elapsed() {
 
 START=$SECONDS
 
-# ── Progress bar ──────────────────────────────────────────────────────────
-
-render_bar() {
-  local pct=$1 label=$2 icon=$3 color=$4
-  local cols="${COLUMNS:-80}"
-  local width=$((cols - 20))
-  [[ $width -lt 20 ]] && width=40
-  local filled=$((pct * width / 100))
-  local empty=$((width - filled))
-  local bar=""
-  for ((i = 0; i < filled; i++)); do bar+="━"; done
-  for ((i = 0; i < empty; i++)); do bar+="─"; done
-    printf "\r${color} ${bar} ${icon} %3d%%  %s${RESET}" "$pct" "$label"
-}
-
-# Stages: icon, label, color
-STAGES_ICONS=( "🔒" "󰓚" "󰓚" "󰓚" "󰙍" "󰙍" "󰖿" )
-STAGES_LABELS=( "Authenticate" "Fetching" "Rebasing" "Validating" "Building" "Activating" "Complete" )
-STAGES_COLORS=( "$CYAN" "$CYAN" "$CYAN" "$YELLOW" "$YELLOW" "$GREEN" "$GREEN" )
-NUM_STAGES=${#STAGES_LABELS[@]}
-NUM_STAGES=${#STAGES_LABELS[@]}
-
-CURRENT_STAGE=0
-
-show_progress() {
-  local stage=$1
-  if [[ $stage -gt $NUM_STAGES ]]; then stage=$NUM_STAGES; fi
-  if [[ $stage -ne $CURRENT_STAGE ]]; then
-    CURRENT_STAGE=$stage
-  fi
-  local pct=$((CURRENT_STAGE * 100 / NUM_STAGES))
-  render_bar "$pct" "${STAGES_LABELS[$CURRENT_STAGE]}" "${STAGES_ICONS[$CURRENT_STAGE]}" "${STAGES_COLORS[$CURRENT_STAGE]}"
-}
-
-advance_stage() {
-  show_progress $((CURRENT_STAGE + 1))
-}
-
-# ── Header ─────────────────────────────────────────────────────────────────
+# -- Header ------------------------------------------------------------------
 
 echo ""
-echo -e "${BOLD} NixOS Rebuild${RESET}  ${DIM}prague · main${RESET}"
+echo -e "${BOLD}NixOS Rebuild${RESET}  ${DIM}${HOST} . main${RESET}"
 divider
 
-# ── Step 1: Git fetch ─────────────────────────────────────────────────────
+# -- Step 1: Git fetch -------------------------------------------------------
 
-step " Fetching origin..."
+step "Fetching origin..."
 if output=$(git -C "$REPO_DIR" fetch origin main 2>&1); then
   ok "Fetch complete"
 else
@@ -91,9 +51,9 @@ else
   exit 1
 fi
 
-# ── Step 2: Rebase ────────────────────────────────────────────────────────
+# -- Step 2: Rebase ----------------------------------------------------------
 
-step " Rebasing on origin/main..."
+step "Rebasing on origin/main..."
 if output=$(git -C "$REPO_DIR" rebase origin/main 2>&1); then
   ok "Rebase complete"
 else
@@ -101,9 +61,9 @@ else
   info "$output"
 fi
 
-# ── Step 3: Hardware UUID check ───────────────────────────────────────────
+# -- Step 3: Hardware UUID check ---------------------------------------------
 
-step " Validating hardware UUIDs..."
+step "Validating hardware UUIDs..."
 if output=$("$REPO_DIR/scripts/validate-hardware.sh" 2>&1); then
   ok "Hardware UUIDs valid"
 else
@@ -112,15 +72,15 @@ else
   exit 1
 fi
 
-# ── Step 4: Go hash check (only if Go files changed) ─────────────────────
+# -- Step 4: Go hash check (only if Go files changed) ------------------------
 
 CHANGED_GO=$(git -C "$REPO_DIR" diff --name-only origin/main -- '*.go' 'go.mod' 'go.sum' 2>/dev/null | wc -l)
 if [[ "$CHANGED_GO" -gt 0 ]]; then
-  step " Go files changed [${CHANGED_GO}] — checking vendor hashes..."
+  step "Go files changed [${CHANGED_GO}] -- checking vendor hashes..."
   if output=$("$REPO_DIR/scripts/update-go-hashes.sh" --verify-only 2>&1); then
     ok "Go vendor hashes valid"
   else
-    warn "Hash mismatch — updating..."
+    warn "Hash mismatch -- updating..."
     if output=$("$REPO_DIR/scripts/update-go-hashes.sh" 2>&1); then
       ok "Go vendor hashes updated"
     else
@@ -130,88 +90,108 @@ if [[ "$CHANGED_GO" -gt 0 ]]; then
     fi
   fi
 else
-  info "No Go changes — skipping hash check"
+  info "No Go changes -- skipping hash check"
 fi
 
-# ── Step 4b: Nix evaluation gates ────────────────────────────────────────
+# -- Step 5: Nix evaluation gates --------------------------------------------
 
-step " Running Nix evaluation gates..."
+step "Evaluating configuration..."
 if output=$(nix eval --json ".#nixosConfigurations.${HOST}.config.system.build.toplevel.name" 2>&1); then
   ok "Nix evaluation passed"
 else
-  fail "Nix evaluation failed — fix errors before rebuild"
+  fail "Nix evaluation failed -- fix errors before rebuild"
   echo "$output"
   exit 1
 fi
 
-step " Checking flake validity..."
+step "Checking flake validity..."
 if output=$(nix flake check --no-build 2>&1); then
   ok "Flake check passed"
 else
-  fail "Flake check failed — fix errors before rebuild"
+  fail "Flake check failed -- fix errors before rebuild"
   echo "$output"
   exit 1
 fi
 
-# ── Step 5: Build & activate ──────────────────────────────────────────────
+# -- Step 6: Build & activate ------------------------------------------------
 
 divider
+echo -e "${BOLD}Building system...${RESET}"
+divider
 
-  show_progress 0
+# Prompt for sudo password early
+sudo -v 2>/dev/null
 
-REBUILD_LOG=$(mktemp)
-EXIT_CODE=0
-# Prompt for sudo password early and advance to Fetching stage
-sudo -v && show_progress 1
-
-# Run nixos-rebuild and capture exit status. Certain non‑critical failures (e.g., deployment‑health service) return code 4 – treat them as a warning, not a fatal error.
-sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace \
-  2>"$REBUILD_LOG" | while IFS= read -r line; do
+# Run nixos-rebuild and process output in real-time
+BUILD_EXIT=0
+sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace 2>&1 | while IFS= read -r line; do
   case "$line" in
-    *"Fingerprint mismatch"* | *"error:"* | *"FAILED"*)
-      advance_stage
+    *"copying path"*)
+
+      name=$(echo "$line" | sed "s/.*copying path '\\(.*\\)'.*/\\1/" | sed "s|/nix/store/[a-z0-9]*-||" | cut -c1-60)
+      echo -e "  ${CYAN}copy${RESET}  ${DIM}${name}${RESET}"
       ;;
-    *"building the system configuration"* | *"computing new closure"*)
-      show_progress 4
+    *"fetching"*|*"downloading"*|*"unpacking"*)
+      echo -e "  ${CYAN}fetch${RESET} ${DIM}${line}${RESET}"
+      ;;
+    *" flakes:"*)
+      echo -e "  ${CYAN}flake${RESET} Resolving inputs..."
+      ;;
+    *"hierarchical fetching"*)
+      echo -e "  ${CYAN}deps${RESET}  Fetching dependencies..."
+      ;;
+    *"computing new closure"*)
+      echo -e "${YELLOW}  -->${RESET} Computing new system closure..."
+      ;;
+    *"building the system configuration"*)
+      echo -e "${YELLOW}  -->${RESET} Building system configuration..."
+      ;;
+    *"building '/nix/store"*)
+      drv=$(echo "$line" | sed "s/.*building '\\(.*\\)'.*/\\1/" | sed "s|/nix/store/[a-z0-9]*-||" | cut -c1-55)
+      echo -e "  ${MAGENTA}build${RESET} ${drv}"
+      ;;
+    *"running patch"*|*"running configure"*|*"running build"*|*"running install"*|*"running fixup"*|*"running patchelf"*)
+      echo -e "  ${MAGENTA}hook${RESET}  ${DIM}${line}${RESET}"
       ;;
     *"activating the configuration"*)
-      show_progress 5
+      echo -e "${GREEN}  -->${RESET} Activating new configuration..."
       ;;
-    *"reloading the following units"* | *"restarting the following units"* | *"stopping the following units"* | *"starting the following units"* | *"the following new units are started"* | *"the following new units were started"*)
-      advance_stage
+    *"setting up /etc..."*)
+      echo -e "  ${GREEN}etc${RESET}   Configuring /etc..."
       ;;
-    *" flakes:"* | *"hierarchical fetching"* | *"copying path"* | *"downloading"* | *"fetching"* | *"unpacking"* | *"unpacking packages"*)
-      show_progress 1
+    *"reloading the following units"*|*"restarting the following units"*)
+      echo -e "  ${GREEN}svc${RESET}   Reloading services..."
+      ;;
+    *"stopping the following units"*)
+      echo -e "  ${YELLOW}svc${RESET}   Stopping services..."
+      ;;
+    *"starting the following units"*|*"the following new units"*started*)
+      echo -e "  ${GREEN}svc${RESET}   Starting services..."
+      ;;
+    *"error:"*|*"FAILED"*)
+      echo -e "  ${RED}ERR${RESET}  ${line}"
       ;;
   esac
-  done || EXIT_CODE=$?
-# If the rebuild exited with code 4, it usually means deployment‑health failed.
-# This is non‑critical for a rebuild, so convert it to a warning.
-if [[ $EXIT_CODE -eq 4 ]]; then
-  warn "deployment‑health check failed – continuing anyway"
-  EXIT_CODE=0
-fi
+done || BUILD_EXIT=$?
 
-# Show build errors if any
-if [[ -s "$REBUILD_LOG" ]]; then
-  echo ""
-  fail "Build errors:"
-  cat "$REBUILD_LOG"
+# If the rebuild exited with code 4, deployment-health failed (non-critical).
+if [[ $BUILD_EXIT -eq 4 ]]; then
+  warn "deployment-health check failed -- continuing anyway"
+  BUILD_EXIT=0
 fi
-rm -f "$REBUILD_LOG"
 
 echo ""
 
-if [[ $EXIT_CODE -eq 0 ]]; then
+if [[ $BUILD_EXIT -eq 0 ]]; then
   ok "System rebuilt successfully"
 else
-  fail "Build failed — exit code: $EXIT_CODE"
+  fail "Build failed -- exit code: $BUILD_EXIT"
   exit 1
 fi
 
-# ── Done ──────────────────────────────────────────────────────────────────
+# -- Done --------------------------------------------------------------------
 
 divider
 DURATION=$(( SECONDS - START ))
-echo -e "${GREEN}${BOLD} Done${RESET}  ${DIM}$(elapsed $DURATION)${RESET}"
+echo -e "${GREEN}${BOLD}Done${RESET}  ${DIM}$(elapsed $DURATION)${RESET}"
 echo ""

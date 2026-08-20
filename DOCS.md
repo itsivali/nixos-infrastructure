@@ -749,7 +749,7 @@ Developer Experience:
 - shell.nix      — Default login shell (zsh)
 AI Coding Agents:
 - openhands.nix  — Self-hosted AI coding agent (Docker-based)
-- antigravity.nix — Google Antigravity IDE
+- antigravity.nix — Google Antigravity CLI (agy)
 - freebuff.nix   — Freebuff free AI coding agent
 #############################################################################
 
@@ -768,15 +768,15 @@ It exists to satisfy auto-import but currently has no direct config.
 ## developer/antigravity.nix
 
 #############################################################################
-Google Antigravity IDE
+Google Antigravity CLI (agy)
 Purpose
 -------
-Install and configure Google Antigravity — an agentic development platform
-by Google. Provides the IDE (VS Code fork with AI agents), the CLI (agy),
-and the base orchestration app. Auto-updating via the antigravity-nix flake.
+Install and configure Google Antigravity CLI (agy) — a terminal-based
+AI coding agent from Google, successor to Gemini CLI. Provides the `agy`
+command for agentic development workflows.
 Ownership
 ---------
-environment.systemPackages, xdg desktop entries
+environment.systemPackages
 Does NOT Own
 ------------
 - Editor configuration (home/editors/)

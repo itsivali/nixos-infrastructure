@@ -77,5 +77,8 @@
     # ── Google Cloud SDK + GKE ──────────────────────────────────────
     ivali.cloud.enable = true;
     # ivali.cloud.projectId = "your-gcp-project-id";
+
+    # ── Google Antigravity CLI (agy) ────────────────────────────────
+    ivali.antigravity.enable = true;
   };
 }

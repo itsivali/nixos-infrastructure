@@ -133,6 +133,26 @@ else
   info "No Go changes — skipping hash check"
 fi
 
+# ── Step 4b: Nix evaluation gates ────────────────────────────────────────
+
+step " Running Nix evaluation gates..."
+if output=$(nix eval --json ".#nixosConfigurations.${HOST}.config.system.build.toplevel.name" 2>&1); then
+  ok "Nix evaluation passed"
+else
+  fail "Nix evaluation failed — fix errors before rebuild"
+  echo "$output"
+  exit 1
+fi
+
+step " Checking flake validity..."
+if output=$(nix flake check --no-build 2>&1); then
+  ok "Flake check passed"
+else
+  fail "Flake check failed — fix errors before rebuild"
+  echo "$output"
+  exit 1
+fi
+
 # ── Step 5: Build & activate ──────────────────────────────────────────────
 
 divider

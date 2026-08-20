@@ -295,7 +295,7 @@ check_services() {
     else
       local detail
       detail="$(systemctl status "$unit" --no-pager -l 2>&1 | head -3 || true)"
-      record_check "$label" "fail" "NOT running — ${detail}"
+      gate "$label" "NOT running — ${detail}"
     fi
   done
 
@@ -315,7 +315,7 @@ check_services() {
   if $bot_ok; then
     record_check "ivali-bot" "pass" "active"
   else
-    record_check "ivali-bot" "fail" "NOT running after 60s retry"
+    gate "ivali-bot" "NOT running after 60s retry"
   fi
 
   # Graphical session
@@ -527,6 +527,38 @@ Time: $(date -Iseconds)" 2>/dev/null || true
   cp "$results_dir/last-results.json" "$results_dir/history/result-${ts}.json" 2>/dev/null || true
   ls -t "$results_dir"/history/result-*.json 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null || true
 }
+
+################################################################################
+# Rebuild-in-progress detection
+################################################################################
+
+# During a NixOS rebuild (nixos-rebuild switch), services are being
+# started/stopped transiently. Running health checks at that point produces
+# false failures that trigger unnecessary rollbacks.
+#
+# Exit 0 (healthy) when either:
+#   1. nixos-rebuild is actively running, OR
+#   2. systemd is in an activation/deactivation phase.
+
+skip_if_rebuilding() {
+  # Fast path: check for a running nixos-rebuild process
+  if pgrep -x nixos-rebuild >/dev/null 2>&1; then
+    log "nixos-rebuild is running — skipping health check"
+    exit 0
+  fi
+
+  # Slow path: check systemd manager state for activation phases
+  local mgr_state
+  mgr_state="$(systemctl is-system-running 2>/dev/null || true)"
+  case "$mgr_state" in
+    activating|deactivating|maintenance)
+      log "systemd is ${mgr_state} — skipping health check"
+      exit 0
+      ;;
+  esac
+}
+
+skip_if_rebuilding
 
 ################################################################################
 # Main

@@ -38,6 +38,7 @@ in
         iputils
         inetutils
         systemd
+        procps
         git
         nix
         nixos-rebuild
@@ -63,6 +64,16 @@ in
       script = ''
         # Wait for services to settle after the triggering health failure
         sleep 30
+
+        # Guard: skip rollback if a nixos-rebuild is still running (e.g. the
+        # deploy that triggered this service hasn't finished yet). Running
+        # nixos-rebuild switch --rollback concurrently with another
+        # nixos-rebuild switch corrupts the system profile.
+        if pgrep -x nixos-rebuild >/dev/null 2>&1; then
+          echo "nixos-rebuild is running — skipping rollback"
+          exit 0
+        fi
+
         # Run health check in observer mode; suppress stderr to avoid noisy
         # curl/nix warnings being treated as errors by the rebuild script.
         if ! ${./../scripts/deployment-health.sh} 2>/dev/null; then

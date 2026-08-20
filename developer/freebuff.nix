@@ -5,7 +5,8 @@
 # Purpose
 # -------
 # System-wide installation of Freebuff, a terminal-based AI coding agent
-# powered by open-source models (DeepSeek, Kimi, MiniMax). No API key required.
+# powered by open-source models (DeepSeek, MiMo, MiniMax, GPT-5.6).
+# No API key required — ad-supported.
 #
 # Ownership
 # ---------
@@ -25,9 +26,7 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      (pkgs.writeShellScriptBin "freebuff" ''
-        exec ${pkgs.nodejs}/bin/npx --yes freebuff "$@"
-      '')
+      pkgs.llm-agents.freebuff
     ];
   };
 }

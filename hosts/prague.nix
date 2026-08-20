@@ -78,7 +78,7 @@
     ivali.cloud.enable = true;
     # ivali.cloud.projectId = "your-gcp-project-id";
 
-    # ── Google Antigravity CLI (agy) ────────────────────────────────
-    ivali.antigravity.enable = true;
+    # ── Freebuff Free AI Coding Agent ──────────────────────────────
+    ivali.freebuff.enable = true;
   };
 }

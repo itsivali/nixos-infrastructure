@@ -25,10 +25,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    llm-agents.url = "github:numtide/llm-agents.nix";
+
   };
 
   outputs =
-    inputs@{ self, nixpkgs, home-manager, sops-nix, ... }:
+    inputs@{ self, nixpkgs, home-manager, sops-nix, llm-agents, ... }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;

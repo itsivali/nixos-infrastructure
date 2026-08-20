@@ -4,23 +4,24 @@
 #
 # Purpose
 # -------
-# Two-line Starship prompt for the NixOS infrastructure.  Designed for
-# rapid visual scanning: identity → location → git → time on line 1,
-# runtime → resources → status on line 2.
+# Two-line Starship prompt for the NixOS infrastructure.
+#
+# Line 1: identity → OS → host → directory → git → fill → time
+# Line 2: shell → nix → lang → resources → status → prompt char
 #
 # Design language
 # ---------------
-# • Nerd Font icons (FiraCode/JetBrainsMono) — consistent icon family
-# • Catppuccin Mocha accent palette — matches the terminal theme
-# • │ separators group related info; ─ fills dead space on line 1
-# • Color encodes meaning: green = healthy, red = error, gold = attention
+# • Nerd Font icons (FiraCode/JetBrainsMono)
+# • Catppuccin Mocha palette — matches terminal theme
+# • ─ fills dead space on line 1; │ groups resources on line 2
+# • Color encodes meaning: green = healthy, red = error, dim = metadata
 #
 ##############################################################################
 
 { pkgs, lib, ... }:
 
 let
-  # ── Catppuccin Mocha accent palette ──────────────────────────────────
+  # ── Catppuccin Mocha palette ─────────────────────────────────────────
   c = {
     rosewater = "#F5E0DC";
     flamingo = "#F2CDCD";
@@ -46,14 +47,11 @@ let
     surface1 = "#45475A";
     surface0 = "#313244";
     base = "#1E1E2E";
-    mantle = "#181825";
-    crust = "#11111B";
   };
 
-  # Convenience aliases
-  dim = c.overlay0;
-  muted = c.overlay1;
-  accent = c.blue;
+  # Helper: wrap Starship variable refs so Nix doesn't interpret ${}.
+  # "$var" works in Nix because only "${" triggers interpolation.
+  v = name: "$" + name;
 in
 
 {
@@ -64,10 +62,10 @@ in
     settings = {
       add_newline = false;
       scan_timeout = 30;
-      palette = "catppuccin_mocha";
+      palette = "catppuccin";
 
-      # ── Color palette ───────────────────────────────────────────────
-      palettes.catppuccin_mocha = {
+      # ── Palette ─────────────────────────────────────────────────────
+      palettes.catppuccin = {
         "rosewater" = c.rosewater;
         "flamingo" = c.flamingo;
         "pink" = c.pink;
@@ -92,17 +90,10 @@ in
         "surface1" = c.surface1;
         "surface0" = c.surface0;
         "base" = c.base;
-        "mantle" = c.mantle;
-        "crust" = c.crust;
       };
 
-      # ── Prompt layout ───────────────────────────────────────────────
-      #
-      # Line 1: identity → location → git → ────── → time
-      # Line 2: nix → lang → resources → status → prompt
-      #
+      # ── Layout ──────────────────────────────────────────────────────
       format = lib.concatStrings [
-        # ── Top line ──────────────────────────────────────────────
         "╭─"
         "$username"
         "$os"
@@ -113,20 +104,17 @@ in
         "$git_status"
         "$git_metrics"
         "$fill"
-        "$sudo"
-        "$battery"
         "$cmd_duration"
+        "$battery"
         "$time"
         "$line_break"
-        # ── Bottom line ───────────────────────────────────────────
         "╰─"
-        "$nix_shell"
         "$shell"
+        "$nix_shell"
         "$nodejs"
         "$python"
         "$golang"
         "$rust"
-        "$docker_context"
         "$memory_usage"
         "$custom.disk"
         "$status"
@@ -136,11 +124,10 @@ in
       right_format = "";
 
       # ═══════════════════════════════════════════════════════════════
-      # Module definitions
+      # Modules
       # ═══════════════════════════════════════════════════════════════
 
       # ── Identity ────────────────────────────────────────────────
-
       username = {
         show_always = true;
         style_user = "bold ${c.mauve}";
@@ -152,9 +139,6 @@ in
         disabled = false;
         style = "bold ${c.blue}";
         format = "[󰣨 $os]($style) ";
-        symbols = {
-          NixOS = "NixOS";
-        };
       };
 
       hostname = {
@@ -163,8 +147,7 @@ in
         format = "[󰒋 $hostname]($style) ";
       };
 
-      # ── Location ────────────────────────────────────────────────
-
+      # ── Directory ───────────────────────────────────────────────
       directory = {
         style = "bold ${c.sky}";
         truncation_length = 3;
@@ -176,7 +159,6 @@ in
       };
 
       # ── Git ─────────────────────────────────────────────────────
-
       git_branch = {
         style = "bold ${c.green}";
         format = "[ $symbol$branch]($style) ";
@@ -196,22 +178,15 @@ in
       git_state = {
         style = "bold ${c.yellow}";
         format = "[ 󰑐 $state( $progress_current/$progress_total)]($style) ";
-        cherry_pick = "cherry-pick";
-        revert = "revert";
-        merge = "merge";
-        bisect = "bisect";
-        am = "am";
-        am_or_rebase = "am/rebase";
-        rebase = "rebase";
       };
 
       git_status = {
         style = "bold ${c.subtext1}";
         format = "[\\($all_status$ahead_behind\\)]($style) ";
         conflicted = "󰋇 ";
-        ahead = "󰄬\${count}";
-        behind = "󰄮\${count}";
-        diverged = "󰄬\${ahead_count}󰄮\${behind_count}";
+        ahead = "󰄬$count";
+        behind = "󰄮$count";
+        diverged = "󰄬$ahead_count󰄮$behind_count";
         up_to_date = "󰄵 ";
         untracked = "󰈛 ";
         stashed = "󰏗 ";
@@ -229,26 +204,13 @@ in
         only_nonzero_diffs = true;
       };
 
-      # ── Fill (line 1 dead space) ────────────────────────────────
-
+      # ── Fill ────────────────────────────────────────────────────
       fill = {
         style = "dim ${c.surface0}";
         symbol = "─";
       };
 
-      # ── Nix ─────────────────────────────────────────────────────
-
-      nix_shell = {
-        style = "bold ${c.yellow}";
-        symbol = "󱄅 ";
-        format = "[ $symbol]($style) ";
-        impure_msg = "impure";
-        pure_msg = "pure";
-        heuristic = true;
-      };
-
       # ── Shell ───────────────────────────────────────────────────
-
       shell = {
         style = "bold ${c.overlay1}";
         disabled = false;
@@ -258,8 +220,17 @@ in
         bash_indicator = "bash";
       };
 
-      # ── Languages (contextual — shown only when relevant) ──────
+      # ── Nix ─────────────────────────────────────────────────────
+      nix_shell = {
+        style = "bold ${c.yellow}";
+        symbol = "󱄅 ";
+        format = "[ $symbol]($style) ";
+        impure_msg = "impure";
+        pure_msg = "pure";
+        heuristic = true;
+      };
 
+      # ── Languages (contextual) ──────────────────────────────────
       nodejs = {
         style = "bold ${c.green}";
         format = "[ $version ]($style)";
@@ -296,7 +267,6 @@ in
       };
 
       # ── System resources ────────────────────────────────────────
-
       memory_usage = {
         disabled = false;
         threshold = -1;
@@ -314,16 +284,17 @@ in
       battery = {
         disabled = false;
         format = "[$symbol$percentage]($style) ";
+        charging_symbol = "󰂄 ";
+        discharging_symbol = "󰁹 ";
         display = [
-          { threshold = 20; style = "bold ${c.red}"; symbol = "󰁺 "; }
-          { threshold = 50; style = "bold ${c.yellow}"; symbol = "󰁿 "; }
-          { threshold = 80; style = "bold ${c.green}"; symbol = "󰂀 "; }
-          { threshold = 100; style = "bold ${c.green}"; symbol = "󰁹 "; }
+          { threshold = 20; style = "bold ${c.red}"; }
+          { threshold = 50; style = "bold ${c.yellow}"; }
+          { threshold = 80; style = "bold ${c.green}"; }
+          { threshold = 100; style = "bold ${c.green}"; }
         ];
       };
 
       # ── Metadata ────────────────────────────────────────────────
-
       cmd_duration = {
         style = "bold ${c.overlay1}";
         format = "[󰄬 $duration]($style) ";
@@ -347,18 +318,12 @@ in
         time_format = "%H:%M";
       };
 
-      sudo = {
-        style = "bold ${c.text}";
-        format = "[ as $user]($style) ";
-        disabled = false;
-      };
-
+      sudo = { disabled = true; };
       localip = { disabled = true; };
       shlvl = { disabled = true; };
       container = { disabled = true; };
 
       # ── Prompt character ────────────────────────────────────────
-
       character = {
         success_symbol = "[❯](bold ${c.green})";
         error_symbol = "[❯](bold ${c.red})";
@@ -370,7 +335,6 @@ in
 
   # ── Auto-refresh (keeps RAM/time/battery current) ──────────────────
   programs.zsh.initContent = ''
-    # Refresh prompt every 10s so resource indicators stay current.
     TMOUT=10
     TRAPALRM() {
         zle reset-prompt 2>/dev/null

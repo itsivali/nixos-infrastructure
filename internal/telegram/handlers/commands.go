@@ -74,8 +74,78 @@ func (c *HealthCommand) Description() string               { return "Show system
 func (c *HealthCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
 
 func (c *HealthCommand) Execute(ctx context.Context, msg *telegram.Message) error {
-	output := c.svc.Platform.Doctor()
-	return c.api.SendLongMessage(msg.ChatID, renderer.CodeBlock(output), 3500)
+	dh, err := c.svc.ServiceRegistry.Health.CheckDeploymentHealth(ctx)
+	if err != nil {
+		return c.api.SendMarkdown(msg.ChatID, "Health check failed: `"+err.Error()+"`")
+	}
+
+	status := "✅ All Systems Nominal"
+	cardStatus := renderer.StatusSuccess
+	if dh.Failed > 0 {
+		status = "❌ Issues Detected"
+		cardStatus = renderer.StatusError
+	} else if dh.Warned > 0 {
+		status = "⚠️ Warnings Present"
+		cardStatus = renderer.StatusWarning
+	}
+
+	text := renderer.BuildCard(renderer.Card{
+		Title:  "System Health",
+		Icon:   "💓",
+		Status: cardStatus,
+		Lines: []string{
+			renderer.KeyValue("Status", status),
+			renderer.KeyValue("Passed", fmt.Sprintf("%d", dh.Passed)),
+			renderer.KeyValue("Warned", fmt.Sprintf("%d", dh.Warned)),
+			renderer.KeyValue("Failed", fmt.Sprintf("%d", dh.Failed)),
+			renderer.KeyValue("Duration", fmt.Sprintf("%ds", dh.Duration)),
+		},
+		Footer: "Use /health_full for details",
+	})
+
+	return c.api.SendMarkdown(msg.ChatID, text)
+}
+
+// HealthFullCommand shows detailed deployment health results.
+type HealthFullCommand struct {
+	api *telegram.API
+	svc *services.Container
+}
+
+func NewHealthFullCommand(api *telegram.API, svc *services.Container) *HealthFullCommand {
+	return &HealthFullCommand{api: api, svc: svc}
+}
+
+func (c *HealthFullCommand) Name() string                      { return "health_full" }
+func (c *HealthFullCommand) Description() string               { return "Show detailed health results" }
+func (c *HealthFullCommand) RequiredPermission() telegram.Role { return telegram.RoleUser }
+
+func (c *HealthFullCommand) Execute(ctx context.Context, msg *telegram.Message) error {
+	dh, err := c.svc.ServiceRegistry.Health.CheckDeploymentHealth(ctx)
+	if err != nil {
+		return c.api.SendMarkdown(msg.ChatID, "Health check failed: `"+err.Error()+"`")
+	}
+
+	var lines []string
+	lines = append(lines, "*Deployment Health Results*")
+	lines = append(lines, "")
+
+	for _, check := range dh.Checks {
+		icon := "✅"
+		switch check.Status {
+		case "warn":
+			icon = "⚠️"
+		case "fail":
+			icon = "❌"
+		}
+		lines = append(lines, fmt.Sprintf("%s *%s:* `%s`", icon, check.Name, check.Message))
+	}
+
+	lines = append(lines, "")
+	lines = append(lines, fmt.Sprintf("_%d passed, %d warned, %d failed — %ds_",
+		dh.Passed, dh.Warned, dh.Failed, dh.Duration))
+
+	return c.api.SendLongMessage(msg.ChatID, strings.Join(lines, "\n"), 3500)
 }
 
 // DiskCommand shows disk usage.

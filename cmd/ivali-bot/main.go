@@ -40,6 +40,7 @@ func main() {
 		handlers.NewCancelCommand(bot.API()),
 		handlers.NewStatusCommand(bot.API(), svc),
 		handlers.NewHealthCommand(bot.API(), svc),
+		handlers.NewHealthFullCommand(bot.API(), svc),
 		handlers.NewDiskCommand(bot.API(), svc),
 		handlers.NewProcessesCommand(bot.API(), svc),
 		handlers.NewGenerationsCommand(bot.API(), svc),

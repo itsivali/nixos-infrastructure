@@ -55,6 +55,7 @@ func (c *MenuInlineCommand) editOrSend(chatID int64, messageID int, text string,
 func (c *MenuInlineCommand) sendMainMenu(chatID int64) error {
 	buttons := []telegram.InlineButton{
 		{Text: "🖥️ System", CallbackData: "menu:system"},
+		{Text: "💓 Health", CallbackData: "menu:health"},
 		{Text: "🔄 GitOps", CallbackData: "menu:gitops"},
 		{Text: "🛡️ Security", CallbackData: "menu:security"},
 		{Text: "🌐 Tailscale", CallbackData: "menu:tailscale"},
@@ -87,6 +88,7 @@ func (c *MenuInlineCommand) handleMenuCallback(ctx context.Context, msg *telegra
 		if msg.MessageID > 0 {
 			buttons := []telegram.InlineButton{
 				{Text: "🖥️ System", CallbackData: "menu:system"},
+				{Text: "💓 Health", CallbackData: "menu:health"},
 				{Text: "🔄 GitOps", CallbackData: "menu:gitops"},
 				{Text: "🛡️ Security", CallbackData: "menu:security"},
 				{Text: "🌐 Tailscale", CallbackData: "menu:tailscale"},
@@ -109,6 +111,8 @@ func (c *MenuInlineCommand) handleMenuCallback(ctx context.Context, msg *telegra
 	switch category {
 	case "system":
 		return c.showSystem(msg)
+	case "health":
+		return c.showHealth(ctx, msg)
 	case "gitops":
 		return c.showGitOps(msg)
 	case "security":
@@ -167,6 +171,46 @@ func (c *MenuInlineCommand) showSystem(msg *telegram.Message) error {
 		{Text: "📊 Top", CallbackData: "cmd:top"},
 		{Text: "🧠 Memory", CallbackData: "cmd:memory"},
 		{Text: "💻 CPU", CallbackData: "cmd:cpu"},
+		backButton(),
+	}
+
+	return c.editOrSend(msg.ChatID, msg.MessageID, text, buttons)
+}
+
+func (c *MenuInlineCommand) showHealth(ctx context.Context, msg *telegram.Message) error {
+	dh, err := c.svc.ServiceRegistry.Health.CheckDeploymentHealth(ctx)
+	if err != nil {
+		return c.editOrSend(msg.ChatID, msg.MessageID,
+			"Health check failed: `"+err.Error()+"`",
+			[]telegram.InlineButton{backButton()})
+	}
+
+	status := "✅ All Systems Nominal"
+	cardStatus := renderer.StatusSuccess
+	if dh.Failed > 0 {
+		status = "❌ Issues Detected"
+		cardStatus = renderer.StatusError
+	} else if dh.Warned > 0 {
+		status = "⚠️ Warnings Present"
+		cardStatus = renderer.StatusWarning
+	}
+
+	text := renderer.BuildCard(renderer.Card{
+		Title:  "Deployment Health",
+		Icon:   "💓",
+		Status: cardStatus,
+		Lines: []string{
+			renderer.KeyValue("Status", status),
+			renderer.KeyValue("Passed", fmt.Sprintf("%d", dh.Passed)),
+			renderer.KeyValue("Warned", fmt.Sprintf("%d", dh.Warned)),
+			renderer.KeyValue("Failed", fmt.Sprintf("%d", dh.Failed)),
+			renderer.KeyValue("Last check", dh.Timestamp),
+		},
+	})
+
+	buttons := []telegram.InlineButton{
+		{Text: "📋 Full Results", CallbackData: "cmd:health_full"},
+		{Text: "🔄 Refresh", CallbackData: "menu:health"},
 		backButton(),
 	}
 

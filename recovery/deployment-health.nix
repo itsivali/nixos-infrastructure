@@ -205,6 +205,7 @@ in
         # otherwise mount read-only.
         ReadWritePaths = [
           "/var/lib/deployment-health"
+          "/tmp"
         ];
 
         LockPersonality = true;

@@ -81,6 +81,22 @@ let
     # HELP nixos_deployment_health_status Last health check status (1=ok, 0=fail)
     # TYPE nixos_deployment_health_status gauge
     nixos_deployment_health_status $([ -f /tmp/deployment-health-last-ok ] && echo 1 || echo 0)
+
+    # HELP nixos_deployment_health_passed Number of passed checks
+    # TYPE nixos_deployment_health_passed gauge
+    nixos_deployment_health_passed $(${pkgs.jq}/bin/jq '.passed // 0' /var/lib/deployment-health/last-results.json 2>/dev/null || echo 0)
+
+    # HELP nixos_deployment_health_warned Number of warned checks
+    # TYPE nixos_deployment_health_warned gauge
+    nixos_deployment_health_warned $(${pkgs.jq}/bin/jq '.warned // 0' /var/lib/deployment-health/last-results.json 2>/dev/null || echo 0)
+
+    # HELP nixos_deployment_health_failed Number of failed checks
+    # TYPE nixos_deployment_health_failed gauge
+    nixos_deployment_health_failed $(${pkgs.jq}/bin/jq '.failed // 0' /var/lib/deployment-health/last-results.json 2>/dev/null || echo 0)
+
+    # HELP nixos_deployment_health_duration_seconds Health check duration
+    # TYPE nixos_deployment_health_duration_seconds gauge
+    nixos_deployment_health_duration_seconds $(${pkgs.jq}/bin/jq '.duration_seconds // 0' /var/lib/deployment-health/last-results.json 2>/dev/null || echo 0)
     EOF
 
           echo "HTTP/1.1 200 OK"

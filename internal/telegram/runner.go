@@ -375,15 +375,16 @@ func readUptime() string {
 	return fmt.Sprintf("%dd %dh %dm", days, hours, mins)
 }
 
-// readDiskPercent reads disk usage for a mount point.
+// readDiskPercent reads disk usage percentage for a mount point using syscall.Statfs.
+// Returns 0 if the stat fails (best-effort; the watchdog performs its own checks).
 func readDiskPercent(mountpoint string) int {
-	data, err := os.ReadFile("/proc/mounts")
-	if err != nil {
+	var stat syscall.Statfs_t
+	if err := syscall.Statfs(mountpoint, &stat); err != nil {
 		return 0
 	}
-	scanner := strings.NewReader(string(data))
-	_ = scanner
-	// Simple approach: parse df output
-	// This is a best-effort; the watchdog does its own checks anyway
-	return 0
+	if stat.Blocks == 0 {
+		return 0
+	}
+	used := stat.Blocks - stat.Bfree
+	return int(float64(used) / float64(stat.Blocks) * 100)
 }

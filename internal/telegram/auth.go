@@ -13,6 +13,7 @@ type Auth struct {
 	mu       sync.RWMutex
 	users    map[int]*UserAuth
 	filePath string
+	singleUserMode bool // if true, treat all users as owners regardless of stored users
 }
 
 // UserAuth represents an authenticated user.
@@ -39,7 +40,12 @@ func (a *Auth) GetUserRole(userID int) Role {
 	a.mu.RLock()
 	defer a.mu.RUnlock()
 
-	// If no users are configured, everyone is owner (single-user mode)
+	// If single‑user mode is forced via config, treat everyone as owner.
+	if a.singleUserMode {
+		return RoleOwner
+	}
+
+	// If no users are configured, everyone is owner (fallback single‑user mode).
 	if len(a.users) == 0 {
 		return RoleOwner
 	}

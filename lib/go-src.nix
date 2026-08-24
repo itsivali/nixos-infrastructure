@@ -25,7 +25,7 @@
 #
 # Ownership
 # ---------
-# Consumed by flake.nix (ivali, bw-tui, ivali-bot) and any future Go tool.
+# Consumed by flake.nix (ivali, bw-tui) and any future Go tool.
 #
 ##############################################################################
 

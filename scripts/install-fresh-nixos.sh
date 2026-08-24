@@ -674,14 +674,11 @@ post_install() {
        GitHub: https://github.com/settings/ssh/new
        GitLab: https://gitlab.com/-/user_settings/ssh_keys
 
-  6. Test SSH connections:
-       ssh -T git@github.com
-       ssh -T git@gitlab.com
+   6. Test SSH connections:
+        ssh -T git@github.com
+        ssh -T git@gitlab.com
 
-  7. Verify the Telegram bot:
-       systemctl status ivali-bot-go
-
-  8. Commit and push the generated files (GitLab is the source of truth):
+   7. Commit and push the generated files (GitLab is the source of truth):
        cd "$REPO_DIR"
        git status          # review what the installer changed
        git add .sops.yaml hosts/${HOST}.nix hosts/${HOST}/hardware-configuration.nix secrets/hosts/${HOST}.yaml

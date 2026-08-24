@@ -24,7 +24,6 @@
   environment.systemPackages =
     (import ../cli { inherit pkgs; })
     ++ (import ../desktop { inherit pkgs; })
-    # Control plane: the ivali CLI and the Bitwarden TUI. The bot service
-    # builds its own ivali-bot binary, so only these two are installed here.
+    # Control plane: the ivali CLI and the Bitwarden TUI.
     ++ [ self.packages.${pkgs.stdenv.hostPlatform.system}.ivali self.packages.${pkgs.stdenv.hostPlatform.system}.bw-tui ];
 }

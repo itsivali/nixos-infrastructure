@@ -4,7 +4,7 @@
 #
 # Purpose
 # -------
-# Configure Alertmanager with Telegram notification routing.
+# Configure Alertmanager with email notification routing.
 #
 # Ownership
 # ---------
@@ -12,7 +12,7 @@
 #
 # Responsibilities
 # ----------------
-# - Route alerts to Telegram bot
+# - Route alerts via email
 # - Alert grouping and deduplication
 # - Silence and inhibition rules
 #
@@ -26,24 +26,36 @@ let
 in
 {
   options.ivali.observability.alertmanager = {
-    enable = lib.mkEnableOption "Alertmanager with Telegram routing";
+    enable = lib.mkEnableOption "Alertmanager with email routing";
 
-    telegramBotTokenFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = null;
-      description = "SOPS-encrypted file containing Telegram bot token";
+    smtpSmarthost = lib.mkOption {
+      type = lib.types.str;
+      default = "smtp.office365.com:587";
+      description = "SMTP server address for sending alerts";
     };
 
-    telegramChatIdFile = lib.mkOption {
-      type = lib.types.nullOr lib.types.str;
-      default = null;
-      description = "Path to file containing Telegram chat ID (for SOPS secrets)";
+    smtpFrom = lib.mkOption {
+      type = lib.types.str;
+      default = "gitops@codlet-trench.ts.net";
+      description = "Sender email address for alerts";
     };
 
-    telegramChatId = lib.mkOption {
+    smtpAuthUsername = lib.mkOption {
+      type = lib.types.str;
+      default = "";
+      description = "SMTP authentication username";
+    };
+
+    smtpAuthPasswordFile = lib.mkOption {
       type = lib.types.nullOr lib.types.str;
       default = null;
-      description = "Telegram chat ID for alert notifications";
+      description = "SOPS-encrypted file containing SMTP password";
+    };
+
+    emailTo = lib.mkOption {
+      type = lib.types.str;
+      default = "itsivali@outlook.com";
+      description = "Recipient email address for alerts";
     };
 
     groupWait = lib.mkOption {
@@ -68,18 +80,7 @@ in
   config = lib.mkIf (cfg.enable && cfg.alertmanager.enable) (
     let
       alertCfg = cfg.alertmanager;
-      hasTelegram = alertCfg.telegramBotTokenFile != null && (alertCfg.telegramChatIdFile != null || alertCfg.telegramChatId != null);
-      chatIdAttrs =
-        if alertCfg.telegramChatIdFile != null then {
-          chat_id_file = alertCfg.telegramChatIdFile;
-        } else {
-          chat_id = alertCfg.telegramChatId;
-        };
-      mkTelegramConfig = msg: (chatIdAttrs // {
-        bot_token = "{{ .Env.TELEGRAM_BOT_TOKEN }}";
-        parse_mode = "HTML";
-        message = msg;
-      });
+      hasSmtpAuth = alertCfg.smtpAuthPasswordFile != null;
     in
     {
       services.prometheus.alertmanager = {
@@ -90,10 +91,15 @@ in
         configuration = {
           global = {
             resolve_timeout = "5m";
+            smtp_smarthost = alertCfg.smtpSmarthost;
+            smtp_from = alertCfg.smtpFrom;
+            smtp_auth_username = lib.mkIf hasSmtpAuth alertCfg.smtpAuthUsername;
+            smtp_auth_password_file = lib.mkIf hasSmtpAuth alertCfg.smtpAuthPasswordFile;
+            smtp_require_tls = true;
           };
 
           route = {
-            receiver = "telegram";
+            receiver = "email";
             group_by = [ "alertname" "host" ];
             group_wait = alertCfg.groupWait;
             group_interval = alertCfg.groupInterval;
@@ -104,43 +110,35 @@ in
                 match = {
                   severity = "critical";
                 };
-                receiver = "telegram-critical";
+                receiver = "email-critical";
                 group_wait = "10s";
               }
               {
                 match = {
                   severity = "warning";
                 };
-                receiver = "telegram";
+                receiver = "email";
               }
             ];
           };
 
           receivers = [
             {
-              name = "telegram";
-              telegram_configs = lib.optionals hasTelegram [
-                (mkTelegramConfig ''
-                  {{ range .Alerts }}
-                  <b>{{ .Labels.alertname }}</b>
-                  Host: {{ .Labels.host }}
-                  Severity: {{ .Labels.severity }}
-                  {{ .Annotations.description }}
-                  {{ end }}
-                '')
+              name = "email";
+              email_configs = [
+                {
+                  to = alertCfg.emailTo;
+                  send_resolved = true;
+                }
               ];
             }
             {
-              name = "telegram-critical";
-              telegram_configs = lib.optionals hasTelegram [
-                (mkTelegramConfig ''
-                  🚨 <b>CRITICAL ALERT</b>
-                  {{ range .Alerts }}
-                  <b>{{ .Labels.alertname }}</b>
-                  Host: {{ .Labels.host }}
-                  {{ .Annotations.description }}
-                  {{ end }}
-                '')
+              name = "email-critical";
+              email_configs = [
+                {
+                  to = alertCfg.emailTo;
+                  send_resolved = true;
+                }
               ];
             }
           ];
@@ -159,15 +157,12 @@ in
         };
       };
 
-      # Provide bot token via environment file
       systemd.services.alertmanager = {
         serviceConfig = {
           MemoryMax = "16M";
           MemoryHigh = "12M";
           CPUQuota = "0.5%";
           CPUWeight = 20;
-          EnvironmentFile = lib.mkIf (alertCfg.telegramBotTokenFile != null)
-            alertCfg.telegramBotTokenFile;
         };
       };
     }

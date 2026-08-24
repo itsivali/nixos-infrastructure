@@ -46,7 +46,6 @@ let
     nproc="$(nproc)"
     diskRoot="$(df -P / | awk 'NR==2{gsub("%","",$5); print $5}')"
 
-    svc_bot="$(systemctl is-active ivali-bot-go 2>/dev/null || echo unknown)"
     svc_net="$(systemctl is-active network-online.target 2>/dev/null || echo unknown)"
 
     diskTh=${toString cfg.thresholds.disk}
@@ -59,7 +58,7 @@ let
     if awk "BEGIN{exit !($l1 > $loadTh)}"; then alerts="''${alerts}load1=''${l1} "; fi
 
     cat > "$OUT" <<JSON
-    {"host":"$HOST","gen":"$GEN","ts":$ts,"uptime":$up,"load":[$l1,$l5,$l15],"memPct":$memPct,"diskRootPct":$diskRoot,"bot":"$svc_bot","net":"$svc_net","alerts":"$alerts"}
+    {"host":"$HOST","gen":"$GEN","ts":$ts,"uptime":$up,"load":[$l1,$l5,$l15],"memPct":$memPct,"diskRootPct":$diskRoot,"net":"$svc_net","alerts":"$alerts"}
     JSON
 
     if [ -n "$alerts" ] && [ -x "$NOTIFY" ]; then

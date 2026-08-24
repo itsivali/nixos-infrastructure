@@ -101,7 +101,7 @@ sops_references:
     severity: allowed
 
   - source: lib/host-templates/laptop.nix
-    target: shared.secrets/telegram.yaml
+    target: shared.secrets/notifications.yaml
     type: sops_ref
     severity: allowed
 

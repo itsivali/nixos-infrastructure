@@ -167,7 +167,7 @@ Prometheus ─→ node exporter ──────────┘
 
 **SOPS Secrets:**
 - `secrets/tailscale.yaml` — Tailscale auth key, Grafana secret
-- `secrets/telegram.yaml` — Bot token, chat ID, email
+- `secrets/notifications.yaml` — Email notifications
 - `secrets/gitlab-runner.yaml` — Runner registration token
 - `secrets/gitlab.yaml` — GitLab API token
 - `secrets/hosts/<name>.yaml` — Per-host secrets

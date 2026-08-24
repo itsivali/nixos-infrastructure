@@ -20,7 +20,6 @@
 #
 # Profiles
 # --------
-# - ivali-bot: Telegram bot process (root, runs rebuilds/desktop automation)
 # - ivali-cli: Go CLI binary (defined but NOT auto-attached; see note below)
 #
 # NOTE: DevOps tools (kubectl, helm, terraform, ansible, etc.) are NOT
@@ -39,7 +38,7 @@
 #
 # NOTE: ivali-cli is intentionally NOT attached to a path glob. Attaching it to
 # /nix/store/**/bin/ivali would confine EVERY `ivali` invocation system-wide
-# (shell, cron, bot, doctor) and break legitimate use. It is enforced only when
+# (shell, cron, doctor) and break legitimate use. It is enforced only when
 # a service explicitly sets AppArmorProfile = "ivali-cli".
 ##############################################################################
 
@@ -50,101 +49,7 @@ let
   repoPath = config.ivali.ssh.repoPath or "/home/ivali/nixos-infrastructure";
   userName = config.users.users.ivali.name or "ivali";
 
-  # Bot service paths — must match StateDirectory and log location in
-  # services/bot/ivali-bot-go.nix. Keeping them here avoids hardcoding
-  # cross-domain paths inside the AppArmor profile string.
-  botStateDir = "/var/lib/ivali-bot";
-  botLogDir = "/var/log/ivali-bot";
-
   # Create profile derivations to avoid builtins.readFile Git tracking issues
-  ivali-bot-profile = pkgs.writeText "ivali-bot" ''
-    #include <tunables/global>
-
-    profile ivali-bot /nix/store/*/bin/ivali-bot flags=(enforce) {
-      #include <abstractions/base>
-      #include <abstractions/nameservice>
-      #include <abstractions/ssl_certs>
-      #include <abstractions/dbus-session>
-
-      # Bot runs as root and performs privileged ops; grant capabilities.
-      capability,
-
-      # Nix store: read + mmap-exec (Go runtime libs). No execute here.
-      /nix/store/** rm,
-
-      # Any Nix store binary may be executed, unconfined. The bot process
-      # itself stays confined; its children (incl. nix/git/systemctl for
-      # rebuilds) run unconfined so they can write /nix/store and use SSH
-      # keys. AppArmor resolves execs to the real /nix/store target. A single
-      # exec modifier (ux) is used everywhere to avoid conflicting x modifiers.
-      /nix/store/*/bin/** ux,
-      /run/current-system/sw/bin/** ux,
-      /run/wrappers/bin/** ux,
-
-      # System read-only access required by the Go runtime and helpers
-      /etc/** r,
-      /run/** r,
-
-      # Repository (read/write — bot edits configs via /deploy)
-      ${repoPath}/** rw,
-
-      # State directory (read/write)
-      ${botStateDir}/ rw,
-      ${botStateDir}/** rw,
-
-      # SOPS secrets (read-only)
-      /run/secrets/ r,
-      /run/secrets/* r,
-
-      # Network access
-      network inet stream,
-      network inet6 stream,
-      network inet dgram,
-      network unix stream,
-      network unix dgram,
-
-      # Device access (screenshot, brightness, audio, input)
-      /dev/null rw,
-      /dev/zero r,
-      /dev/urandom r,
-      /dev/input/** r,
-      /dev/dri/** rw,
-
-      # Proc and sys (read-only)
-      /proc/ r,
-      /proc/[0-9]*/ r,
-      /proc/[0-9]*/** r,
-      /proc/sys/kernel/hostname r,
-      /proc/cpuinfo r,
-      /proc/meminfo r,
-      /proc/loadavg r,
-      /proc/uptime r,
-      /sys/ r,
-      /sys/** r,
-
-      # Temp files
-      /tmp/ rw,
-      /tmp/** rw,
-
-      # Logs
-      ${botLogDir}/ rw,
-      ${botLogDir}/** rw,
-      /var/log/** r,
-
-      # Deny
-      deny /etc/shadow r,
-      deny /etc/passwd w,
-      deny /root/** rw,
-      # Read-only to the operator's deploy key + known_hosts so the bot
-      # can run `git` as the user (sudo -u ivali). All other
-      # writes under .ssh/.gnupg stay denied.
-      owner /home/${userName}/.ssh/id_ed25519 r,
-      owner /home/${userName}/.ssh/known_hosts r,
-      deny /home/*/.ssh/** w,
-      deny /home/*/.gnupg/** rw,
-    }
-  '';
-
   ivali-cli-profile = pkgs.writeText "ivali-cli" ''
     #include <tunables/global>
 
@@ -210,10 +115,6 @@ in
 
   # Install custom AppArmor profiles via policies
   security.apparmor.policies = {
-    "ivali-bot" = {
-      path = ivali-bot-profile;
-      state = "enforce";
-    };
     "ivali-cli" = {
       path = ivali-cli-profile;
       state = "enforce";
@@ -228,7 +129,6 @@ in
   # Our profiles are static, so stale-profile removal is unnecessary; reload
   # only the enabled profile files.
   systemd.services.apparmor.serviceConfig.ExecReload = lib.mkForce [
-    "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-bot-profile}"
     "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-cli-profile}"
   ];
 }

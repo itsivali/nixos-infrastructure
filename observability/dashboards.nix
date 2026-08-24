@@ -164,16 +164,7 @@ let
       }
 
       (tsPanel "Service Uptime" [
-        { expr = "node_systemd_unit_state{name=~\"prometheus.service|grafana.service|loki.service|nginx.service|alloy.service|ivali-bot-go.service|tailscaled.service\", state=\"active\"}"; legendFormat = "{{ name }}"; }
-      ] "short")
-
-      # Go binary process metrics
-      (tsPanel "Go Process Memory" [
-        { expr = "process_resident_memory_bytes{job=\"ivali-bot\"}"; legendFormat = "ivali-bot RSS"; }
-      ] "decbytes")
-
-      (tsPanel "Go Goroutines" [
-        { expr = "go_goroutines{job=\"ivali-bot\"}"; legendFormat = "ivali-bot goroutines"; }
+        { expr = "node_systemd_unit_state{name=~\"prometheus.service|grafana.service|loki.service|nginx.service|alloy.service|tailscaled.service\", state=\"active\"}"; legendFormat = "{{ name }}"; }
       ] "short")
 
       {
@@ -185,8 +176,7 @@ let
           { expr = "node_systemd_unit_state{name=\"loki.service\", state=\"active\"}"; legendFormat = "Loki"; RefId = "C"; }
           { expr = "node_systemd_unit_state{name=\"nginx.service\", state=\"active\"}"; legendFormat = "Nginx"; RefId = "D"; }
           { expr = "node_systemd_unit_state{name=\"alloy.service\", state=\"active\"}"; legendFormat = "Alloy"; RefId = "E"; }
-          { expr = "node_systemd_unit_state{name=\"ivali-bot-go.service\", state=\"active\"}"; legendFormat = "Bot"; RefId = "F"; }
-          { expr = "node_systemd_unit_state{name=\"tailscaled.service\", state=\"active\"}"; legendFormat = "Tailscale"; RefId = "G"; }
+          { expr = "node_systemd_unit_state{name=\"tailscaled.service\", state=\"active\"}"; legendFormat = "Tailscale"; RefId = "F"; }
         ];
         fieldConfig = {
           defaults = {
@@ -298,16 +288,6 @@ let
           refId = "A";
         }];
         gridPos = { h = 8; w = 12; x = 0; y = 12; };
-      }
-
-      {
-        title = "Bot Logs";
-        type = "logs";
-        targets = [{
-          expr = "{job=\"systemd-journal\", unit=\"ivali-bot-go.service\"}";
-          refId = "A";
-        }];
-        gridPos = { h = 8; w = 12; x = 12; y = 12; };
       }
 
       {

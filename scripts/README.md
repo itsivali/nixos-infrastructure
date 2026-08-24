@@ -36,15 +36,8 @@ This directory contains shell scripts for infrastructure automation, GitOps reco
 |--------|---------|--------------|
 | `gitlab-runner-health.sh` | Check GitLab Runner health status | `ivali-gitlab-runner-health.service` |
 | `gitlab-runner-reconcile.sh` | Reconcile GitLab Runner registration | `ivali-gitlab-runner-reconcile.service` |
-| `notify.sh` | Send Telegram notifications | Called by other scripts |
+| `notify.sh` | Send email notifications | Called by other scripts |
 | `bitwarden.sh` | Bitwarden CLI wrapper for secret retrieval | Manual execution |
-
-### Bot Support
-
-| Script | Purpose |
-|--------|---------|
-| `bot/config.sh` | Bot configuration helpers |
-| `bot/lib/desktop.sh` | Desktop automation helpers for bot commands |
 
 ## Systemd Integration
 
@@ -60,8 +53,8 @@ REPO_DIR=/path/to/repo HOST_NAME=prague ./gitops-reconcile.sh --dry-run
 # Check deployment health
 ./deployment-health.sh
 
-# Test notification (requires valid bot token)
-CHAT_ID=<chat_id> BOT_TOKEN=<token> ./notify.sh "Test message"
+# Test notification (requires email config)
+./notify.sh "Test message"
 ```
 
 ## Troubleshooting

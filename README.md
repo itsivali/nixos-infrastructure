@@ -418,7 +418,7 @@ deployment-health.timer (every 5 min)
 │
 ├── secrets/
 │   ├── tailscale.yaml               # Tailscale auth key, Grafana secret
-│   ├── telegram.yaml                # Bot token, chat ID, email
+│   ├── notifications.yaml           # Email notifications
 │   ├── smtp.yaml                    # SMTP credentials (Office365)
 │   ├── gitlab-runner.yaml           # Runner registration token
 │   ├── gitlab.yaml                  # GitLab API token
@@ -676,7 +676,7 @@ SOPS-encrypted with age. Files in `secrets/`:
 | File | Contents |
 |------|----------|
 | `tailscale.yaml` | Auth key, Grafana secret |
-| `telegram.yaml` | Bot token, chat ID, email |
+| `notifications.yaml` | Email notifications |
 | `smtp.yaml` | SMTP credentials (Office365) |
 | `gitlab-runner.yaml` | Runner registration token |
 | `gitlab.yaml` | GitLab API token |

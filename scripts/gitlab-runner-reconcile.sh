@@ -232,11 +232,11 @@ cat > "$STATE_FILE" <<EOF
 }
 EOF
 
-# Build Telegram report
-REPORT_MSG="🔄 GitLab Runner Reconcile — ${HOST}
+# Build report
+REPORT_MSG="GitLab Runner Reconcile — ${HOST}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Trigger: ${TRIGGER}
-Result: $([ "$RESULT" = "success" ] && echo "✅ success" || echo "❌ ${FAILURES} failure(s)")
+Result: $([ "$RESULT" = "success" ] && echo "success" || echo "${FAILURES} failure(s)")
 Duration: ${DURATION}s
 
 Steps:
@@ -245,13 +245,13 @@ ${REPORT}"
 if (( FAILURES == 0 )); then
   # Only send "recovered" notification on health-failure trigger, not timer
   if [[ "$TRIGGER" == "health-failure" ]]; then
-    notify "✅ GitLab Runner recovered on ${HOST}"
+    notify "GitLab Runner recovered on ${HOST}"
   fi
   # Always send the full report
   notify "$REPORT_MSG"
   exit 0
 else
-  notify "❌ GitLab Runner reconciliation failed on ${HOST}: ${FAILURES} issue(s)"
+  notify "GitLab Runner reconciliation failed on ${HOST}: ${FAILURES} issue(s)"
   notify "$REPORT_MSG"
   exit 1
 fi

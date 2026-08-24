@@ -3,17 +3,6 @@
 # Each exception must have a reason, owner, and review date.
 
 exceptions:
-  - id: EXC-001
-    source: runtime.services/bot
-    target: shared.scripts/notify.sh
-    reason: >
-      The bot CI notification service needs to send Telegram alerts.
-      notify.sh is the shared notification interface. The bot calls it
-      as a subprocess rather than importing Telegram API code directly.
-    owner: services/bot
-    review: 2026-11-01
-    status: active
-
   - id: EXC-002
     source: runtime.observability/lite.nix
     target: shared.scripts/notify.sh
@@ -47,17 +36,6 @@ exceptions:
     review: 2026-09-01
     status: needs_resolution
 
-  - id: EXC-005
-    source: security/apparmor.nix
-    target: /var/lib/ivali-bot
-    reason: >
-      AppArmor profile for the bot service needs to grant filesystem
-      access to the bot's state directory. The paths are hardcoded
-      rather than parameterized from bot service options.
-    owner: security
-    review: 2026-11-01
-    status: active
-
   - id: EXC-006
     source: internal/commands/status.go
     target: /var/lib/observability/state.json
@@ -67,17 +45,6 @@ exceptions:
     owner: observability
     review: 2026-11-01
     status: needs_contract
-
-  - id: EXC-007
-    source: runtime.services/bot/ci-notify.nix
-    target: runtime.ci/fleet.gitlabRunner.enable
-    reason: >
-      CI notification service is gated on the GitLab runner being enabled.
-      If the runner is disabled, notifications are silently skipped.
-      This is intentional but should be documented.
-    owner: services/bot
-    review: 2026-11-01
-    status: active
 
   - id: EXC-008
     source: runtime.recovery/deployment-health.nix

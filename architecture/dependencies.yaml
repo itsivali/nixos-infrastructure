@@ -28,11 +28,6 @@ nix_imports:
     type: import
     severity: allowed
 
-  - source: services/bot/ivali-bot-go.nix
-    target: shared.lib
-    type: import
-    severity: allowed
-
   - source: desktop/login/gdm.nix
     target: shared.wallpapers
     type: import
@@ -61,11 +56,6 @@ script_references:
 
   - source: ci/ci-deploy.nix
     target: shared.scripts/ci-deploy.sh
-    type: path_ref
-    severity: allowed
-
-  - source: services/bot/ci-notify.nix
-    target: shared.scripts/notify.sh
     type: path_ref
     severity: allowed
 
@@ -131,16 +121,6 @@ sops_references:
     severity: allowed
 
 option_namespace_reads:
-  - source: services/bot/ivali-bot-go.nix
-    target: runtime.automation
-    option: fleet.bot
-    severity: allowed
-
-  - source: services/bot/ci-notify.nix
-    target: runtime.ci
-    option: fleet.gitlabRunner.enable
-    severity: questionable
-
   - source: ci/gitlab-runner.nix
     target: runtime.automation
     option: fleet.gitops
@@ -174,18 +154,6 @@ filesystem_access:
     target: /var/lib/gitops
     access: read
     owner: runtime.automation (implicit)
-    severity: questionable
-
-  - source: security/apparmor.nix
-    target: /var/lib/ivali-bot
-    access: grant_rw
-    owner: runtime.services
-    severity: questionable
-
-  - source: security/apparmor.nix
-    target: /var/log/ivali-bot
-    access: grant_rw
-    owner: runtime.services
     severity: questionable
 
   - source: internal/commands/status.go

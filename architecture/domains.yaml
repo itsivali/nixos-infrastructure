@@ -286,11 +286,11 @@ domains:
     public:
       - services/default.nix
     internal:
-      - services/bot/
       - services/msmtp/
       - services/nginx/
       - services/postgres/
       - services/redis/
+      - services/web-ui/
     allowed_dependencies:
       - core.*
       - platform.*
@@ -336,7 +336,6 @@ domains:
     internal:
       - automation/gitops-reconciler.nix
       - automation/channel-bump.nix
-      - automation/bot-watchdog.nix
       - automation/common.nix
       - automation/options.nix
     allowed_dependencies:

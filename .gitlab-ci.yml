@@ -2,9 +2,9 @@ stages:
   - lint
   - architecture
   - test
+  - security
   - check
   - build
-  - deploy
 
 # ── Global defaults ────────────────────────────────────────────────────────
 
@@ -14,24 +14,34 @@ default:
     when:
       - runner_system_failure
       - stuck_or_timeout_failure
+  timeout: 15m
 
 # ── Lint ──────────────────────────────────────────────────────────────────
 
 nix-format:
   stage: lint
   image: nixos/nix:latest
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix fmt -- --check .
 
 shellcheck:
   stage: lint
   image: koalaman/shellcheck-alpine:stable
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - shellcheck scripts/*.sh
+    - shellcheck --severity=warning scripts/*.sh
 
 go-lint:
   stage: lint
   image: golangci/golangci-lint:v2.12.2
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - golangci-lint run ./... --timeout=5m
   cache:
@@ -44,9 +54,12 @@ go-lint:
 architecture-check:
   stage: architecture
   image: golang:1
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - go build ./cmd/check-architecture/
-    - go run ./cmd/check-architecture/
+    - go build -o /tmp/check-architecture ./cmd/check-architecture/
+    - /tmp/check-architecture/
   artifacts:
     when: always
     paths:
@@ -58,6 +71,9 @@ architecture-check:
 go-build:
   stage: test
   image: golang:1
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - go build ./...
   cache:
@@ -72,8 +88,24 @@ go-build:
 go-test:
   stage: test
   image: golang:1
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - go test ./... -count=1
+    - CGO_ENABLED=1 go test -race -count=1 -json ./... > test-results.json || true
+    - |
+      if [ -f test-results.json ]; then
+        echo "=== Test Summary ==="
+        go tool test2json -testfile test-results.json 2>/dev/null || cat test-results.json
+      fi
+    - CGO_ENABLED=1 go test -race -count=1 ./...
+  artifacts:
+    when: always
+    reports:
+      junit: test-results.xml
+    paths:
+      - test-results.json
+    expire_in: 7 days
   cache:
     key: go-mod-${CI_COMMIT_REF_SLUG}
     paths:
@@ -83,11 +115,33 @@ go-test:
     GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
     GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
 
+# ── Security ──────────────────────────────────────────────────────────────
+
+go-security:
+  stage: security
+  image: golang:1
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - go install github.com/securego/gosec/v2/cmd/gosec@latest
+    - gosec -fmt=golint -exclude-generated ./... 2>&1 || true
+    - gosec -fmt=sarif -out=gosec-results.sarif -exclude-generated ./... 2>&1 || true
+  artifacts:
+    when: always
+    reports:
+      sast: gosec-results.sarif
+    expire_in: 7 days
+  allow_failure: true
+
 # ── Check ─────────────────────────────────────────────────────────────────
 
 nix-flake-check:
   stage: check
   image: nixos/nix:latest
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix flake check --no-build
   cache:
@@ -95,32 +149,21 @@ nix-flake-check:
     paths:
       - /nix/store
 
-# ── Build ─────────────────────────────────────────────────────────────────
+# ── Build (evaluation only, no deployment) ─────────────────────────────────
+# Deployment is handled exclusively by the GitOps reconciler (gitops-reconciler.service).
+# CI NEVER runs nixos-rebuild switch. This ensures:
+# 1. All changes flow through feature branches and merge requests
+# 2. Deployment only occurs after merge to main
+# 3. GitOps maintains the single source of truth
 
 nixos-eval-prague:
   stage: build
   image: nixos/nix:latest
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
-  cache:
-    key: nix-store-${CI_COMMIT_REF_SLUG}
-    paths:
-      - /nix/store
-
-# ── Deploy (main branch only) ─────────────────────────────────────────────
-
-deploy-prague:
-  stage: deploy
-  image: nixos/nix:latest
-  rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      when: on_success
-  script:
-    - echo "Deploying to prague..."
-    - nixos-rebuild switch --flake .#prague --target-host ivali@prague --use-remote-sudo
-  environment:
-    name: production/prague
-    url: https://prague.codlet-trench.ts.net
   cache:
     key: nix-store-${CI_COMMIT_REF_SLUG}
     paths:

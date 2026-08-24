@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GO_VERSION: "1.26"
+
 jobs:
   # ─────────────────────────────────────────────────
   # REQUIRED GATES: go-lint, go-test
@@ -25,7 +28,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
+          cache: true
       - name: Install golangci-lint
         run: |
           curl -sSfL https://golangci-lint.run/install.sh | sh -s -- -b $(go env GOPATH)/bin v2.12.2
@@ -41,20 +44,65 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false
-      - run: CGO_ENABLED=1 go test -race -count=1 ./...
+          cache: true
+      - name: Run tests with race detection
+        run: CGO_ENABLED=1 go test -race -count=1 -json ./... > test-results.json || true
+      - name: Run tests (fail on error)
+        run: CGO_ENABLED=1 go test -race -count=1 ./...
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.json
+          retention-days: 7
+
+  shellcheck:
+    name: Shell Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      - name: Run shellcheck
+        run: shellcheck --severity=warning scripts/*.sh
+
+  go-security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [go-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+      - name: Run gosec
+        run: gosec -exclude-generated ./... 2>&1 || true
+        continue-on-error: true
 
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [go-lint, go-test]
+    needs: [go-lint, go-test, shellcheck, go-security]
     if: always()
     steps:
       - name: Check results
         run: |
           if [[ "${{ needs.go-lint.result }}" != "success" ]] || \
-             [[ "${{ needs.go-test.result }}" != "success" ]]; then
-            echo "One or more CI jobs failed"
+             [[ "${{ needs.go-test.result }}" != "success" ]] || \
+             [[ "${{ needs.shellcheck.result }}" != "success" ]]; then
+            echo "Required CI jobs failed"
+            echo "  go-lint:     ${{ needs.go-lint.result }}"
+            echo "  go-test:     ${{ needs.go-test.result }}"
+            echo "  shellcheck:  ${{ needs.shellcheck.result }}"
+            echo "  go-security: ${{ needs.go-security.result }} (allowed to fail)"
             exit 1
           fi
-          echo "All CI jobs passed"
+          echo "All required CI jobs passed"
+          echo "  go-lint:     ${{ needs.go-lint.result }}"
+          echo "  go-test:     ${{ needs.go-test.result }}"
+          echo "  shellcheck:  ${{ needs.shellcheck.result }}"
+          echo "  go-security: ${{ needs.go-security.result }}"

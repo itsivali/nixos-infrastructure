@@ -4,6 +4,16 @@ stages:
   - test
   - check
   - build
+  - deploy
+
+# ── Global defaults ────────────────────────────────────────────────────────
+
+default:
+  retry:
+    max: 1
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
 
 # ── Lint ──────────────────────────────────────────────────────────────────
 
@@ -12,20 +22,22 @@ nix-format:
   image: nixos/nix:latest
   script:
     - nix fmt -- --check .
-  allow_failure: true
 
 shellcheck:
   stage: lint
   image: koalaman/shellcheck-alpine:stable
   script:
     - shellcheck scripts/*.sh
-  allow_failure: true
 
 go-lint:
   stage: lint
   image: golangci/golangci-lint:v2.12.2
   script:
     - golangci-lint run ./... --timeout=5m
+  cache:
+    key: golangci-lint
+    paths:
+      - .cache/golangci-lint
 
 # ── Architecture ──────────────────────────────────────────────────────────
 
@@ -39,6 +51,7 @@ architecture-check:
     when: always
     paths:
       - architecture/
+    expire_in: 7 days
 
 # ── Test ──────────────────────────────────────────────────────────────────
 
@@ -47,12 +60,28 @@ go-build:
   image: golang:1
   script:
     - go build ./...
+  cache:
+    key: go-mod-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .cache/go-mod
+      - .cache/go-build
+  variables:
+    GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
+    GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
 
 go-test:
   stage: test
   image: golang:1
   script:
-    - go test ./...
+    - go test ./... -count=1
+  cache:
+    key: go-mod-${CI_COMMIT_REF_SLUG}
+    paths:
+      - .cache/go-mod
+      - .cache/go-build
+  variables:
+    GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
+    GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
 
 # ── Check ─────────────────────────────────────────────────────────────────
 
@@ -61,6 +90,10 @@ nix-flake-check:
   image: nixos/nix:latest
   script:
     - nix flake check --no-build
+  cache:
+    key: nix-store-${CI_COMMIT_REF_SLUG}
+    paths:
+      - /nix/store
 
 # ── Build ─────────────────────────────────────────────────────────────────
 
@@ -69,3 +102,26 @@ nixos-eval-prague:
   image: nixos/nix:latest
   script:
     - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
+  cache:
+    key: nix-store-${CI_COMMIT_REF_SLUG}
+    paths:
+      - /nix/store
+
+# ── Deploy (main branch only) ─────────────────────────────────────────────
+
+deploy-prague:
+  stage: deploy
+  image: nixos/nix:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: on_success
+  script:
+    - echo "Deploying to prague..."
+    - nixos-rebuild switch --flake .#prague --target-host ivali@prague --use-remote-sudo
+  environment:
+    name: production/prague
+    url: https://prague.codlet-trench.ts.net
+  cache:
+    key: nix-store-${CI_COMMIT_REF_SLUG}
+    paths:
+      - /nix/store

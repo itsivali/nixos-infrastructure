@@ -69,12 +69,6 @@ in
     valkey = status "valkey.service";
     valkeylog = journal "valkey.service";
 
-    # ── Telegram Bot ──────────────────────────────────────────────────
-    bot = svc "ivali-bot-go.service";
-    botlog = journal "ivali-bot-go.service";
-    botstatus = status "ivali-bot-go.service";
-    botstop = stop "ivali-bot-go.service";
-
     # ── GitOps ────────────────────────────────────────────────────────
     gitops = svc "gitops-reconciler.service";
     gitopslog = journal "gitops-reconciler.service";

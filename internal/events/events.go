@@ -32,7 +32,6 @@ const (
 	EventServiceDown        Type = "service.down"
 	EventServiceRecovered   Type = "service.recovered"
 	EventSecretUpdated      Type = "secret.updated"
-	EventTelegramCommand    Type = "telegram.command"
 	EventAITaskCreated      Type = "ai.task.created"
 	EventAITaskCompleted    Type = "ai.task.completed"
 	EventAITaskFailed       Type = "ai.task.failed"

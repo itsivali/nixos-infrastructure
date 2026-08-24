@@ -15,7 +15,7 @@
 # - Go cache paths (home/environment/variables.nix)
 # - Go source filter (lib/go-src.nix)
 # - Go binary cache (caching/default.nix)
-# - Go binaries built in flake.nix (ivali, bw-tui, ivali-bot)
+# - Go binaries built in flake.nix (ivali, bw-tui)
 #
 ##############################################################################
 

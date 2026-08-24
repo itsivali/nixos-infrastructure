@@ -209,7 +209,6 @@ func (l *Linter) checkFilesystemBoundaries() []Violation {
 	// Known state paths and their owners
 	stateOwners := map[string]string{
 		"/var/lib/valkey":               "runtime.services",
-		"/var/lib/ivali-bot":            "runtime.services",
 		"/var/lib/security-scanner":     "platform.security",
 		"/var/lib/deployment-health":    "runtime.recovery",
 		"/var/lib/observability":        "runtime.observability",

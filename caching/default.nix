@@ -4,7 +4,7 @@
 #
 # Purpose
 # -------
-# Cache the Go-built CLI tools (ivali, bw-tui, ivali-bot, and any future Go
+# Cache the Go-built CLI tools (ivali, bw-tui, and any future Go
 # binary) in a LOCAL binary cache so that switching generations — or a build
 # that was garbage-collected — restores the pre-built binary in seconds
 # instead of recompiling from scratch (minutes).

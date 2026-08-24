@@ -48,7 +48,7 @@
 
       # Hermetic source for the Go tools: only Go source + go.mod/go.sum.
       # Keeps the buildGoModule src hash stable across unrelated repo edits so
-      # ivali / bw-tui / ivali-bot are not rebuilt from scratch every switch.
+      # ivali / bw-tui are not rebuilt from scratch every switch.
       goSrc = import ./lib/go-src.nix { src = self; lib = lib; };
 
       # Generate nixosConfigurations for each host
@@ -91,7 +91,6 @@
                 goBinaryCache.packages = [
                   self.packages.${system}.ivali
                   self.packages.${system}.bw-tui
-                  self.packages.${system}.ivali-bot
                 ];
               }
 
@@ -152,17 +151,6 @@
           src = goSrc;
           vendorHash = "sha256-01J7ofVq2MWmIyvsYsxZeF2JmskiDlxijsHFtrcoFSM=";
           subPackages = [ "cmd/bw-tui" ];
-          preBuild = "export CGO_ENABLED=0";
-        };
-
-        ivali-bot = pkgs.buildGoModule {
-          name = "ivali-bot";
-          src = goSrc;
-          vendorHash = "sha256-01J7ofVq2MWmIyvsYsxZeF2JmskiDlxijsHFtrcoFSM=";
-          subPackages = [ "cmd/ivali-bot" ];
-          # Static pure-Go binary: avoids linking libresolv.so.2, whose
-          # PROT_EXEC mmap is denied by the ivali-bot AppArmor profile
-          # (caused the bot to exit 127 on every start).
           preBuild = "export CGO_ENABLED=0";
         };
 

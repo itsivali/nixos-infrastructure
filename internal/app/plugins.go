@@ -20,7 +20,6 @@ func (a *App) InitPlugins() {
 		plugin.NewBitwardenPlugin(),
 		plugin.NewSecurityPlugin(),
 		plugin.NewGitOpsPlugin(a.RootDir),
-		plugin.NewTelegramPlugin(),
 		plugin.NewObservabilityPlugin(),
 		plugin.NewRecoveryPlugin(),
 		plugin.NewDesktopPlugin(),

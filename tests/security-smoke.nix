@@ -95,11 +95,7 @@ pkgs.testers.nixosTest {
 
     # AppArmor profiles present (enforce mode)
     machine.succeed("ls /etc/apparmor.d/")
-    machine.succeed("cat /etc/apparmor.d/ivali-bot")
     machine.succeed("cat /etc/apparmor.d/ivali-cli")
-
-    # fail2ban filter installed
-    machine.succeed("cat /etc/fail2ban/filter.d/telegram-webhook.conf")
 
     # Security scanner metrics file created
     machine.succeed("mkdir -p /var/lib/security-scanner")

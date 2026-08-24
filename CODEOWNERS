@@ -1,0 +1,75 @@
+##############################################################################
+#
+# CODEOWNERS — GitLab Merge Request approval rules
+#
+# Purpose
+# -------
+# Define code ownership per domain so GitLab can automatically request
+# reviews from the right people and enforce approval gates.
+#
+# Format
+# ------
+# Pattern   @owner1 @owner2
+#
+# See: https://docs.gitlab.com/ee/user/project/repository/code_owners.html
+#
+##############################################################################
+
+# ── Default owner (fallback) ──────────────────────────────────────────────
+*                               @willisivali
+
+# ── NixOS host configurations ─────────────────────────────────────────────
+hosts/                          @willisivali
+
+# ── NixOS modules (domain-oriented) ──────────────────────────────────────
+automation/                     @willisivali
+boot/                           @willisivali
+caching/                        @willisivali
+ci/                             @willisivali
+cloud/                          @willisivali
+desktop/                        @willisivali
+developer/                      @willisivali
+i18n/                           @willisivali
+networking/                     @willisivali
+observability/                  @willisivali
+packages/                       @willisivali
+recovery/                       @willisivali
+security/                       @willisivali
+services/                       @willisivali
+ssh/                            @willisivali
+storage/                        @willisivali
+system/                         @willisivali
+theme/                          @willisivali
+virtualization/                 @willisivali
+
+# ── Home Manager ──────────────────────────────────────────────────────────
+home/                           @willisivali
+
+# ── Flake and Nix infrastructure ──────────────────────────────────────────
+flake.nix                       @willisivali
+flake.lock                      @willisivali
+ivali.nix                       @willisivali
+configuration.nix               @willisivali
+
+# ── Go code ───────────────────────────────────────────────────────────────
+cmd/                            @willisivali
+internal/                       @willisivali
+go.mod                          @willisivali
+go.sum                          @willisivali
+
+# ── Scripts ───────────────────────────────────────────────────────────────
+scripts/                        @willisivali
+
+# ── CI/CD ─────────────────────────────────────────────────────────────────
+.gitlab-ci.yml                  @willisivali
+ci/                             @willisivali
+
+# ── Architecture governance ──────────────────────────────────────────────
+architecture/                   @willisivali
+AGENTS.md                       @willisivali
+
+# ── Secrets (sensitive — require explicit approval) ───────────────────────
+secrets/                        @willisivali
+
+# ── Tests ─────────────────────────────────────────────────────────────────
+tests/                          @willisivali

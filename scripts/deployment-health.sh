@@ -14,9 +14,8 @@
 #   4. GitOps Repository
 #   5. Local GitOps State (flake, git, generations)
 #   6. System Baseline (Tailscale, NTP)
-#   7. Critical Services (sshd, NetworkManager, tailscaled, bot)
+#   7. Critical Services (sshd, NetworkManager, tailscaled)
 #   8. Disk Usage
-#   9. Bot Reachability (Telegram API)
 #
 # Usage:
 #   deployment-health.sh           # Human-readable output
@@ -283,6 +282,11 @@ check_baseline() {
 check_services() {
   local services=("sshd.service" "NetworkManager.service" "tailscaled.service")
 
+  # Add operations-web-ui if installed
+  if systemctl list-unit-files "operations-web-ui.service" >/dev/null 2>&1; then
+    services+=("operations-web-ui.service")
+  fi
+
   # Add nginx only if installed
   if systemctl list-unit-files "nginx.service" >/dev/null 2>&1; then
     services+=("nginx.service")
@@ -298,25 +302,6 @@ check_services() {
       gate "$label" "NOT running — ${detail}"
     fi
   done
-
-  # Bot with retry (always restarts during deploy)
-  local bot_ok=false
-  for ((i = 1; i <= 12; i++)); do
-    if systemctl list-unit-files "ivali-bot-go.service" >/dev/null 2>&1 && \
-       systemctl is-active --quiet "ivali-bot-go.service"; then
-      bot_ok=true
-      break
-    fi
-    if (( i < 12 )); then
-      sleep 5
-    fi
-  done
-
-  if $bot_ok; then
-    record_check "ivali-bot" "pass" "active"
-  else
-    gate "ivali-bot" "NOT running after 60s retry"
-  fi
 
   # Graphical session
   if systemctl is-active --quiet graphical.target; then
@@ -377,31 +362,6 @@ check_generations() {
     fi
   else
     record_check "generations" "warn" "could not determine generation count"
-  fi
-}
-
-################################################################################
-# 10. Bot reachability (Telegram API)
-################################################################################
-
-check_bot() {
-  local bot_token_file="/run/secrets/telegram_bot_token"
-  if [[ -r "$bot_token_file" ]]; then
-    local bt
-    bt="$(tr -d '[:space:]' < "$bot_token_file" 2>/dev/null || true)"
-    if [[ -n "$bt" ]]; then
-      local resp
-      resp="$(curl -s --max-time 8 "https://api.telegram.org/bot${bt}/getMe" 2>/dev/null || true)"
-      if [[ "$resp" == *'"ok":true'* || "$resp" == *'"ok": true'* ]]; then
-        record_check "bot-reachability" "pass" "token valid, API reachable"
-      else
-        record_check "bot-reachability" "warn" "API error (transient)"
-      fi
-    else
-      record_check "bot-reachability" "warn" "token file empty"
-    fi
-  else
-    record_check "bot-reachability" "warn" "token not available at ${bot_token_file}"
   fi
 }
 
@@ -573,7 +533,6 @@ check_baseline
 check_services
 check_disk
 check_generations
-check_bot
 
 write_results
 

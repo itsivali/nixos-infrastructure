@@ -69,7 +69,7 @@ func CmdMonitor(a *app.App) *cobra.Command {
 				fmt.Println(t.Section("CPU"))
 				fmt.Println(t.Dim(fmt.Sprintf("Load: %s  •  Cores: %s", strings.TrimSpace(load), strings.TrimSpace(cpus))))
 
-				services := []string{"NetworkManager", "sshd", "tailscaled", "grafana", "prometheus", "loki", "ivali-bot"}
+				services := []string{"NetworkManager", "sshd", "tailscaled", "operations-web-ui", "grafana", "prometheus", "loki"}
 				fmt.Println(t.Section("Services"))
 				for _, svc := range services {
 					out, err := exec.Command("systemctl", "is-active", svc).CombinedOutput()
@@ -106,7 +106,7 @@ func runMonitorJSON(interval int) error {
 		},
 	}
 
-	services := []string{"NetworkManager", "sshd", "tailscaled", "grafana", "prometheus", "loki", "ivali-bot"}
+	services := []string{"NetworkManager", "sshd", "tailscaled", "operations-web-ui", "grafana", "prometheus", "loki"}
 	snapshot.Services = make([]ServiceInfo, len(services))
 	for i, svc := range services {
 		out, err := exec.Command("systemctl", "is-active", svc).CombinedOutput()

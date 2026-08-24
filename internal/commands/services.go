@@ -22,8 +22,9 @@ func CmdServices(a *app.App) *cobra.Command {
 
 			services := []string{
 				"NetworkManager", "sshd", "tailscaled",
+				"operations-web-ui",
 				"grafana", "prometheus", "loki", "alloy", "falco",
-				"ivali-bot", "restic-backup", "fail2ban",
+				"restic-backup", "fail2ban",
 			}
 
 			fmt.Println(t.Section("Key Services"))

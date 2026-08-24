@@ -17,7 +17,7 @@ rollback readiness are first-class requirements (see AGENTS.md).
    - System: `journalctl -b -p warning --no-pager`
    - Service: `journalctl -u <unit>.service -n 200 --no-pager`
    - User services: `journalctl --user -u <unit>.service`
-   - Bot/control plane: `journalctl -u ivali-bot` (or the unit from `automation/`)
+   - Bot/control plane: `journalctl -u operations-web-ui` (or the unit from `services/web-ui/`)
 3. **Metrics:** `curl http://127.0.0.1:9100/metrics` (node_exporter) and check the
    Prometheus/Grafana dashboards defined in `observability/`.
 4. **Fix:** Any fix must be declarative (edit Nix, rebuild). No imperative

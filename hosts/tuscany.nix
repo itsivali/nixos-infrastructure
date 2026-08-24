@@ -25,18 +25,27 @@
   tags = [ "tag:personal" ];
   tailnetDomain = "codlet-trench.ts.net";
   gitlabRunnerTags = [ "nixos" "tuscany" "self-hosted" ];
+  # Add your SSH public keys here (run: cat ~/.ssh/id_ed25519.pub)
+  # Keys are injected into ivali's authorized_keys at build time.
   sshAuthorizedKeys = [ ];
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
   features = {
     secrets = true;
     bitwarden = true;
     gitlabRunner = true;
-    bot = true;
     tailscale = true;
     tailscaleExitNode = true;
     ssh = true;
   };
   config = {
+    # ── Operations Web UI ────────────────────────────────────────────
+    ivali.services.webUI = {
+      enable = true;
+      port = 8080;
+      tailscaleServe = true;
+      repoPath = "/home/ivali/nixos-infrastructure";
+    };
+
     ivali.desktop.gnome.enable = true;
     fleet.gitopsReconciler.enable = true;
     fleet.deploymentHealth.enable = true;

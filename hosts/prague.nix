@@ -19,13 +19,14 @@
   tags = [ "tag:personal" ];
   tailnetDomain = "codlet-trench.ts.net";
   gitlabRunnerTags = [ "nixos" "prague" "self-hosted" ];
+  # Add your SSH public keys here (run: cat ~/.ssh/id_ed25519.pub)
+  # Keys are injected into ivali's authorized_keys at build time.
   sshAuthorizedKeys = [ ];
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
   features = {
     secrets = true;
     bitwarden = true;
     gitlabRunner = true;
-    bot = true;
     tailscale = true;
     tailscaleExitNode = true;
     ssh = true;
@@ -35,6 +36,14 @@
     # notably python313.doc which is a huge Sphinx build. Man/info pages
     # are still installed (documentation.man.enable / documentation.info.enable).
     documentation.doc.enable = false;
+
+    # ── Operations Web UI ────────────────────────────────────────────
+    ivali.services.webUI = {
+      enable = true;
+      port = 8080;
+      tailscaleServe = true;
+      repoPath = "/home/ivali/nixos-infrastructure";
+    };
 
     ivali.desktop.gnome.enable = true;
     # Observability stack: Prometheus + Grafana + Loki (local only).
@@ -60,13 +69,10 @@
     fleet.notifications.oauthClientId = "";
 
     # ── Proposed features enabled 2026-07-19 (#4, #5, #6) ──────────
-    # #4 Lite observability: /proc collector + Telegram/email alerts.
+    # #4 Lite observability: /proc collector + email alerts.
     #    Writes /var/lib/observability/state.json (read by `ivali status`).
     fleet.observability.lite.enable = true;
-    # #5 Bot dead-man's-switch: alert if the bot stops polling.
-    fleet.bot.watchdog.enable = true;
-    fleet.bot.watchdog.thresholdSec = 300;
-    # #6 Canary gate: run a NixOS VM smoke test before activating a new
+    # #5 Canary gate: run a NixOS VM smoke test before activating a new
     #    generation. CPU/disk heavy on every deploy — re-enabled now that
     #    the GNOME/Hyprland setup is finalized.
     fleet.gitopsReconciler.canary = true;

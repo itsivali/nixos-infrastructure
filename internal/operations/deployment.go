@@ -161,7 +161,15 @@ func (d *deploymentService) Rollback(ctx context.Context, opts RollbackOpts) (*R
 	}
 
 	// Execute rollback
-	cmd := exec.CommandContext(ctx, "nixos-rebuild", "switch", "--rollback")
+	// If Generation > 0, activate that specific generation
+	// If Generation == 0, rollback to previous generation
+	var cmd *exec.Cmd
+	if opts.Generation > 0 {
+		cmd = exec.CommandContext(ctx, "nix-env", "--profile",
+			"/nix/var/nix/profiles/system", "--rollback", fmt.Sprintf("--generation=%d", opts.Generation))
+	} else {
+		cmd = exec.CommandContext(ctx, "nixos-rebuild", "switch", "--rollback")
+	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		result.Error = fmt.Sprintf("rollback command failed: %s", string(out))
@@ -187,17 +195,24 @@ func (d *deploymentService) Rollback(ctx context.Context, opts RollbackOpts) (*R
 	// Health check after rollback
 	healthErr := d.healthCheck(ctx)
 	result.HealthPassed = healthErr == nil
-	result.Success = true
+
+	// Rollback is only successful if health check passes
+	result.Success = result.HealthPassed
 
 	// Audit
 	if d.audit != nil {
+		resultStr := "success"
+		if !result.Success {
+			resultStr = "failed"
+		}
 		d.audit.Log(ctx, AuditEntry{
 			Timestamp:  startTime,
 			Actor:      opts.Actor,
 			Action:     "rollback",
 			Target:     fmt.Sprintf("generation:%d", result.ToGen),
-			Result:     "success",
+			Result:     resultStr,
 			Generation: result.ToGen,
+			Error:      result.Error,
 		})
 	}
 

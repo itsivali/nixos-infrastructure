@@ -2,20 +2,27 @@ package operations
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 )
 
 // driftService implements DriftService.
 type driftService struct {
-	repoDir string
+	repoDir  string
+	stateDir string
 }
 
 // NewDriftService creates a drift detection service.
 func NewDriftService(repoDir string) *driftService {
-	return &driftService{repoDir: repoDir}
+	return &driftService{
+		repoDir:  repoDir,
+		stateDir: "/var/lib/deployment",
+	}
 }
 
 func (d *driftService) Detect(ctx context.Context) (*DriftReport, error) {
@@ -23,20 +30,20 @@ func (d *driftService) Detect(ctx context.Context) (*DriftReport, error) {
 		Timestamp: time.Now(),
 	}
 
-	// Get desired commit (Git HEAD)
+	// Get desired commit (Git remote HEAD)
 	report.GitDesiredCommit = d.getRemoteHead(ctx)
 
-	// Get deployed commit (what's actually running)
-	report.GitDeployedCommit = d.getDeployedCommit(ctx)
+	// Get deployed commit from deployment provenance (not just git HEAD)
+	report.GitDeployedCommit = d.getDeployedCommitFromProvenance(ctx)
 
 	// Check git drift
 	report.GitDrift = report.GitDesiredCommit != report.GitDeployedCommit &&
 		report.GitDesiredCommit != "" && report.GitDeployedCommit != ""
 
-	// Get expected generation
-	report.GenExpected = d.getExpectedGeneration(ctx)
+	// Get expected generation from deployment provenance
+	report.GenExpected = d.getExpectedGenerationFromProvenance(ctx)
 
-	// Get active generation
+	// Get active generation (current running generation)
 	report.GenActive = d.getActiveGeneration(ctx)
 
 	// Check generation drift
@@ -68,8 +75,33 @@ func (d *driftService) getRemoteHead(ctx context.Context) string {
 	return strings.TrimSpace(string(out))
 }
 
-func (d *driftService) getDeployedCommit(ctx context.Context) string {
-	// The deployed commit is the current HEAD of the repo (since GitOps pulls before deploy)
+// getDeployedCommitFromProvenance reads the deployed commit from deployment provenance record
+func (d *driftService) getDeployedCommitFromProvenance(ctx context.Context) string {
+	statePath := filepath.Join(d.stateDir, "last-deploy.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		// No provenance record, fallback to git HEAD
+		return d.getDeployedCommitFallback(ctx)
+	}
+
+	var record DeploymentRecord
+	if err := json.Unmarshal(data, &record); err != nil {
+		return d.getDeployedCommitFallback(ctx)
+	}
+
+	// Use ResolvedSHA if available, otherwise CommitSHA
+	if record.ResolvedSHA != "" {
+		return record.ResolvedSHA
+	}
+	if record.CommitSHA != "" {
+		return record.CommitSHA
+	}
+
+	return d.getDeployedCommitFallback(ctx)
+}
+
+func (d *driftService) getDeployedCommitFallback(ctx context.Context) string {
+	// Fallback: get current HEAD of the repo
 	out, err := exec.CommandContext(ctx, "git", "-C", d.repoDir, "rev-parse", "HEAD").CombinedOutput()
 	if err != nil {
 		return ""
@@ -77,8 +109,24 @@ func (d *driftService) getDeployedCommit(ctx context.Context) string {
 	return strings.TrimSpace(string(out))
 }
 
-func (d *driftService) getExpectedGeneration(ctx context.Context) int {
-	// The expected generation is the latest generation (from the current configuration)
+// getExpectedGenerationFromProvenance reads the expected generation from deployment provenance
+func (d *driftService) getExpectedGenerationFromProvenance(ctx context.Context) int {
+	statePath := filepath.Join(d.stateDir, "last-deploy.json")
+	data, err := os.ReadFile(statePath)
+	if err != nil {
+		// No provenance record, fallback to active generation
+		return d.getActiveGeneration(ctx)
+	}
+
+	var record DeploymentRecord
+	if err := json.Unmarshal(data, &record); err != nil {
+		return d.getActiveGeneration(ctx)
+	}
+
+	if record.Generation > 0 {
+		return record.Generation
+	}
+
 	return d.getActiveGeneration(ctx)
 }
 

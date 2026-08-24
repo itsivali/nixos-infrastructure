@@ -6,15 +6,22 @@ import "time"
 type DeploymentState string
 
 const (
-	StatePending     DeploymentState = "pending"
-	StateValidating  DeploymentState = "validating"
-	StateBuilding    DeploymentState = "building"
-	StateActivating  DeploymentState = "activating"
-	StateVerifying   DeploymentState = "verifying"
-	StateHealthy     DeploymentState = "healthy"
-	StateComplete    DeploymentState = "complete"
-	StateFailed      DeploymentState = "failed"
-	StateRolledBack  DeploymentState = "rolled_back"
+	StatePending            DeploymentState = "pending"
+	StateValidating         DeploymentState = "validating"
+	StateLocked             DeploymentState = "locked"
+	StateResolving          DeploymentState = "resolving"
+	StateBuilding           DeploymentState = "building"
+	StateActivating         DeploymentState = "activating"
+	StateVerifying          DeploymentState = "verifying"
+	StateHealthy            DeploymentState = "healthy"
+	StateComplete           DeploymentState = "complete"
+	StateFailed             DeploymentState = "failed"
+	StateRollbackRequired   DeploymentState = "rollback_required"
+	StateRollingBack        DeploymentState = "rolling_back"
+	StateVerifyingRollback  DeploymentState = "verifying_rollback"
+	StateRecovered          DeploymentState = "recovered"
+	StateDegraded           DeploymentState = "degraded"
+	StateRolledBack         DeploymentState = "rolled_back"
 )
 
 // DeploymentRecord represents a completed or in-progress deployment.
@@ -22,6 +29,8 @@ type DeploymentRecord struct {
 	ID                string          `json:"id"`
 	CommitSHA         string          `json:"commit_sha"`
 	PreviousSHA       string          `json:"previous_sha,omitempty"`
+	ResolvedSHA       string          `json:"resolved_sha,omitempty"`
+	ActualSHA         string          `json:"actual_sha,omitempty"`
 	Generation        int             `json:"generation"`
 	PreviousGen       int             `json:"previous_generation,omitempty"`
 	Actor             string          `json:"actor"`
@@ -34,6 +43,10 @@ type DeploymentRecord struct {
 	Duration          string          `json:"duration,omitempty"`
 	Changelog         string          `json:"changelog,omitempty"`
 	ChangedFiles      string          `json:"changed_files,omitempty"`
+	Branch            string          `json:"branch,omitempty"`
+	BuildInputSHA     string          `json:"build_input_sha,omitempty"`
+	RollbackGen       int             `json:"rollback_generation,omitempty"`
+	RecoveryAttempts  int             `json:"recovery_attempts,omitempty"`
 }
 
 // DeployOpts configures a deployment operation.

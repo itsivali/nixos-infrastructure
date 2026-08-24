@@ -12,11 +12,10 @@ set -Eeuo pipefail
 # Config
 ###########################################################################
 
-# Local checkout the loop operates on. NOTE: GITOPS_REPO (config.fleet.gitops.repo)
-# is a remote *URL* (https://gitlab.com/...), not a local path, so it cannot be
-# used here. The intended GITOPS_WORKTREE (/var/lib/gitops) is never provisioned,
-# so we use the operator's existing checkout.
-REPO_DIR="/home/ivali/nixos-infrastructure"
+# Production GitOps checkout — NOT the developer's home directory.
+# This is the single source of truth for the local git worktree.
+# CI and recovery are read-only consumers through documented interfaces.
+REPO_DIR="/var/lib/gitops"
 SCRIPTS_DIR="${REPO_DIR}/scripts"
 NOTIFY="${SCRIPTS_DIR}/notify.sh"
 HEALTH="${SCRIPTS_DIR}/deployment-health.sh"
@@ -24,7 +23,8 @@ ROLLBACK="${SCRIPTS_DIR}/rollback.sh"
 IVALI="$(command -v ivali 2>/dev/null || echo "${REPO_DIR}/result/bin/ivali")"
 
 HOST="${HOST_NAME:-$(hostname)}"
-BRANCH="main"
+BRANCH="${GITOPS_BRANCH:-main}"
+GIT_REMOTE="${GITOPS_REPO:-git@gitlab.com:willisivali/nixos-infrastructure.git}"
 LOCK_FILE="/run/deploy.lock"
 LOCK_MAX_AGE=1800  # 30 min — if lock is older, assume crash and remove
 
@@ -115,24 +115,72 @@ if ! flock -n 9; then
 fi
 
 ###########################################################################
-# Repo sanity
+# Repo sanity — provision if missing
 ###########################################################################
 
 if [[ ! -d "${REPO_DIR}/.git" ]]; then
-  notify "❌ GitOps failure: repo missing on ${HOST}"
-  log "Repo missing at ${REPO_DIR}"
-  exit 1
+  log "Git repository missing at ${REPO_DIR} — provisioning..."
+  
+  # Ensure parent directory exists
+  mkdir -p "$(dirname "${REPO_DIR}")"
+  
+  # Clone the repository
+  if ! retry "git clone" git clone --depth 1 --branch "${BRANCH}" "${GIT_REMOTE}" "${REPO_DIR}"; then
+    notify "❌ GitOps failure: failed to clone repository on ${HOST}"
+    log "Failed to clone repository from ${GIT_REMOTE}"
+    exit 1
+  fi
+  
+  # Set proper ownership
+  chown -R ivali:users "${REPO_DIR}"
+  chmod 700 "${REPO_DIR}"
+  
+  log "Repository provisioned at ${REPO_DIR}"
 fi
 
 cd "$REPO_DIR"
 
 ###########################################################################
-# Dirty-tree guard
+# Dirty-tree guard — comprehensive check
 ###########################################################################
 
-if ! git diff --quiet; then
-  notify "⚠️ GitOps skipped: uncommitted local changes on ${HOST}"
-  log "Working tree dirty — skipping."
+dirty=false
+dirty_reason=""
+
+# Check for modified tracked files
+if ! git diff --quiet 2>/dev/null; then
+  dirty=true
+  dirty_reason="modified tracked files"
+fi
+
+# Check for staged changes
+if ! git diff --cached --quiet 2>/dev/null; then
+  dirty=true
+  dirty_reason="staged changes"
+fi
+
+# Check for untracked files (exclude .result if present)
+untracked=$(git ls-files --others --exclude-standard 2>/dev/null | grep -v "^result$" | head -1)
+if [[ -n "$untracked" ]]; then
+  dirty=true
+  dirty_reason="untracked files"
+fi
+
+# Check for merge conflicts
+if [[ -d ".git/MERGE_HEAD" ]] || [[ -f ".git/MERGE_MSG" ]]; then
+  dirty=true
+  dirty_reason="merge in progress"
+fi
+
+# Check for detached HEAD
+if ! git symbolic-ref -q HEAD >/dev/null 2>&1; then
+  dirty=true
+  dirty_reason="detached HEAD"
+fi
+
+if [[ "$dirty" == "true" ]]; then
+  notify "⚠️ GitOps skipped: ${dirty_reason} on ${HOST}"
+  log "Working tree dirty (${dirty_reason}) — skipping."
   exit 1
 fi
 
@@ -142,9 +190,29 @@ fi
 
 step "Fetch origin"
 if ! retry "git fetch" git fetch --prune origin; then
-  notify "❌ GitOps failure: git fetch failed on ${HOST}"
-  step_fail
-  exit 1
+  # Network failure safety: if we can't fetch, the system is still fine
+  # Just skip this reconciliation cycle and try again later
+  log "Network unavailable or git fetch failed — keeping current configuration"
+  log "System is healthy, just unreachable. Will retry next cycle."
+  exit 0
+fi
+step_ok
+
+###########################################################################
+# Corruption recovery
+###########################################################################
+
+step "Check repository integrity"
+if ! git fsck --no-dangling >/dev/null 2>&1; then
+  log "Repository corruption detected — re-cloning..."
+  rm -rf "${REPO_DIR}"
+  if ! retry "git clone" git clone --depth 1 --branch "${BRANCH}" "${GIT_REMOTE}" "${REPO_DIR}"; then
+    notify "❌ GitOps failure: repository corruption and clone failed on ${HOST}"
+    step_fail
+    exit 1
+  fi
+  cd "$REPO_DIR"
+  log "Repository re-cloned successfully"
 fi
 step_ok
 

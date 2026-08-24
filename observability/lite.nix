@@ -7,7 +7,8 @@
 # The full stack (Prometheus/Grafana/Alloy/Falco) is too heavy for
 # this laptop's CPU. This is the cheap substitute: a 60s timer that
 # reads /proc, writes /var/lib/observability/state.json, and fires
-# notify.sh when a threshold is breached. The bot's /status (#8)
+# notify.sh when a threshold is breached. Health status is exposed via
+# the operations WebUI dashboard.
 # reads the same state file.
 #
 # Ownership

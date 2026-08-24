@@ -37,9 +37,6 @@ let
     "gitlab.com"
     "github.com"
 
-    # Telegram bot API
-    "api.telegram.org"
-
     # DNS resolution
     "1.1.1.1"
     "1.0.0.1"
@@ -140,9 +137,6 @@ in
     #
     # Required for GitOps:
     #   gitlab.com, github.com
-    #
-    # Required for Telegram bot:
-    #   api.telegram.org
     #
     # Required for DNS:
     #   1.1.1.1, 1.0.0.1, 9.9.9.9, 9.9.10.10

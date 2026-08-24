@@ -6,9 +6,9 @@
 # -------
 # Self-heal service triggered by deployment-health.service (OnFailure) when a
 # critical service is down. It re-runs the health check in OBSERVER mode
-# (STRICT_HEALTH=false): connectivity / GitLab / bot-API failures are only
+# (STRICT_HEALTH=false): connectivity / GitLab failures are only
 # WARN there, so a transient network blip does NOT roll back. A genuine
-# service regression (e.g. ivali-bot-go stopped) still FAILs and rolls back.
+# service regression (e.g. operations-web-ui stopped) still FAILs and rolls back.
 #
 # The post-deploy gate in gitops-reconcile.sh is the primary rollback path.
 #

@@ -5,7 +5,7 @@
 # Purpose
 # -------
 # Host spec for prague: full SRE/development workstation with a Hyprland
-# desktop, GTK/GNOME applications, GitOps, observability, Telegram bot,
+# desktop, GTK/GNOME applications, GitOps, observability,
 # and local dev databases.
 #
 ##############################################################################

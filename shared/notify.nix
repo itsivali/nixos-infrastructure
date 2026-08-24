@@ -1,5 +1,5 @@
-# Shared Telegram notification script.
-# Used by observability/lite.nix and automation/bot-watchdog.nix.
+# Shared notification script (msmtp-based email).
+# Used by observability/lite.nix and automation/recovery services.
 # Import as: import ../shared/notify.nix { inherit pkgs; }
 { pkgs }:
 

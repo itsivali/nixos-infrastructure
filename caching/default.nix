@@ -60,7 +60,7 @@ in
 {
   options.goBinaryCache = {
     enable = lib.mkEnableOption ''
-      a local binary cache for the Go-built tools (ivali, bw-tui, ivali-bot, …)
+      a local binary cache for the Go-built tools (ivali, bw-tui, …)
       so they are restored in seconds instead of recompiled on every switch
     '';
 
@@ -77,10 +77,10 @@ in
     packages = lib.mkOption {
       type = lib.types.listOf lib.types.package;
       default = [ ];
-      defaultText = "set per-host from flake.nix (ivali, bw-tui, ivali-bot)";
+      defaultText = "set per-host from flake.nix (ivali, bw-tui)";
       description = ''
         Go derivations to populate into the local binary cache. flake.nix sets
-        this to the Go-built tools (ivali, bw-tui, ivali-bot) for every host;
+        this to the Go-built tools (ivali, bw-tui) for every host;
         extend it here (or via an overlay) for any future Go tool so it is
         cached too.
       '';

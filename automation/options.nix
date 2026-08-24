@@ -5,7 +5,7 @@
 # Purpose
 # -------
 # Declares all configuration options consumed by the automation modules,
-# including GitOps, reconciler, notifications, and Telegram bot settings.
+# including GitOps, reconciler, and notification settings.
 #
 # Ownership
 # ---------
@@ -15,8 +15,7 @@
 # ----------------
 # - Declare fleet.gitops options (repo URL, branch)
 # - Declare fleet.gitopsReconciler options (retries, doctor, canary)
-# - Declare fleet.notifications options (email, OAuth2, Telegram chat ID)
-# - Declare fleet.bot options (enable, GitLab URL, default user)
+# - Declare fleet.notifications options (email, OAuth2)
 #
 ##############################################################################
 
@@ -129,46 +128,6 @@ with lib;
           Entra ID tenant for the OAuth2 device-code flow. Use `consumers`
           for a personal @outlook.com account, or your organization tenant
           ID / `organizations` for Microsoft 365.
-        '';
-      };
-
-      telegram = {
-
-        chatId = mkOption {
-          type = types.str;
-          default = "";
-          example = "7724444807";
-          description = ''
-            Telegram chat ID used for deployment notifications.
-          '';
-        };
-
-      };
-
-    };
-
-    ############################################################
-    # Telegram Bot Control Plane
-    ############################################################
-
-    bot = {
-
-      enable = lib.mkEnableOption "Telegram bot control plane";
-
-      gitlabUrl = lib.mkOption {
-        type = lib.types.str;
-        default = "";
-        example = "https://gitlab.com/willisivali/nixos-infrastructure";
-        description = ''
-          GitLab instance URL for bot API access (pipelines, MRs, etc.).
-        '';
-      };
-
-      defaultUser = lib.mkOption {
-        type = lib.types.str;
-        default = "ivali";
-        description = ''
-          System user to run GUI commands as (for DISPLAY/WAYLAND access).
         '';
       };
 

@@ -27,7 +27,7 @@ func (h *SystemHealthChecker) CheckSystem(ctx context.Context) (*services.System
 
 	// Default systemd services to check
 	defaultServices := []string{
-		"ivali-bot", "prometheus", "grafana-server", "loki",
+		"prometheus", "grafana-server", "loki",
 		"restic-backup.timer", "deployment-health.timer",
 	}
 	svcHealth, err := h.CheckServices(ctx, defaultServices)

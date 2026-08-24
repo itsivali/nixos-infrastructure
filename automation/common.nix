@@ -17,10 +17,6 @@
 
     notifications = {
       email = "itsivali@outlook.com";
-
-      telegram = {
-        chatId = "7724444807";
-      };
     };
   };
 }

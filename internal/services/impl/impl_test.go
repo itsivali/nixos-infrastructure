@@ -12,17 +12,17 @@ import (
 
 // --- NotificationService ---
 
-func TestTelegramNotification_SendAlert(t *testing.T) {
+func TestEmailNotification_SendAlert(t *testing.T) {
 	// Use a non-existent script — the important thing is the service compiles
 	// and methods are callable. Full integration requires notify.sh + secrets.
-	svc := impl.NewTelegramNotification("/bin/sh")
+	svc := impl.NewEmailNotification("/bin/sh")
 	if svc == nil {
-		t.Fatal("NewTelegramNotification returned nil")
+		t.Fatal("NewEmailNotification returned nil")
 	}
 }
 
-func TestTelegramNotification_SendDeploymentResult(t *testing.T) {
-	svc := impl.NewTelegramNotification("/bin/sh")
+func TestEmailNotification_SendDeploymentResult(t *testing.T) {
+	svc := impl.NewEmailNotification("/bin/sh")
 	// Test that the method doesn't panic with empty result
 	err := svc.SendDeploymentResult(context.Background(), services.DeploymentResult{
 		Host:    "test-host",
@@ -30,12 +30,12 @@ func TestTelegramNotification_SendDeploymentResult(t *testing.T) {
 		Commit:  "abc12345",
 		Branch:  "main",
 	})
-	// Will fail to send (no bot token) but should not panic
+	// Will fail to send but should not panic
 	_ = err
 }
 
-func TestTelegramNotification_SendHealthAlert(t *testing.T) {
-	svc := impl.NewTelegramNotification("/bin/sh")
+func TestEmailNotification_SendHealthAlert(t *testing.T) {
+	svc := impl.NewEmailNotification("/bin/sh")
 	err := svc.SendHealthAlert(context.Background(), "prometheus", true, "")
 	_ = err
 }

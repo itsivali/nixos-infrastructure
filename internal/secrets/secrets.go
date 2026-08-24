@@ -10,10 +10,6 @@ const (
 	// DefaultSecretsDir is the default SOPS secrets mount point.
 	DefaultSecretsDir = "/run/secrets"
 
-	// Secret names for Telegram bot configuration.
-	SecretTelegramBotToken = "telegram_bot_token"
-	SecretTelegramChatID   = "telegram_chat_id"
-
 	// Secret names for GitLab runner.
 	SecretGitLabRunnerToken = "gitlab_runner_token"
 
@@ -52,14 +48,4 @@ func ReadSecret(name string) (string, error) {
 		return "", err
 	}
 	return strings.TrimSpace(string(data)), nil
-}
-
-// ReadTelegramBotToken reads the Telegram bot token from secrets.
-func ReadTelegramBotToken() (string, error) {
-	return ReadSecret(SecretTelegramBotToken)
-}
-
-// ReadTelegramChatID reads the Telegram chat ID from secrets.
-func ReadTelegramChatID() (string, error) {
-	return ReadSecret(SecretTelegramChatID)
 }

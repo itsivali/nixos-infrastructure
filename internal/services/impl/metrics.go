@@ -76,7 +76,7 @@ func (p *PrometheusMetrics) Query(ctx context.Context, promQL string) (float64, 
 }
 
 func (p *PrometheusMetrics) ServiceStatuses(ctx context.Context) (map[string]services.ServiceHealth, error) {
-	services_list := []string{"ivali-bot", "prometheus", "grafana", "loki"}
+	services_list := []string{"prometheus", "grafana", "loki"}
 	result := make(map[string]services.ServiceHealth, len(services_list))
 
 	for _, name := range services_list {

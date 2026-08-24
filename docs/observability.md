@@ -103,7 +103,7 @@ tailscale_key_expiry_days
 {job="systemd-journal"} |= "error"
 
 # Specific unit errors
-{unit="ivali-bot-go.service"} | level="err"
+{unit="ivali.service"} | level="err"
 
 # Grafana errors
 {unit="grafana.service"} |~ "(?i)error"
@@ -146,7 +146,7 @@ Loki receives **error-level logs only** from Alloy, which filters journal entrie
 {job="systemd-journal"} | level=~"err|crit|alert|emerg"
 
 # Bot errors
-{unit="ivali-bot-go.service"} |~ "(?i)(error|panic|fatal)"
+{unit="ivali.service"} |~ "(?i)(error|panic|fatal)"
 
 # NixOS rebuild failures
 {unit="nixos-rebuild.service"} |~ "error"
@@ -195,34 +195,6 @@ Custom metrics for NixOS-specific data:
 - `nixos_generation_total` — Total generations
 - `nixos_system_closure_size_bytes` — System closure size
 - `nixos_flake_inputs` — Flake input versions
-
-## Telegram Bot
-
-The bot provides real-time infrastructure access:
-
-### Runner Command
-
-```bash
-# Via Telegram
-/runner
-
-# Shows:
-# - Last reconcile status (trigger, result, duration)
-# - Step-by-step breakdown (token, service, config, connectivity)
-# - Health check results
-```
-
-### Other Commands
-
-| Command | Description |
-|---------|-------------|
-| `/status` | System status overview |
-| `/health` | Detailed health check |
-| `/deploy` | Trigger NixOS rebuild |
-| `/rollback` | Rollback to previous generation |
-| `/runner` | GitLab Runner status |
-| `/logs` | View systemd logs |
-| `/metrics` | Prometheus metrics summary |
 
 ## Ansible
 
@@ -344,4 +316,4 @@ ivali.observability = {
 };
 ```
 
-The lite observer (`fleet.observability.lite.enable`) runs independently and provides basic health alerts via Telegram without Prometheus/Grafana.
+The lite observer (`fleet.observability.lite.enable`) runs independently and provides basic health alerts via notifications without Prometheus/Grafana.

@@ -7,7 +7,7 @@ Structured documentation for this NixOS infrastructure repository.
 | File | Description |
 |------|-------------|
 | [architecture.md](architecture.md) | System overview, core principles, module system, data flow, security model |
-| [modules.md](modules.md) | Complete catalog of NixOS modules, Home Manager modules, Go CLI, scripts, and bot commands |
+| [modules.md](modules.md) | Complete catalog of NixOS modules, Home Manager modules, Go CLI, and scripts |
 | [hosts.md](hosts.md) | Host registry, adding new hosts, template system, hardware config, per-host secrets |
 | [deployment.md](deployment.md) | Deployment methods, CI/CD pipeline, health checks, rollback, generation tracking |
 | [troubleshooting.md](troubleshooting.md) | Common issues and fixes for flake, build, SOPS, Tailscale, Home Manager, GitLab Runner |
@@ -23,7 +23,7 @@ Structured documentation for this NixOS infrastructure repository.
 ### Deploying Changes
 ```bash
 git push origin main         # Push changes
-sudo nixos-rebuild switch --flake .#prague  # Or use /deploy bot command
+sudo nixos-rebuild switch --flake .#prague  # Or wait for GitOps reconciler
 ```
 
 ### Diagnosing Issues

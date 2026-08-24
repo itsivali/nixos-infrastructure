@@ -26,7 +26,7 @@ Automation Options
 Purpose
 -------
 Declares all configuration options consumed by the automation modules,
-including GitOps, reconciler, notifications, and Telegram bot settings.
+including GitOps, reconciler, and notifications settings.
 Ownership
 ---------
 Willis Ivali <ivali>
@@ -34,26 +34,7 @@ Responsibilities
 ----------------
 - Declare fleet.gitops options (repo URL, branch)
 - Declare fleet.gitopsReconciler options (retries, doctor, canary)
-- Declare fleet.notifications options (email, OAuth2, Telegram chat ID)
-- Declare fleet.bot options (enable, GitLab URL, default user)
-#############################################################################
-
-## automation/bot-watchdog.nix
-
-#############################################################################
-Bot Watchdog — dead-man's-switch
-Purpose
--------
-The Telegram bot IS the control plane. If it dies silently you lose
-all remote control. The bot writes /run/ivali-bot/heartbeat on every
-poll (see #8). This timer alerts via notify.sh if the heartbeat goes
-stale.
-Ownership
----------
-fleet.bot.watchdog.*, systemd ivali-bot-watchdog.{service,timer}
-Dependencies
-------------
-Requires the bot to write the heartbeat file (implemented in #8).
+- Declare fleet.notifications options (email, OAuth2)
 #############################################################################
 
 ## automation/channel-bump.nix
@@ -297,7 +278,7 @@ Tailscale interface.
 Go Binary Cache
 Purpose
 -------
-Cache the Go-built CLI tools (ivali, bw-tui, ivali-bot, and any future Go
+Cache the Go-built CLI tools (ivali, bw-tui, and any future Go
 binary) in a LOCAL binary cache so that switching generations — or a build
 that was garbage-collected — restores the pre-built binary in seconds
 instead of recompiling from scratch (minutes).
@@ -825,7 +806,7 @@ Does NOT Own
 - Go cache paths (home/environment/variables.nix)
 - Go source filter (lib/go-src.nix)
 - Go binary cache (caching/default.nix)
-- Go binaries built in flake.nix (ivali, bw-tui, ivali-bot)
+- Go binaries built in flake.nix (ivali, bw-tui)
 #############################################################################
 
 ## developer/kotlin.nix
@@ -1916,12 +1897,11 @@ gitlabRunnerTags = [ "nixos", "..." ]; # GitLab runner tags
 sshAuthorizedKeys = [ "ssh-...", ... ]; # SSH public keys
 sopsKeyPath     = "/home/user/.config/sops/age/keys.txt";
 features = {
-secrets         = true;
-gitlabRunner    = true;
-bot             = true;
-tailscale       = true;
-tailscaleExitNode = true;
-ssh             = true;
+  secrets         = true;
+  gitlabRunner    = true;
+  tailscale       = true;
+  tailscaleExitNode = true;
+  ssh             = true;
 };
 config = { ... };                    # NixOS config overrides
 };
@@ -1933,8 +1913,8 @@ config = { ... };                    # NixOS config overrides
 Prague — Primary Host (AMD Laptop)
 Purpose
 -------
-Host spec for prague: full SRE/development workstation with a Hyprland
-desktop, GTK/GNOME applications, GitOps, observability, Telegram bot,
+Host spec for prague: full SRE/development workstation with a GNOME
+desktop, GTK/GNOME applications, GitOps, observability,
 and local dev databases.
 #############################################################################
 
@@ -2051,11 +2031,11 @@ Rationale
 ---------
 Before this helper the Go packages used `src = self` / `cleanSource ./../..`
 i.e. the entire repository. Any `git commit` / config tweak changed the
-source hash and rebuilt ivali, bw-tui and the bot from scratch. Filtering
+source hash and rebuilt ivali and bw-tui from scratch. Filtering
 to Go-only inputs keeps the hash constant unless Go code actually changes.
 Ownership
 ---------
-Consumed by flake.nix (ivali, bw-tui, ivali-bot) and any future Go tool.
+Consumed by flake.nix (ivali, bw-tui) and any future Go tool.
 #############################################################################
 
 ## lib/hardware-detection.nix
@@ -2189,13 +2169,13 @@ Responsibilities
 Alertmanager
 Purpose
 -------
-Configure Alertmanager with Telegram notification routing.
+Configure Alertmanager with notification routing.
 Ownership
 ---------
 services.prometheus.alertmanager
 Responsibilities
 ----------------
-- Route alerts to Telegram bot
+- Route alerts to notifications
 - Alert grouping and deduplication
 - Silence and inhibition rules
 #############################################################################
@@ -2299,8 +2279,7 @@ Purpose
 The full stack (Prometheus/Grafana/Alloy/Falco) is too heavy for
 this laptop's CPU. This is the cheap substitute: a 60s timer that
 reads /proc, writes /var/lib/observability/state.json, and fires
-notify.sh when a threshold is breached. The bot's /status (#8)
-reads the same state file.
+notify.sh when a threshold is breached.
 Ownership
 ---------
 fleet.observability.lite.*, systemd observability-lite.{service,timer}
@@ -2497,9 +2476,9 @@ Purpose
 -------
 Self-heal service triggered by deployment-health.service (OnFailure) when a
 critical service is down. It re-runs the health check in OBSERVER mode
-(STRICT_HEALTH=false): connectivity / GitLab / bot-API failures are only
+(STRICT_HEALTH=false): connectivity / GitLab failures are only
 WARN there, so a transient network blip does NOT roll back. A genuine
-service regression (e.g. ivali-bot-go stopped) still FAILs and rolls back.
+service regression still FAILs and rolls back.
 The post-deploy gate in gitops-reconcile.sh is the primary rollback path.
 #############################################################################
 
@@ -2543,7 +2522,6 @@ Does NOT Own
 - Packages (security/packages.nix)
 Profiles
 --------
-- ivali-bot: Telegram bot process (root, runs rebuilds/desktop automation)
 - ivali-cli: Go CLI binary (defined but NOT auto-attached; see note below)
 NOTE: DevOps tools (kubectl, helm, terraform, ansible, etc.) are NOT
 confined because they run interactively and need broad filesystem/network
@@ -2558,7 +2536,7 @@ All profiles are enforced. Privileged subprocesses (nix/git/systemctl) run
 unconfined (ux) because they must write to /nix/store and use SSH keys.
 NOTE: ivali-cli is intentionally NOT attached to a path glob. Attaching it to
 /nix/store/**/bin/ivali would confine EVERY `ivali` invocation system-wide
-(shell, cron, bot, doctor) and break legitimate use. It is enforced only when
+(shell, cron, doctor) and break legitimate use. It is enforced only when
 a service explicitly sets AppArmorProfile = "ivali-cli".
 #############################################################################
 
@@ -2587,7 +2565,7 @@ Dependencies
 Fail2Ban
 Purpose
 -------
-Brute-force protection for SSH, nginx, and the Telegram bot webhook.
+Brute-force protection for SSH and nginx.
 Ownership
 ---------
 services.fail2ban
@@ -2761,53 +2739,6 @@ Responsibilities
 - nginx/    — Web server (future)
 - postgres/ — Database (future)
 - redis/    — Cache (future)
-#############################################################################
-
-## services/bot/default.nix
-
-#############################################################################
-Services Bot
-Purpose
--------
-Barrel module for Telegram bot service sub-modules. Auto-imports all
-files in this directory via lib/auto-imports.nix.
-Ownership
----------
-Willis Ivali <ivali>
-Responsibilities
-----------------
-- Auto-import bot service sub-modules
-#############################################################################
-
-## services/bot/ci-notify.nix
-
-#############################################################################
-CI Notification Service
-Purpose
--------
-Sends CI pipeline notifications to Telegram on deploy events.
-Ownership
----------
-systemd.services.ci-notify
-Dependencies
-------------
-Requires fleet.gitlabRunner options (declared in ci/gitlab-runner.nix).
-#############################################################################
-
-## services/bot/ivali-bot-go.nix
-
-#############################################################################
-Go Telegram Bot Service
-Purpose
--------
-Go-based Telegram bot for NixOS infrastructure management.
-This is the new Go implementation replacing the shell-based bot.
-Ownership
----------
-systemd.services.ivali-bot-go
-Dependencies
-------------
-Requires fleet.bot options (declared in automation/options.nix).
 #############################################################################
 
 ## services/msmtp/default.nix
@@ -3190,26 +3121,6 @@ Responsibilities
 - Verify bw status command works
 #############################################################################
 
-## tests/bot-desktop-smoke.nix
-
-#############################################################################
-Bot Desktop Smoke Test
-Purpose
--------
-Validate that the desktop-subsystem bridging layer works correctly.
-Runs the standalone test script and checks results.
-#############################################################################
-
-## tests/bot-integration.nix
-
-#############################################################################
-Bot Integration Test
-Purpose
--------
-End-to-end test for the Go Telegram bot service.
-Verifies the service is configured and the binary is available.
-#############################################################################
-
 ## tests/home-manager-smoke.nix
 
 #############################################################################
@@ -3274,9 +3185,9 @@ Responsibilities
 ----------------
 - Verify kernel command-line hardening (slab_nomerge, init_on_alloc)
 - Verify sysctl security settings (kptr_restrict, dmesg_restrict, etc.)
-- Verify AppArmor profiles are present for bot, CLI, and reconciler
+- Verify AppArmor profiles are present for CLI and reconciler
 - Verify firewall default drop policy
-- Verify fail2ban Telegram webhook filter is installed
+- Verify fail2ban filter is installed
 #############################################################################
 
 ## tests/services-smoke.nix

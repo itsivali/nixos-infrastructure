@@ -46,19 +46,21 @@ INTERNAL           INTERNAL        INTERNAL                  INTERNAL
 ### Runtime Services
 
 ```
-┌─────────────┐       ┌─────────────┐
-│  TELEGRAM   │──────▶│   GITOPS    │
-└─────────────┘ API   └─────────────┘
-│                        │
-│                        │ API
-▼                        ▼
-┌─────────────┐       ┌─────────────┐
-│   BACKUP    │◀──────│OBSERVABILITY│
-└─────────────┘       └─────────────┘
-        │                     │
-        │    ┌─────────────┐  │
-        └───▶│  PLATFORM   │◀─┘
-             └─────────────┘
+┌─────────────────┐
+│     GITOPS      │
+└─────────────────┘
+        │
+        │ API
+        ▼
+┌─────────────┐
+│   BACKUP    │
+└─────────────┘
+        │
+        │ API
+        ▼
+┌─────────────┐
+│OBSERVABILITY│
+└─────────────┘
 ```
 
 ---
@@ -73,8 +75,7 @@ All runtime services communicate through explicit interfaces defined in
 **Purpose:** Centralized notification delivery across all domains.
 
 **Replaces:**
-- `scripts/notify.sh` (used by GitOps, Observability lite, Bot Watchdog)
-- Direct Telegram API calls in Alertmanager
+- `scripts/notify.sh` (used by GitOps, Observability lite)
 - Inline notification logic in various scripts
 
 **Interface:**
@@ -103,7 +104,7 @@ type NotificationService interface {
 
 **Replaces:**
 - Methods on `GitOpsService` (TriggerBackup, BackupStatus, etc.)
-- Direct systemctl/restic CLI calls in Telegram handlers
+- Direct systemctl/restic CLI calls
 
 **Interface:**
 
@@ -120,7 +121,6 @@ type BackupService interface {
 **Implementation:** `internal/services/backup.go`
 
 **Consumers:**
-- Telegram: `/backup`, `/snapshots` commands
 - Platform: health checks
 - GitOps: post-deploy verification
 
@@ -148,7 +148,6 @@ type MetricsProvider interface {
 **Implementation:** `internal/services/metrics.go`
 
 **Consumers:**
-- Telegram: `/metrics`, `/status` commands
 - Dashboard: service health display
 - Platform: health checks
 
@@ -180,7 +179,6 @@ type HealthChecker interface {
 - GitOps: post-deploy health validation
 - Platform: `ivali health --system`
 - Observability: health endpoint
-- Telegram: `/health` command
 
 ---
 
@@ -189,7 +187,7 @@ type HealthChecker interface {
 **Purpose:** Platform-level operations (rebuild, rollback, diagnostics).
 
 **Replaces:**
-- Shelling out to `ivali` CLI from Telegram bot
+- Shelling out to `ivali` CLI
 - Direct systemctl/nixos-rebuild calls in remediation
 
 **Interface:**
@@ -207,7 +205,6 @@ type PlatformService interface {
 **Implementation:** `internal/services/platform.go`
 
 **Consumers:**
-- Telegram: `/deploy`, `/rollback`, `/status` commands
 - GitOps: deployment operations
 - Remediation: system fixes
 
@@ -247,8 +244,7 @@ graph TD
 
 ```mermaid
 graph TD
-    main[cmd/ivali-bot/main.go] --> app[internal/app]
-    main --> telegram[internal/telegram]
+    main[cmd/ivali/main.go] --> app[internal/app]
     
     subgraph "Service Layer"
         services[services]
@@ -272,36 +268,8 @@ graph TD
     services --> health
     services --> platform
     
-    telegram --> services
     gitops --> services
     remediation --> services
-```
-
-### Runtime Service Interactions
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Telegram
-    participant Platform
-    participant GitOps
-    participant Observability
-    participant Backup
-    
-    User->>Telegram: /deploy command
-    Telegram->>Platform: Rebuild(host)
-    Platform->>GitOps: Trigger rebuild
-    GitOps-->>Platform: Result
-    Platform-->>Telegram: DeploymentResult
-    Telegram-->>User: Success/Failure message
-    
-    Note over Observability: Continuous monitoring
-    Observability->>Telegram: SendAlert(severity, message)
-    Telegram-->>User: Alert notification
-    
-    Note over Backup: Scheduled backups
-    Backup->>Telegram: SendHealthAlert(status)
-    Telegram-->>User: Backup status
 ```
 
 ---
@@ -313,12 +281,10 @@ unless explicitly documented as an exception.
 
 | Domain | State Path | Owner | Consumers |
 |--------|-----------|-------|-----------|
-| Telegram | `/var/lib/ivali-bot/` | Telegram | Bot Watchdog |
 | GitOps | `/var/lib/gitops/` | GitOps | Deployment Health |
 | Observability | `/var/lib/observability/` | Observability | Platform (via interface) |
 | Backup | `/mnt/backup/` | Backup | Platform (via interface) |
 | Security | None (stateless) | Security | Platform (via interface) |
-| Platform | `/run/ivali-bot/heartbeat` | Platform | Bot Watchdog |
 
 ---
 
@@ -330,12 +296,10 @@ directly read/write these paths without going through an interface.
 | Path | Owner | Purpose | Cross-Domain Access |
 |------|-------|---------|-------------------|
 | `/run/secrets/*` | SOPS | Secret material | Allowed (all domains read) |
-| `/var/lib/ivali-bot/*` | Telegram | Bot state | Forbidden |
 | `/var/lib/gitops/*` | GitOps | Repository state | Forbidden |
 | `/var/lib/observability/*` | Observability | Metrics state | Forbidden |
 | `/var/lib/health-endpoint/*` | Observability | Health cache | Forbidden |
 | `/mnt/backup/*` | Backup | Restic repository | Forbidden |
-| `/run/ivali-bot/heartbeat` | Platform | Dead man's switch | Allowed (watchdog reads) |
 | `/run/deploy.lock` | GitOps | Deployment mutex | Allowed (CI reads) |
 
 ---
@@ -351,24 +315,23 @@ directly read/write these paths without going through an interface.
 Create concrete implementations of the interfaces in `internal/services/`:
 
 ```go
-// internal/services/notification/telegram.go
-type TelegramNotification struct {
-    api *telegram.API
-    chatID int64
+// internal/services/notification/notification.go
+type NotificationService struct {
+    // Implementation details
 }
 
-func (t *TelegramNotification) SendAlert(ctx context.Context, severity services.Severity, title, message string) error {
-    // Implementation using telegram.API
+func (n *NotificationService) SendAlert(ctx context.Context, severity services.Severity, title, message string) error {
+    // Implementation using notification service
 }
 ```
 
 **Step 1.2: Wire up service registry**
 
-In `cmd/ivali-bot/main.go`:
+In `cmd/ivali/main.go`:
 
 ```go
 registry := services.NewRegistry(
-    notification.NewTelegramNotification(api, chatID),
+    notification.NewNotificationService(),
     backup.NewResticBackup(),
     metrics.NewPrometheusMetrics(),
     health.NewSystemHealth(),
@@ -392,11 +355,11 @@ output, err := c.registry.Platform.Rebuild(ctx, host)
 
 **Goal:** Replace `scripts/notify.sh` with the NotificationService interface.
 
-**Step 2.1:** Implement `TelegramNotification` concrete type
+**Step 2.1:** Implement `NotificationService` concrete type
 
 **Step 2.2:** Update `observability/lite.nix` to call `ivali notify` instead of `notify.sh`
 
-**Step 2.3:** Update `automation/bot-watchdog.nix` to use the same interface
+**Step 2.3:** Update notification consumers to use the same interface
 
 **Step 2.4:** Remove `scripts/notify.sh` after all consumers are migrated
 
@@ -418,7 +381,7 @@ output, err := c.registry.Platform.Rebuild(ctx, host)
 
 **Step 4.1:** Implement `ResticBackup` concrete type
 
-**Step 4.2:** Update Telegram handlers to use BackupService
+**Step 4.2:** Update handlers to use BackupService
 
 **Step 4.3:** Remove backup methods from GitOpsService
 

@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This repository implements a **fully autonomous, self-healing NixOS infrastructure** for a single-user laptop. It combines declarative system configuration, GitOps automation, a custom Go CLI (`ivali`), a Telegram bot control plane, and a complete observability stack — all designed to be reproducible, auditable, and zero-touch after initial setup.
+This repository implements a **fully autonomous, self-healing NixOS infrastructure** for a single-user laptop. It combines declarative system configuration, GitOps automation, a custom Go CLI (`ivali`), and a complete observability stack — all designed to be reproducible, auditable, and zero-touch after initial setup.
 
 The system can bootstrap itself on a fresh NixOS installation, detect hardware, configure services, and maintain itself indefinitely through automated reconciliation, health monitoring, and rollback mechanisms.
 
@@ -20,10 +20,10 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        User Interface Layer                         │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐  │
-│  │  Telegram Bot │  │  SSH Access  │  │  GNOME Desktop        │  │
-│  │  (37 commands)│  │  (Tailscale) │  │  (Wayland, GDM)       │  │
-│  └──────────────┘  └──────────────┘  └──────────────────────────┘  │
+│  ┌──────────────┐  ┌──────────────────────────────────────────┐  │
+│  │  SSH Access  │  │  GNOME Desktop                            │  │
+│  │  (Tailscale) │  │  (Wayland, GDM)                           │  │
+│  └──────────────┘  └──────────────────────────────────────────┘  │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────────────┐
@@ -99,22 +99,7 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 | `ivali extract` | Extract documentation |
 | `ivali update` | Update flake inputs |
 
-### 3. Telegram Bot (Go)
-
-**Location:** `services/bot/ivali-bot-go.nix` (`cmd/ivali-bot`)
-
-| Category | Commands |
-|----------|----------|
-| **System** | `/status`, `/health`, `/reboot`, `/shutdown`, `/cancel` |
-| **Deployment** | `/deploy`, `/rollback`, `/update`, `/git` |
-| **Observability** | `/metrics`, `/scan`, `/security`, `/doctor` |
-| **Desktop** | `/open`, `/apps`, `/run`, `/screenshot`, `/clipboard` |
-| **Media** | `/volume`, `/brightness`, `/desktop_power` |
-| **Store** | `/store`, `/generations`, `/backup`, `/gc` |
-| **Development** | `/git_cmd`, `/gitlab_cmd`, `/nix_cmd`, `/log`, `/processes` |
-| **Navigation** | `/menu`, `/help`, `/windows`, `/workspace`, `/firefox` |
-
-### 4. Observability Stack
+### 3. Observability Stack
 
 **Location:** `observability/`
 
@@ -324,7 +309,6 @@ nixos-infrastructure/
 ├── internal/                    # Go CLI source
 │   └── commands/                # 21 CLI commands
 ├── scripts/                     # Shell scripts
-│   ├── bot/commands/            # 37 Telegram bot commands
 │   ├── deployment-health.sh     # Health check script
 │   ├── gitops-reconcile.sh      # GitOps reconciliation
 │   └── rollback.sh              # Rollback script
@@ -392,16 +376,6 @@ scripts/gitops-reconcile.sh     # Pull + rebuild + verify
 scripts/install-fresh-nixos.sh  # Universal bootstrap
 ```
 
-### Telegram Bot
-```
-/status    /health    /deploy    /rollback
-/update    /reboot    /shutdown  /cancel
-/open      /apps      /run       /git
-/screenshot /volume   /brightness /clipboard
-/metrics   /scan      /security  /doctor
-/store     /generations /backup  /gc
-```
-
 ---
 
 ## Fresh Install
@@ -439,7 +413,6 @@ The installer will:
   features = {
     secrets = true;
     gitlabRunner = true;
-    bot = true;
     tailscale = true;
     tailscaleExitNode = true;
     ssh = true;
@@ -514,9 +487,8 @@ d675c20 feat: fill in service stubs (nginx, postgres, redis)
 5. **Zero-Touch:** GitOps reconciliation keeps system in sync with Git
 6. **Observable:** Full metrics, logs, and dashboards out of the box
 7. **Secure:** Defense in depth with 10+ security layers
-8. **Controllable:** Telegram bot (Go) for remote management
-9. **Auditable:** Every change tracked in Git with full history
-10. **Portable:** Bootstrap script works on any fresh NixOS installation
+8. **Auditable:** Every change tracked in Git with full history
+9. **Portable:** Bootstrap script works on any fresh NixOS installation
 
 ---
 
@@ -525,7 +497,6 @@ d675c20 feat: fill in service stubs (nginx, postgres, redis)
 ### Completed
 - ✅ Multi-host flake architecture
 - ✅ Go CLI with 21 commands
-- ✅ Telegram bot (Go) for remote management
 - ✅ Full observability stack
 - ✅ Security hardening
 - ✅ Self-healing recovery
@@ -561,7 +532,6 @@ d675c20 feat: fill in service stubs (nginx, postgres, redis)
 | **NixOS Modules** | 67+ |
 | **Home Manager Modules** | 42+ |
 | **Go Commands** | 21 |
-| **Telegram Commands** | 37 |
 | **VM Tests** | 6 |
 | **Documentation Files** | 5 (opencode/) |
 | **SOPS Secret Files** | 4 + per-host |

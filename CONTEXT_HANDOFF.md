@@ -102,8 +102,6 @@ architectural audit and enforcement process. The repository now has:
 - `internal/commands/firewall.go` — Removed redundant min()
 - `internal/bitwarden/tui.go` — Removed redundant min()/max()
 - `internal/commands/root.go` — Removed dead placeholder lines
-- `internal/telegram/config.go` — Added hostname detection
-- `internal/telegram/handlers/commands.go` — Dynamic hostname in deploy
 - `internal/remediation/actions.go` — Dynamic hostname in rebuild
 - `internal/dashboard/dashboard.go` — Dynamic hostname, observability URLs
 - `internal/plugin/gitops.go` — Dynamic repo directory
@@ -184,13 +182,13 @@ Verify all architectural requirements are met:
 ### Short-term (Next Session)
 
 1. **Implement concrete service types** for the 5 interfaces:
-   - `TelegramNotification` (NotificationService)
+   - `NotificationService` (NotificationService)
    - `ResticBackup` (BackupService)
    - `PrometheusMetrics` (MetricsProvider)
    - `SystemHealth` (HealthChecker)
    - `NixOSPlatform` (PlatformService)
 
-2. **Wire up service registry** in `cmd/ivali-bot/main.go`
+2. **Wire up service registry** in `cmd/ivali/main.go`
 
 3. **Begin refactoring** existing code to use service contracts
 

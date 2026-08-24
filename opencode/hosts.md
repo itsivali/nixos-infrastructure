@@ -18,7 +18,6 @@ with the following structure:
   features = {
     secrets = true;                   # Enable SOPS secrets
     gitlabRunner = true;              # Enable GitLab Runner
-    bot = true;                       # Enable Telegram bot
     tailscale = true;                 # Enable Tailscale
     tailscaleExitNode = true;         # Advertise as exit node
     ssh = true;                       # Enable SSH daemon
@@ -60,9 +59,8 @@ from a host spec. It handles:
 - **User account**: Creates user with standard groups
 - **Sudo rules**: User gets NOPASSWD, GitLab Runner gets systemctl
 - **Git config**: Safe directory for the repo
-- **SOPS secrets**: All standard secrets (Tailscale, Telegram, GitLab)
+- **SOPS secrets**: All standard secrets (Tailscale, GitLab)
 - **GitLab Runner**: Configured with host-specific tags
-- **Telegram bot**: Enabled with default user
 - **Tailscale**: Configured with tags, exit node, split DNS
 - **SSH**: Tailscale-only access with authorized keys
 
@@ -84,7 +82,7 @@ These are encrypted with SOPS and decrypted at runtime.
 
 | Host | User | Tags | Features |
 |------|------|------|----------|
-| **prague** | ivali | tag:admin | secrets, gitlabRunner, bot, tailscale, ssh |
+| **prague** | ivali | tag:admin | secrets, gitlabRunner, tailscale, ssh |
 
 ## Flake Output
 

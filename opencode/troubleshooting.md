@@ -154,7 +154,6 @@ ivali status          # Repository state
 ```bash
 journalctl -u deployment-health.service    # Health check logs
 journalctl -u gitops-reconciler.service    # Reconciler logs
-journalctl -u bot.service                  # Telegram bot logs
 ```
 
 ### NixOS Generation Info

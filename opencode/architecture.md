@@ -42,7 +42,6 @@ The system is declarative, self-healing, and remotely controllable via Telegram.
 2. **Self-Healing** — Health checks detect drift and trigger reconciliation.
 3. **GitOps** — Git is the source of truth. Push to deploy.
 4. **Zero-Touch** — Automatic updates, health monitoring, rollback on failure.
-5. **Remote Control** — Telegram bot provides full system control from any device.
 
 ## Module System
 
@@ -89,7 +88,6 @@ from `specialArgs` and generates the full configuration:
 - Git system config
 - SOPS secrets definitions
 - GitLab Runner
-- Telegram bot
 - Tailscale networking
 - SSH daemon
 

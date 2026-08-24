@@ -4,7 +4,7 @@
 
 | Domain | Location | Key Files |
 |--------|----------|-----------|
-| **automation** | `automation/` | options.nix, bot-watchdog.nix, channel-bump.nix, common.nix, gitops-reconciler.nix |
+| **automation** | `automation/` | options.nix, channel-bump.nix, common.nix, gitops-reconciler.nix |
 | **boot** | `boot/` | kernel.nix, loader.nix, plymouth.nix, resilience.nix, sysctl.nix, ... |
 | **cache** | `cache/` |  |
 | **caching** | `caching/` |  |
@@ -22,11 +22,11 @@
 | **observability** | `observability/` | options.nix, alerting.nix, alertmanager.nix, alloy.nix, dashboards.nix, ... |
 | **recovery** | `recovery/` | backup.nix, deployment-health.nix, rollback.nix |
 | **security** | `security/` | apparmor.nix, audit.nix, fail2ban.nix, firewall.nix, hardening.nix, ... |
-| **services** | `services/` | ci-notify.nix, ivali-bot-go.nix, config.nix, options.nix, config.nix, ... |
+| **services** | `services/` | ci-notify.nix, config.nix, options.nix, config.nix, ... |
 | **ssh** | `ssh/` | options.nix, client.nix, daemon.nix |
 | **storage** | `storage/` | btrfs.nix, tmpfs.nix |
 | **system** | `system/` | nix.nix, state.nix, users.nix |
-| **tests** | `tests/` | automation-smoke.nix, bitwarden-smoke.nix, bot-desktop-smoke.nix, bot-integration.nix, home-manager-smoke.nix, ... |
+| **tests** | `tests/` | automation-smoke.nix, bitwarden-smoke.nix, home-manager-smoke.nix, ... |
 | **virtualization** | `virtualization/` | docker.nix |
 
 ## Home Manager Modules

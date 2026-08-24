@@ -39,7 +39,6 @@ This document describes how to set up a multi-host Tailscale mesh for the nixos-
     ssh = true;
     secrets = true;
     gitlabRunner = true;
-    bot = true;
   };
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
   config = { };

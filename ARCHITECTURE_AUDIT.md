@@ -52,7 +52,7 @@ Hosts are pure data (attrsets). The laptop template generates all NixOS configur
 {
   hostName = "prague";
   userName = "ivali";
-  features = { secrets = true; bot = true; gitlabRunner = true; ... };
+  features = { secrets = true; gitlabRunner = true; ... };
   config = {
     ivali.desktop.gnome.enable = true;
     fleet.gitopsReconciler.enable = true;
@@ -71,9 +71,9 @@ Hosts are pure data (attrsets). The laptop template generates all NixOS configur
 | **home** | `home/` | 40+ | — | — |
 | **networking** | `networking/` | 3 | — | — |
 | **security** | `security/` | 11 | /var/lib/security-scanner, /var/lib/tailscale-metrics | security-scan |
-| **services** | `services/` | 12 | /var/lib/ivali-bot | — |
+| **services** | `services/` | 12 | — | — |
 | **observability** | `observability/` | 17 | /var/lib/prometheus, /var/lib/loki, /var/lib/grafana, /var/lib/observability, /var/lib/health-endpoint | nixos-exporter-cache, observability-lite |
-| **automation** | `automation/` | 5 | — | gitops-reconciler, channel-bump, bot-watchdog |
+| **automation** | `automation/` | 5 | — | gitops-reconciler, channel-bump |
 | **ci** | `ci/` | 3 | /var/lib/gitlab-runner-health | gitlab-runner-health, gitlab-runner-reconcile |
 | **recovery** | `recovery/` | 4 | /var/lib/deployment-health | deployment-health, restic-backup |
 | **ssh** | `ssh/` | 4 | — | — |
@@ -175,7 +175,7 @@ graph LR
     home_terminal -->|import| theme
     home_gnome -->|import| wallpapers
 
-    svc/bot["services/bot"] -->|import| scripts
+    svc -->|path ref| scripts
     auto -->|path ref| scripts
     ci -->|path ref| scripts
     ci -->|SOPS ref| secrets
@@ -200,8 +200,7 @@ graph TD
 
     subgraph "Option Consumers"
         laptop["lib/host-templates/laptop.nix"]
-        bot["services/bot/ivali-bot-go.nix"]
-        ci_notify["services/bot/ci-notify.nix"]
+        ci_notify["services/ci-notify.nix"]
         gitlab_runner["ci/gitlab-runner.nix"]
         deploy_health["recovery/deployment-health.nix"]
         rollback["recovery/rollback.nix"]
@@ -212,7 +211,6 @@ graph TD
     laptop --> sec_opts
     laptop --> ssh_opts
     laptop --> cloud_opts
-    bot --> auto_opts
     ci_notify --> ci_opts
     gitlab_runner --> auto_opts
     deploy_health --> auto_opts
@@ -223,14 +221,12 @@ graph TD
 ```mermaid
 graph TD
     subgraph "Runtime Services"
-        bot["ivali-bot-go<br/>(Telegram Control Plane)"]
         gitops["gitops-reconciler<br/>(GitOps)"]
         ci_deploy["ci-deploy<br/>(CI Deployment)"]
         runner_health["gitlab-runner-health"]
         runner_reconcile["gitlab-runner-reconcile"]
         deploy_health["deployment-health<br/>(Health Check)"]
         rollback_svc["rollback-on-failure<br/>(Self-Healing)"]
-        watchdog["ivali-bot-watchdog"]
         prometheus["prometheus<br/>(Metrics)"]
         grafana["grafana<br/>(Dashboards)"]
         loki["loki<br/>(Logs)"]
@@ -239,7 +235,6 @@ graph TD
 
     subgraph "State"
         gitops_state["/var/lib/gitops"]
-        bot_state["/var/lib/ivali-bot"]
         deploy_health_state["/var/lib/deployment-health"]
         prom_state["/var/lib/prometheus"]
         loki_state["/var/lib/loki"]
@@ -247,13 +242,10 @@ graph TD
 
     runner_reconcile -->|git clone/pull| gitops_state
     deploy_health -->|reads| gitops_state
-    bot -->|checks service| deploy_health
     rollback_svc -->|triggers| rollback["rollback.sh"]
     rollback -->|calls| deploy_health
-    watchdog -->|checks| bot
     prometheus -->|scrapes| grafana
-    prometheus -->|scrapes| bot
-    alertmanager -->|sends alerts| bot
+    alertmanager -->|sends alerts| prometheus
 ```
 
 ---
@@ -268,13 +260,9 @@ graph TD
 
 | # | Source | Target | Type | Severity |
 |---|--------|--------|------|----------|
-| C1 | `services/bot/ci-notify.nix` | `config.fleet.gitlabRunner.enable` | option read (ci domain) | Medium |
+| C1 | `services/ci-notify.nix` | `config.fleet.gitlabRunner.enable` | option read (ci domain) | Medium |
 | C2 | `recovery/deployment-health.nix` | `config.fleet.gitops` | option read (automation domain) | Medium |
 | C3 | `ci/gitlab-runner.nix` | `config.fleet.gitops` | option read (automation domain) | Medium |
-| C4 | `observability/lite.nix` | `ivali-bot-go.service` | service name check | Low |
-| C5 | `recovery/deployment-health.sh` | `ivali-bot-go.service` | service name check | Low |
-| C6 | `security/apparmor.nix` | `/var/lib/ivali-bot/` | hardcoded path | Medium |
-| C7 | `security/apparmor.nix` | `/var/log/ivali-bot/` | hardcoded path | Medium |
 
 ### 3.3 Cross-Domain Filesystem Access
 
@@ -284,10 +272,8 @@ graph TD
 | F2 | `recovery/deployment-health.nix` | `/var/lib/gitops` | automation (implicit) | R (reads) | **QUESTIONABLE** |
 | F3 | `recovery/deployment-health.sh` | `/var/lib/gitops` | automation (implicit) | R | **QUESTIONABLE** |
 | F4 | `ci/gitlab-runner-health.sh` | `/var/lib/gitops` | automation (implicit) | R | **QUESTIONABLE** |
-| F5 | `security/apparmor.nix` | `/var/lib/ivali-bot/` | services/bot | R/W (grants) | **QUESTIONABLE** |
-| F6 | `security/apparmor.nix` | `/var/log/ivali-bot/` | services/bot | R/W (grants) | **QUESTIONABLE** |
-| F7 | `observability/lite.nix` | `notify.sh` (builtins.readFile) | scripts/ | compile-time copy | **QUESTIONABLE** |
-| F8 | `internal/commands/status.go` | `/var/lib/observability/state.json` | observability | R | **QUESTIONABLE** |
+| F5 | `observability/lite.nix` | `notify.sh` (builtins.readFile) | scripts/ | compile-time copy | **QUESTIONABLE** |
+| F6 | `internal/commands/status.go` | `/var/lib/observability/state.json` | observability | R | **QUESTIONABLE** |
 
 ### 3.4 Duplicate Configuration
 
@@ -307,10 +293,10 @@ graph TD
 |---|---------------|----------------------|----------|
 | U1 | `scripts/gitops-reconcile.sh` | `ivali` CLI binary | Medium |
 | U2 | `scripts/rollback.sh` | `ivali` CLI binary | Medium |
-| U3 | `scripts/deployment-health.sh` | `ivali-bot-go.service`, `sshd.service`, `nginx.service`, `tailscaled.service` | Medium |
+| U3 | `scripts/deployment-health.sh` | `sshd.service`, `nginx.service`, `tailscaled.service` | Medium |
 | U4 | `scripts/notify.sh` | `sendmail` (msmtp) | Low |
 | U5 | `scripts/gitlab-runner-reconcile.sh` | `flock`, `gitlab-runner` | Low |
-| U6 | `services/bot/ci-notify.nix` | `/tmp/ci-notify.env` (written externally) | Medium |
+| U6 | `services/ci-notify.nix` | `/tmp/ci-notify.env` (written externally) | Medium |
 
 ### 3.6 Internal API Violations
 
@@ -321,7 +307,6 @@ graph TD
 | # | Mutator | State Path | Owner | Verdict |
 |---|---------|-----------|-------|---------|
 | S1 | `gitlab-runner-reconcile.service` (ci) | `/var/lib/gitops` | automation (implicit) | **VIOLATION** — CI creates/manages automation state |
-| S2 | `ivali status` CLI (bot) | `/var/lib/observability/state.json` | observability | **QUESTIONABLE** — read-only, but no declared contract |
 
 ### 3.8 Hardcoded Hostname Violations
 
@@ -332,10 +317,6 @@ graph TD
 | H3 | `scripts/gitlab-runner-reconcile.sh:27` | `HOST="prague"` | `$HOST_NAME` env var |
 | H4 | `scripts/ci-deploy.sh:9` | `HOST="${HOST_NAME:-prague}"` | Should fail if unset |
 | H5 | `scripts/gitlab-runner-reconcile.sh:101` | `--tag-list "nixos,prague,self-hosted"` | Dynamic tag |
-| H6 | `internal/telegram/services/nix.go:58` | `host = "prague"` | Read from config |
-| H7 | `internal/telegram/handlers/commands.go:234` | `--flake .#prague` | Dynamic host |
-| H8 | `internal/remediation/actions.go:87` | `--flake ...#prague` | Dynamic host |
-| H9 | `internal/dashboard/dashboard.go:157,209` | `--flake ...#prague` | Dynamic host |
 
 ---
 
@@ -344,7 +325,6 @@ graph TD
 | State Path | Owner | StateDirectory? | Consumers | Mutation Authority |
 |------------|-------|-----------------|-----------|-------------------|
 | `/var/lib/valkey` | services/redis | Yes | — | redis only |
-| `/var/lib/ivali-bot` | services/bot | Yes | security/apparmor (grants) | bot only |
 | `/var/lib/security-scanner` | security | Yes | Prometheus (scrape) | security only |
 | `/var/lib/deployment-health` | recovery | Yes | — | recovery only |
 | `/var/lib/observability` | observability | Yes | ivali CLI (reads state.json) | observability only |
@@ -384,9 +364,9 @@ LEVEL 2 — Functional Domains (depends on Platform)
   virtualization/ — Docker
 
 LEVEL 3 — Runtime Services (depends on Platform + Functional)
-  services/   — Bot (Telegram), nginx, postgres, redis, msmtp
+  services/   — nginx, postgres, redis, msmtp
   observability/ — Prometheus, Grafana, Loki, Alloy, Falco, OTEL, alerting
-  automation/ — GitOps reconciler, channel bump, bot watchdog
+  automation/ — GitOps reconciler, channel bump
   ci/         — GitLab runner, CI deploy
   recovery/   — Deployment health, rollback, backup
   cache/      — Attic binary cache

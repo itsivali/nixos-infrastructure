@@ -15,8 +15,8 @@
 - [x] **Phase 30-31** — No architectural magic, runtime service contracts (5 interfaces)
 - [x] **Phase 32-34** — Documentation complete, all 28 acceptance criteria MET
 - [x] **Security** — Hardcoded Grafana credentials removed, SOPS enforced, .gitignore hardened
-- [x] **Service Implementations** — 5 concrete types in `internal/services/impl/` (TelegramNotification, ResticBackup, PrometheusMetrics, SystemHealthChecker, NixOSPlatform)
-- [x] **Service Registry** — Wired in `cmd/ivali-bot/main.go` via `internal/telegram/services/container.go`
+- [x] **Service Implementations** — 5 concrete types in `internal/services/impl/` (ResticBackup, PrometheusMetrics, SystemHealthChecker, NixOSPlatform, Notification)
+- [x] **Service Registry** — Wired in `cmd/ivali/main.go` via `internal/services/container.go`
 - [x] **Observability** — Enabled on prague, `docs/observability.md` created
 - [x] **golangci-lint v2** — Upgraded to v2.12.2 (CI + config + local binary)
 - [x] **Tailscale** — Upgraded to v1.102.2 via nixpkgs flake update

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 Autonomous NixOS infrastructure for a single-user laptop — declarative, reproducible,
-self-healing, and remotely controllable via Telegram.
+and self-healing.
 
 **Primary host:** `prague` (AMD laptop, NixOS 26.11)
 **Owner:** Willis Ivali (`ivali`)
@@ -17,7 +17,6 @@ A fully declarative NixOS system. Every aspect of the machine — kernel, firewa
 desktop, services, user environment, secrets, monitoring — is described in this
 repository and applied through `nixos-rebuild`. The system manages itself through a
 GitOps control plane: it pulls changes, builds, deploys, and rolls back on failure.
-A Telegram bot gives you full remote control from your phone.
 
 The codebase spans **220+ Nix modules**, **166 Go files**, and **79 shell scripts** —
 all wired together through a zero-touch auto-import module system.
@@ -36,9 +35,8 @@ all wired together through a zero-touch auto-import module system.
 | **Developer** | Go, Node 22, Python 3.13, Flutter/Dart, Nix formatter |
 | **Observability** | Grafana, Prometheus, Loki, Alloy, Falco, OTEL, SLO tracking, alerting |
 | **GitOps** | Self-healing health monitor, automated reconciler, rollback on failure |
-| **Telegram Bot** | 30+ commands, role-based access, desktop control, system admin, GitLab integration |
 | **Go CLI** | `ivali` — repository management, health checks, dashboard, bootstrapping |
-| **Secrets** | SOPS-encrypted with age (Tailscale, Telegram, SMTP, Grafana, GitLab) |
+| **Secrets** | SOPS-encrypted with age (Tailscale, SMTP, Grafana, GitLab) |
 | **Home Manager** | Zsh + Powerlevel10k, FZF, zoxide, direnv, Zed editor, Bitwarden, Nerd Fonts |
 | **CI/CD** | GitLab source of truth + GitHub Actions mirror (validates, posts status to GitLab); deploy via GitOps reconciler |
 | **Storage** | BTRFS, encrypted swap, aggressive zRAM |
@@ -68,13 +66,13 @@ flake.nix
 ├── observability/                ← Prometheus, Grafana, Loki, Alloy, Falco, OTEL
 ├── recovery/                     ← health checks, rollback, self-heal
 ├── automation/                   ← GitOps reconciler, notifications
-├── services/                     ← msmtp, bot, nginx, postgres, redis
+├── services/                     ← msmtp, nginx, postgres, redis
 ├── developer/                    ← Go, Node, Python, Flutter toolchains
 ├── packages/                     ← CLI, desktop, system, user package sets
 │
-├── internal/                     ← Go source code (ivali CLI, Telegram bot)
-├── cmd/                          ← Go entry points (ivali, bw-tui, ivali-bot)
-├── scripts/                      ← Shell scripts (deploy, health, rollback, bot)
+├── internal/                     ← Go source code (ivali CLI)
+├── cmd/                          ← Go entry points (ivali, bw-tui)
+├── scripts/                      ← Shell scripts (deploy, health, rollback)
 ├── tests/                        ← NixOS smoke tests
 └── opencode/                     ← AI context, architecture docs, troubleshooting
 ```
@@ -110,15 +108,6 @@ configuration.nix
 **To skip a file from auto-import:**
 - Prefix with `_` (e.g., `_common.nix`)
 
-### Service Abstraction Layer
-
-The Go bot uses two service layers:
-
-- **`internal/services/`** — Clean interfaces (`NotificationService`, `BackupService`, `MetricsProvider`, `HealthChecker`, `PlatformService`) with a `Registry` for dependency injection.
-- **`internal/telegram/services/`** — Concrete implementations using shell commands via `Runner`.
-
-The `Registry` is wired alongside the existing `Container` in `main.go`, allowing gradual migration.
-
 ### Control Plane
 
 ```
@@ -142,7 +131,7 @@ deployment-health.timer (every 5 min)
 ├── .sops.yaml                       # SOPS age configuration
 ├── AGENTS.md                        # AI agent context
 ├── DOCS.md                          # Auto-generated module docs (112 modules)
-├── Makefile                         # Go build targets (ivali, bw-tui, ivali-bot)
+├── Makefile                         # Go build targets (ivali, bw-tui)
 ├── README.md                        # This file
 │
 ├── flake.nix                        # Flake: inputs, outputs, nixosConfigurations
@@ -174,7 +163,7 @@ deployment-health.timer (every 5 min)
 │   ├── firewall.nix                 # nftables, default deny, Tailscale-only SSH
 │   ├── tailscale.nix                # Tailscale VPN + exit node
 │   ├── hardening.nix                # Kernel/sysctl hardening stack
-│   ├── apparmor.nix                 # AppArmor profiles (bot, CLI, reconciler)
+│   ├── apparmor.nix                 # AppArmor profiles (CLI, reconciler)
 │   ├── fail2ban.nix                 # SSHD + nginx jails
 │   ├── sops.nix                     # SOPS secrets with age encryption
 │   ├── sudo.nix                     # Sudo hardening (execWheelOnly, PTY required)
@@ -284,10 +273,6 @@ deployment-health.timer (every 5 min)
 │   └── rollback.nix                 # Self-heal rollback on failure
 │
 ├── services/
-│   ├── bot/
-│   │   ├── ivali-bot.nix            # Bash bot NixOS service
-│   │   ├── ivali-bot-go.nix         # Go bot NixOS service
-│   │   └── ci-notify.nix            # CI notification service
 │   ├── msmtp/                       # Email relay (SMTP via Office365)
 │   │   ├── config.nix
 │   ├── nginx/                       # Reverse proxy (localhost-only)
@@ -333,8 +318,7 @@ deployment-health.timer (every 5 min)
 │
 ├── cmd/
 │   ├── ivali/main.go                # Go CLI entry point
-│   ├── bw-tui/main.go               # Bitwarden TUI entry point
-│   └── ivali-bot/main.go            # Go Telegram bot entry point
+│   └── bw-tui/main.go               # Bitwarden TUI entry point
 │
 ├── internal/
 │   ├── commands/                    # CLI commands (20+ files)
@@ -346,13 +330,6 @@ deployment-health.timer (every 5 min)
 │   │   ├── docs.go, completion.go, extract.go
 │   │   └── progress.go
 │   ├── dashboard/                   # Bubble Tea TUI dashboard (6 tabs)
-│   ├── telegram/                    # Go Telegram bot
-│   │   ├── bot.go, api.go, auth.go, config.go, runner.go
-│   │   └── handlers/
-│   │       ├── commands.go          # System/status commands (15+)
-│   │       ├── desktop_commands.go  # Desktop control (12+)
-│   │       ├── git_commands.go      # Git/GitHub/GitLab
-│   │       └── system_commands.go   # Nix/shell/user management
 │   ├── config/                      # Config loading + tests
 │   ├── graph/                       # Module import graph + tests
 │   ├── parser/                      # Nix file parser + tests
@@ -368,39 +345,14 @@ deployment-health.timer (every 5 min)
 │
 ├── scripts/
 │   ├── install-fresh-nixos.sh       # Fresh NixOS install script
-│   ├── bot/
-│   │   ├── bot.sh                   # Bash bot main loop
-│   │   ├── config.sh                # Bot configuration
-│   │   ├── commands/                 # 46 bash bot command scripts
-│   │   │   ├── status.sh, health.sh, deploy.sh, rollback.sh
-│   │   │   ├── screenshot.sh, volume.sh, brightness.sh
-│   │   │   ├── open.sh, apps.sh, firefox.sh, clipboard.sh
-│   │   │   ├── run.sh, git_cmd.sh, gitlab_cmd.sh, nix_cmd.sh
-│   │   │   ├── generations.sh, store.sh, gc.sh, doctor.sh
-│   │   │   ├── scan.sh, security.sh, metrics.sh, processes.sh
-│   │   │   ├── windows.sh, workspace.sh, monitoron.sh
-│   │   │   ├── reboot.sh, shutdown.sh, update.sh, cancel.sh
-│   │   │   ├── adduser.sh, rmuser.sh, users.sh, backup.sh
-│   │   │   ├── log.sh, notify_cmd.sh, pkg.sh, speedtest.sh
-│   │   │   └── _template.sh
-│   │   ├── lib/                     # Bot library functions
-│   │   │   ├── core.sh, auth.sh, telegram.sh, system.sh
-│   │   │   ├── nix.sh, desktop.sh, gitlab.sh, pending.sh
-│   │   │   ├── app_registry.sh, registry.sh
-│   │   └── desktop/                 # Desktop integration
-│   │       ├── aliases.sh, discovery.sh, urls.sh
 │   ├── deployment-health.sh         # Health check script
 │   ├── gitops-reconcile.sh          # GitOps reconciliation script
 │   ├── rollback.sh                  # Generation rollback script
 │   ├── ci-deploy.sh                 # CI deploy script
-│   ├── notify.sh                    # Telegram + email notification script
 │   ├── rotate-sops-key.sh           # SOPS key rotation
 │   ├── sops-setup.sh                # SOPS initial setup
 │   ├── gitlab-runner-health.sh      # GitLab Runner health check
 │   └── gitlab-runner-reconcile.sh   # GitLab Runner reconciliation
-│
-├── shared/
-│   └── notify.nix                # Shared Telegram notification script
 │
 ├── docs/
 │   └── observability.md          # Observability stack login & configuration
@@ -412,8 +364,6 @@ deployment-health.timer (every 5 min)
 │   ├── services-smoke.nix           # Services test
 │   ├── home-manager-smoke.nix       # Home Manager test
 │   ├── automation-smoke.nix         # Automation test
-│   ├── bot-integration.nix          # Bot integration test
-│   ├── bot-desktop-smoke.sh         # Bot desktop smoke test
 │   └── bitwarden-smoke.nix          # Bitwarden test
 │
 ├── secrets/
@@ -518,12 +468,6 @@ clean            # nix store gc
 | `ivali scan` | Force fresh repository scan |
 | `ivali extract shell` | Analyze shell configuration |
 
-### Go Telegram Bot
-
-```bash
-ivali-bot             # Start the Telegram bot (systemd service: ivali-bot.service)
-```
-
 ---
 
 ## Host Management
@@ -542,7 +486,6 @@ prague = {
   features = {
     secrets = true;
     gitlabRunner = true;
-    bot = true;
     tailscale = true;
     tailscaleExitNode = true;
     ssh = true;
@@ -572,7 +515,7 @@ prague = {
 | Firewall | nftables, default deny inbound, Tailscale-only SSH, ping blocked |
 | SSH | Password disabled, root disabled, X11 off, Tailscale interface only |
 | Sudo | `execWheelOnly`, 5min timeout, 3 attempts, PTY required |
-| AppArmor | Enabled with profiles for bot, CLI, reconciler |
+| AppArmor | Enabled with profiles for CLI, reconciler |
 | Fail2Ban | SSHD + nginx jails |
 | Secrets | SOPS + age encryption |
 | Scanning | Daily security scans with Prometheus metrics |
@@ -615,33 +558,6 @@ Tailscale key expiry, SLO budget burn. Alerts routed to Telegram via Alertmanage
 | Prometheus metrics | 15 days |
 | Loki logs | 7 days |
 | Systemd journal | Persistent |
-
----
-
-## Telegram Bot
-
-A Go-based Telegram bot (`ivali-bot`) for full remote control of the system.
-
-### Commands
-
-| Category | Commands |
-|----------|----------|
-| **System** | `/status`, `/health`, `/top`, `/disk`, `/processes`, `/log`, `/metrics`, `/store` |
-| **Operations** | `/deploy`, `/rollback`, `/reboot`, `/shutdown`, `/update`, `/gc`, `/generations` |
-| **Desktop** | `/open`, `/apps`, `/firefox`, `/screenshot`, `/clipboard`, `/volume`, `/mute`, `/brightness`, `/windows`, `/workspace`, `/desktop_power`, `/monitoron` |
-| **Admin** | `/run`, `/nix`, `/pkg`, `/scan`, `/doctor`, `/security`, `/speedtest`, `/notify` |
-| **Git** | `/git`, `/github`, `/gitlab` |
-| **User** | `/users`, `/adduser`, `/rmuser` |
-| **Help** | `/help`, `/menu`, `/start`, `/cancel` |
-
-### Access Control
-
-| Role | Permissions |
-|------|-------------|
-| **owner** | Full access + user management |
-| **admin** | Deploy, reboot, rollback, shutdown, update, gc, run, nix |
-| **user** | Status, health, metrics, log, scan, doctor, security, generations, store |
-| **guest** | Status and help only |
 
 ---
 
@@ -755,7 +671,6 @@ config = lib.mkIf cfg.enable { services.<name> = { ... }; };
 - Grafana, Prometheus, Loki are localhost-only unless explicitly exposed
 - GitOps reconciler uses a lock file — avoid manual `nixos-rebuild` during reconciliation
 - SOPS secrets fail closed — features requiring secrets won't activate until age key is installed
-- The Telegram bot requires role configuration with `/adduser` after initial setup
 
 ## License
 

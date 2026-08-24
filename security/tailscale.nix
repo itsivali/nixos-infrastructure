@@ -89,6 +89,28 @@ in
       '';
     };
 
+    magicDnsCheck = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Enable periodic MagicDNS health checks via systemd timer.
+        When enabled, a timer resolves the host's own MagicDNS name and
+        reports failures. Disabled by default because tailscale-metrics
+        already monitors MagicDNS status continuously, and the timer can
+        produce false failures during transient Tailscale restarts.
+      '';
+    };
+
+    metricsExportInterval = lib.mkOption {
+      type = lib.types.int;
+      default = 60;
+      description = ''
+        Seconds between Tailscale metrics collections. The metrics exporter
+        runs as a proper systemd service with a while-loop that writes to
+        a Prometheus text file, served by a lightweight socat HTTP listener.
+      '';
+    };
+
     acceptRoutes = lib.mkOption {
       type = lib.types.bool;
       default = false;
@@ -286,15 +308,12 @@ in
     # MagicDNS Health Check
     #########################################################
 
-    systemd.services.tailscale-magicdns-check = lib.mkIf (cfg.tailnetDomain != null) {
-      # Intentionally disabled. MagicDNS now resolves correctly because
-      # Tailscale manages DNS (`acceptDns = true` registers 100.100.100.100 as
-      # the resolver for the tailnet routing domain via systemd-resolved).
-      # This check is kept off so a transient Tailscale-down during a
-      # `nixos-rebuild switch` cannot make the switch report exit 4. MagicDNS
-      # health is still monitored continuously by tailscale-metrics
-      # (tailscale_magicdns_status).
-      enable = false;
+    systemd.services.tailscale-magicdns-check = lib.mkIf (cfg.magicDnsCheck && cfg.tailnetDomain != null) {
+      # Disabled by default (see magicDnsCheck option). When enabled,
+      # validates MagicDNS resolution. tailscale-metrics already monitors
+      # MagicDNS status continuously, so this is only useful as an
+      # explicit assertion that the host's own name resolves.
+      enable = cfg.magicDnsCheck;
       description = "Check MagicDNS resolution";
 
       after = [ "tailscaled.service" ];
@@ -325,9 +344,8 @@ in
       '';
     };
 
-    systemd.timers.tailscale-magicdns-check = lib.mkIf (cfg.tailnetDomain != null) {
-      # Disabled along with the service (see tailscale-magicdns-check above).
-      enable = false;
+    systemd.timers.tailscale-magicdns-check = lib.mkIf (cfg.magicDnsCheck && cfg.tailnetDomain != null) {
+      enable = cfg.magicDnsCheck;
       description = "Check MagicDNS resolution hourly";
       wantedBy = [ "timers.target" ];
 
@@ -350,13 +368,25 @@ in
 
       path = [ pkgs.jq pkgs.host pkgs.tailscale pkgs.bash pkgs.coreutils pkgs.socat ];
 
+      serviceConfig = {
+        Type = "simple";
+        Restart = "on-failure";
+        RestartSec = "10s";
+        KillMode = "control-group";
+        # Hardening
+        NoNewPrivileges = true;
+        PrivateTmp = true;
+        ProtectSystem = "strict";
+        ProtectHome = true;
+        ReadWritePaths = [ "/var/lib/tailscale-metrics" ];
+        StateDirectory = "tailscale-metrics";
+      };
+
       preStart = ''
         set -euo pipefail
-        mkdir -p /var/lib/tailscale-metrics
-
         METRICS_FILE="/var/lib/tailscale-metrics/metrics.prom"
 
-        # Initial metrics write
+        # Write initial metrics to avoid serving an empty file
         TIMESTAMP=$(date +%s)
         EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
         EXPIRY_DATE=$(echo "$EXPIRY_JSON" | jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
@@ -398,11 +428,12 @@ in
       script = ''
         set -euo pipefail
         METRICS_FILE="/var/lib/tailscale-metrics/metrics.prom"
+        INTERVAL=${toString cfg.metricsExportInterval}
 
-        # Background: update metrics every 60s
+        # Background: update metrics every N seconds
         (
           while true; do
-            sleep 60
+            sleep "$INTERVAL"
             TIMESTAMP=$(date +%s)
             EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
             EXPIRY_DATE=$(echo "$EXPIRY_JSON" | jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
@@ -425,6 +456,13 @@ in
             fi
 
             CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
+
+            # Connection quality: count online peers and sum throughput
+            PEER_COUNT=$(echo "$EXPIRY_JSON" | jq '[.Peer[] | select(.Online == true)] | length' 2>/dev/null || echo "0")
+            TOTAL_PEERS=$(echo "$EXPIRY_JSON" | jq '[.Peer[]] | length' 2>/dev/null || echo "0")
+            TX_BYTES=$(echo "$EXPIRY_JSON" | jq '.Self.TxnBytes // 0' 2>/dev/null || echo "0")
+            RX_BYTES=$(echo "$EXPIRY_JSON" | jq '.Self.RxBytes // 0' 2>/dev/null || echo "0")
+
             {
               echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
               echo "# TYPE tailscale_connected gauge"
@@ -435,6 +473,18 @@ in
               echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
               echo "# TYPE tailscale_magicdns_status gauge"
               echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
+              echo "# HELP tailscale_peers_online Number of online Tailscale peers"
+              echo "# TYPE tailscale_peers_online gauge"
+              echo "tailscale_peers_online{host=\"$HOSTNAME\"} $PEER_COUNT"
+              echo "# HELP tailscale_peers_total Total number of Tailscale peers"
+              echo "# TYPE tailscale_peers_total gauge"
+              echo "tailscale_peers_total{host=\"$HOSTNAME\"} $TOTAL_PEERS"
+              echo "# HELP tailscale_tx_bytes Total bytes transmitted"
+              echo "# TYPE tailscale_tx_bytes counter"
+              echo "tailscale_tx_bytes{host=\"$HOSTNAME\"} $TX_BYTES"
+              echo "# HELP tailscale_rx_bytes Total bytes received"
+              echo "# TYPE tailscale_rx_bytes counter"
+              echo "tailscale_rx_bytes{host=\"$HOSTNAME\"} $RX_BYTES"
               echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
               echo "# TYPE tailscale_metrics_timestamp gauge"
               echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"

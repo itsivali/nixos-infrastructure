@@ -23,7 +23,6 @@ let
 
   hasSecrets = features.secrets or false;
   hasGitLabRunner = features.gitlabRunner or false;
-  hasBot = features.bot or false;
   hasTailscale = features.tailscale or false;
   hasTailscaleExitNode = features.tailscaleExitNode or true;
   hasSSH = features.ssh or false;
@@ -46,9 +45,7 @@ in
       tailscale_authkey = { sopsFile = ../../secrets/tailscale.yaml; };
       grafana_secret_key = { sopsFile = ../../secrets/tailscale.yaml; };
       gitlab-runner-token = { sopsFile = ../../secrets/gitlab-runner.yaml; };
-      telegram_bot_token = { sopsFile = ../../secrets/telegram.yaml; };
-      telegram_chat_id = { sopsFile = ../../secrets/telegram.yaml; };
-      notify_email = { sopsFile = ../../secrets/telegram.yaml; };
+      notify_email = { sopsFile = ../../secrets/notifications.yaml; };
       gitlab_token = { sopsFile = ../../secrets/gitlab.yaml; };
     } // lib.optionalAttrs hasBitwarden {
       bitwarden_clientid = {
@@ -98,8 +95,6 @@ in
         users = [ userName ];
         commands = [
           { command = "/run/current-system/sw/bin/nixos-rebuild"; options = [ "NOPASSWD" ]; }
-          { command = "/run/current-system/sw/bin/systemctl status ivali-bot-go*"; options = [ "NOPASSWD" ]; }
-          { command = "/run/current-system/sw/bin/systemctl restart ivali-bot-go*"; options = [ "NOPASSWD" ]; }
           { command = "/run/current-system/sw/bin/systemctl start gitops-reconciler*"; options = [ "NOPASSWD" ]; }
         ];
       }
@@ -131,7 +126,7 @@ in
 
   ############################################################################
   # GO BINARY CACHE
-  # Caches ivali / bw-tui / ivali-bot (and any future Go tool) in a local
+  # Caches ivali / bw-tui (and any future Go tool) in a local
   # binary cache so switching generations restores them in seconds instead
   # of recompiling from scratch.
   ############################################################################
@@ -159,16 +154,6 @@ in
   };
 
   ############################################################################
-  # TELEGRAM BOT + CI NOTIFICATIONS
-  ############################################################################
-  fleet.bot = lib.mkIf (hasBot && hasSecrets) {
-    enable = true;
-    gitlabUrl = config.fleet.gitops.repo or "https://gitlab.com/willisivali/nixos-infrastructure";
-    defaultUser = userName;
-    ciNotify.enable = lib.mkDefault (hasGitLabRunner);
-  };
-
-  ############################################################################
   # TAILSCALE
   ############################################################################
   ivali.tailscale = lib.mkIf hasTailscale {
@@ -176,7 +161,11 @@ in
     authKeyFile = lib.mkIf hasSecrets config.sops.secrets.tailscale_authkey.path;
     tags = tailscaleTags;
     advertiseExitNode = hasTailscaleExitNode;
-    acceptDns = false;
+    # acceptDns = true: let Tailscale manage MagicDNS split-DNS.
+    # Registers 100.100.100.100 as the resolver for the tailnet domain
+    # via systemd-resolved, so <host>.<tailnetDomain> resolves without
+    # overriding the system's global DNS.
+    acceptDns = true;
     acceptRoutes = false;
     tailnetDomain = tailnetDomain;
   };
@@ -189,25 +178,22 @@ in
     allowedUsers = [ userName ];
     authorizedKeys = sshAuthorizedKeys;
     tailscaleOnly = true;
+    # Session hardening defaults
+    maxAuthTries = 3;
+    clientAliveInterval = 300;
+    clientAliveCountMax = 3;
+    loginGraceTime = 60;
   };
 
   ############################################################################
   # OBSERVABILITY
   ############################################################################
-  ivali.observability = lib.mkMerge [
-    {
-      enable = lib.mkDefault true;
-      exporters.enable = lib.mkDefault true;
-      alertmanager.enable = lib.mkDefault true;
-      otel.enable = lib.mkDefault true;
-    }
-    (lib.mkIf hasSecrets {
-      alertmanager = {
-        telegramBotTokenFile = config.sops.secrets.telegram_bot_token.path;
-        telegramChatIdFile = config.sops.secrets.telegram_chat_id.path;
-      };
-    })
-  ];
+  ivali.observability = {
+    enable = lib.mkDefault true;
+    exporters.enable = lib.mkDefault true;
+    alertmanager.enable = lib.mkDefault true;
+    otel.enable = lib.mkDefault true;
+  };
 
   ############################################################################
   # WEB SERVER (reverse proxy for observability)

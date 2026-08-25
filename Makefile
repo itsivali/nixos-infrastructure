@@ -41,7 +41,7 @@ test:
 	@echo "  tests  passed"
 
 lint:
-	golangci-lint run ./... || true
+	golangci-lint run ./...
 	@echo "  lint  done"
 
 vet:

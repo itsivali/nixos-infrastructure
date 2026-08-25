@@ -92,7 +92,7 @@ go-test:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - CGO_ENABLED=1 go test -race -count=1 -json ./... > test-results.json || true
+    - CGO_ENABLED=1 go test -race -count=1 -json ./... > test-results.json
     - |
       if [ -f test-results.json ]; then
         echo "=== Test Summary ==="

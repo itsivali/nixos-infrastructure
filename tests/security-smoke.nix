@@ -47,7 +47,6 @@ pkgs.testers.nixosTest {
 
     ivali.security.fail2ban = {
       enable = true;
-      bot.enable = true;
     };
 
     users.users.testuser = {

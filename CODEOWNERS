@@ -29,6 +29,7 @@ ci/                             @willisivali
 cloud/                          @willisivali
 desktop/                        @willisivali
 developer/                      @willisivali
+hardware/                       @willisivali
 i18n/                           @willisivali
 networking/                     @willisivali
 observability/                  @willisivali

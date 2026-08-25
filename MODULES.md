@@ -39,6 +39,9 @@ configuration.nix                 ← stable registry of top-level domains
 │   ├── sudo.nix                  ← auto-discovered ✓
 │   └── tailscale.nix             ← auto-discovered ✓
 │
+├── ./hardware                    → hardware/default.nix
+│   └── usb-power.nix             ← auto-discovered ✓
+│
 ├── ./developer                   → developer/default.nix
 │   ├── languages.nix             ← auto-discovered ✓
 │   └── shell.nix                 ← auto-discovered ✓

@@ -33,6 +33,11 @@
 - [x] **P3** — Architecture linter improved: removed false-positive undeclared dependency warnings for git/curl/jq (127→8 warnings)
 - [x] **P3** — Filesystem boundary exceptions documented (EXC-012 through EXC-017)
 - [x] **P4** — `/var/lib/gitops` ownership formalized in architecture manifests
+- [x] **Hardware domain** — New `hardware/` domain with USB power management (usb-power.nix)
+- [x] **Boot fixes** — TPM modules blacklisted, serial ports disabled (~9min boot → ~3min)
+- [x] **GRUB bootloader** — Switched from systemd-boot to GRUB with NixOS snowflake theme
+- [x] **Audio fixes** — ALSA mixer init, WirePlumber rules for consistent volume on ALC236
+- [x] **Commit authorship** — Rule added to AGENTS.md, ENGINEERING.md, CONTRIBUTING.md
 
 ## Architecture Linter Status
 

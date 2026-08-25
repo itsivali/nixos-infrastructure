@@ -163,14 +163,15 @@ Prometheus ─→ node exporter ──────────┘
 
 | Feature | Configuration |
 |---------|---------------|
-| **Kernel** | `linuxPackages_6_18` (6.18 LTS — pinned for RTL8821CE wifi) |
-| **Bootloader** | systemd-boot (10 generation limit) |
+| **Kernel** | `linuxPackages_zen` (zen kernel — RTL8821CE wifi via in-kernel rtw88) |
+| **Bootloader** | GRUB with NixOS snowflake theme (20 generation limit) |
 | **zRAM** | Enabled, zstd compression, 100% RAM |
 | **Swappiness** | 180 (aggressive) |
 | **Network** | BBR congestion control, `fq` queuing |
 | **AMD GPU** | `amdgpu.dc=1`, `amdgpu.audio=0` |
 | **Security** | IOMMU, module lockdown, kernel image protection |
-| **TPM** | 2.0 enabled with PKCS#11 |
+| **TPM** | Blacklisted (tpm_crb fails with EBUSY — eliminates ~3min boot delay) |
+| **USB** | Runtime autosuspend disabled (prevents controller suspension) |
 
 ### 7. Networking
 
@@ -313,9 +314,10 @@ nixos-infrastructure/
 │   ├── gitops-reconcile.sh      # GitOps reconciliation
 │   └── rollback.sh              # Rollback script
 ├── automation/                  # GitOps and notifications
-├── boot/                        # Kernel, bootloader, zRAM
+├── boot/                        # Kernel, GRUB bootloader, zRAM, TPM blacklist
+├── hardware/                    # USB power management, device quirks
 ├── networking/                  # NetworkManager, DNS, Tailscale
-├── desktop/                     # GNOME, GDM, AMD GPU, power
+├── desktop/                     # GNOME, GDM, AMD GPU, power, audio
 ├── security/                    # Hardening, firewall, SOPS
 ├── observability/               # Prometheus, Grafana, Loki
 ├── services/                    # Nginx, PostgreSQL, Valkey
@@ -529,7 +531,7 @@ d675c20 feat: fill in service stubs (nginx, postgres, redis)
 
 | Metric | Value |
 |--------|-------|
-| **NixOS Modules** | 67+ |
+| **NixOS Modules** | 70+ |
 | **Home Manager Modules** | 42+ |
 | **Go Commands** | 21 |
 | **VM Tests** | 6 |

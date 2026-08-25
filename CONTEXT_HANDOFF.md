@@ -84,6 +84,9 @@ architectural audit and enforcement process. The repository now has:
 - `internal/secrets/` — Centralized SOPS secret reading
 - `internal/observability/` — Centralized port/URL constants
 - `internal/architecture/` — Architecture linter
+- `hardware/default.nix` — Hardware domain barrel module
+- `hardware/usb-power.nix` — USB runtime autosuspend fix
+- `boot/grub-theme.nix` — NixOS GRUB theme definition
 
 **New documentation:**
 - `ARCHITECTURE.md` — Complete architectural reference
@@ -96,7 +99,16 @@ architectural audit and enforcement process. The repository now has:
 - `.gitlab-ci.yml` — GitLab CI (go-lint required, go-build, go-test)
 
 **Modified files:**
-- `AGENTS.md` — Added PART 5 (architectural governance), §3.5 (testing rules)
+- `AGENTS.md` — Added PART 5 (architectural governance), §3.5 (testing rules), commit authorship rule
+- `boot/kernel.nix` — TPM modules blacklisted, serial ports disabled (8250.nr_uarts=0)
+- `boot/loader.nix` — Switched from systemd-boot to GRUB with NixOS snowflake theme
+- `desktop/common/audio.nix` — ALSA mixer init, WirePlumber rules for ALC236
+- `ENGINEERING.md` — Added commit authorship rule
+- `CONTRIBUTING.md` — Added commit authorship rule
+- `CODEOWNERS` — Added hardware/ domain
+- `MODULES.md` — Added hardware/ domain
+- `README.md` — Updated kernel, bootloader, hardware domain references
+- `SUMMARY.md` — Updated kernel, bootloader, hardware domain references
 - `observability/lite.nix` — Fixed broken shell script
 - `internal/commands/ai.go` — Implemented real routing logic
 - `internal/commands/firewall.go` — Removed redundant min()

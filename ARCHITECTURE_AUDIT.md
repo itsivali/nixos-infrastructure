@@ -67,6 +67,7 @@ Hosts are pure data (attrsets). The laptop template generates all NixOS configur
 | Domain | Path | Files | State Paths | Timers |
 |--------|------|-------|-------------|--------|
 | **boot** | `boot/` | 7 | — | — |
+| **hardware** | `hardware/` | 2 | — | — |
 | **desktop** | `desktop/` | 11 | — | — |
 | **home** | `home/` | 40+ | — | — |
 | **networking** | `networking/` | 3 | — | — |
@@ -103,6 +104,7 @@ graph TD
     config --> desktop["desktop/"]
     config --> pkgs_sys["packages/system"]
     config --> boot["boot/"]
+    config --> hw["hardware/"]
     config --> net["networking/"]
     config --> sec["security/"]
     config --> svc["services/"]

@@ -28,7 +28,7 @@ all wired together through a zero-touch auto-import module system.
 | Area | What's Included |
 |------|----------------|
 | **Desktop** | GNOME on Wayland, GTK/GNOME applications, GDM login, AMD GPU acceleration, power management, Bluetooth |
-| **Kernel** | `linuxPackages_6_18` (6.18 LTS — pinned for RTL8821CE wifi), custom sysctl hardening, zRAM with zstd compression |
+| **Kernel** | `linuxPackages_zen` (zen kernel — RTL8821CE wifi via in-kernel rtw88), custom sysctl hardening, zRAM with zstd compression |
 | **Security** | nftables firewall, AppArmor, fail2ban, Tailscale-only SSH, kernel hardening |
 | **Networking** | NetworkManager, systemd-resolved (DoT), Tailscale with exit node, BBR |
 | **SSH** | Passwordless, Tailscale-only, ShellFish-compatible |
@@ -58,7 +58,8 @@ flake.nix
 ├── lib/host-templates/           ← NixOS host templates (generates full config)
 │
 ├── security/                     ← SOPS secrets, Tailscale, firewall, hardening
-├── boot/                         ← kernel, systemd-boot, zram, sysctl tuning
+├── boot/                         ← kernel, GRUB bootloader, zram, sysctl tuning, TPM blacklist
+├── hardware/                     ← USB power management, device quirks
 ├── networking/                   ← NetworkManager, DNS, timezone
 ├── desktop/                      ← GNOME desktop + apps, GPU acceleration, GDM
 ├── home/                         ← Home Manager (shell, git, editors, fonts, services)
@@ -88,6 +89,7 @@ configuration.nix
        ├── automation/      ✓ has default.nix → imported
        ├── boot/            ✓ has default.nix → imported
        ├── desktop/         ✓ has default.nix → imported (explicit)
+       ├── hardware/        ✓ has default.nix → imported
        ├── home/            ✗ excluded (wired via flake.nix)
        ├── hosts/           ✗ excluded (pinned hardware config)
        ├── lib/             ✗ excluded (helper functions)
@@ -152,12 +154,17 @@ deployment-health.timer (every 5 min)
 │       └── laptop.nix               # Generates full NixOS config from hostSpec
 │
 ├── boot/
-│   ├── kernel.nix                   # Linux 6.18 (LTS, pinned for RTL8821CE wifi), kernel params, AMD-specific
-│   ├── loader.nix                   # systemd-boot configuration
+│   ├── kernel.nix                   # Linux zen kernel, kernel params, TPM blacklist, serial port disable
+│   ├── loader.nix                   # GRUB bootloader with NixOS snowflake theme
 │   ├── sysctl.nix                   # Kernel hardening (slab_nomerge, pti, etc.)
 │   ├── zram.nix                     # zRAM with zstd (100% memory)
 │   ├── plymouth.nix                 # Boot splash
-│   └── tpm.nix                      # TPM support
+│   ├── tpm.nix                      # TPM support (blacklisted — see kernel.nix)
+│   └── plymouth.nix                 # Boot splash (Gruvbox theme)
+│
+├── hardware/
+│   ├── default.nix                   # Hardware domain barrel
+│   └── usb-power.nix                 # Disable USB runtime autosuspend
 │
 ├── security/
 │   ├── firewall.nix                 # nftables, default deny, Tailscale-only SSH

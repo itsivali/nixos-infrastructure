@@ -228,7 +228,7 @@ Examples:
 			// ── Step 5: AI Implementation ──────────────────────────────
 			f.stepStart("Step 3/7: AI Implementation")
 			f.stepInfo("")
-			f.stepInfo("  OpenCode will now implement the changes.")
+			f.stepInfo("  The AI will now implement the changes.")
 			f.stepInfo("  It will create/modify files, write tests, and update docs.")
 			f.stepInfo("")
 
@@ -236,16 +236,13 @@ Examples:
 			fmt.Printf("  │  %s %s\n", f.term.Dim("Prompt:"), f.term.Code(prompt[:80]+"..."))
 			f.stepInfo("")
 
-			fmt.Printf("  │  %s Calling opencode...\n", f.term.Dim("▶"))
-			opencodeCmd := exec.Command("opencode", "run", prompt)
-			opencodeCmd.Dir = repoDir
-			opencodeCmd.Stdout = os.Stdout
-			opencodeCmd.Stderr = os.Stderr
-			if err := opencodeCmd.Run(); err != nil {
+			f.stepInfo("Calling AI tool...")
+			tool, err := runAITool(repoDir, prompt)
+			if err != nil {
 				f.stepInfo(fmt.Sprintf("  %s %v", f.term.Warn("⚠"), err))
-				f.stepInfo("  You can run opencode manually later")
+				f.stepInfo("  You can run the AI tool manually later")
 			} else {
-				f.stepOK("AI implementation complete")
+				f.stepOK(fmt.Sprintf("AI implementation complete (via %s)", tool))
 			}
 			f.stepDone()
 
@@ -1137,20 +1134,26 @@ func aiRoute(a *app.App) *cobra.Command {
 func routeTask(description string) string {
 	desc := strings.ToLower(description)
 
-	if _, err := exec.LookPath("openhands"); err != nil {
+	// Prefer openhands for autonomous tasks if available
+	if _, err := exec.LookPath("openhands"); err == nil {
+		autonomousKeywords := []string{
+			"autonomous", "long-running", "batch", "automate", "refactor",
+			"migrate", "sweep", "bulk", "parallel", "background", "overnight",
+			"full codebase", "all files", "every file", "entire repository",
+		}
+		for _, kw := range autonomousKeywords {
+			if strings.Contains(desc, kw) {
+				return "openhands"
+			}
+		}
+	}
+
+	// Try opencode, then freebuff
+	if _, err := exec.LookPath("opencode"); err == nil {
 		return "opencode"
 	}
-
-	autonomousKeywords := []string{
-		"autonomous", "long-running", "batch", "automate", "refactor",
-		"migrate", "sweep", "bulk", "parallel", "background", "overnight",
-		"full codebase", "all files", "every file", "entire repository",
-	}
-
-	for _, kw := range autonomousKeywords {
-		if strings.Contains(desc, kw) {
-			return "openhands"
-		}
+	if _, err := exec.LookPath("freebuff"); err == nil {
+		return "freebuff"
 	}
 
 	return "opencode"

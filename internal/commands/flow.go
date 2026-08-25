@@ -165,6 +165,36 @@ func gitRun(repoDir, name string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
+// runAITool tries opencode first, then falls back to freebuff.
+// Both tools receive the same prompt and run in repoDir.
+// Returns the tool name used and any error.
+func runAITool(repoDir, prompt string) (string, error) {
+	// Try opencode first
+	if _, err := exec.LookPath("opencode"); err == nil {
+		cmd := exec.Command("opencode", "run", prompt)
+		cmd.Dir = repoDir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err == nil {
+			return "opencode", nil
+		}
+		// opencode failed — fall through to freebuff
+	}
+
+	// Fall back to freebuff
+	if _, err := exec.LookPath("freebuff"); err == nil {
+		cmd := exec.Command("freebuff", "--cwd", repoDir, prompt)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err == nil {
+			return "freebuff", nil
+		}
+		return "freebuff", fmt.Errorf("freebuff failed")
+	}
+
+	return "", fmt.Errorf("no AI tool available (install opencode or freebuff)")
+}
+
 // buildImplementPrompt constructs a rich prompt for the AI based on change type.
 func buildImplementPrompt(repoDir, changeType, description, issueNum string) string {
 	// Read architecture domains for context
@@ -433,7 +463,7 @@ Every step is guided: the CLI walks you through issue → branch → validate
 → commit → push → MR → CI → merge → deploy, prompting for confirmation
 at each gate.
 
-With --ai, all prompts are auto-accepted for agentic workflows (opencode).
+With --ai, all prompts are auto-accepted for agentic workflows (opencode or freebuff).
 The AI makes file changes, then calls ivali flow to commit and push.
 
 Routes:
@@ -487,7 +517,7 @@ func flowStart(a *app.App) *cobra.Command {
 		Short: "Start a new workflow (creates issue + branch + optional AI implementation)",
 		Long: `Guided workflow starter with AI code generation.
 
-Creates a GitLab issue and feature branch. With --implement, the AI (opencode)
+Creates a GitLab issue and feature branch. With --implement, the AI (opencode or freebuff)
 is called to write the actual code based on the change type and description.
 
 The AI understands the repository architecture and writes:
@@ -674,30 +704,24 @@ Examples:
 						f.stepInfo("Skipping AI implementation")
 						f.stepDone()
 					} else {
-						f.stepInfo("Calling opencode...")
-						opencodeCmd := exec.Command("opencode", "run", prompt)
-						opencodeCmd.Dir = f.repoDir
-						opencodeCmd.Stdout = os.Stdout
-						opencodeCmd.Stderr = os.Stderr
-						if err := opencodeCmd.Run(); err != nil {
+						f.stepInfo("Calling AI tool...")
+						tool, err := runAITool(f.repoDir, prompt)
+						if err != nil {
 							f.stepInfo(fmt.Sprintf("  %s %v", f.term.Warn("⚠"), err))
-							f.stepInfo("  You can run opencode manually later")
+							f.stepInfo("  You can run the AI tool manually later")
 						} else {
-							f.stepOK("AI implementation complete")
+							f.stepOK(fmt.Sprintf("AI implementation complete (via %s)", tool))
 						}
 						f.stepDone()
 					}
 				} else {
-					f.stepInfo("Calling opencode...")
-					opencodeCmd := exec.Command("opencode", "run", prompt)
-					opencodeCmd.Dir = f.repoDir
-					opencodeCmd.Stdout = os.Stdout
-					opencodeCmd.Stderr = os.Stderr
-					if err := opencodeCmd.Run(); err != nil {
+					f.stepInfo("Calling AI tool...")
+					tool, err := runAITool(f.repoDir, prompt)
+					if err != nil {
 						f.stepInfo(fmt.Sprintf("  %s %v", f.term.Warn("⚠"), err))
-						f.stepInfo("  You can run opencode manually later")
+						f.stepInfo("  You can run the AI tool manually later")
 					} else {
-						f.stepOK("AI implementation complete")
+						f.stepOK(fmt.Sprintf("AI implementation complete (via %s)", tool))
 					}
 					f.stepDone()
 				}
@@ -749,7 +773,7 @@ Examples:
 
 	var implement bool
 	addAIFlag(cmd)
-	cmd.Flags().BoolVar(&implement, "implement", false, "Call AI (opencode) to write the code for this change")
+	cmd.Flags().BoolVar(&implement, "implement", false, "Call AI (opencode or freebuff) to write the code for this change")
 	return cmd
 }
 
@@ -2122,7 +2146,7 @@ func flowRun(a *app.App) *cobra.Command {
 
 Chains every step from issue creation to merge:
   1. Create GitLab issue + feature branch
-  2. AI implementation (opencode)
+  2. AI implementation (opencode or freebuff)
   3. Validate all gates (nix fmt, go build, go test, etc.)
   4. Stage and commit
   5. Push to GitLab
@@ -2286,16 +2310,13 @@ Examples:
 				fmt.Printf("  │  %s %s\n", f.term.Dim("Prompt:"), f.term.Code(prompt[:80]+"..."))
 				f.stepInfo("")
 
-				f.stepInfo("Calling opencode...")
-				opencodeCmd := exec.Command("opencode", "run", prompt)
-				opencodeCmd.Dir = f.repoDir
-				opencodeCmd.Stdout = os.Stdout
-				opencodeCmd.Stderr = os.Stderr
-				if err := opencodeCmd.Run(); err != nil {
+				f.stepInfo("Calling AI tool...")
+				tool, err := runAITool(f.repoDir, prompt)
+				if err != nil {
 					f.stepInfo(fmt.Sprintf("  %s %v", f.term.Warn("⚠"), err))
-					f.stepInfo("  You can run opencode manually later")
+					f.stepInfo("  You can run the AI tool manually later")
 				} else {
-					f.stepOK("AI implementation complete")
+					f.stepOK(fmt.Sprintf("AI implementation complete (via %s)", tool))
 				}
 				f.stepDone()
 			}
@@ -2547,7 +2568,7 @@ Examples:
 	}
 
 	addAIFlag(cmd)
-	cmd.Flags().BoolVar(&implement, "implement", true, "Call AI (opencode) to write the code for this change (default true, use --implement=false to skip)")
+	cmd.Flags().BoolVar(&implement, "implement", true, "Call AI (opencode or freebuff) to write the code for this change (default true, use --implement=false to skip)")
 	return cmd
 }
 

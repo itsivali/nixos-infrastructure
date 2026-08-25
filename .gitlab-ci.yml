@@ -16,7 +16,7 @@ default:
       - stuck_or_timeout_failure
   timeout: 15m
   variables:
-    GIT_CLEAN_FLAGS: "-ffdx -e .cache/"
+    GIT_STRATEGY: fetch
 
 # ── Lint ──────────────────────────────────────────────────────────────────
 

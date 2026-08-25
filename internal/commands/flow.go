@@ -1135,9 +1135,9 @@ In AI mode, title must be provided as argument.`,
 				return fmt.Errorf("cannot create MR from main branch")
 			}
 
-			// Check all pushed
+			// Check all pushed (compare against this branch's own remote, not main)
 			f.stepStart("Checking for unpushed commits")
-			_, hasCommits := gitUnpushed(f.repoDir, "main")
+			_, hasCommits := gitUnpushed(f.repoDir, branch)
 			if hasCommits {
 				f.stepInfo("Push first: ivali flow push")
 				f.stepFailed()
@@ -1161,13 +1161,15 @@ In AI mode, title must be provided as argument.`,
 				f.stepOK(title)
 				f.stepDone()
 
-				// Custom title prompt
-				f.stepStart("MR title")
-				if f.confirm("  Use custom title?") {
-					fmt.Print("  Title: ")
-					title = f.prompt("Title:")
+				// Custom title prompt (skip in AI mode — use commit message)
+				if !aiMode {
+					f.stepStart("MR title")
+					if f.confirm("  Use custom title?") {
+						fmt.Print("  Title: ")
+						title = f.prompt("Title:")
+					}
+					f.stepDone()
 				}
-				f.stepDone()
 			}
 
 			// Load template

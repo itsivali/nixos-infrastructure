@@ -20,7 +20,6 @@ default:
 
 nix-format:
   stage: lint
-  image: nixos/nix:latest
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -42,16 +41,11 @@ go-lint:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix run nixpkgs#golangci-lint -- run ./... --timeout=5m
-  cache:
-    key: golangci-lint
-    paths:
-      - .cache/golangci-lint
 
 # ── Architecture ──────────────────────────────────────────────────────────
 
 architecture-check:
   stage: architecture
-  image: golang:1
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -68,24 +62,14 @@ architecture-check:
 
 go-build:
   stage: test
-  image: golang:1
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - go build ./...
-  cache:
-    key: go-mod-${CI_COMMIT_REF_SLUG}
-    paths:
-      - .cache/go-mod
-      - .cache/go-build
-  variables:
-    GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
-    GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
 
 go-test:
   stage: test
-  image: golang:1
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -104,20 +88,11 @@ go-test:
     paths:
       - test-results.json
     expire_in: 7 days
-  cache:
-    key: go-mod-${CI_COMMIT_REF_SLUG}
-    paths:
-      - .cache/go-mod
-      - .cache/go-build
-  variables:
-    GOMODCACHE: "$CI_PROJECT_DIR/.cache/go-mod"
-    GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
 
 # ── Security ──────────────────────────────────────────────────────────────
 
 go-security:
   stage: security
-  image: golang:1
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
@@ -136,16 +111,11 @@ go-security:
 
 nix-flake-check:
   stage: check
-  image: nixos/nix:latest
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix flake check --no-build
-  cache:
-    key: nix-store-${CI_COMMIT_REF_SLUG}
-    paths:
-      - /nix/store
 
 # ── Build (evaluation only, no deployment) ─────────────────────────────────
 # Deployment is handled exclusively by the GitOps reconciler (gitops-reconciler.service).
@@ -156,13 +126,8 @@ nix-flake-check:
 
 nixos-eval-prague:
   stage: build
-  image: nixos/nix:latest
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
-  cache:
-    key: nix-store-${CI_COMMIT_REF_SLUG}
-    paths:
-      - /nix/store

@@ -115,6 +115,26 @@ func (f *flowCtx) prompt(label string) string {
 
 // ── Git helpers ────────────────────────────────────────────────────────────
 
+func extractGitLabURL(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "https://") || strings.HasPrefix(line, "http://") {
+			return line
+		}
+	}
+	return strings.TrimSpace(output)
+}
+
+func extractIssueNum(url string) string {
+	if idx := strings.LastIndex(url, "/"); idx != -1 {
+		num := url[idx+1:]
+		// Strip any trailing whitespace or newlines
+		num = strings.TrimSpace(num)
+		return num
+	}
+	return ""
+}
+
 func gitBranch(repoDir string) (string, error) {
 	cmd := exec.Command("git", "branch", "--show-current")
 	cmd.Dir = repoDir
@@ -487,6 +507,14 @@ Examples:
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Start")
 
+			// AI mode: require args, auto-implement
+			if aiMode {
+				implement = true
+				if len(args) < 2 {
+					return fmt.Errorf("AI mode requires args: ivali flow start <type> <description>")
+				}
+			}
+
 			// ── Step 1: Change type ──────────────────────────────────────
 			changeType := ""
 			if len(args) > 0 {
@@ -609,13 +637,10 @@ Examples:
 				f.stepFailed()
 				return fmt.Errorf("failed to create issue: %s", string(issueOut))
 			}
-			issueURL := strings.TrimSpace(string(issueOut))
+			issueURL := extractGitLabURL(string(issueOut))
 			f.stepOK(issueURL)
 
-			issueNum := ""
-			if idx := strings.LastIndex(issueURL, "/"); idx != -1 {
-				issueNum = issueURL[idx+1:]
-			}
+			issueNum := extractIssueNum(issueURL)
 			f.stepDone()
 
 			// ── Step 4: Create branch ────────────────────────────────────

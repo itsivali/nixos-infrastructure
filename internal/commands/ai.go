@@ -85,6 +85,13 @@ Examples:
 			f := newFlowCtx(a, aiMode)
 			f.header("AI Implement")
 
+			// AI mode: require args
+			if aiMode {
+				if len(args) < 2 {
+					return fmt.Errorf("AI mode requires args: ivali ai implement <type> <description>")
+				}
+			}
+
 			// ── Step 1: Change type ──────────────────────────────────────
 			changeType := ""
 			if len(args) > 0 {
@@ -204,13 +211,10 @@ Examples:
 				f.stepFailed()
 				return fmt.Errorf("failed to create issue: %s", string(issueOut))
 			}
-			issueURL := strings.TrimSpace(string(issueOut))
+			issueURL := extractGitLabURL(string(issueOut))
 			f.stepOK(issueURL)
 
-			issueNum := ""
-			if idx := strings.LastIndex(issueURL, "/"); idx != -1 {
-				issueNum = issueURL[idx+1:]
-			}
+			issueNum := extractIssueNum(issueURL)
 			f.stepDone()
 
 			// ── Step 4: Create branch ────────────────────────────────────

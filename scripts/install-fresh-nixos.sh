@@ -39,7 +39,7 @@
 #   --tailnet-domain     Tailscale domain (default: codlet-trench.ts.net)
 #   --ssh-keys KEYS      Comma-separated SSH public keys
 #   --no-ssh-keys        Skip SSH key generation
-#   --features LIST      Comma-separated features (default: secrets,bitwarden,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh)
+#   --features LIST      Comma-separated features (default: secrets,bitwarden,gitlab-runner,tailscale,tailscale-exit-node,ssh)
 #   --help, -h           Show this help
 set -euo pipefail
 
@@ -56,7 +56,7 @@ HOST="${HOST:-}"
 USER_NAME="${USER_NAME:-}"
 YES="${YES:-false}"
 DESKTOP="${DESKTOP:-gnome}"
-FEATURES="${FEATURES:-secrets,bitwarden,gitlab-runner,bot,tailscale,tailscale-exit-node,ssh}"
+FEATURES="${FEATURES:-secrets,bitwarden,gitlab-runner,tailscale,tailscale-exit-node,ssh}"
 TAILNET_DOMAIN="${TAILNET_DOMAIN:-codlet-trench.ts.net}"
 SSH_KEYS="${SSH_KEYS:-}"
 AGE_KEY_FILE="${AGE_KEY_FILE:-}"
@@ -114,7 +114,7 @@ else
   C_GREEN=''; C_YELLOW=''; C_RED=''; C_MAGENTA=''
 fi
 
-TOTAL_STEPS=15
+TOTAL_STEPS=17
 STEP_NUM=0
 
 banner() {
@@ -383,20 +383,21 @@ register_sops_key() {
 }
 
 # ── Step 8: Register host ────────────────────────────────────────────────────
+# NOTE: This host spec template must stay in sync with
+# internal/commands/bootstrap_host.go:generateHostSpec().
 register_host() {
   section "Creating host spec: hosts/${HOST}.nix"
 
   local host_spec="$REPO_DIR/hosts/${HOST}.nix"
 
   # Build feature flags
-  local f_secrets="true" f_bitwarden="true" f_runner="true" f_bot="true"
+  local f_secrets="true" f_bitwarden="true" f_runner="true"
   local f_tailscale="true" f_exitnode="true" f_ssh="true"
 
   case ",${FEATURES}," in
     *,no-secrets,*)             f_secrets="false" ;;
     *,no-bitwarden,*)           f_bitwarden="false" ;;
     *,no-gitlab-runner,*)       f_runner="false" ;;
-    *,no-bot,*)                 f_bot="false" ;;
     *,no-tailscale,*)           f_tailscale="false" ;;
     *,no-tailscale-exit-node,*) f_exitnode="false" ;;
     *,no-ssh,*)                 f_ssh="false" ;;
@@ -453,7 +454,6 @@ ${keys_block}  ];
     secrets = ${f_secrets};
     bitwarden = ${f_bitwarden};
     gitlabRunner = ${f_runner};
-    bot = ${f_bot};
     tailscale = ${f_tailscale};
     tailscaleExitNode = ${f_exitnode};
     ssh = ${f_ssh};
@@ -561,7 +561,30 @@ validate_flake() {
   log "Config evaluates cleanly → ${drv}"
 }
 
-# ── Step 13: Switch system ───────────────────────────────────────────────────
+# ── Step 13: Check Nix formatting ───────────────────────────────────────────
+check_nix_format() {
+  section "Checking Nix formatting"
+  if ( cd "$REPO_DIR" && nix fmt -- --check . ) >/dev/null 2>&1; then
+    log "All .nix files properly formatted"
+  else
+    warn "Formatting issues found — run 'nix fmt' to fix"
+    note "Continuing (non-blocking)"
+  fi
+}
+
+# ── Step 14: Architecture linter ────────────────────────────────────────────
+check_architecture() {
+  section "Running architecture linter"
+  local checker="/tmp/check-architecture-install-bin"
+  if ( cd "$REPO_DIR" && go build -o "$checker" ./cmd/check-architecture/ && "$checker" ) >/dev/null 2>&1; then
+    log "Architecture validation passed"
+  else
+    warn "Architecture issues found — review before committing"
+    note "Continuing (non-blocking)"
+  fi
+}
+
+# ── Step 15: Switch system ──────────────────────────────────────────────────
 switch_system() {
   section "Running nixos-rebuild switch"
   note "Target: ${HOST}"
@@ -666,7 +689,6 @@ post_install() {
        sudo tailscale up --ssh
 
   4. Verify the desktop stack:
-       gnome-terminal --version  # default terminal
        nautilus --version        # file manager
        super + enter             # launch the terminal
        super + b                 # launch the browser
@@ -675,16 +697,31 @@ post_install() {
        GitHub: https://github.com/settings/ssh/new
        GitLab: https://gitlab.com/-/user_settings/ssh_keys
 
-   6. Test SSH connections:
-        ssh -T git@github.com
-        ssh -T git@gitlab.com
+  6. Test SSH connections:
+       ssh -T git@github.com
+       ssh -T git@gitlab.com
 
-   7. Commit and push the generated files (GitLab is the source of truth):
+  7. Verify formatting and architecture before first commit:
        cd "$REPO_DIR"
-       git status          # review what the installer changed
+       nix fmt                                        # format all .nix files
+       go build -o /tmp/check-architecture-bin ./cmd/check-architecture/
+       /tmp/check-architecture-bin                    # architecture lint
+
+  8. Rebuild after changes:
+       make rebuild
+       # or: ./scripts/rebuild.sh
+
+  9. Commit and push (GitLab is the source of truth):
+       cd "$REPO_DIR"
+       git status
        git add .sops.yaml hosts/${HOST}.nix hosts/${HOST}/hardware-configuration.nix secrets/hosts/${HOST}.yaml
        git commit -m "chore: add host configuration for $HOST"
        git push origin main
+
+  10. Use the ivali CLI for ongoing management:
+       ivali status           # system overview
+       ivali deploy           # guided deployment flow
+       ivali bootstrap host   # add another host
 
 EOF
 }
@@ -704,6 +741,8 @@ main() {
   optimize_btrfs
   install_format_hook
   validate_flake
+  check_nix_format
+  check_architecture
   switch_system
   validate_sops
   generate_ssh_keys

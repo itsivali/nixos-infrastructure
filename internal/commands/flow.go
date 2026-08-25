@@ -507,12 +507,9 @@ Examples:
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Start")
 
-			// AI mode: require args, auto-implement
+			// AI mode: auto-implement
 			if aiMode {
 				implement = true
-				if len(args) < 2 {
-					return fmt.Errorf("AI mode requires args: ivali flow start <type> <description>")
-				}
 			}
 
 			// ── Step 1: Change type ──────────────────────────────────────

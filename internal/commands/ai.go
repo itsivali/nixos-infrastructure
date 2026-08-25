@@ -85,13 +85,6 @@ Examples:
 			f := newFlowCtx(a, aiMode)
 			f.header("AI Implement")
 
-			// AI mode: require args
-			if aiMode {
-				if len(args) < 2 {
-					return fmt.Errorf("AI mode requires args: ivali ai implement <type> <description>")
-				}
-			}
-
 			// ── Step 1: Change type ──────────────────────────────────────
 			changeType := ""
 			if len(args) > 0 {

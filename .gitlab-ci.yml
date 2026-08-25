@@ -15,8 +15,6 @@ default:
       - runner_system_failure
       - stuck_or_timeout_failure
   timeout: 15m
-  variables:
-    GIT_STRATEGY: fetch
 
 # ── Lint ──────────────────────────────────────────────────────────────────
 

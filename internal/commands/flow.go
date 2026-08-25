@@ -438,6 +438,7 @@ The AI makes file changes, then calls ivali flow to commit and push.
 
 Routes:
   ivali flow start       Create issue + branch
+  ivali flow run         Full pipeline: start → implement → validate → commit → push → MR → merge
   ivali flow validate    Run all verification gates
   ivali flow commit      Stage and commit with conventional message
   ivali flow push        Push branch to GitLab
@@ -455,6 +456,7 @@ Routes:
 
 	cmd.AddCommand(
 		flowStart(a),
+		flowRun(a),
 		flowCommit(a),
 		flowPush(a),
 		flowMR(a),
@@ -2103,6 +2105,449 @@ Examples:
 	}
 
 	addAIFlag(cmd)
+	return cmd
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FLOW RUN — full pipeline in one command
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+func flowRun(a *app.App) *cobra.Command {
+	var implement bool
+
+	cmd := &cobra.Command{
+		Use:   "run [type] [description]",
+		Short: "Full pipeline: start → implement → validate → commit → push → MR → merge",
+		Long: `Run the entire development workflow in a single command.
+
+Chains every step from issue creation to merge:
+  1. Create GitLab issue + feature branch
+  2. AI implementation (opencode)
+  3. Validate all gates (nix fmt, go build, go test, etc.)
+  4. Stage and commit
+  5. Push to GitLab
+  6. Create merge request
+  7. Wait for CI pipeline + merge
+  8. Switch to main + pull
+
+Then run 'ivali deploy' to activate the new generation.
+
+Examples:
+  ivali flow run feature "add notion enhanced to panel" --ai
+  ivali flow run bugfix "fix zsh completions" --ai
+  ivali flow run feature "add firewall module"             # interactive
+  ivali flow run feature "desc" --no-implement              # skip AI`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			aiMode, _ := cmd.Flags().GetBool("ai")
+			f := newFlowCtx(a, aiMode)
+			f.header("Flow Run")
+
+			if aiMode {
+				implement = true
+			}
+
+			// ── Step 0: Gather inputs ──────────────────────────────────
+			changeType := ""
+			if len(args) > 0 {
+				changeType = args[0]
+			} else {
+				fmt.Println("  What type of change is this?")
+				fmt.Println()
+				fmt.Println("    1) feature       New feature or enhancement")
+				fmt.Println("    2) bugfix        Bug fix")
+				fmt.Println("    3) module        New NixOS/Home Manager module")
+				fmt.Println("    4) security      Security hardening")
+				fmt.Println("    5) architecture  Architecture changes")
+				fmt.Println("    6) docs          Documentation")
+				fmt.Println()
+				reader := bufio.NewReader(os.Stdin)
+				fmt.Printf("  Select (1-6): ")
+				choice, _ := reader.ReadString('\n')
+				choice = strings.TrimSpace(choice)
+				switch choice {
+				case "1":
+					changeType = "feature"
+				case "2":
+					changeType = "bugfix"
+				case "3":
+					changeType = "module"
+				case "4":
+					changeType = "security"
+				case "5":
+					changeType = "architecture"
+				case "6":
+					changeType = "docs"
+				default:
+					return fmt.Errorf("invalid selection: %s", choice)
+				}
+			}
+
+			validTypes := map[string]bool{
+				"feature": true, "bugfix": true, "module": true,
+				"security": true, "architecture": true, "docs": true,
+			}
+			if !validTypes[changeType] {
+				return fmt.Errorf("invalid type: %s", changeType)
+			}
+
+			description := ""
+			if len(args) > 1 {
+				description = args[1]
+			} else {
+				fmt.Println()
+				fmt.Println("  Describe what you want to do:")
+				reader := bufio.NewReader(os.Stdin)
+				fmt.Printf("  Description: ")
+				description, _ = reader.ReadString('\n')
+				description = strings.TrimSpace(description)
+				if description == "" {
+					return fmt.Errorf("description required")
+				}
+			}
+
+			// Summary
+			fmt.Println()
+			fmt.Println(f.term.Dim("  ┌─────────────────────────────────────────────┐"))
+			fmt.Println(f.term.Dim("  │  Summary:"))
+			fmt.Printf("  │    Type:        %s\n", f.term.Code(changeType))
+			fmt.Printf("  │    Description: %s\n", f.term.Code(description))
+			fmt.Println(f.term.Dim("  └─────────────────────────────────────────────┘"))
+			fmt.Println()
+
+			if !f.confirm("  Continue? (auto: --ai)") {
+				f.stepInfo("Cancelled")
+				return nil
+			}
+
+			// ═══════════════════════════════════════════════════════════════
+			// PHASE 1: Create issue + branch
+			// ═══════════════════════════════════════════════════════════════
+			f.stepStart("Step 1: Creating GitLab issue")
+
+			templatePath := filepath.Join(f.repoDir, ".gitlab", "issue_templates", changeType+".md")
+			issueBody := ""
+			fmt.Printf("  │  %s Loading  %s template...\n", f.term.Dim("▶"), f.term.Code(changeType))
+			if data, err := os.ReadFile(templatePath); err == nil {
+				issueBody = string(data)
+				issueBody = strings.ReplaceAll(issueBody, "<!-- What does this feature do? -->", description)
+				issueBody = strings.ReplaceAll(issueBody, "<!-- What is the bug? -->", description)
+				issueBody = strings.ReplaceAll(issueBody, "<!-- What capability does this module provide? -->", description)
+				issueBody = strings.ReplaceAll(issueBody, "<!-- What is the security concern? -->", description)
+				f.stepOK("Template loaded")
+			} else {
+				issueBody = fmt.Sprintf("## Description\n\n%s\n\n## Type\n\n%s", description, changeType)
+				f.stepInfo("No template found — using default")
+			}
+
+			issueTitle := fmt.Sprintf("[%s] %s", changeType, description)
+			fmt.Printf("  │  %s Creating issue...\n", f.term.Dim("▶"))
+			issueCmd := exec.Command("glab", "issue", "create",
+				"--title", issueTitle,
+				"--description", issueBody,
+				"--label", changeType,
+			)
+			issueCmd.Dir = f.repoDir
+			issueOut, err := issueCmd.CombinedOutput()
+			if err != nil {
+				f.stepFail(fmt.Sprintf("Failed: %s", string(issueOut)))
+				f.stepFailed()
+				return fmt.Errorf("failed to create issue: %s", string(issueOut))
+			}
+			issueURL := extractGitLabURL(string(issueOut))
+			issueNum := extractIssueNum(issueURL)
+			f.stepOK(issueURL)
+			f.stepDone()
+
+			f.stepStart("Step 2: Creating branch")
+			branchName := fmt.Sprintf("%s/%s", changeType, cleanBranchName(description))
+			if len(branchName) > 60 {
+				branchName = branchName[:60]
+			}
+			fmt.Printf("  │  %s git checkout -b %s\n", f.term.Dim("▶"), f.term.Code(branchName))
+			if out, err := gitRun(f.repoDir, "git", "checkout", "-b", branchName); err != nil {
+				f.stepFail(fmt.Sprintf("Failed: %s", out))
+				f.stepFailed()
+				return fmt.Errorf("failed to create branch: %s", out)
+			}
+			f.stepOK(fmt.Sprintf("Branch %s created", f.term.Code(branchName)))
+			f.stepDone()
+
+			// ═══════════════════════════════════════════════════════════════
+			// PHASE 2: AI implementation
+			// ═══════════════════════════════════════════════════════════════
+			if implement {
+				f.stepStart("Step 3: AI Implementation")
+				f.stepInfo("")
+				f.stepInfo("  The AI will now implement the changes.")
+				f.stepInfo("  It will create/modify files, write tests, and update docs.")
+				f.stepInfo("")
+
+				prompt := buildImplementPrompt(f.repoDir, changeType, description, issueNum)
+				fmt.Printf("  │  %s %s\n", f.term.Dim("Prompt:"), f.term.Code(prompt[:80]+"..."))
+				f.stepInfo("")
+
+				f.stepInfo("Calling opencode...")
+				opencodeCmd := exec.Command("opencode", "run", prompt)
+				opencodeCmd.Dir = f.repoDir
+				opencodeCmd.Stdout = os.Stdout
+				opencodeCmd.Stderr = os.Stderr
+				if err := opencodeCmd.Run(); err != nil {
+					f.stepInfo(fmt.Sprintf("  %s %v", f.term.Warn("⚠"), err))
+					f.stepInfo("  You can run opencode manually later")
+				} else {
+					f.stepOK("AI implementation complete")
+				}
+				f.stepDone()
+			}
+
+			// ═══════════════════════════════════════════════════════════════
+			// PHASE 3: Validate
+			// ═══════════════════════════════════════════════════════════════
+			f.stepStart("Step 4: Validation gates")
+			f.stepInfo("")
+
+			type gateEntry struct {
+				name string
+				fn   func() (string, error)
+			}
+			gates := []gateEntry{
+				{"nix fmt", func() (string, error) { return gitRun(f.repoDir, "nix", "fmt", "--", "--check", ".") }},
+				{"go build", func() (string, error) { return gitRun(f.repoDir, "go", "build", "./...") }},
+				{"go vet", func() (string, error) { return gitRun(f.repoDir, "go", "vet", "./...") }},
+				{"go test -race", func() (string, error) { return gitRun(f.repoDir, "go", "test", "-race", "-count=1", "./...") }},
+			}
+
+			gateFailed := false
+			for _, g := range gates {
+				out, err := g.fn()
+				if err != nil {
+					f.stepFail(g.name)
+					if out != "" {
+						for _, line := range strings.Split(out, "\n") {
+							if len(line) > 120 {
+								line = line[:120] + "..."
+							}
+							f.stepInfo("  " + line)
+						}
+					}
+					gateFailed = true
+				} else {
+					f.stepOK(g.name)
+				}
+			}
+
+			if gateFailed {
+				fmt.Println()
+				f.stepInfo(f.term.Bad("  Validation failed — fix errors before pushing"))
+				f.stepFailed()
+				return fmt.Errorf("validation failed")
+			}
+			f.stepOK("All gates passed")
+			f.stepDone()
+
+			// ═══════════════════════════════════════════════════════════════
+			// PHASE 4: Commit + Push + MR
+			// ═══════════════════════════════════════════════════════════════
+			f.stepStart("Step 5: Committing changes")
+
+			// Auto-detect commit type from branch
+			commitType := "feat"
+			switch {
+			case strings.HasPrefix(branchName, "bugfix/"):
+				commitType = "fix"
+			case strings.HasPrefix(branchName, "module/"):
+				commitType = "module"
+			case strings.HasPrefix(branchName, "security/"):
+				commitType = "security"
+			case strings.HasPrefix(branchName, "architecture/"):
+				commitType = "arch"
+			case strings.HasPrefix(branchName, "docs/"):
+				commitType = "docs"
+			}
+			commitMsg := fmt.Sprintf("%s: %s", commitType, description)
+
+			if out, err := gitRun(f.repoDir, "git", "add", "-A"); err != nil {
+				f.stepFail(fmt.Sprintf("Failed to stage: %s", out))
+				f.stepFailed()
+				return fmt.Errorf("failed to stage: %s", out)
+			}
+			f.stepOK("Changes staged")
+
+			if _, err := gitRun(f.repoDir, "git", "diff", "--cached", "--quiet"); err == nil {
+				f.stepInfo("No changes to commit — all changes may already be committed.")
+				f.stepDone()
+			} else {
+				if out, err := gitRun(f.repoDir, "git", "commit", "-m", commitMsg); err != nil {
+					f.stepFail(fmt.Sprintf("Failed: %s", out))
+					f.stepFailed()
+					return fmt.Errorf("failed to commit: %s", out)
+				}
+				f.stepOK(fmt.Sprintf("Committed: %s", f.term.Code(commitMsg)))
+				f.stepDone()
+			}
+
+			f.stepStart("Step 6: Pushing to GitLab")
+			if out, err := gitRun(f.repoDir, "git", "push", "-u", "origin", branchName); err != nil {
+				f.stepFail(fmt.Sprintf("Failed: %s", out))
+				f.stepFailed()
+				return fmt.Errorf("failed to push: %s", out)
+			}
+			f.stepOK(fmt.Sprintf("Pushed to %s", f.term.Code(branchName)))
+			f.stepDone()
+
+			f.stepStart("Step 7: Creating merge request")
+
+			templatePath = filepath.Join(f.repoDir, ".gitlab", "merge_request_templates", "default.md")
+			mrDesc := description
+			if data, err := os.ReadFile(templatePath); err == nil {
+				mrDesc = string(data)
+				mrDesc = strings.ReplaceAll(mrDesc, "<!-- Brief description of changes -->", description)
+			}
+
+			mrCmd := exec.Command("glab", "mr", "create",
+				"--source-branch", branchName,
+				"--target-branch", "main",
+				"--title", commitMsg,
+				"--description", mrDesc,
+				"--remove-source-branch",
+			)
+			mrCmd.Dir = f.repoDir
+			mrOut, err := mrCmd.CombinedOutput()
+			if err != nil {
+				f.stepFail(fmt.Sprintf("Failed: %s", string(mrOut)))
+				f.stepFailed()
+				return fmt.Errorf("failed to create MR: %s", string(mrOut))
+			}
+			mrURL := strings.TrimSpace(string(mrOut))
+			f.stepOK(mrURL)
+			f.stepDone()
+
+			// ═══════════════════════════════════════════════════════════════
+			// PHASE 5: Wait for CI + Merge
+			// ═══════════════════════════════════════════════════════════════
+			f.stepStart("Step 8: Waiting for CI pipeline")
+
+			// Find the MR IID
+			listOut, listErr := gitRun(f.repoDir, "glab", "mr", "list",
+				"--source-branch", branchName, "--output", "json")
+			mrIID := ""
+			if listErr == nil {
+				var mrs []struct {
+					IID      int `json:"iid"`
+					Pipeline *struct {
+						Status string `json:"status"`
+					} `json:"head_pipeline"`
+				}
+				if err := json.Unmarshal([]byte(listOut), &mrs); err == nil && len(mrs) > 0 {
+					mrIID = fmt.Sprintf("%d", mrs[0].IID)
+				}
+			}
+
+			if mrIID == "" {
+				f.stepInfo("Could not find MR IID — run: ivali flow merge")
+				f.stepDone()
+			} else {
+				// Poll CI until it passes or fails
+				ciPassed := false
+				for i := 0; i < 120; i++ { // max 30 min
+					time.Sleep(15 * time.Second)
+					pipelineOut, err := gitRun(f.repoDir, "glab", "api",
+						fmt.Sprintf("projects/:id/merge_requests/%s/pipeline", mrIID))
+					if err != nil {
+						continue
+					}
+					var p struct {
+						Status string `json:"status"`
+					}
+					if err := json.Unmarshal([]byte(pipelineOut), &p); err == nil {
+						if p.Status == "success" {
+							ciPassed = true
+							f.stepOK("CI pipeline passed")
+							break
+						}
+						if p.Status == "failed" {
+							f.stepFail("CI pipeline failed")
+							f.stepInfo("Fix CI failures, then run: ivali flow merge")
+							f.stepDone()
+							// Fall through — don't block, let user decide
+							goto pipelineDone
+						}
+						if i%4 == 0 {
+							f.stepInfo(fmt.Sprintf("  CI status: %s — waiting...", p.Status))
+						}
+					}
+				}
+
+				if ciPassed {
+					// Merge
+					f.stepStart("Step 9: Merging MR")
+					mergeOut, err := gitRun(f.repoDir, "glab", "mr", "merge", mrIID,
+						"--yes", "--remove-source-branch")
+					if err != nil {
+						f.stepFail(fmt.Sprintf("Failed: %s", mergeOut))
+						f.stepDone()
+						f.stepInfo("Run: ivali flow merge  (after CI passes)")
+					} else {
+						f.stepOK("MR merged")
+						f.stepDone()
+
+						// Switch to main + pull
+						f.stepStart("Switching to main")
+						if out, err := gitRun(f.repoDir, "git", "checkout", "main"); err != nil {
+							f.stepFail(fmt.Sprintf("Failed: %s", out))
+						} else {
+							f.stepOK("On main")
+						}
+						f.stepDone()
+
+						f.stepStart("Pulling latest changes")
+						if out, err := gitRun(f.repoDir, "git", "pull", "origin", "main"); err != nil {
+							f.stepFail(fmt.Sprintf("Failed: %s", out))
+						} else {
+							f.stepOK("Latest changes pulled")
+						}
+						f.stepDone()
+					}
+				}
+			pipelineDone:
+				f.stepDone()
+			}
+
+			// ═══════════════════════════════════════════════════════════════
+			// Summary
+			// ═══════════════════════════════════════════════════════════════
+			fmt.Println()
+			f.divider()
+			fmt.Println(f.term.Bold("  Flow Run — Complete"))
+			fmt.Println()
+			f.stepInfo(fmt.Sprintf("  Issue:   %s", f.term.Code(issueURL)))
+			f.stepInfo(fmt.Sprintf("  Branch:  %s", f.term.Code(branchName)))
+			f.stepInfo(fmt.Sprintf("  MR:      %s", f.term.Code(mrURL)))
+			f.stepInfo("")
+			f.stepInfo(fmt.Sprintf("  Next: %s", f.term.Code("ivali deploy")))
+			fmt.Println()
+
+			if f.aiMode {
+				result := map[string]string{
+					"action":      "run",
+					"type":        changeType,
+					"description": description,
+					"issue":       issueURL,
+					"issue_num":   issueNum,
+					"branch":      branchName,
+					"commit":      commitMsg,
+					"mr":          mrURL,
+				}
+				data, _ := json.MarshalIndent(result, "", "  ")
+				fmt.Println(string(data))
+			}
+
+			return nil
+		},
+	}
+
+	addAIFlag(cmd)
+	cmd.Flags().BoolVar(&implement, "implement", true, "Call AI (opencode) to write the code for this change (default true, use --implement=false to skip)")
 	return cmd
 }
 

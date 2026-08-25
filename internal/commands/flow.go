@@ -1577,6 +1577,7 @@ In AI mode, automatically polls CI until it passes before merging.`,
 func flowDeploy(a *app.App) *cobra.Command {
 	var dryRun bool
 	var skipChecks bool
+	var host string
 
 	cmd := &cobra.Command{
 		Use:   "deploy [commit]",
@@ -1687,8 +1688,12 @@ Flags:
 			var rebuildCmd *exec.Cmd
 			if skipChecks {
 				f.stepInfo("  Skipping validation gates (--skip-checks)")
+				fallbackHost := host
+				if fallbackHost == "" {
+					fallbackHost = detectDefaultHost(f.repoDir)
+				}
 				rebuildCmd = exec.Command("sudo", "nixos-rebuild", "switch",
-					"--flake", f.repoDir+"#prague")
+					"--flake", f.repoDir+"#"+fallbackHost)
 			} else {
 				rebuildCmd = exec.Command("./scripts/rebuild.sh")
 			}
@@ -1747,6 +1752,7 @@ Flags:
 	addAIFlag(cmd)
 	cmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "Show what would be deployed without doing it")
 	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, "Skip validation gates (emergency only)")
+	cmd.Flags().StringVar(&host, "host", "", "NixOS host for deploy (auto-detected if empty)")
 	return cmd
 }
 
@@ -2179,4 +2185,33 @@ step in the workflow pipeline.`,
 
 	addAIFlag(cmd)
 	return cmd
+}
+
+// detectDefaultHost scans hosts/ for .nix host spec files and returns the first
+// hostname found. Returns "prague" as a fallback if no host files exist.
+func detectDefaultHost(repoDir string) string {
+	hostsDir := filepath.Join(repoDir, "hosts")
+	entries, err := os.ReadDir(hostsDir)
+	if err != nil {
+		return "prague"
+	}
+
+	skipFiles := map[string]bool{
+		"hosts.nix":                  true,
+		"hardware-configuration.nix": true,
+		"default.nix":                true,
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".nix") {
+			continue
+		}
+		if skipFiles[entry.Name()] {
+			continue
+		}
+		name := strings.TrimSuffix(entry.Name(), ".nix")
+		return name
+	}
+
+	return "prague"
 }

@@ -16,11 +16,17 @@ import (
 // CLI commands from handlers.
 type NixOSPlatform struct {
 	repoDir string
+	host    string
 }
 
 // NewNixOSPlatform creates a platform service rooted at the given repository directory.
 func NewNixOSPlatform(repoDir string) *NixOSPlatform {
-	return &NixOSPlatform{repoDir: repoDir}
+	return &NixOSPlatform{repoDir: repoDir, host: "prague"}
+}
+
+// NewNixOSPlatformWithHost creates a platform service for a specific host.
+func NewNixOSPlatformWithHost(repoDir, host string) *NixOSPlatform {
+	return &NixOSPlatform{repoDir: repoDir, host: host}
 }
 
 func (p *NixOSPlatform) Health(ctx context.Context) (*services.PlatformHealth, error) {
@@ -119,7 +125,7 @@ func (p *NixOSPlatform) Doctor(ctx context.Context) (*services.DiagnosticReport,
 	addCheck("nix_flake_check", "nix", "flake", "check", "--no-build",
 		"--extra-experimental-features", "nix-command flakes",
 		filepath.Join(p.repoDir, "flake.nix"))
-	addCheck("nixos_eval", "nix", "eval", ".#nixosConfigurations.prague.config.system.build.toplevel.name",
+	addCheck("nixos_eval", "nix", "eval", fmt.Sprintf(".#nixosConfigurations.%s.config.system.build.toplevel.name", p.host),
 		"--extra-experimental-features", "nix-command flakes",
 		"--no-write-lock-file", "--offline", p.repoDir)
 	addCheck("go_build", "go", "build", "./...")

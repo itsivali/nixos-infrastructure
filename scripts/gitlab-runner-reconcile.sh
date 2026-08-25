@@ -115,7 +115,7 @@ else
           --url "$URL" \
           --registration-token "$TOKEN" \
           --executor "shell" \
-          --tag-list "nixos,prague,self-hosted" \
+          --tag-list "nixos,${HOST},self-hosted" \
           --run-untagged="true" \
           --locked="false"
         run_step "Restart after registration" systemctl restart gitlab-runner.service

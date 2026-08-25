@@ -6,8 +6,8 @@
 
 set -Eeuo pipefail
 
-REPO_DIR="/home/ivali/nixos-infrastructure"
-HOST="prague"
+REPO_DIR="${REPO_DIR:-/home/ivali/nixos-infrastructure}"
+HOST="${HOST_NAME:-$(hostname)}"
 
 # -- Theme -------------------------------------------------------------------
 

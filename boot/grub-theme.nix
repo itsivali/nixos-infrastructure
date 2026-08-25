@@ -1,21 +1,20 @@
 ##############################################################################
 #
-# Bootloader
+# GRUB Theme — NixOS Snowflake
 #
 # Purpose
 # -------
-# Systemd-boot configuration and EFI settings.
+# Custom GRUB bootloader theme with the NixOS snowflake logo as background.
+# Provides a clean, branded boot menu for generation selection.
 #
 # Ownership
 # ---------
-# boot.loader, boot.tmp
+# boot.grub.theme, theme.grub.*
 #
 # Does NOT Own
 # ------------
+# - Bootloader enable/disable (boot/loader.nix)
 # - Kernel parameters (boot/kernel.nix)
-# - Sysctl tuning (boot/sysctl.nix)
-# - zRAM (boot/zram.nix)
-# - TPM (boot/tpm.nix)
 #
 ##############################################################################
 
@@ -29,7 +28,7 @@ let
     sha256 = "1ljs8ppl7qrnvfczvb0gwk29rlnjys448nj7prl0nkv6kbz3zdnr";
   };
 
-  # GRUB theme with NixOS snowflake branding
+  # GRUB theme configuration
   grubTheme = pkgs.runCommand "grub-theme-nixos" { } ''
     mkdir -p $out/share/grub/themes/nixos
 
@@ -83,7 +82,7 @@ let
       text = "@TIMEOUT@"
     }
 
-    # NixOS title label
+    # Message area (for kernel/initrd loading messages)
     + label {
       top = 2%
       left = 30%
@@ -95,42 +94,26 @@ let
     }
     THEME_EOF
 
-    # Create selection highlight images (blue tinted rectangles)
-    for size in normal wide; do
-      ${pkgs.coreutils}/bin/touch $out/share/grub/themes/nixos/select_''${size}.png
-    done
+    # Create a simple selection highlight image (blue rounded rectangle)
+    ${pkgs.imagemagick}/bin/convert -size 400x36 xc:"#7aa2f7" \
+      -alpha set -channel A -evaluate set 60% +channel \
+      $out/share/grub/themes/nixos/select_wide.png 2>/dev/null || \
+    ${pkgs.coreutils}/bin/touch $out/share/grub/themes/nixos/select_wide.png
+
+    # Copy the wide select image as the standard select pattern
+    cp $out/share/grub/themes/nixos/select_wide.png \
+       $out/share/grub/themes/nixos/select_normal.png 2>/dev/null || true
+    cp $out/share/grub/themes/nixos/select_wide.png \
+       $out/share/grub/themes/nixos/select_highlight.png 2>/dev/null || true
   '';
 in
 {
-  boot = {
-    loader = {
-      # ── GRUB bootloader ──────────────────────────────────────────────
-      # Switched from systemd-boot to GRUB for branded NixOS boot screen.
-      grub = {
-        enable = true;
-        device = "nodev";
-        efiSupport = true;
-        configurationLimit = 20;
-        theme = grubTheme;
-        extraConfig = ''
-          # Enable splash screen with NixOS logo
-          set gfxmode=auto
-          insmod all_video
-          insmod gfxterm
-          terminal_output gfxterm
-        '';
-      };
+  # Expose the theme for use by boot/loader.nix
+  options.theme.grub.nixos = lib.mkEnableOption "NixOS GRUB theme with snowflake logo";
 
-      # Disable systemd-boot (replaced by GRUB)
-      systemd-boot.enable = false;
-
-      # Non-zero so the previous-generation recovery entry is reachable
-      # without holding a key (critical for safe rollbacks).
-      timeout = 5;
-
-      efi.canTouchEfiVariables = true;
+  config = lib.mkIf (config.theme.grub.nixos or false) {
+    boot.grub = {
+      theme = grubTheme;
     };
-
-    tmp.cleanOnBoot = true;
   };
 }

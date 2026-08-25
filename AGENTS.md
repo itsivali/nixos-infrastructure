@@ -134,6 +134,13 @@ The work is not released until every verification gate passes **and** the change
 5. Push to **GitLab** (`git push origin main`) — GitLab is the single source of truth. Never push to GitHub directly; the GitHub mirror updates automatically from GitLab.
 6. Confirm the GitHub Actions run on the mirror goes green before declaring the work complete.
 
+**Commit Authorship (MANDATORY):** All commits must be authored as `Willis Ivali <ivali@users.noreply.gitlab.com>`. AI agents must NOT add their own branding (e.g., "Generated with Codebuff", "Co-Authored-By: AI") to commit messages. Use:
+```bash
+GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="ivali@users.noreply.gitlab.com" \
+GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="ivali@users.noreply.gitlab.com" \
+git commit -m "..."
+```
+
 If a gate fails after a commit, fix the issue and create a new commit; do not amend the failed one.
 
 ### 3.5 Testing Requirements

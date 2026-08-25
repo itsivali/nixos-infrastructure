@@ -78,3 +78,82 @@ exceptions:
     owner: boot
     review: 2026-11-01
     status: active
+
+  - id: EXC-011
+    source: runtime.ci/gitlab-runner-reconcile.service
+    target: /var/lib/gitops
+    reason: >
+      GitLab runner reconcile service creates and manages the gitops worktree
+      at /var/lib/gitops so CI jobs can run against the local repo. The
+      gitops-reconciler (runtime.automation) also uses this path as its
+      StateDirectory. Both services legitimately need read/write access.
+      CI creates the worktree; automation pulls and activates from it.
+    owner: ci
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-012
+    source: observability/nixos-exporter.nix
+    target: /var/lib/deployment-health
+    reason: >
+      The NixOS exporter reads deployment health results to expose them as
+      Prometheus metrics. This is a legitimate read-only cross-domain access
+      where observability consumes health check data from the recovery domain.
+    owner: observability
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-013
+    source: services/web-ui/default.nix
+    target: /var/lib/observability
+    reason: >
+      The operations web UI needs read access to observability state to display
+      system health information. This is a legitimate read-only cross-domain
+      access where the web UI consumes observability data.
+    owner: services
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-014
+    source: services/web-ui/default.nix
+    target: /var/lib/tailscale-metrics
+    reason: >
+      The operations web UI needs read access to tailscale metrics to display
+      network status information. This is a legitimate read-only cross-domain
+      access where the web UI consumes security domain metrics.
+    owner: services
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-015
+    source: hosts/prague.nix
+    target: /var/lib/observability
+    reason: >
+      Host configuration enables observability features that write to
+      /var/lib/observability. This is a legitimate host composition pattern
+      where the host enables features from the observability domain.
+    owner: hosts
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-016
+    source: ci/gitlab-runner.nix
+    target: /var/lib/gitops
+    reason: >
+      GitLab runner health service needs access to the gitops worktree to
+      verify the current deployment state. This is a legitimate read-only
+      cross-domain access where CI consumes automation domain data.
+    owner: ci
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-017
+    source: recovery/deployment-health.nix
+    target: /var/lib/gitops
+    reason: >
+      Deployment health checker reads the gitops worktree to verify the
+      current system generation matches the repo HEAD. This is a legitimate
+      read-only cross-domain access where recovery consumes automation data.
+    owner: recovery
+    review: 2027-02-01
+    status: active

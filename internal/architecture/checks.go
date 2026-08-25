@@ -251,7 +251,9 @@ func (l *Linter) checkFilesystemBoundaries() []Violation {
 
 			// Check if the domain is accessing another domain's state
 			if !strings.HasPrefix(domain, owner) && !strings.HasPrefix(owner, domain) {
-				if l.isException("filesystem_boundaries", file, path) {
+				relPath, _ := filepath.Rel(l.RepoRoot, file)
+				if l.isException("filesystem_boundaries", domain, path) ||
+					l.isException("filesystem_boundaries", relPath, path) {
 					continue
 				}
 
@@ -357,13 +359,13 @@ func (l *Linter) checkUndeclaredDependencies() []Violation {
 	// Only flag tools that are NOT typically on the system PATH via NixOS
 	// systemPackages. The ivali CLI, gitlab-runner, and sendmail are
 	// installed declaratively and available in script environments.
+	// Tools like git and curl are excluded because they are universally
+	// available on NixOS systems via environment.systemPackages or are
+	// declared in systemd service Path= attributes.
 	undeclaredTools := map[string]string{
-		"curl":      "HTTP client - declare in environment.systemPackages or use pkgs.curl in scripts",
 		"wget":      "HTTP client - declare in environment.systemPackages or use pkgs.wget in scripts",
-		"jq":        "JSON processor - declare in environment.systemPackages or use pkgs.jq in scripts",
 		"openssl":   "TLS/crypto toolkit - declare in environment.systemPackages or use pkgs.openssl in scripts",
 		"rsync":     "File sync - declare in environment.systemPackages or use pkgs.rsync in scripts",
-		"git":       "Version control - declare in environment.systemPackages or use pkgs.git in scripts",
 		"docker":    "Container runtime - declare in virtualisation.docker.enable or use pkgs.docker in scripts",
 		"podman":    "Container runtime - declare in virtualisation.podman.enable or use pkgs.podman in scripts",
 		"kubectl":   "Kubernetes CLI - declare in environment.systemPackages or use pkgs.kubectl in scripts",

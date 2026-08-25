@@ -136,7 +136,8 @@ filesystem_access:
     target: /var/lib/gitops
     access: read_write
     owner: runtime.automation (implicit)
-    severity: violation
+    severity: questionable
+    exception: EXC-011
 
   - source: recovery/deployment-health.nix
     target: /var/lib/gitops
@@ -167,4 +168,5 @@ cross_service_state:
     target: /var/lib/gitops
     access: creates_and_manages
     owner: runtime.automation (implicit)
-    severity: violation
+    severity: questionable
+    exception: EXC-011

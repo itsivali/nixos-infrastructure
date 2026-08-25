@@ -9,8 +9,9 @@
 # after a short idle period and fails to wake them when new devices are
 # plugged in, causing all USB ports to become non-functional.
 #
-# The fix: a udev rule that sets power/control="on" for all USB controllers
-# and USB devices, preventing the kernel from suspending them at runtime.
+# The fix: (1) usbcore.autosuspend=-1 kernel param disables autosuspend
+# globally, (2) udev rules keep host controllers and devices permanently
+# awake via power/control="on" and power/autosuspend="-1".
 #
 # Ownership
 # ---------
@@ -28,12 +29,16 @@
 
 {
   services.udev.extraRules = ''
-    # Disable USB runtime autosuspend globally.
-    # On this Lenovo AMD laptop, the EHCI and xHCI controllers enter
-    # suspended state and do not wake when new devices are plugged in.
-    # This causes all USB ports to stop working after the initial boot
-    # devices are removed or after a brief idle period.
-    ACTION=="add", SUBSYSTEM=="usb", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
-    ACTION=="add", SUBSYSTEM=="usb", ATTR{power/autosuspend_delay_ms}="0"
+    # Keep USB host controllers (usb0, usb1, …) permanently awake.
+    # KERNEL=="usb[0-9]*" matches the root-level controller devices
+    # (xhci_pci, ehci_pci), not individual USB peripherals. These
+    # controllers must never enter runtime-suspend or all ports die.
+    SUBSYSTEM=="usb", KERNEL=="usb[0-9]*", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
+
+    # Also force every USB device (flash drives, hubs, peripherals)
+    # to stay awake on add and when state changes. The "change"
+    # action catches devices that the kernel re-evaluates after
+    # initial enumeration.
+    ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{power/control}="on", ATTR{power/autosuspend}="-1"
   '';
 }

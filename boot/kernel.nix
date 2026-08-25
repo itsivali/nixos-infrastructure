@@ -89,6 +89,15 @@
       "8250_acpi.nr_uarts=0"
 
       ##########################################################
+      # USB: disable autosuspend globally.
+      # On this Lenovo AMD laptop, the EHCI/xHCI controllers enter
+      # suspended state and fail to wake on new device plug-in.
+      # usbcore.autosuspend=-1 prevents the kernel from ever
+      # auto-suspending USB controllers or devices.
+      ##########################################################
+      "usbcore.autosuspend=-1"
+
+      ##########################################################
       # Performance
       ##########################################################
       "quiet"

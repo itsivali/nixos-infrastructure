@@ -197,7 +197,7 @@ func TestGitUnpushed_NotMain(t *testing.T) {
 	// Using "main" as the branch arg (the old buggy code):
 	// gitUnpushed(repo, "main") → git log origin/main..HEAD
 	// This would show the feature commit as "unpushed" relative to main.
-	commits, hasCommits := gitUnpushed(local, "main")
+	_, hasCommits := gitUnpushed(local, "main")
 	if !hasCommits {
 		t.Error("gitUnpushed('main') should show commits ahead of origin/main")
 	}
@@ -205,7 +205,7 @@ func TestGitUnpushed_NotMain(t *testing.T) {
 	// Using the correct branch name (the fix):
 	// gitUnpushed(repo, "feature/test") → git log origin/feature/test..HEAD
 	// This shows nothing because it's fully pushed.
-	commits, hasCommits = gitUnpushed(local, "feature/test")
+	commits, hasCommits := gitUnpushed(local, "feature/test")
 	if hasCommits {
 		t.Errorf("gitUnpushed('feature/test') should report no unpushed commits, got: %q", commits)
 	}

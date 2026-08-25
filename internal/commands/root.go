@@ -69,8 +69,9 @@ a beautiful interactive terminal experience.`,
 	root.PersistentFlags().BoolVarP(&jsonOutput, "json", "j", false, "JSON output")
 
 	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		w := cmd.OutOrStdout()
 		if cmd == root {
-			fmt.Fprint(cmd.OutOrStdout(), rootHelp(a))
+			_, _ = fmt.Fprint(w, rootHelp(a))
 			return
 		}
 		// For subcommands, render cobra's default help: Long/Short + UsageString
@@ -80,11 +81,11 @@ a beautiful interactive terminal experience.`,
 		}
 		usage = strings.TrimRight(usage, " \t\n\r")
 		if usage != "" {
-			fmt.Fprintln(cmd.OutOrStdout(), usage)
-			fmt.Fprintln(cmd.OutOrStdout())
+			_, _ = fmt.Fprintln(w, usage)
+			_, _ = fmt.Fprintln(w)
 		}
 		if cmd.Runnable() || cmd.HasSubCommands() {
-			fmt.Fprint(cmd.OutOrStdout(), cmd.UsageString())
+			_, _ = fmt.Fprint(w, cmd.UsageString())
 		}
 	})
 

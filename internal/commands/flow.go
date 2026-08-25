@@ -672,22 +672,8 @@ Examples:
 						f.stepInfo("Skipping AI implementation")
 						f.stepDone()
 					} else {
-						f.stepInfo("Calling opencode...")
-						opencodeCmd := exec.Command("opencode", "-m", prompt)
-						opencodeCmd.Dir = f.repoDir
-						opencodeCmd.Stdout = os.Stdout
-						opencodeCmd.Stderr = os.Stderr
-						if err := opencodeCmd.Run(); err != nil {
-							f.stepInfo(fmt.Sprintf("  %s %v", f.term.Warn("⚠"), err))
-							f.stepInfo("  You can run opencode manually later")
-						} else {
-							f.stepOK("AI implementation complete")
-						}
-						f.stepDone()
-					}
-				} else {
 					f.stepInfo("Calling opencode...")
-					opencodeCmd := exec.Command("opencode", "-m", prompt)
+					opencodeCmd := exec.Command("opencode", "run", prompt)
 					opencodeCmd.Dir = f.repoDir
 					opencodeCmd.Stdout = os.Stdout
 					opencodeCmd.Stderr = os.Stderr
@@ -699,6 +685,20 @@ Examples:
 					}
 					f.stepDone()
 				}
+			} else {
+				f.stepInfo("Calling opencode...")
+				opencodeCmd := exec.Command("opencode", "run", prompt)
+				opencodeCmd.Dir = f.repoDir
+				opencodeCmd.Stdout = os.Stdout
+				opencodeCmd.Stderr = os.Stderr
+				if err := opencodeCmd.Run(); err != nil {
+					f.stepInfo(fmt.Sprintf("  %s %v", f.term.Warn("⚠"), err))
+					f.stepInfo("  You can run opencode manually later")
+				} else {
+					f.stepOK("AI implementation complete")
+				}
+				f.stepDone()
+			}
 			}
 
 			// ── Workflow Ready ──────────────────────────────────────────

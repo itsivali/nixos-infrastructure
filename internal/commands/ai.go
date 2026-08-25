@@ -237,7 +237,7 @@ Examples:
 			f.stepInfo("")
 
 			fmt.Printf("  │  %s Calling opencode...\n", f.term.Dim("▶"))
-			opencodeCmd := exec.Command("opencode", "-m", prompt)
+			opencodeCmd := exec.Command("opencode", "run", prompt)
 			opencodeCmd.Dir = repoDir
 			opencodeCmd.Stdout = os.Stdout
 			opencodeCmd.Stderr = os.Stderr

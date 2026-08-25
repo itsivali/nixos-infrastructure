@@ -7,6 +7,10 @@ stages:
   - build
 
 # ── Global defaults ────────────────────────────────────────────────────────
+# GIT_STRATEGY=fetch avoids 'git clean -ffdx' which fails when stale
+# .cache/ dirs are owned by a different user (ivali vs gitlab-runner).
+variables:
+  GIT_STRATEGY: fetch
 
 default:
   retry:

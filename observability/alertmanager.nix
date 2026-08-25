@@ -93,9 +93,10 @@ in
             resolve_timeout = "5m";
             smtp_smarthost = alertCfg.smtpSmarthost;
             smtp_from = alertCfg.smtpFrom;
-            smtp_auth_username = lib.mkIf hasSmtpAuth alertCfg.smtpAuthUsername;
-            smtp_auth_password_file = lib.mkIf hasSmtpAuth alertCfg.smtpAuthPasswordFile;
             smtp_require_tls = true;
+          } // lib.optionalAttrs hasSmtpAuth {
+            smtp_auth_username = alertCfg.smtpAuthUsername;
+            smtp_auth_password_file = alertCfg.smtpAuthPasswordFile;
           };
 
           route = {

@@ -1267,7 +1267,6 @@ In AI mode, outputs JSON with the final status.`,
 				f.stepStart(fmt.Sprintf("Looking up MR for branch %s", f.term.Code(branch)))
 				out, err := gitRun(f.repoDir, "glab", "mr", "list",
 					"--source-branch", branch,
-					"--state", "opened",
 					"--output", "json",
 				)
 				if err != nil {
@@ -1415,7 +1414,6 @@ In AI mode, automatically polls CI until it passes before merging.`,
 			f.stepStart("Finding merge request")
 			listOut, err := gitRun(f.repoDir, "glab", "mr", "list",
 				"--source-branch", branch,
-				"--state", "opened",
 				"--output", "json",
 			)
 			if err != nil {
@@ -2057,7 +2055,7 @@ Examples:
 
 			// Find the MR IID
 			listOut, listErr := gitRun(f.repoDir, "glab", "mr", "list",
-				"--source-branch", branch, "--state", "opened", "--output", "json")
+				"--source-branch", branch, "--output", "json")
 			if listErr == nil {
 				var mrs []struct {
 					IID      int `json:"iid"`

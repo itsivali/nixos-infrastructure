@@ -24,6 +24,10 @@
 
 {
   environment.systemPackages = with pkgs; [
+    # ── CI / Linting (needed by GitLab runner Shell executor) ──────────
+    shellcheck
+    golangci-lint
+
     # ── Infrastructure as Code ──────────────────────────────────────────
     terraform
     opentofu

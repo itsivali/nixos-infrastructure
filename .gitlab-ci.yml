@@ -29,21 +29,19 @@ nix-format:
 
 shellcheck:
   stage: lint
-  image: koalaman/shellcheck-alpine:stable
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - shellcheck --severity=warning scripts/*.sh
+    - nix run nixpkgs#shellcheck -- --severity=warning scripts/*.sh
 
 go-lint:
   stage: lint
-  image: golangci/golangci-lint:v2.12.2
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - golangci-lint run ./... --timeout=5m
+    - nix run nixpkgs#golangci-lint -- run ./... --timeout=5m
   cache:
     key: golangci-lint
     paths:
@@ -59,7 +57,7 @@ architecture-check:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - go build -o /tmp/check-architecture ./cmd/check-architecture/
-    - /tmp/check-architecture/
+    - /tmp/check-architecture
   artifacts:
     when: always
     paths:

@@ -30,7 +30,7 @@
   dconf.settings = {
     # ── Dock favorites (launcher order) ────────────────────────────────
     # The always-visible dash-to-panel taskbar row: the daily driver apps.
-    # Remaining desktop apps (Edge, LibreOffice, Notion, mpv, mission-center,
+    # Remaining desktop apps (Edge, LibreOffice, mpv, mission-center,
     # gnome-tweaks, ...) stay in the Super-key app grid.
     "org/gnome/shell" = {
       favorite-apps = [
@@ -41,6 +41,7 @@
         "dev.zed.Zed.desktop"
         "LocalSend.desktop"
         "obsidian.desktop"
+        "notion-app-enhanced.desktop"
         "Zoom.desktop"
       ];
     };

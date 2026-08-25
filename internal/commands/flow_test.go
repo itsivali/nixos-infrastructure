@@ -27,10 +27,11 @@ func initTestRepo(t *testing.T) string {
 		t.Fatalf("git clone: %v\n%s", err, out)
 	}
 
-	// Configure user
+	// Configure user and force branch to main
 	for _, args := range [][]string{
 		{"git", "-C", local, "config", "user.email", "test@test.com"},
 		{"git", "-C", local, "config", "user.name", "Test"},
+		{"git", "-C", local, "checkout", "-b", "main"},
 	} {
 		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
 			t.Fatalf("%v: %v\n%s", args, err, out)

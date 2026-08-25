@@ -52,6 +52,25 @@
       "overlay" #needed for docker
     ];
 
+    # Blacklist broken kernel modules at boot to prevent device-probe
+    # timeouts. The Lenovo BIOS exposes a TPM2 ACPI table (MSFT0101)
+    # but the tpm_crb driver fails with EBUSY, causing systemd to wait
+    # 90s × 2 for /dev/tpm0 and /dev/tpmrm0 (~3 min lost). The
+    # 8250 serial ports don't exist on this laptop but each times out
+    # at 90s (4 ports × 90s = ~6 min). Together these add ~9 min to
+    # every boot.
+    blacklistedKernelModules = [
+      "tpm_crb"
+      "tpm_tis"
+      "tpm_tis_infineon"
+      "tpm_tis_core"
+      "tpm.Atmel"
+      "tpm.Infineon"
+      "tpm.NSCS"
+      "tpm.ST33"
+      "tpm.Xilinx"
+    ];
+
     kernelParams = [
       ##########################################################
       # AMD
@@ -62,6 +81,12 @@
       "acpi_osi=Linux"
       "amd_iommu=on"
       "iommu=pt"
+
+      ##########################################################
+      # Hardware: disable serial ports (no physical UART on this laptop)
+      ##########################################################
+      "8250.nr_uarts=0"
+      "8250_acpi.nr_uarts=0"
 
       ##########################################################
       # Performance

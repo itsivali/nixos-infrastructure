@@ -20,6 +20,8 @@
 # - JACK support for professional audio
 # - rtkit realtime scheduling for PipeWire threads (low-latency, glitch-free
 #   audio — same realtime setup Garuda ships)
+# - ALSA mixer initialization for Realtek ALC236 (consistent volume across
+#   browsers, video players, and system audio)
 #
 # Why adaptive quantum
 # --------------------
@@ -29,10 +31,43 @@
 # clock adapt (64..1024) keeps low latency for realtime apps while remaining
 # stable for heavy workloads. Zoom manages its own pipeline via PulseAudio.
 #
+# Why ALSA mixer init
+# -------------------
+# On Lenovo AMD laptops with Realtek ALC236, the ALSA hardware volume
+# (Master, Speaker, Headphone) defaults to low levels. Different applications
+# (browsers vs video players) request different PulseAudio volumes, and the
+# low hardware ceiling means some content sounds quiet while others are
+# normal. Setting ALSA levels to 100% at boot ensures PipeWire has the full
+# dynamic range to work with, and the user's volume slider controls the
+# final output consistently.
+#
 ##############################################################################
 
 { config, lib, pkgs, ... }:
 
+let
+  # ALSA mixer initialization script: sets all playback volumes to 100%
+  # so PipeWire has full dynamic range. This runs once at boot before
+  # PipeWire starts, ensuring the hardware mixer is configured.
+  alsa-init = pkgs.writeShellScript "alsa-init" ''
+    # Wait for ALSA cards to appear
+    for i in $(seq 1 10); do
+      if [ -d /proc/asound/card1 ]; then break; fi
+      sleep 0.5
+    done
+
+    # Set all playback volumes to 100% on all cards
+    for card in /proc/asound/card[0-9]*; do
+      card_num=$(basename "$card" | sed 's/card//')
+      # Use amixer if available, otherwise use pactl/pw-cli
+      ${pkgs.alsa-utils}/bin/amixer -c "$card_num" sset Master 100% 2>/dev/null || true
+      ${pkgs.alsa-utils}/bin/amixer -c "$card_num" sset Speaker 100% 2>/dev/null || true
+      ${pkgs.alsa-utils}/bin/amixer -c "$card_num" sset Headphone 100% 2>/dev/null || true
+      ${pkgs.alsa-utils}/bin/amixer -c "$card_num" sset PCM 100% 2>/dev/null || true
+      ${pkgs.alsa-utils}/bin/amixer -c "$card_num" sset Front 100% 2>/dev/null || true
+    done
+  '';
+in
 {
   config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
     # Realtime privileges for PipeWire: the rtkit daemon grants RT policy +
@@ -77,6 +112,43 @@
         "bluez5.enable-sbc-xq" = true;
         "bluez5.enable-msbc" = true;
         "bluez5.codecs" = [ "aac" "ldac" "sbc" ];
+      };
+    };
+
+    # ── WirePlumber: ALSA mixer policy for ALC236 ────────────────────────
+    # Ensure ALSA mixer levels are set to maximum at PipeWire startup.
+    # The ALC236 codec defaults to low volume, causing inconsistent
+    # perceived loudness between browsers (which use PulseAudio volume)
+    # and video players (which may use ALSA directly).
+    services.pipewire.wireplumber.extraConfig."10-alsa-mixer" = {
+      "monitor.alsa.rules" = [{
+        "match" = {
+          "alsa.card_name" = "HD-Audio Generic";
+        };
+        "update-props" = {
+          "api.alsa.mixers.Master" = 100;
+          "api.alsa.mixers.Speaker" = 100;
+          "api.alsa.mixers.Headphone" = 100;
+        };
+      }];
+    };
+
+    # ── ALSA utils (amixer, alsactl) for mixer management ────────────────
+    environment.systemPackages = [ pkgs.alsa-utils ];
+
+    # ── Boot-time ALSA mixer initialization ──────────────────────────────
+    # Runs before PipeWire to set hardware mixer levels to 100%.
+    # This ensures the full dynamic range is available regardless of
+    # which application is producing audio.
+    systemd.services.alsa-init = {
+      description = "Initialize ALSA mixer levels";
+      wantedBy = [ "multi-user.target" ];
+      before = [ "pipewire.service" "pipewire-pulse.service" ];
+      after = [ "sound.target" ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        ExecStart = alsa-init;
       };
     };
   };

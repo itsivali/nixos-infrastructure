@@ -16,10 +16,10 @@ import (
 // Mock implementations for testing
 
 type mockDeploymentService struct {
-	deployFunc  func(ctx context.Context, opts operations.DeployOpts) (*operations.DeploymentRecord, error)
+	deployFunc   func(ctx context.Context, opts operations.DeployOpts) (*operations.DeploymentRecord, error)
 	rollbackFunc func(ctx context.Context, opts operations.RollbackOpts) (*operations.RollbackResult, error)
-	statusFunc  func(ctx context.Context) (*operations.DeploymentRecord, error)
-	historyFunc func(ctx context.Context, limit int) ([]operations.DeploymentRecord, error)
+	statusFunc   func(ctx context.Context) (*operations.DeploymentRecord, error)
+	historyFunc  func(ctx context.Context, limit int) ([]operations.DeploymentRecord, error)
 }
 
 func (m *mockDeploymentService) Deploy(ctx context.Context, opts operations.DeployOpts) (*operations.DeploymentRecord, error) {
@@ -27,13 +27,13 @@ func (m *mockDeploymentService) Deploy(ctx context.Context, opts operations.Depl
 		return m.deployFunc(ctx, opts)
 	}
 	return &operations.DeploymentRecord{
-		ID:        "test-deploy-1",
-		CommitSHA: "abc123",
-		Actor:     "api",
-		Source:    "web-ui",
-		Timestamp: time.Now(),
-		State:     operations.StateComplete,
-		Status:    "deployed",
+		ID:         "test-deploy-1",
+		CommitSHA:  "abc123",
+		Actor:      "api",
+		Source:     "web-ui",
+		Timestamp:  time.Now(),
+		State:      operations.StateComplete,
+		Status:     "deployed",
 		Generation: 42,
 	}, nil
 }

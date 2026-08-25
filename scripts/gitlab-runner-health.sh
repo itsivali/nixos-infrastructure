@@ -46,6 +46,7 @@ set -Eeuo pipefail
 ## Configuration
 ################################################################################
 
+# shellcheck disable=SC2034
 readonly VERSION="3.0.0"
 
 readonly GITOPS_REPO="${GITOPS_REPO:-}"

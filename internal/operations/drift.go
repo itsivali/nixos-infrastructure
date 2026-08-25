@@ -63,7 +63,7 @@ func (d *driftService) Detect(ctx context.Context) (*DriftReport, error) {
 
 func (d *driftService) getRemoteHead(ctx context.Context) string {
 	// Fetch and get remote HEAD
-	exec.CommandContext(ctx, "git", "-C", d.repoDir, "fetch", "--quiet", "origin").Run()
+	_ = exec.CommandContext(ctx, "git", "-C", d.repoDir, "fetch", "--quiet", "origin").Run()
 	out, err := exec.CommandContext(ctx, "git", "-C", d.repoDir, "rev-parse", "origin/main").CombinedOutput()
 	if err != nil {
 		// Fallback to local HEAD
@@ -142,7 +142,7 @@ func (d *driftService) getActiveGeneration(ctx context.Context) int {
 			fields := strings.Fields(line)
 			if len(fields) > 0 {
 				var gen int
-				fmt.Sscanf(fields[0], "%d", &gen)
+				_, _ = fmt.Sscanf(fields[0], "%d", &gen)
 				return gen
 			}
 		}

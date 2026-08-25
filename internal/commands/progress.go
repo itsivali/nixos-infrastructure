@@ -52,13 +52,6 @@ func runWithTimer(t *terminal.Terminal, desc string, fn func() error) error {
 	return err
 }
 
-func runSilent(t *terminal.Terminal, desc, cmdName string, args ...string) error {
-	return runWithTimer(t, desc, func() error {
-		c := exec.Command(cmdName, args...)
-		return c.Run()
-	})
-}
-
 func runWithOutput(t *terminal.Terminal, desc, cmdName string, args ...string) error {
 	return runWithTimer(t, desc, func() error {
 		c := exec.Command(cmdName, args...)

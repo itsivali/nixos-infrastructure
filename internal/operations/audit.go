@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -109,12 +108,7 @@ func CleanAuditLogs(stateDir string, maxDays int) {
 		}
 
 		if info.ModTime().Before(cutoff) {
-			os.Remove(filepath.Join(dir, entry.Name()))
+			_ = os.Remove(filepath.Join(dir, entry.Name()))
 		}
 	}
-}
-
-// unused but available for future use
-func parseDeploymentID(filename string) string {
-	return strings.TrimSuffix(filename, ".json")
 }

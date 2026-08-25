@@ -21,10 +21,10 @@ type fileLock struct {
 
 // deploymentService implements DeploymentService.
 type deploymentService struct {
-	repoDir    string
-	stateDir   string
-	lock       *fileLock
-	audit      AuditLogger
+	repoDir  string
+	stateDir string
+	lock     *fileLock
+	audit    AuditLogger
 }
 
 // NewDeploymentService creates a deployment service rooted at the given directory.
@@ -174,7 +174,7 @@ func (d *deploymentService) Rollback(ctx context.Context, opts RollbackOpts) (*R
 	if err != nil {
 		result.Error = fmt.Sprintf("rollback command failed: %s", string(out))
 		if d.audit != nil {
-			d.audit.Log(ctx, AuditEntry{
+			_ = d.audit.Log(ctx, AuditEntry{
 				Timestamp: startTime,
 				Actor:     opts.Actor,
 				Action:    "rollback",
@@ -205,7 +205,7 @@ func (d *deploymentService) Rollback(ctx context.Context, opts RollbackOpts) (*R
 		if !result.Success {
 			resultStr = "failed"
 		}
-		d.audit.Log(ctx, AuditEntry{
+		_ = d.audit.Log(ctx, AuditEntry{
 			Timestamp:  startTime,
 			Actor:      opts.Actor,
 			Action:     "rollback",
@@ -283,14 +283,14 @@ func (d *deploymentService) AcquireLock(ctx context.Context) (func(), error) {
 	d.lock.fd = fd
 
 	release := func() {
-		syscallFlockUnlock(fd)
+		_ = syscallFlockUnlock(fd)
 		fd.Close()
 	}
 	return release, nil
 }
 
 func (d *deploymentService) saveState(record *DeploymentRecord) {
-	os.MkdirAll(d.stateDir, 0755)
+	_ = os.MkdirAll(d.stateDir, 0755)
 
 	data, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
@@ -298,13 +298,13 @@ func (d *deploymentService) saveState(record *DeploymentRecord) {
 	}
 
 	statePath := filepath.Join(d.stateDir, "last-deploy.json")
-	os.WriteFile(statePath, data, 0644)
+	_ = os.WriteFile(statePath, data, 0644)
 
 	// Also save to history
 	historyDir := filepath.Join(d.stateDir, "history")
-	os.MkdirAll(historyDir, 0755)
+	_ = os.MkdirAll(historyDir, 0755)
 	historyPath := filepath.Join(historyDir, fmt.Sprintf("%s.json", record.ID))
-	os.WriteFile(historyPath, data, 0644)
+	_ = os.WriteFile(historyPath, data, 0644)
 
 	// Keep only last 50 history entries
 	cleanHistory(historyDir, 50)
@@ -314,7 +314,7 @@ func (d *deploymentService) auditDeployment(ctx context.Context, record *Deploym
 	if d.audit == nil {
 		return
 	}
-	d.audit.Log(ctx, AuditEntry{
+	_ = d.audit.Log(ctx, AuditEntry{
 		Timestamp:  record.Timestamp,
 		Actor:      record.Actor,
 		Action:     "deploy",
@@ -339,7 +339,7 @@ func (d *deploymentService) getCurrentGeneration(ctx context.Context) int {
 			fields := strings.Fields(line)
 			if len(fields) > 0 {
 				var gen int
-				fmt.Sscanf(fields[0], "%d", &gen)
+				_, _ = fmt.Sscanf(fields[0], "%d", &gen)
 				return gen
 			}
 		}

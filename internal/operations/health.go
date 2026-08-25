@@ -21,9 +21,9 @@ func NewHealthService(repoDir string) *healthService {
 
 func (h *healthService) Check(ctx context.Context) (*OverallHealth, error) {
 	health := &OverallHealth{
-		Timestamp: time.Now(),
-		Healthy:   true,
-		Status:    "healthy",
+		Timestamp:  time.Now(),
+		Healthy:    true,
+		Status:     "healthy",
 		Components: make(map[string]ComponentHealth),
 	}
 
@@ -204,7 +204,7 @@ func (h *healthService) getCurrentGeneration(ctx context.Context) int {
 			fields := strings.Fields(line)
 			if len(fields) > 0 {
 				var gen int
-				fmt.Sscanf(fields[0], "%d", &gen)
+				_, _ = fmt.Sscanf(fields[0], "%d", &gen)
 				return gen
 			}
 		}

@@ -51,15 +51,15 @@ type DiskHealth struct {
 
 // DeploymentHealth represents the full deployment-health.sh results.
 type DeploymentHealth struct {
-	Timestamp    string           `json:"timestamp"`
-	Host         string           `json:"host"`
-	StrictHealth bool             `json:"strict_health"`
-	Passed       int              `json:"passed"`
-	Warned       int              `json:"warned"`
-	Failed       int              `json:"failed"`
-	Total        int              `json:"total"`
-	Duration     int              `json:"duration_seconds"`
-	Healthy      bool             `json:"-"`
+	Timestamp    string            `json:"timestamp"`
+	Host         string            `json:"host"`
+	StrictHealth bool              `json:"strict_health"`
+	Passed       int               `json:"passed"`
+	Warned       int               `json:"warned"`
+	Failed       int               `json:"failed"`
+	Total        int               `json:"total"`
+	Duration     int               `json:"duration_seconds"`
+	Healthy      bool              `json:"-"`
 	Checks       []DeploymentCheck `json:"checks"`
 }
 

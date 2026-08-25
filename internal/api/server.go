@@ -26,7 +26,7 @@ type Server struct {
 	audit       operations.AuditLogger
 
 	// Security
-	apiToken      string
+	apiToken       string
 	secondaryToken string
 	allowedOrigins []string
 	rateLimiter    *rateLimiter
@@ -90,18 +90,18 @@ func (rl *rateLimiter) allow(key string) bool {
 
 // ServiceRestartAllowlist is the list of services that can be restarted via API
 var ServiceRestartAllowlist = map[string]bool{
-	"operations-web-ui.service":    true,
-	"nginx.service":               true,
-	"prometheus.service":          true,
-	"grafana-server.service":      true,
-	"loki.service":                true,
-	"alertmanager.service":        true,
-	"deployment-health.timer":     true,
-	"gitops-reconciler.timer":     true,
-	"restic-backup.timer":         true,
-	"sshd.service":                true,
-	"tailscaled.service":          true,
-	"NetworkManager.service":      true,
+	"operations-web-ui.service": true,
+	"nginx.service":             true,
+	"prometheus.service":        true,
+	"grafana-server.service":    true,
+	"loki.service":              true,
+	"alertmanager.service":      true,
+	"deployment-health.timer":   true,
+	"gitops-reconciler.timer":   true,
+	"restic-backup.timer":       true,
+	"sshd.service":              true,
+	"tailscaled.service":        true,
+	"NetworkManager.service":    true,
 }
 
 // Valid service name pattern (alphanumeric, hyphens, underscores, dots, @ for template units)
@@ -118,18 +118,18 @@ func NewServer(cfg Config) *Server {
 	}
 
 	return &Server{
-		addr:          cfg.Addr,
-		repoDir:       cfg.RepoDir,
-		deployment:    deploy,
-		health:        operations.NewHealthService(cfg.RepoDir),
-		drift:         operations.NewDriftService(cfg.RepoDir),
-		generations:   operations.NewGenerationService(),
-		services:      operations.NewServiceManager(),
-		audit:         audit,
-		apiToken:      cfg.APIToken,
+		addr:           cfg.Addr,
+		repoDir:        cfg.RepoDir,
+		deployment:     deploy,
+		health:         operations.NewHealthService(cfg.RepoDir),
+		drift:          operations.NewDriftService(cfg.RepoDir),
+		generations:    operations.NewGenerationService(),
+		services:       operations.NewServiceManager(),
+		audit:          audit,
+		apiToken:       cfg.APIToken,
 		secondaryToken: cfg.SecondaryToken,
 		allowedOrigins: allowedOrigins,
-		rateLimiter:   newRateLimiter(10, 100), // 10 req/s, burst of 100
+		rateLimiter:    newRateLimiter(10, 100), // 10 req/s, burst of 100
 	}
 }
 
@@ -209,7 +209,7 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 // auditAuthFailure logs authentication failures
 func (s *Server) auditAuthFailure(r *http.Request, reason string) {
 	if s.audit != nil {
-		s.audit.Log(r.Context(), operations.AuditEntry{
+		_ = s.audit.Log(r.Context(), operations.AuditEntry{
 			Timestamp: time.Now(),
 			Actor:     "api-auth",
 			Action:    "auth_failure",
@@ -303,7 +303,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 
 		if !allowed && origin != "" {
 			w.WriteHeader(http.StatusForbidden)
-			json.NewEncoder(w).Encode(map[string]string{"error": "origin not allowed"})
+			_ = json.NewEncoder(w).Encode(map[string]string{"error": "origin not allowed"})
 			return
 		}
 
@@ -341,7 +341,7 @@ const RequestSizeLimit = 1 << 20 // 1MB
 func (s *Server) writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 func (s *Server) writeError(w http.ResponseWriter, status int, message string) {

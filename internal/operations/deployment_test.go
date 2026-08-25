@@ -176,13 +176,13 @@ func TestDeploymentServiceSaveAndLoadState(t *testing.T) {
 	}
 
 	record := &DeploymentRecord{
-		ID:        "test-20260824-103000-prague",
-		CommitSHA: "abc123def456",
-		Actor:     "web-ui",
-		Source:    "api",
-		Timestamp: time.Date(2026, 8, 24, 10, 30, 0, 0, time.UTC),
-		State:     StateComplete,
-		Status:    "deployed",
+		ID:         "test-20260824-103000-prague",
+		CommitSHA:  "abc123def456",
+		Actor:      "web-ui",
+		Source:     "api",
+		Timestamp:  time.Date(2026, 8, 24, 10, 30, 0, 0, time.UTC),
+		State:      StateComplete,
+		Status:     "deployed",
 		Generation: 42,
 	}
 
@@ -297,17 +297,17 @@ func TestDeploymentServiceLockConcurrency(t *testing.T) {
 	err = syscallFlock(fd2)
 	if err == nil {
 		t.Error("expected flock to fail when lock is held")
-		syscallFlockUnlock(fd2)
+		_ = syscallFlockUnlock(fd2)
 	}
 
 	// Release first lock
-	syscallFlockUnlock(fd1)
+	_ = syscallFlockUnlock(fd1)
 
 	// Now second lock should succeed
 	if err := syscallFlock(fd2); err != nil {
 		t.Errorf("expected flock to succeed after release: %v", err)
 	}
-	syscallFlockUnlock(fd2)
+	_ = syscallFlockUnlock(fd2)
 }
 
 func TestDeploymentServiceCustomDeployBehavior(t *testing.T) {
@@ -352,7 +352,7 @@ func TestCleanHistoryPreservesEntries(t *testing.T) {
 	// Create 45 entries with unique filenames (under limit of 50)
 	for i := 0; i < 45; i++ {
 		filename := filepath.Join(dir, fmt.Sprintf("20260824-1030%02d00-prague.json", i))
-		os.WriteFile(filename, []byte("{}"), 0644)
+		_ = os.WriteFile(filename, []byte("{}"), 0644)
 	}
 
 	cleanHistory(dir, 50)

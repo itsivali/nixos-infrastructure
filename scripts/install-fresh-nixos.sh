@@ -104,6 +104,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # ── Visual style ─────────────────────────────────────────────────────────────
+# shellcheck disable=SC2034
 if [[ -t 1 ]]; then
   C_RESET=$'\033[0m';  C_BOLD=$'\033[1m';   C_DIM=$'\033[2m'
   C_BLUE=$'\033[1;34m'; C_CYAN=$'\033[1;36m'; C_GREEN=$'\033[1;32m'

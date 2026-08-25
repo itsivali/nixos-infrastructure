@@ -15,13 +15,13 @@ func TestAuditLoggerLogCreatesFile(t *testing.T) {
 	logger := &auditLogger{stateDir: dir}
 
 	entry := AuditEntry{
-		Timestamp: time.Date(2026, 8, 24, 10, 30, 0, 0, time.UTC),
-		Actor:     "web-ui",
-		Action:    "deploy",
-		Target:    "abc123",
-		Source:    "api",
-		Result:    "success",
-		CommitSHA: "abc123",
+		Timestamp:  time.Date(2026, 8, 24, 10, 30, 0, 0, time.UTC),
+		Actor:      "web-ui",
+		Action:     "deploy",
+		Target:     "abc123",
+		Source:     "api",
+		Result:     "success",
+		CommitSHA:  "abc123",
 		Generation: 42,
 	}
 
@@ -268,15 +268,15 @@ func TestCleanAuditLogs(t *testing.T) {
 	oldTime := time.Now().AddDate(0, 0, -30)
 	for i := 0; i < 5; i++ {
 		oldFile := filepath.Join(auditDir, oldTime.Format("20060102-150405")+"-deploy.json")
-		os.WriteFile(oldFile, []byte("{}"), 0644)
-		os.Chtimes(oldFile, oldTime, oldTime)
+		_ = os.WriteFile(oldFile, []byte("{}"), 0644)
+		_ = os.Chtimes(oldFile, oldTime, oldTime)
 	}
 
 	// Create recent files
 	recentTime := time.Now()
 	for i := 0; i < 3; i++ {
 		recentFile := filepath.Join(auditDir, recentTime.Format("20060102-150405")+"-rollback.json")
-		os.WriteFile(recentFile, []byte("{}"), 0644)
+		_ = os.WriteFile(recentFile, []byte("{}"), 0644)
 	}
 
 	// Clean old logs (keep 7 days)
@@ -306,7 +306,7 @@ func TestCleanHistoryRemovesOldEntries(t *testing.T) {
 	// Create 60 entries with unique filenames
 	for i := 0; i < 60; i++ {
 		filename := filepath.Join(dir, fmt.Sprintf("20260824-1030%02d00-prague.json", i))
-		os.WriteFile(filename, []byte("{}"), 0644)
+		_ = os.WriteFile(filename, []byte("{}"), 0644)
 	}
 
 	cleanHistory(dir, 50)

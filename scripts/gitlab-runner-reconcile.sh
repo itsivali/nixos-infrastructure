@@ -26,7 +26,6 @@ TRIGGER="${TRIGGER:-timer}"
 STATE_FILE="/var/lib/gitlab-runner/reconcile-state.json"
 
 # Capture full output for structured report
-OUTPUT=""
 REPORT=""
 FAILURES=0
 STEPS=()
@@ -71,11 +70,9 @@ fi
 ##############################################################################
 
 log "[1/5] Token check"
-TOKEN_STATUS="missing"
 
 if [[ -f "$TOKEN_FILE" ]]; then
   log "  ✓ Token file present at ${TOKEN_FILE}"
-  TOKEN_STATUS="present"
   append_report "  ✅ Token: present"
 else
   log "  ⚠ Token file missing — sops may not have mounted it"
@@ -88,8 +85,6 @@ fi
 
 log "[2/5] Service recovery"
 
-SERVICE_RESTARTED=false
-
 if systemctl is-active --quiet gitlab-runner.service; then
   log "  ✓ gitlab-runner already active"
   STEPS+=("{\"name\":\"service-check\",\"status\":\"ok\"}")
@@ -97,7 +92,6 @@ if systemctl is-active --quiet gitlab-runner.service; then
 else
   run_step "Enable gitlab-runner" systemctl enable gitlab-runner.service
   run_step "Restart gitlab-runner" systemctl restart gitlab-runner.service
-  SERVICE_RESTARTED=true
   sleep 2
 
   if systemctl is-active --quiet gitlab-runner.service; then

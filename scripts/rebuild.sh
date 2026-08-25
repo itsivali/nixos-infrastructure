@@ -11,20 +11,15 @@ HOST="${HOST_NAME:-$(hostname)}"
 
 # -- Theme -------------------------------------------------------------------
 
+# shellcheck disable=SC2034
 BOLD="\033[1m"
 DIM="\033[2m"
 ITALIC="\033[3m"
-UNDERLINE="\033[4m"
 GREEN="\033[32m"
 YELLOW="\033[33m"
 RED="\033[31m"
 CYAN="\033[36m"
-MAGENTA="\033[35m"
-BLUE="\033[34m"
 WHITE="\033[97m"
-BG_GREEN="\033[42m"
-BG_RED="\033[41m"
-BG_BLUE="\033[44m"
 RESET="\033[0m"
 
 # -- Icons -------------------------------------------------------------------
@@ -44,14 +39,10 @@ ICON_SVC="🚀"
 ICON_STOP="🛑"
 ICON_START="▶️"
 ICON_DONE="✅"
-ICON_FAIL="❌"
-ICON_WARN="⚠️"
 ICON_ERR="💥"
 ICON_HOURGLASS="⏳"
 ICON_ROCKET="🚀"
-ICON_SHIELD="🛡️"
 ICON_CLOCK="⏱️"
-ICON_DISK="💿"
 ICON_NETWORK="🌐"
 
 # -- Helpers -----------------------------------------------------------------
@@ -243,14 +234,14 @@ sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace 2>&1 | whil
       name=$(echo "$line" | sed "s/.*copying path '\(.*\)'.*/\1/" | sed "s|/nix/store/[a-z0-9]*-||" | cut -c1-60)
       echo -e "  ${DIM}│${RESET}  ${ICON_COPY}  ${DIM}${name}${RESET}"
       ;;
-    *"fetching"*|*"downloading"*|*"unpacking"*)
-      echo -e "  ${DIM}│${RESET}  ${ICON_FETCH}  ${DIM}${line}${RESET}"
+    *"hierarchical fetching"*)
+      echo -e "  ${DIM}│${RESET}  ${ICON_NETWORK}  Fetching dependencies..."
       ;;
     *" flakes:"*)
       echo -e "  ${DIM}│${RESET}  ${ICON_NETWORK}  Resolving flake inputs..."
       ;;
-    *"hierarchical fetching"*)
-      echo -e "  ${DIM}│${RESET}  ${ICON_NETWORK}  Fetching dependencies..."
+    *"fetching"*|*"downloading"*|*"unpacking"*)
+      echo -e "  ${DIM}│${RESET}  ${ICON_FETCH}  ${DIM}${line}${RESET}"
       ;;
     *"computing new closure"*)
       echo -e "  ${DIM}│${RESET}  ${ICON_HOURGLASS}  Computing new system closure..."
@@ -262,7 +253,7 @@ sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace 2>&1 | whil
       drv=$(echo "$line" | sed "s/.*building '\(.*\)'.*/\1/" | sed "s|/nix/store/[a-z0-9]*-||" | cut -c1-55)
       echo -e "  ${DIM}│${RESET}  ${ICON_HOOK}  ${DIM}${drv}${RESET}"
       ;;
-    *"running patch"*|*"running configure"*|*"running build"*|*"running install"*|*"running fixup"*|*"running patchelf"*)
+    *"running patchelf"*|*"running patch"*|*"running configure"*|*"running build"*|*"running install"*|*"running fixup"*)
       echo -e "  ${DIM}│${RESET}  ${ICON_HOOK}  ${DIM}${line}${RESET}"
       ;;
     *"activating the configuration"*)

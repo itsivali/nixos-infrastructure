@@ -183,7 +183,7 @@ Contribution Guidelines:
 
 	switch changeType {
 	case "feature":
-		return base + fmt.Sprintf(`
+		return base + `
 INSTRUCTIONS — FEATURE IMPLEMENTATION:
 
 1. Identify which domain this feature belongs to (from the architecture manifest)
@@ -210,10 +210,10 @@ INSTRUCTIONS — FEATURE IMPLEMENTATION:
    - go vet ./...
 
 The feature must be: production-grade, tested, documented, and follow existing patterns.
-Do NOT leave any TODOs, placeholders, or stub implementations.`)
+Do NOT leave any TODOs, placeholders, or stub implementations.`
 
 	case "bugfix":
-		return base + fmt.Sprintf(`
+		return base + `
 INSTRUCTIONS — BUGFIX IMPLEMENTATION:
 
 1. Analyze the bug description to understand the root cause
@@ -233,10 +233,10 @@ INSTRUCTIONS — BUGFIX IMPLEMENTATION:
 6. Update documentation if the fix changes public behavior
 
 The fix must be: minimal, targeted, tested, and documented.
-Do NOT refactor unrelated code. Do NOT add features.`)
+Do NOT refactor unrelated code. Do NOT add features.`
 
 	case "module":
-		return base + fmt.Sprintf(`
+		return base + `
 INSTRUCTIONS — NixOS/HOME MANAGER MODULE:
 
 1. Determine module type:
@@ -271,10 +271,10 @@ INSTRUCTIONS — NixOS/HOME MANAGER MODULE:
    - go build ./...
 
 The module must be: production-grade, tested, documented, and follow existing patterns.
-Do NOT leave any TODOs, placeholders, or stub implementations.`)
+Do NOT leave any TODOs, placeholders, or stub implementations.`
 
 	case "security":
-		return base + fmt.Sprintf(`
+		return base + `
 INSTRUCTIONS — SECURITY HARDENING:
 
 1. Identify the security concern from the description
@@ -308,10 +308,10 @@ INSTRUCTIONS — SECURITY HARDENING:
    - gosec -exclude-generated ./...
 
 The security change must be: thorough, tested, documented, and follow security best practices.
-Do NOT leave any TODOs, placeholders, or incomplete hardening.`)
+Do NOT leave any TODOs, placeholders, or incomplete hardening.`
 
 	case "architecture":
-		return base + fmt.Sprintf(`
+		return base + `
 INSTRUCTIONS — ARCHITECTURE CHANGE:
 
 1. Understand the current architecture from architecture/domains.yaml
@@ -340,10 +340,10 @@ INSTRUCTIONS — ARCHITECTURE CHANGE:
    - nix flake check --no-build
 
 The architecture change must be: well-planned, tested, documented, and follow the domain hierarchy.
-Do NOT break existing functionality. Do NOT introduce circular dependencies.`)
+Do NOT break existing functionality. Do NOT introduce circular dependencies.`
 
 	case "docs":
-		return base + fmt.Sprintf(`
+		return base + `
 INSTRUCTIONS — DOCUMENTATION UPDATE:
 
 1. Identify which documentation needs updating
@@ -367,15 +367,15 @@ INSTRUCTIONS — DOCUMENTATION UPDATE:
    - go vet ./...
 
 The documentation must be: accurate, complete, and follow existing patterns.
-Do NOT leave any TODOs or placeholder text.`)
+Do NOT leave any TODOs or placeholder text.`
 
 	default:
-		return base + fmt.Sprintf(`
+		return base + `
 INSTRUCTIONS:
 
 Implement the change described above. Follow all repository conventions.
 Write tests, update documentation, and ensure all verification gates pass.
-Do NOT leave any TODOs, placeholders, or stub implementations.`)
+Do NOT leave any TODOs, placeholders, or stub implementations.`
 	}
 }
 
@@ -721,32 +721,12 @@ Examples:
 			}
 
 			return nil
-		},		}
+		}}
 
-		var implement bool
-		addAIFlag(cmd)
-		cmd.Flags().BoolVar(&implement, "implement", false, "Call AI (opencode) to write the code for this change")
-		return cmd
-	}
-
-// promptSelect shows a numbered menu and returns the selection.
-func promptSelect(t *terminal.Terminal, label string, options []string) string {
-	fmt.Println()
-	fmt.Println(label)
-	for i, opt := range options {
-		fmt.Printf("    %d) %s\n", i+1, opt)
-	}
-	fmt.Println()
-	reader := bufio.NewReader(os.Stdin)
-	fmt.Printf("  Select: ")
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
-	idx := 0
-	fmt.Sscanf(input, "%d", &idx)
-	if idx < 1 || idx > len(options) {
-		return ""
-	}
-	return options[idx-1]
+	var implement bool
+	addAIFlag(cmd)
+	cmd.Flags().BoolVar(&implement, "implement", false, "Call AI (opencode) to write the code for this change")
+	return cmd
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1005,10 +985,10 @@ In AI mode, description must be provided as argument.`,
 
 			if f.aiMode {
 				result := map[string]string{
-					"action":    "commit",
-					"type":      commitType,
-					"message":   commitMsg,
-					"branch":    branch,
+					"action":  "commit",
+					"type":    commitType,
+					"message": commitMsg,
+					"branch":  branch,
 				}
 				data, _ := json.MarshalIndent(result, "", "  ")
 				fmt.Println(string(data))
@@ -1421,9 +1401,9 @@ In AI mode, automatically polls CI until it passes before merging.`,
 			}
 
 			var mrs []struct {
-				IID          int    `json:"iid"`
-				Title        string `json:"title"`
-				Pipeline     *struct {
+				IID      int    `json:"iid"`
+				Title    string `json:"title"`
+				Pipeline *struct {
 					Status string `json:"status"`
 				} `json:"head_pipeline"`
 			}
@@ -1510,7 +1490,7 @@ In AI mode, automatically polls CI until it passes before merging.`,
 
 			// Show MR
 			f.stepStart("MR details")
-			gitRun(f.repoDir, "glab", "mr", "view", mrIID)
+			_, _ = gitRun(f.repoDir, "glab", "mr", "view", mrIID)
 			f.stepDone()
 
 			if !f.confirm("  Merge this MR?") {
@@ -1619,7 +1599,7 @@ Flags:
 			branch, _ := gitBranch(f.repoDir)
 			if branch != "main" {
 				f.stepInfo("Switching to main...")
-				gitRun(f.repoDir, "git", "checkout", "main")
+				_, _ = gitRun(f.repoDir, "git", "checkout", "main")
 			}
 			f.stepOK("On main")
 			f.stepDone()
@@ -1756,8 +1736,6 @@ Flags:
 	return cmd
 }
 
-
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FLOW ROLLBACK
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1862,12 +1840,12 @@ Examples:
 
 			if f.aiMode {
 				resultJSON := map[string]interface{}{
-					"action":     "rollback",
-					"success":    result.Success,
-					"from_gen":   result.FromGen,
-					"to_gen":     result.ToGen,
-					"health":     result.HealthPassed,
-					"duration":   elapsed.String(),
+					"action":   "rollback",
+					"success":  result.Success,
+					"from_gen": result.FromGen,
+					"to_gen":   result.ToGen,
+					"health":   result.HealthPassed,
+					"duration": elapsed.String(),
 				}
 				data, _ := json.MarshalIndent(resultJSON, "", "  ")
 				fmt.Println(string(data))
@@ -2058,7 +2036,7 @@ Examples:
 				"--source-branch", branch, "--state", "opened", "--output", "json")
 			if listErr == nil {
 				var mrs []struct {
-					IID      int    `json:"iid"`
+					IID      int `json:"iid"`
 					Pipeline *struct {
 						Status string `json:"status"`
 					} `json:"head_pipeline"`
@@ -2089,10 +2067,10 @@ Examples:
 
 			if f.aiMode {
 				result := map[string]string{
-					"action":   "quick",
-					"branch":   branch,
-					"commit":   commitMsg,
-					"mr":       mrURL,
+					"action": "quick",
+					"branch": branch,
+					"commit": commitMsg,
+					"mr":     mrURL,
 				}
 				data, _ := json.MarshalIndent(result, "", "  ")
 				fmt.Println(string(data))

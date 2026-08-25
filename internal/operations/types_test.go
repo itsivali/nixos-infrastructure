@@ -35,20 +35,20 @@ func TestDeploymentStateConstants(t *testing.T) {
 func TestDeploymentRecordJSON(t *testing.T) {
 	now := time.Now()
 	record := &DeploymentRecord{
-		ID:            "20260824-103000-prague",
-		CommitSHA:     "abc123def456",
-		PreviousSHA:   "789012345678",
-		Generation:    42,
-		PreviousGen:   41,
-		Actor:         "web-ui",
-		Source:        "api",
-		Timestamp:     now,
-		State:         StateComplete,
-		Status:        "deployed",
-		HealthResult:  "passed",
-		Duration:      "2m30s",
-		Changelog:     "fix: resolve firewall issue",
-		ChangedFiles:  "security/firewall.nix\nhosts/prague.nix",
+		ID:           "20260824-103000-prague",
+		CommitSHA:    "abc123def456",
+		PreviousSHA:  "789012345678",
+		Generation:   42,
+		PreviousGen:  41,
+		Actor:        "web-ui",
+		Source:       "api",
+		Timestamp:    now,
+		State:        StateComplete,
+		Status:       "deployed",
+		HealthResult: "passed",
+		Duration:     "2m30s",
+		Changelog:    "fix: resolve firewall issue",
+		ChangedFiles: "security/firewall.nix\nhosts/prague.nix",
 	}
 
 	// Test JSON serialization
@@ -162,8 +162,8 @@ func TestRollbackOpts(t *testing.T) {
 
 func TestRollbackResultSemantics(t *testing.T) {
 	tests := []struct {
-		name         string
-		result       RollbackResult
+		name          string
+		result        RollbackResult
 		expectSuccess bool
 	}{
 		{

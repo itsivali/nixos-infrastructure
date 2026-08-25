@@ -37,7 +37,8 @@ status_field() { status_json | jq -r ".$1" 2>/dev/null || echo "unknown"; }
 
 load_session() {
   [[ -f "$SESSION_FILE" ]] || return 1
-  export BW_SESSION="$(<"$SESSION_FILE")"
+  BW_SESSION="$(<"$SESSION_FILE")"
+  export BW_SESSION
 }
 
 save_session() {

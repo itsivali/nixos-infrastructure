@@ -68,7 +68,25 @@ a beautiful interactive terminal experience.`,
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "verbose output")
 	root.PersistentFlags().BoolVarP(&jsonOutput, "json", "j", false, "JSON output")
 
-	root.SetHelpTemplate(rootHelp(a))
+	root.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if cmd == root {
+			fmt.Fprint(cmd.OutOrStdout(), rootHelp(a))
+			return
+		}
+		// For subcommands, render cobra's default help: Long/Short + UsageString
+		usage := cmd.Long
+		if usage == "" {
+			usage = cmd.Short
+		}
+		usage = strings.TrimRight(usage, " \t\n\r")
+		if usage != "" {
+			fmt.Fprintln(cmd.OutOrStdout(), usage)
+			fmt.Fprintln(cmd.OutOrStdout())
+		}
+		if cmd.Runnable() || cmd.HasSubCommands() {
+			fmt.Fprint(cmd.OutOrStdout(), cmd.UsageString())
+		}
+	})
 
 	root.AddCommand(
 		CmdAI(a),
@@ -223,7 +241,12 @@ func rootHelp(a *app.App) string {
 		{
 			Title: "AI Systems",
 			Commands: []string{
-				"ai                AI orchestration and routing",
+				"ai implement      Guided AI implementation workflow",
+				"ai validate       Run all verification gates",
+				"ai commit         Stage and commit with conventional message",
+				"ai push           Push branch to GitLab",
+				"ai mr             Create merge request",
+				"ai quick          Single-shot: validate → commit → push → MR",
 				"ai status         Show AI system availability",
 				"ai route          Route a task to the appropriate AI",
 			},

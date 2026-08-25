@@ -57,7 +57,7 @@ architecture-check:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - go build -o /tmp/check-architecture ./cmd/check-architecture/
-    - /tmp/check-architecture/
+    - /tmp/check-architecture
   artifacts:
     when: always
     paths:

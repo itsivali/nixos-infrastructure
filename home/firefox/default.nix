@@ -8,7 +8,7 @@
 #   * Arkenfox-lite privacy/telemetry hardening (logins preserved)
 #   * Performance: Webrender + VAAPI + HTTP/3
 #   * Gruvbox-dark, compact UI via userChrome.css
-#   * Declarative extensions (uBlock Origin, Bitwarden, Dark Reader, Sidebery)
+#   * Declarative extensions (Sidebery)
 #   * Native sidebar (always-visible) + Sidebery tab tree
 #   * Profile lives as a plain directory (/home/ivali/.mozilla/firefox/ivali)
 #     on the /home btrfs subvolume, so sessions persist across rebuilds.
@@ -129,9 +129,6 @@ let
     in { inherit pkg; id = pkg.extid; };
 
   addons = {
-    ublock-origin = mkAddon "ublock-origin" "https://addons.mozilla.org/firefox/downloads/latest/ublock-origin/latest.xpi" "bccc51a773150af4af6e1fd62c7bfdeb7238b79ff2381b998fa9f2e38f64786a";
-    bitwarden-password-manager = mkAddon "bitwarden-password-manager" "https://addons.mozilla.org/firefox/downloads/latest/bitwarden-password-manager/latest.xpi" "11836eb9d2abc9914bb337b57e20c5a09cf44f24fa572f7e886384fd350a5112";
-    darkreader = mkAddon "darkreader" "https://addons.mozilla.org/firefox/downloads/latest/darkreader/latest.xpi" "f4f047fe08e420b6d29617738ea00a7b784892b2262b7e6f38dd09b8ee958a44";
     sidebery = mkAddon "sidebery" "https://addons.mozilla.org/firefox/downloads/latest/sidebery/latest.xpi" "1wnalq1n2dq479lad3h64c106609knpic63wi4vdazdbasss9878";
   };
 in
@@ -170,8 +167,8 @@ in
         "datareporting.policy.dataSubmissionEnabled" = false;
         "browser.shell.checkDefaultBrowser" = false;
 
-        # Auto-enable declarative extensions (uBlock, Bitwarden, Dark Reader,
-        # Sidebery) instead of leaving them installed-but-disabled.
+        # Auto-enable declarative extensions (Sidebery)
+        # instead of leaving them installed-but-disabled.
         "extensions.autoDisableScopes" = 0;
 
         "browser.pocket.enabled" = false;

@@ -92,7 +92,7 @@
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
       name = "Terminal";
       command = "gnome-terminal";
-      binding = "<Shift>Return";
+      binding = "<Ctrl>period";
     };
 
     "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom1" = {

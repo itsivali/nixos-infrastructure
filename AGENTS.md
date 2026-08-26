@@ -143,7 +143,20 @@ git commit -m "..."
 
 If a gate fails after a commit, fix the issue and create a new commit; do not amend the failed one.
 
-### 3.5 Testing Requirements
+### 3.5 MR Reconciliation (Mandatory)
+
+Every MR created via `ivali flow` **must be reconciled to `main`** before the task is considered complete. The `ivali flow` workflow is not finished until the branch is merged.
+
+1. **`ivali flow mr`** — creates the merge request from the feature branch.
+2. **`ivali flow pipeline`** — monitor CI until all jobs pass (or use `ivali flow merge --ai` which polls automatically).
+3. **`ivali flow merge`** — merge the MR into `main` once CI is green. In AI mode (`--ai`), this polls the pipeline until it passes, then merges.
+4. If the GitLab runner is down or CI cannot run, escalate to the operator — do not merge without a passing pipeline unless explicitly authorized.
+
+**Why this rule exists:** An unmerged MR is unfinished work. The repository must stay in a state where `main` always reflects the latest accepted changes. Orphaned branches and open MRs accumulate technical debt.
+
+**Enforcement:** If an agent creates an MR but does not merge it (or document why it cannot be merged), the agent has violated this contract. The task is incomplete until the branch is reconciled.
+
+### 3.6 Testing Requirements
 
 Every code change must be verified before committing. No exceptions.
 
@@ -474,6 +487,7 @@ The following must NEVER happen:
 Do not simply produce an architecture document. Do not simply recommend a new directory structure. Actually: AUDIT → MODEL → GRAPH → DESIGN → IMPLEMENT → TEST → ENFORCE → DOCUMENT.
 
 The repository must end up with architectural boundaries that are: explicit, testable, reproducible, enforceable, maintainable. The ultimate goal is: a developer or LLM can modify one subsystem without accidentally coupling, breaking, or modifying unrelated subsystems — and CI automatically prevents architectural regression.
+
 
 
 

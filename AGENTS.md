@@ -80,7 +80,7 @@ Manual intervention is forbidden. The entire system must be reproducible from th
 
 - **Declarative Only:** Do not use imperative commands (`pip install`, `apt get`, `npm install -g`) to solve problems. If it is not in the Nix configuration, it does not exist.
 - **State Management:** Any required state directories must be explicitly defined and handled via `tmpfs` or standard persistent storage declarations.
-- **Stash Before Rebase:** Always `git stash` local changes before running `git rebase`, `git pull --rebase`, or any operation that rewrites history. Pop the stash immediately after. Never rebase with unstaged changes — Git will refuse and the workflow stalls.
+- **Stash Before Rebase:** Always `git stash` local changes before running `git pull --rebase`, `git rebase`, or any operation that rewrites history. Pop the stash immediately after. Never rebase with unstaged changes — Git will refuse and the workflow stalls.
 
 ### 3.2 Verification Gates
 

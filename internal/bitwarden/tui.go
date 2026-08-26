@@ -317,17 +317,15 @@ func (m *tuiModel) initUnlockModel() {
 		m.unlock.activeField = 1
 	}
 
-	// Read SOPS password if present
-	sopsPassPath := "/run/secrets/bitwarden_password"
-	if data, err := os.ReadFile(sopsPassPath); err == nil && len(strings.TrimSpace(string(data))) > 0 {
+	// Read SOPS password if present (via BW_MASTER_PASSWORD_FILE env var)
+	if password, err := ReadMasterPasswordFromFile(); err == nil && password != "" {
 		m.unlock.hasSopsPass = true
-		m.unlock.sopsPass = strings.TrimSpace(string(data))
+		m.unlock.sopsPass = password
 	}
 
-	// Read SOPS email if present
-	sopsEmailPath := "/run/secrets/bitwarden_email"
-	if data, err := os.ReadFile(sopsEmailPath); err == nil && len(strings.TrimSpace(string(data))) > 0 {
-		m.unlock.email = []rune(strings.TrimSpace(string(data)))
+	// Read SOPS email if present (via BW_SOPS_EMAIL_FILE env var)
+	if email, err := ReadSopsEmailFromFile(); err == nil && email != "" {
+		m.unlock.email = []rune(email)
 	}
 }
 

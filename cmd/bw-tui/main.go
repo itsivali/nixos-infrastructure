@@ -46,12 +46,23 @@ func runCommand(env *bitwarden.Env, args []string) {
 
 	switch args[0] {
 	case "unlock":
-		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "Usage: bw unlock <password>")
-			fmt.Fprintln(os.Stderr, "       bw unlock          (prompt)")
+		password := ""
+		if len(args) >= 2 {
+			password = args[1]
+		} else {
+			// No password arg — try reading from SOPS secret file
+			sopsPass, err := bitwarden.ReadMasterPasswordFromFile()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: %v\n", err)
+			}
+			password = sopsPass
+		}
+		if password == "" {
+			fmt.Fprintln(os.Stderr, "Usage: bw-tui unlock <password>")
+			fmt.Fprintln(os.Stderr, "       bw-tui unlock        (reads from BW_MASTER_PASSWORD_FILE)")
 			os.Exit(1)
 		}
-		session, err := client.Unlock(args[1])
+		session, err := client.Unlock(password)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)

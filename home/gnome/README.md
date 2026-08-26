@@ -1,7 +1,7 @@
 # home/gnome
 
 Per-user GNOME desktop configuration (strictly unprivileged, declarative dconf
-only). Imported by `home/default.nix` when the host enables
+  only). Imported by `home/default.nix` when the host enables
 `ivali.desktop.gnome`.
 
 ## Purpose
@@ -34,17 +34,17 @@ Key dconf paths written:
 ## Troubleshooting
 
 - **Extension not loading:** confirm the extension *package* is installed
-  (`desktop/gnome/extensions.nix`), the UUID is in `enabled-extensions`, then
-  run `gnome-extensions enable <uuid>` once and re-login.
+(`desktop/gnome/extensions.nix`), the UUID is in `enabled-extensions`, then
+run `gnome-extensions enable <uuid>` once and re-login.
 - **Shell theme not applying:** confirm `gnome-shell-gruvbox-theme` is
-  installed (`nix build .#gnome-shell-gruvbox-theme`), the user-themes
-  extension is enabled, and
-  `org.gnome.shell.extensions.user-theme.name` is `gruvbox-shell`.
+installed (`nix build .#gnome-shell-gruvbox-theme`), the user-themes
+extension is enabled, and
+`org.gnome.shell.extensions.user-theme.name` is `gruvbox-shell`.
 - **Settings not applied:** the dconf service is enabled automatically when
-  `dconf.settings` is populated — `systemctl --user status dconf-service`.
+`dconf.settings` is populated — `systemctl --user status dconf-service`.
 - **dconf "unknown key" warnings:** schema keys are version-sensitive; the
-  values here were verified against GNOME 50 at the pinned nixpkgs rev. On a
-  newer rev, re-verify with `gsettings list-keys <schema>`.
+values here were verified against GNOME 50 at the pinned nixpkgs rev. On a
+newer rev, re-verify with `gsettings list-keys <schema>`.
 
 ## Keyboard Shortcuts
 
@@ -54,7 +54,7 @@ All shortcuts are designed for right-hand accessibility.
 
 | Shortcut | Action |
 |----------|--------|
-| `Shift+Enter` | Launch GNOME Terminal |
+| `Ctrl+.` | Launch GNOME Terminal |
 | `Super+B` | Launch Firefox |
 | `Super+E` | Launch Nautilus (Files) |
 | `Super+Q` | Close window |

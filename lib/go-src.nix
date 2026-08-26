@@ -41,7 +41,7 @@ lib.cleanSourceWith {
     let
       base = builtins.baseNameOf name;
     in
-    type == "directory"
+    (type == "directory" && base != "vendor")
     || lib.hasSuffix ".go" base
     || base == "go.mod" || base == "go.sum"
     || base == "go.work" || base == "go.work.sum"

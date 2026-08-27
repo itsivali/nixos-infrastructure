@@ -88,12 +88,8 @@ go-security:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - export GOBIN=$CI_PROJECT_DIR/.bin
-    - export PATH=$GOBIN:$PATH
-    - mkdir -p $GOBIN
-    - go install github.com/securego/gosec/v2/cmd/gosec@latest
-    - gosec -fmt=golint -exclude-generated ./...
-    - gosec -fmt=sarif -out=gosec-results.sarif -exclude-generated ./...
+    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated ./...
+    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated ./...
   artifacts:
     when: always
     reports:

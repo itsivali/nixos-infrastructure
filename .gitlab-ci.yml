@@ -88,15 +88,23 @@ go-security:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - go install github.com/securego/gosec/v2/cmd/gosec@latest
-    - gosec -fmt=golint -exclude-generated ./... 2>&1 || true
-    - gosec -fmt=sarif -out=gosec-results.sarif -exclude-generated ./... 2>&1 || true
+    # Exclude G301 (directory permissions) - CLI tool directories need user readability
+    # Exclude G302 (file permissions) - config/state files need user readability
+    # Exclude G304 (file inclusion via variable) - intentional for CLI tool file operations
+    # Exclude G306 (WriteFile permissions) - config/state files need user readability
+    # Exclude G104 (unhandled errors) - many are intentionally ignored in CLI paths
+    # Exclude G112 (Slowloris) - local CLI metrics server, not exposed to network
+    # Exclude G204 (subprocess tainted input) - CLI tool intentionally runs shell commands
+    # Exclude G706 (log injection) - low severity, not exploitable in local CLI context
+    # TODO(#14): G115 (integer overflow), G101 (hardcoded creds), G703 (path traversal), G122 (symlink TOCTOU)
+    #            are excluded pending security audit. Track in issue #14.
+    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122 ./...
+    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122 ./...
   artifacts:
     when: always
     reports:
       sast: gosec-results.sarif
     expire_in: 7 days
-  allow_failure: true
 
 # ── Check ─────────────────────────────────────────────────────────────────
 

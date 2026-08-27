@@ -2021,9 +2021,18 @@ Examples:
 				fn   func() (string, error)
 			}
 			gates := []gateEntry{
+				{"nix fmt", func() (string, error) { return gitRun(f.repoDir, "nix", "fmt", "--", "--check", ".") }},
+				{"shellcheck", func() (string, error) {
+					out, err := gitRun(f.repoDir, "shellcheck", "--severity=warning")
+					if err != nil && strings.Contains(out, "No such file") {
+						return "", nil
+					}
+					return out, err
+				}},
 				{"go build", func() (string, error) { return gitRun(f.repoDir, "go", "build", "./...") }},
 				{"go vet", func() (string, error) { return gitRun(f.repoDir, "go", "vet", "./...") }},
 				{"go test -race", func() (string, error) { return gitRun(f.repoDir, "go", "test", "-race", "-count=1", "./...") }},
+				{"nix flake check", func() (string, error) { return gitRun(f.repoDir, "nix", "flake", "check", "--no-build") }},
 			}
 
 			gateFailed := false
@@ -2395,9 +2404,17 @@ Examples:
 			}
 			gates := []gateEntry{
 				{"nix fmt", func() (string, error) { return gitRun(f.repoDir, "nix", "fmt", "--", "--check", ".") }},
+				{"shellcheck", func() (string, error) {
+					out, err := gitRun(f.repoDir, "shellcheck", "--severity=warning")
+					if err != nil && strings.Contains(out, "No such file") {
+						return "", nil
+					}
+					return out, err
+				}},
 				{"go build", func() (string, error) { return gitRun(f.repoDir, "go", "build", "./...") }},
 				{"go vet", func() (string, error) { return gitRun(f.repoDir, "go", "vet", "./...") }},
 				{"go test -race", func() (string, error) { return gitRun(f.repoDir, "go", "test", "-race", "-count=1", "./...") }},
+				{"nix flake check", func() (string, error) { return gitRun(f.repoDir, "nix", "flake", "check", "--no-build") }},
 			}
 
 			gateFailed := false

@@ -165,6 +165,22 @@ func gitRun(repoDir, name string, args ...string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
+// gitCommit runs git commit with mandatory Willis Ivali authorship.
+func gitCommit(repoDir, msg string) (string, error) {
+	cmd := exec.Command("git", "commit", "-m", msg)
+	if repoDir != "" {
+		cmd.Dir = repoDir
+	}
+	cmd.Env = append(os.Environ(),
+		"GIT_AUTHOR_NAME=Willis Ivali",
+		"GIT_AUTHOR_EMAIL=itsivali@outlook.com",
+		"GIT_COMMITTER_NAME=Willis Ivali",
+		"GIT_COMMITTER_EMAIL=itsivali@outlook.com",
+	)
+	out, err := cmd.CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
 // runAITool tries opencode first, then falls back to freebuff.
 // Both tools receive the same prompt and run in repoDir.
 // Returns the tool name used and any error.
@@ -1012,7 +1028,7 @@ In AI mode, description must be provided as argument.`,
 
 			// Commit
 			f.stepStart("Committing")
-			if out, err := gitRun(f.repoDir, "git", "commit", "-m", commitMsg); err != nil {
+			if out, err := gitCommit(f.repoDir, commitMsg); err != nil {
 				f.stepFail(fmt.Sprintf("Failed: %s", out))
 				f.stepFailed()
 				return fmt.Errorf("failed to commit: %s", out)
@@ -2075,7 +2091,7 @@ Examples:
 			}
 
 			// Commit
-			if out, err := gitRun(f.repoDir, "git", "commit", "-m", commitMsg); err != nil {
+			if out, err := gitCommit(f.repoDir, commitMsg); err != nil {
 				f.stepFail(fmt.Sprintf("Failed: %s", out))
 				f.stepFailed()
 				return fmt.Errorf("failed to commit: %s", out)
@@ -2444,7 +2460,7 @@ Examples:
 				f.stepInfo("No changes to commit — all changes may already be committed.")
 				f.stepDone()
 			} else {
-				if out, err := gitRun(f.repoDir, "git", "commit", "-m", commitMsg); err != nil {
+				if out, err := gitCommit(f.repoDir, commitMsg); err != nil {
 					f.stepFail(fmt.Sprintf("Failed: %s", out))
 					f.stepFailed()
 					return fmt.Errorf("failed to commit: %s", out)

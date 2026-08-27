@@ -97,7 +97,7 @@ This document defines the engineering contract for every AI agent and human deve
 - **Feature Branches:** `feature/*`, `bugfix/*`, `module/*`, `security/*`
 - **No Direct Pushes:** All changes flow through merge requests
 - **CI Must Pass:** Before merge is allowed
-- **Commit Authorship:** All commits must be authored as `Willis Ivali <ivali@users.noreply.gitlab.com>`. AI agents must NOT add branding or co-author tags to commit messages.
+- **Commit Authorship:** All commits must be authored as `Willis Ivali <itsivali@outlook.com>`. AI agents must NOT add branding or co-author tags to commit messages.
 
 ### Module Boundaries
 

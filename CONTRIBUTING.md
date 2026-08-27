@@ -70,12 +70,12 @@ shellcheck scripts/*.sh
 
 ```bash
 git add -p  # Stage specific changes
-GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="ivali@users.noreply.gitlab.com" \
-GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="ivali@users.noreply.gitlab.com" \
+GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="itsivali@outlook.com" \
+GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="itsivali@outlook.com" \
 git commit -m "type(scope): description"
 ```
 
-**Commit Authorship (MANDATORY):** All commits must be authored as `Willis Ivali <ivali@users.noreply.gitlab.com>`. AI agents must NOT add branding or co-author tags.
+**Commit Authorship (MANDATORY):** All commits must be authored as `Willis Ivali <itsivali@outlook.com>`. AI agents must NOT add branding or co-author tags.
 
 Commit format: `type(scope): description`
 - Types: feat, fix, module, security, arch, docs, test, chore

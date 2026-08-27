@@ -88,6 +88,7 @@ go-security:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
+    - export PATH=$PATH:$(go env GOPATH)/bin
     - go install github.com/securego/gosec/v2/cmd/gosec@latest
     - gosec -fmt=golint -exclude-generated ./...
     - gosec -fmt=sarif -out=gosec-results.sarif -exclude-generated ./...

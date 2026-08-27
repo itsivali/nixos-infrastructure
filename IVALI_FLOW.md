@@ -798,7 +798,7 @@ All commits must use:
 
 ```text
 Author:
-Willis Ivali <ivali@users.noreply.gitlab.com>
+Willis Ivali <itsivali@outlook.com>
 ```
 
 Do not add:
@@ -1586,8 +1586,8 @@ type(scope): description
 ## Commit Authorship (MANDATORY)
 
 ```bash
-GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="ivali@users.noreply.gitlab.com" \
-GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="ivali@users.noreply.gitlab.com" \
+GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="itsivali@outlook.com" \
+GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="itsivali@outlook.com" \
 git commit -m "..."
 ```
 

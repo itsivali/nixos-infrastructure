@@ -1,14 +1,15 @@
-#!/run/current-system/sw/bin/bash
+#!/usr/bin/env bash
 # ci-notify.sh — send email notification after CI passes on main
 #
 # Triggered by GitLab CI after all gates pass on a push/merge to main.
-# Sends a formatted email via notify.sh with:
+# Sends a formatted email with:
 #   - What changed (commit message, type, description)
 #   - MR description (if available)
 #   - Files changed with stats
 #   - Pipeline status and link
 #
-# Environment: GitLab CI predefined variables.
+# Self-contained — does not depend on NixOS-specific paths.
+# Uses sendmail (msmtp) for email transport.
 
 set -euo pipefail
 
@@ -28,9 +29,6 @@ MR_TITLE="${CI_MERGE_REQUEST_TITLE:-}"
 MR_DESC="${CI_MERGE_REQUEST_DESCRIPTION:-}"
 MR_IID="${CI_MERGE_REQUEST_IID:-}"
 MR_URL="${PROJECT_URL}/-/merge_requests/${MR_IID}"
-
-# Email subject line is derived from the first line of the commit message
-# (handled by notify.sh automatically)
 
 # ── Parse commit message ───────────────────────────────────────────────────
 # Expected format: type(scope): description
@@ -167,13 +165,32 @@ Pipeline
 --------
 All CI jobs passed. Change is ready for GitOps reconciliation."
 
-# ── Send via notify.sh ─────────────────────────────────────────────────────
-NOTIFY_SCRIPT="$(dirname "$0")/notify.sh"
+# ── Send email via sendmail (msmtp) ────────────────────────────────────────
+# Recipient: SOPS secret > env override > default
+HOST="$(hostname)"
+TO="${NOTIFY_TO:-}"
+EMAIL_FILE="/run/secrets/notify_email"
 
-if [[ ! -x "${NOTIFY_SCRIPT}" ]]; then
-  echo "ci-notify.sh: notify.sh not found at ${NOTIFY_SCRIPT}" >&2
-  exit 1
+if [[ -z "${TO}" && -f "${EMAIL_FILE}" ]]; then
+  TO="$(cat "${EMAIL_FILE}")"
+fi
+TO="${TO:-itsivali@outlook.com}"
+
+# Subject from first line of commit message
+SUBJECT="$(echo "${COMMIT_MSG}" | head -1 | tr -d '\200-\377' | cut -c1-80)"
+
+if ! command -v sendmail >/dev/null 2>&1; then
+  echo "ci-notify.sh: sendmail not available, skipping email" >&2
+  exit 0
 fi
 
-# Use notify.sh directly — no dedup, each commit gets its own email
-"${NOTIFY_SCRIPT}" "${BODY}" || echo "ci-notify.sh: email send failed (non-fatal)" >&2
+{
+  echo "To: ${TO}"
+  echo "From: gitlab-ci@${HOST}"
+  echo "Subject: [Ivali Flow/CI] ${SUBJECT}"
+  echo "Content-Type: text/plain; charset=utf-8"
+  echo ""
+  echo "[${HOST}] ${TIMESTAMP}"
+  echo ""
+  echo "${BODY}"
+} | sendmail -t || echo "ci-notify.sh: email send failed (non-fatal)" >&2

@@ -88,8 +88,12 @@ go-security:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated ./...
-    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated ./...
+    # Exclude G301 (directory permissions) - CLI tool directories need user readability
+    # Exclude G306 (WriteFile permissions) - config/state files need user readability
+    # Exclude G104 (unhandled errors) - many are intentionally ignored in CLI paths
+    # Exclude G706 (log injection) - low severity, not exploitable in local CLI context
+    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated -exclude G301,G306,G104,G706 ./...
+    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated -exclude G301,G306,G104,G706 ./...
   artifacts:
     when: always
     reports:

@@ -5,6 +5,7 @@ stages:
   - security
   - check
   - build
+  - notify
 
 # ── Global defaults ────────────────────────────────────────────────────────
 # GIT_CLEAN_FLAGS=-fd skips 'git clean -x' which fails on stale .cache/
@@ -130,3 +131,16 @@ nixos-eval-prague:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
+
+# ── Notify (email on merge to main) ────────────────────────────────────────
+# Sends a formatted email with change details after all gates pass.
+# Only runs on pushes to main (not MR events) — one email per commit.
+# Email failure does NOT block the pipeline.
+
+ci-notify:
+  stage: notify
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_PIPELINE_SOURCE == "push"
+  script:
+    - bash scripts/ci-notify.sh
+  allow_failure: true

@@ -96,7 +96,7 @@ func TestUnlockSopsKey(t *testing.T) {
 		hasSopsPass: true,
 	}
 
-	for _, key := range []string{"s", "S"} {
+	for _, key := range []string{"shift+s"} {
 		m.unlock.unlocking = false
 		m.unlock.err = ""
 		_, cmd := m.handleKey(keyMsg(key))

@@ -535,12 +535,15 @@ func (m *tuiModel) handleUnlockKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, m.performLoginAndUnlock(string(m.unlock.email), string(m.unlock.password))
 		}
 
-	case "s", "S":
+	case "shift+s":
 		if m.unlock.hasSopsPass && !m.unlock.unlocking {
 			m.unlock.unlocking = true
 			m.unlock.err = ""
 			return m, m.performLoginAndUnlock(string(m.unlock.email), m.unlock.sopsPass)
-		} else if !m.unlock.unlocking && isPrintableKey(msg) {
+		}
+
+	case "s", "S":
+		if !m.unlock.unlocking && isPrintableKey(msg) {
 			if m.unlock.activeField == 0 && m.unlock.status == "unauthenticated" {
 				m.unlock.email = append(m.unlock.email, []rune(msg.String())...)
 			} else {
@@ -903,7 +906,7 @@ func (m *tuiModel) renderUnlock() string {
 
 			if m.unlock.hasSopsPass {
 				dialogContent += lipgloss.NewStyle().Foreground(clrGreen).Render("✓ SOPS master password detected") + "\n"
-				dialogContent += fmt.Sprintf("Press %s to login using SOPS secret\n\n", styleKey.Render("[s/S]"))
+				dialogContent += fmt.Sprintf("Press %s to login using SOPS secret\n\n", styleKey.Render("[Shift+S]"))
 			}
 
 			if m.unlock.err != "" {
@@ -926,7 +929,7 @@ func (m *tuiModel) renderUnlock() string {
 			dialogContent += fmt.Sprintf("Master Password: %s█\n\n", masked)
 			if m.unlock.hasSopsPass {
 				dialogContent += lipgloss.NewStyle().Foreground(clrGreen).Render("✓ SOPS master password detected") + "\n"
-				dialogContent += fmt.Sprintf("Press %s to unlock using SOPS secret\n\n", styleKey.Render("[s/S]"))
+				dialogContent += fmt.Sprintf("Press %s to unlock using SOPS secret\n\n", styleKey.Render("[Shift+S]"))
 			}
 			if m.unlock.err != "" {
 				dialogContent += lipgloss.NewStyle().Foreground(clrRed).Render("Error: "+m.unlock.err) + "\n\n"

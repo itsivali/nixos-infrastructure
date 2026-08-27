@@ -70,7 +70,7 @@ func TestReadMasterPasswordFromFile_MissingFile(t *testing.T) {
 }
 
 func TestReadMasterPasswordFromFile_EnvUnset(t *testing.T) {
-	os.Unsetenv("BW_MASTER_PASSWORD_FILE")
+	_ = os.Unsetenv("BW_MASTER_PASSWORD_FILE")
 
 	got, err := ReadMasterPasswordFromFile()
 	if err != nil {
@@ -111,7 +111,7 @@ func TestReadSopsEmailFromFile_MissingFile(t *testing.T) {
 }
 
 func TestReadSopsEmailFromFile_EnvUnset(t *testing.T) {
-	os.Unsetenv("BW_SOPS_EMAIL_FILE")
+	_ = os.Unsetenv("BW_SOPS_EMAIL_FILE")
 
 	got, err := ReadSopsEmailFromFile()
 	if err != nil {

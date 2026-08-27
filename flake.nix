@@ -149,7 +149,7 @@
         bw-tui = pkgs.buildGoModule {
           name = "bw-tui";
           src = goSrc;
-          vendorHash = "sha256-01J7ofVq2MWmIyvsYsxZeF2JmskiDlxijsHFtrcoFSM=";
+          vendorHash = "sha256-cGilGwaEoLUnkzxiMjbT6SdEE7nFKMp2gup7HlXnB5s=";
           subPackages = [ "cmd/bw-tui" ];
           preBuild = "export CGO_ENABLED=0";
         };
@@ -157,7 +157,7 @@
         ivali = pkgs.buildGoModule {
           name = "ivali";
           src = goSrc;
-          vendorHash = "sha256-01J7ofVq2MWmIyvsYsxZeF2JmskiDlxijsHFtrcoFSM=";
+          vendorHash = "sha256-cGilGwaEoLUnkzxiMjbT6SdEE7nFKMp2gup7HlXnB5s=";
           subPackages = [ "cmd/ivali" ];
           preBuild = "export CGO_ENABLED=0";
         };

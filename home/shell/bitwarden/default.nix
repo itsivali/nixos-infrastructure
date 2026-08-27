@@ -133,6 +133,9 @@ in
 
     home.sessionVariables = {
       BW_SESSION_DIR = "${config.xdg.cacheHome}/bitwarden";
+      BW_MASTER_PASSWORD_FILE = "${cfg.sops.password}";
+    } // lib.optionalAttrs (cfg.sops.email != null) {
+      BW_SOPS_EMAIL_FILE = "${cfg.sops.email}";
     };
 
     programs.zsh.shellAliases = lib.mkIf cfg.enableAliases {

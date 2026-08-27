@@ -27,15 +27,19 @@
 let
   cfg = config.fleet;
   email = if cfg.notifications.email != "" then cfg.notifications.email else "itsivali@outlook.com";
+  hasOAuth = cfg.notifications.oauthClientId != "";
 in
 {
   # oauth2ms brokers the Outlook/Office365 OAuth2 device-code flow and emits a
   # short-lived access token on stdout for msmtp's passwordeval. Installed
   # globally so it is on PATH for manual `sendmail` use and the GitOps
   # reconciler (which runs sendmail as root).
-  environment.systemPackages = [ pkgs.oauth2ms ];
+  environment.systemPackages = lib.mkIf hasOAuth [ pkgs.oauth2ms ];
 
-  programs.msmtp = {
+  # Only configure msmtp when an OAuth client ID is provided.
+  # When oauthClientId is empty, sendmail is not installed and notify.sh
+  # gracefully skips email (returns 0 with a warning).
+  programs.msmtp = lib.mkIf hasOAuth {
     enable = true;
     setSendmail = true;
 
@@ -64,7 +68,7 @@ in
     };
   };
 
-  services.logrotate.settings.msmtp = {
+  services.logrotate.settings.msmtp = lib.mkIf hasOAuth {
     files = [ "/var/log/msmtp.log" ];
     frequency = "weekly";
     rotate = 4;

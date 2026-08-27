@@ -179,6 +179,9 @@
           # Restrict system calls
           SystemCallFilter = [ "@system-service" "~@privileged" "~@resources" ];
           SystemCallArchitectures = "native";
+
+          # Restrict socket address families to inet (TCP/UDP) and unix (systemd/D-Bus)
+          RestrictAddressFamilies = [ "AF_INET" "AF_INET6" "AF_UNIX" ];
         };
 
         # Health check for systemd

@@ -1,9 +1,11 @@
 package commands
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -192,6 +194,8 @@ func renderSystemHealthFromState(t *terminal.Terminal, a *app.App) {
 		fmt.Println(t.CheckList([]terminal.CheckItem{c}))
 	}
 	fmt.Println()
+
+	renderObservabilityState(t)
 }
 
 func renderSystemHealth(t *terminal.Terminal) {
@@ -200,6 +204,52 @@ func renderSystemHealth(t *terminal.Terminal) {
 	fmt.Println()
 	for _, c := range systemHealthChecks() {
 		fmt.Println(t.CheckList([]terminal.CheckItem{c}))
+	}
+	fmt.Println()
+}
+
+// observabilityState represents the JSON written by observability-lite.
+type observabilityState struct {
+	Host        string `json:"host"`
+	Gen         string `json:"gen"`
+	Ts          int64  `json:"ts"`
+	Uptime      string `json:"uptime"`
+	Load        []any  `json:"load"`
+	MemPct      int    `json:"memPct"`
+	DiskRootPct int    `json:"diskRootPct"`
+	Net         string `json:"net"`
+	Alerts      string `json:"alerts"`
+}
+
+const observabilityStatePath = "/var/lib/observability/state.json"
+
+func renderObservabilityState(t *terminal.Terminal) {
+	fmt.Println(t.Subsection("Observability (Lite)"))
+
+	data, err := os.ReadFile(observabilityStatePath)
+	if err != nil {
+		fmt.Println(t.Dim("  No observability data (lite collector may not be enabled)"))
+		fmt.Println()
+		return
+	}
+
+	var obs observabilityState
+	if err := json.Unmarshal(data, &obs); err != nil {
+		fmt.Printf("  %s %s\n", t.ColoredIcon("⚠", t.Color.Yellow), t.Dim("Observability data unreadable (invalid JSON)"))
+		fmt.Println()
+		return
+	}
+
+	fmt.Printf("  Host: %s  Gen: %s\n", t.Dim(obs.Host), t.Dim(obs.Gen))
+	fmt.Printf("  Uptime: %s  Network: %s\n", t.Dim(obs.Uptime), t.Dim(obs.Net))
+	fmt.Printf("  Memory: %d%%  Disk (root): %d%%\n", obs.MemPct, obs.DiskRootPct)
+
+	if obs.Alerts == "" {
+		fmt.Println(t.Good("  All clear — no alerts"))
+	} else {
+		for _, alert := range strings.Fields(obs.Alerts) {
+			fmt.Printf("  %s %s\n", t.ColoredIcon("⚠", t.Color.Yellow), alert)
+		}
 	}
 	fmt.Println()
 }

@@ -1525,8 +1525,54 @@ In AI mode, automatically polls CI until it passes before merging.`,
 					}
 				}
 			} else {
-				f.stepInfo("No pipeline found — treating as passed")
-				ciPassed = true
+				// No pipeline exists yet. In AI mode, poll briefly to wait for it to appear.
+				if f.aiMode {
+					f.stepInfo("No pipeline found yet — waiting for CI to start...")
+					for i := 0; i < 5; i++ { // ~75 seconds
+						time.Sleep(15 * time.Second)
+						pipelineOut, err := gitRun(f.repoDir, "glab", "api",
+							fmt.Sprintf("projects/:id/merge_requests/%s/pipeline", mrIID))
+						if err != nil {
+							continue
+						}
+						var p struct {
+							Status string `json:"status"`
+						}
+						if err := json.Unmarshal([]byte(pipelineOut), &p); err == nil {
+							mrPipeline = &struct {
+								Status string `json:"status"`
+							}{Status: p.Status}
+							f.stepInfo(fmt.Sprintf("  CI status: %s", p.Status))
+							break
+						}
+					}
+				}
+
+				if mrPipeline == nil {
+					f.stepFail("No CI pipeline found")
+					f.stepInfo("CI may still be starting. Wait a moment and try again.")
+					f.stepInfo("Run: ivali flow pipeline --watch")
+					f.stepFailed()
+					return fmt.Errorf("no CI pipeline found for MR #%s", mrIID)
+				}
+
+				// Pipeline appeared — fall through to status check below
+				switch mrPipeline.Status {
+				case "success":
+					ciPassed = true
+					f.stepOK("CI pipeline passed")
+				case "failed":
+					f.stepFail("CI pipeline failed")
+					f.stepInfo("Fix CI failures before merging.")
+					f.stepInfo("Run: ivali flow pipeline --watch")
+					f.stepFailed()
+					return fmt.Errorf("CI pipeline failed")
+				default:
+					f.stepInfo(fmt.Sprintf("CI pipeline status: %s", f.term.Code(mrPipeline.Status)))
+					f.stepInfo("Wait for CI to pass.")
+					f.stepFailed()
+					return fmt.Errorf("CI pipeline not yet passed (status: %s)", mrPipeline.Status)
+				}
 			}
 
 			if !ciPassed {

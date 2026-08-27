@@ -166,13 +166,13 @@ Pipeline
 All CI jobs passed. Change is ready for GitOps reconciliation."
 
 # ── Send email via sendmail (msmtp) ────────────────────────────────────────
-# Recipient: SOPS secret > env override > default
+# Recipient: env override > SOPS secret (if readable) > default
 HOST="$(hostname)"
 TO="${NOTIFY_TO:-}"
 EMAIL_FILE="/run/secrets/notify_email"
 
-if [[ -z "${TO}" && -f "${EMAIL_FILE}" ]]; then
-  TO="$(cat "${EMAIL_FILE}")"
+if [[ -z "${TO}" && -r "${EMAIL_FILE}" ]]; then
+  TO="$(cat "${EMAIL_FILE}" 2>/dev/null || true)"
 fi
 TO="${TO:-itsivali@outlook.com}"
 

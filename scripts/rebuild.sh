@@ -279,7 +279,7 @@ done || BUILD_EXIT=$?
 
 # If the rebuild exited with code 4, deployment-health failed (non-critical).
 if [[ $BUILD_EXIT -eq 4 ]]; then
-  warn "Deployment health check failed — non-critical, continuing"
+  warn "Deployment health check failed — rebuild succeeded but health gate failed"
   BUILD_EXIT=0
 fi
 

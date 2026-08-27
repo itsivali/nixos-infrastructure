@@ -566,16 +566,16 @@ ivali flow pipeline --watch
 ivali flow merge
 ```
 
-For an AI-driven workflow where supported:
+For an LLM-driven workflow (non-interactive when stdin is not a terminal):
 
 ```bash
-ivali flow run <type> "<description>" --ai
+ivali flow run <type> "<description>"
 ```
 
 or:
 
 ```bash
-ivali flow quick "<description>" --ai
+ivali flow quick "<description>"
 ```
 
 However, the AI must understand what the command is doing rather than blindly executing it.
@@ -863,7 +863,7 @@ ivali flow pipeline --watch
 and:
 
 ```bash
-ivali flow merge --ai
+ivali flow merge
 ```
 
 where appropriate.
@@ -1558,7 +1558,6 @@ Lock → HW UUID → NixOS rebuild switch
 | `ivali flow pipeline` | Check CI status | — |
 | `ivali flow pipeline --watch` | Poll CI until terminal | — |
 | `ivali flow merge` | Merge when CI passes | CI must pass |
-| `ivali flow merge --ai` | Auto-poll + merge | CI must pass |
 | `ivali flow deploy` | Run rebuild.sh | Full rebuild gates |
 | `ivali flow rollback` | Roll back generation | Confirmation |
 | `ivali flow quick "desc"` | Commit → push → MR (fast) | 3 Go gates only |

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/itsivali/nixos-infrastructure/internal/app"
 	"github.com/itsivali/nixos-infrastructure/internal/operations"
@@ -30,11 +31,18 @@ type flowCtx struct {
 	aiMode  bool // non-interactive: auto-confirm, structured output
 }
 
-// newFlowCtx creates a flow context from the app and --ai flag.
+// newFlowCtx creates a flow context from the app.
+// Non-interactive mode is auto-detected: if stdin is not a terminal, prompts
+// are auto-accepted and structured output is used. This allows any LLM or
+// CI system to use Ivali Flow as a contract without special flags.
 func newFlowCtx(a *app.App, aiMode bool) *flowCtx {
 	repoDir := "."
 	if a.Repo != nil && a.Repo.Root != "" {
 		repoDir = a.Repo.Root
+	}
+	// Auto-detect: if stdin is not a terminal, force non-interactive mode
+	if !term.IsTerminal(int(os.Stdin.Fd())) {
+		aiMode = true
 	}
 	return &flowCtx{
 		app:     a,
@@ -88,7 +96,7 @@ func (f *flowCtx) nextHint(cmd string) {
 // confirm prompts the user (interactive) or auto-accepts (AI mode).
 func (f *flowCtx) confirm(msg string) bool {
 	if f.aiMode {
-		f.stepInfo(fmt.Sprintf("%s %s", msg, f.term.Dim("(auto: --ai)")))
+		f.stepInfo(fmt.Sprintf("%s %s", msg, f.term.Dim("(auto: non-interactive)")))
 		return true
 	}
 	fmt.Printf("  %s %s %s\n",
@@ -479,7 +487,7 @@ Every step is guided: the CLI walks you through issue → branch → validate
 → commit → push → MR → CI → merge → deploy, prompting for confirmation
 at each gate.
 
-With --ai, all prompts are auto-accepted for agentic workflows (opencode or freebuff).
+When stdin is not a terminal (e.g., LLM or CI), all prompts are auto-accepted.
 The AI makes file changes, then calls ivali flow to commit and push.
 
 Routes:
@@ -518,11 +526,6 @@ Routes:
 	return cmd
 }
 
-// addAIFlag adds the --ai flag to a command.
-func addAIFlag(cmd *cobra.Command) *bool {
-	return cmd.Flags().Bool("ai", false, "Non-interactive mode for AI agents (auto-confirm all prompts)")
-}
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FLOW START
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -547,10 +550,9 @@ The AI understands the repository architecture and writes:
 Examples:
   ivali flow start                                    # Interactive: prompts for type + description
   ivali flow start feature "add firewall"             # Fully specified
-  ivali flow start feature "add nginx" --implement    # AI writes the code
-  ivali flow start feature "desc" --ai --implement    # AI mode + AI writes code`,
+  ivali flow start feature "add nginx" --implement    # AI writes the code`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			implement, _ := cmd.Flags().GetBool("implement")
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Start")
@@ -751,7 +753,7 @@ Examples:
 				f.stepInfo(fmt.Sprintf("  Branch ready:     %s", f.term.Code(branchName)))
 				f.stepInfo("")
 				f.stepInfo("  Make your changes, then run:")
-				f.stepInfo(fmt.Sprintf("    %s", f.term.Code("ivali flow quick --ai \"description\"")))
+				f.stepInfo(fmt.Sprintf("    %s", f.term.Code("ivali flow quick \"description\"")))
 				f.stepInfo("")
 				f.stepDone()
 			} else {
@@ -788,7 +790,7 @@ Examples:
 		}}
 
 	var implement bool
-	addAIFlag(cmd)
+
 	cmd.Flags().BoolVar(&implement, "implement", false, "Call AI (opencode or freebuff) to write the code for this change")
 	return cmd
 }
@@ -817,7 +819,7 @@ Runs the same gates as CI:
 
 In AI mode, runs all gates and outputs JSON results.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Validate")
 
@@ -924,7 +926,7 @@ In AI mode, runs all gates and outputs JSON results.`,
 		},
 	}
 
-	addAIFlag(cmd)
+
 	cmd.Flags().StringVar(&host, "host", "", "NixOS host for nix eval (e.g. prague)")
 	return cmd
 }
@@ -949,7 +951,7 @@ Auto-detects commit type from branch name:
 In AI mode, description must be provided as argument.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Commit")
 
@@ -1062,7 +1064,7 @@ In AI mode, description must be provided as argument.`,
 		},
 	}
 
-	addAIFlag(cmd)
+
 	return cmd
 }
 
@@ -1078,7 +1080,7 @@ func flowPush(a *app.App) *cobra.Command {
 
 Verifies working tree is clean and commits exist before pushing.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Push")
 
@@ -1147,7 +1149,7 @@ Verifies working tree is clean and commits exist before pushing.`,
 		},
 	}
 
-	addAIFlag(cmd)
+
 	return cmd
 }
 
@@ -1165,7 +1167,7 @@ Loads the appropriate MR template and creates the MR via glab.
 In AI mode, title must be provided as argument.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Merge Request")
 
@@ -1274,7 +1276,7 @@ In AI mode, title must be provided as argument.`,
 		},
 	}
 
-	addAIFlag(cmd)
+
 	return cmd
 }
 
@@ -1294,7 +1296,7 @@ func flowPipeline(a *app.App) *cobra.Command {
 With --watch, polls until the pipeline completes.
 In AI mode, outputs JSON with the final status.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Pipeline")
 
@@ -1415,7 +1417,7 @@ In AI mode, outputs JSON with the final status.`,
 		},
 	}
 
-	addAIFlag(cmd)
+
 	cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Poll until pipeline completes")
 	cmd.Flags().IntVarP(&pollInterval, "interval", "i", 15, "Poll interval in seconds")
 	return cmd
@@ -1436,7 +1438,7 @@ passed, the merge is blocked with guidance on how to fix.
 
 In AI mode, automatically polls CI until it passes before merging.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Merge")
 
@@ -1656,7 +1658,7 @@ In AI mode, automatically polls CI until it passes before merging.`,
 		},
 	}
 
-	addAIFlag(cmd)
+
 	return cmd
 }
 
@@ -1686,11 +1688,10 @@ ensures all verification gates pass before touching the system.
 
 Flags:
   --dry-run       Show what would be deployed without doing it
-  --skip-checks   Skip validation gates (emergency only)
-  --ai            Non-interactive mode for AI agents`,
+  --skip-checks   Skip validation gates (emergency only)`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Deploy")
 
@@ -1839,7 +1840,7 @@ Flags:
 		},
 	}
 
-	addAIFlag(cmd)
+
 	cmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "Show what would be deployed without doing it")
 	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, "Skip validation gates (emergency only)")
 	cmd.Flags().StringVar(&host, "host", "", "NixOS host for deploy (auto-detected if empty)")
@@ -1864,10 +1865,9 @@ Routes through the operations deployment engine.
 Examples:
   ivali flow rollback             # Interactive: prompts for confirmation
   ivali flow rollback -g 42       # Roll back to generation 42
-  ivali flow rollback --list      # List available generations
-  ivali flow rollback --ai        # AI mode: auto-confirm`,
+  ivali flow rollback --list      # List available generations`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Rollback")
 
@@ -1965,7 +1965,7 @@ Examples:
 		},
 	}
 
-	addAIFlag(cmd)
+
 	cmd.Flags().IntVarP(&generation, "generation", "g", 0, "Target generation (0 = previous)")
 	cmd.Flags().BoolVar(&listGens, "list", false, "List available generations")
 	return cmd
@@ -1991,14 +1991,14 @@ This will:
   5. Show CI pipeline status
 
 Designed for agentic workflows: the AI makes file changes, then calls
-'ivali flow quick "description" --ai' to commit and push everything.
+'ivali flow quick "description"' to commit and push everything.
 
 Examples:
   ivali flow quick "add firewall rules"            # Interactive
-  ivali flow quick "add firewall rules" --ai       # AI mode (no prompts)`,
+  ivali flow quick "add firewall rules"            # Non-interactive (auto when stdin is not a terminal)`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			description := args[0]
 
@@ -2199,7 +2199,7 @@ Examples:
 		},
 	}
 
-	addAIFlag(cmd)
+
 	return cmd
 }
 
@@ -2228,12 +2228,12 @@ Chains every step from issue creation to merge:
 Then run 'ivali deploy' to activate the new generation.
 
 Examples:
-  ivali flow run feature "add notion enhanced to panel" --ai
-  ivali flow run bugfix "fix zsh completions" --ai
+  ivali flow run feature "add notion enhanced to panel"
+  ivali flow run bugfix "fix zsh completions"
   ivali flow run feature "add firewall module"             # interactive
   ivali flow run feature "desc" --no-implement              # skip AI`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Run")
 
@@ -2309,7 +2309,7 @@ Examples:
 			fmt.Println(f.term.Dim("  └─────────────────────────────────────────────┘"))
 			fmt.Println()
 
-			if !f.confirm("  Continue? (auto: --ai)") {
+			if !f.confirm("  Continue?") {
 				f.stepInfo("Cancelled")
 				return nil
 			}
@@ -2646,7 +2646,7 @@ Examples:
 		},
 	}
 
-	addAIFlag(cmd)
+
 	cmd.Flags().BoolVar(&implement, "implement", true, "Call AI (opencode or freebuff) to write the code for this change (default true, use --implement=false to skip)")
 	return cmd
 }
@@ -2664,7 +2664,7 @@ func flowStatus(a *app.App) *cobra.Command {
 Displays branch, uncommitted changes, unpushed commits, and the next
 step in the workflow pipeline.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Status")
 
@@ -2728,7 +2728,7 @@ step in the workflow pipeline.`,
 		},
 	}
 
-	addAIFlag(cmd)
+
 	return cmd
 }
 

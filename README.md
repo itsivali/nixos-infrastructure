@@ -1,7 +1,13 @@
 # nixos-infrastructure
 
-[![GitHub Actions](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml)
+[![CI](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml)
+[![Go Lint](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-lint&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-lint)
+[![Go Tests](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-test&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-test)
+[![Shell Lint](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=shellcheck&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ashellcheck)
+[![Security Scan](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-security&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-security)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![NixOS 26.11](https://img.shields.io/badge/NixOS-26.11-blue.svg)](https://nixos.org)
+[![Go 1.26](https://img.shields.io/badge/Go-1.26-00ADD8.svg)](https://go.dev)
 
 Autonomous NixOS infrastructure for a single-user laptop — declarative, reproducible,
 and self-healing.
@@ -39,6 +45,8 @@ all wired together through a zero-touch auto-import module system.
 | **Secrets** | SOPS-encrypted with age (Tailscale, SMTP, Grafana, GitLab) |
 | **Home Manager** | Zsh + Powerlevel10k, FZF, zoxide, direnv, Zed editor, Bitwarden, Nerd Fonts |
 | **CI/CD** | GitLab source of truth + GitHub Actions mirror (validates, posts status to GitLab); deploy via GitOps reconciler |
+| **Notifications** | Email alerts via Office365 SMTP (Alertmanager, deployment results, health failures, security scans) |
+| **Control Plane** | Operations Web UI over Tailscale Serve (deploy, rollback, services, health, audit log) |
 | **Storage** | BTRFS, encrypted swap, aggressive zRAM |
 | **Packages** | Separate CLI and desktop package sets |
 
@@ -474,6 +482,7 @@ clean            # nix store gc
 | `ivali update` | Pull + flake update |
 | `ivali scan` | Force fresh repository scan |
 | `ivali extract shell` | Analyze shell configuration |
+| `ivali api` | REST API server for the control plane webapp |
 
 ---
 
@@ -592,6 +601,105 @@ action — no self-hosted GitLab runner required. Jobs:
 
 ---
 
+## Notification Stack
+
+All alerts, deployment results, and health failures are routed through email notifications via Office365 SMTP.
+
+| Component | Purpose |
+|-----------|---------|
+| **notify.sh** | Central notification script — sends email via msmtp, deduplicates within 600s |
+| **msmtp** | Outbound email relay (Office365 SMTP, OAuth2 bearer auth via `oauth2ms`) |
+| **Alertmanager** | Prometheus alert routing — warning (5min group) and critical (10s wait) receivers |
+| **Prometheus alerting** | Rules for: disk, CPU/memory, failed services, Tailscale expiry, NixOS generation drift, security scans |
+| **observability-lite** | Low-CPU health collector — polls `/proc` every 60s, fires `notify` on threshold breach |
+| **SOPS secrets** | `secrets/notifications.yaml` (recipient), `secrets/smtp.yaml` (credentials) |
+
+**Notification flow:**
+```
+Prometheus alert → Alertmanager → email → Outlook inbox
+health check failure → notify.sh → email
+GitOps deploy success/failure → notify.sh → email
+security scan failure → notify.sh → email
+```
+
+---
+
+## WebUI & Tailscale Control Plane
+
+The control plane is exposed over Tailscale — no public internet access, no open firewall ports.
+
+### Remote Access Architecture
+
+```
+You (any device on tailnet)
+  │
+  ▼
+Tailscale MagicDNS → prague.codlet-trench.ts.net
+  │
+  ▼
+Tailscale Serve (HTTPS termination, port 443)
+  │
+  ├── /grafana/    → Grafana (port 3000)
+  ├── /prometheus/ → Prometheus (port 9090)
+  ├── /loki/       → Loki (port 3100)
+  ├── /health      → Health endpoint (port 9100, JSON)
+  └── /            → Operations Web UI (port 8080)
+```
+
+| Service | Port | Binding | Access |
+|---------|------|---------|--------|
+| **Nginx reverse proxy** | 80 | localhost | Local browser |
+| **Grafana** | 3000 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/grafana/` |
+| **Prometheus** | 9090 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/prometheus/` |
+| **Loki** | 3100 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/loki/` |
+| **Health endpoint** | 9100 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/health` |
+| **Operations Web UI** | 8080 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/` |
+| **Tailscale metrics** | 9121 | 127.0.0.1 | Prometheus scrape target |
+
+### Operations Web UI (API)
+
+The `ivali api` binary serves a REST API on port 8080, exposed via Tailscale Serve with HMAC-SHA256 bearer token auth.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check (unauthenticated) |
+| `/api/status` | GET | Deployment status |
+| `/api/drift` | GET | Configuration drift detection |
+| `/api/deployments` | GET | Last 20 deployment records |
+| `/api/deployments/latest` | GET | Latest deployment record |
+| `/api/deploy` | POST | Trigger deployment (pull + build + switch) |
+| `/api/rollback` | POST | Rollback to previous generation |
+| `/api/generations` | GET | List NixOS generations |
+| `/api/services` | GET | List systemd services and status |
+| `/api/services/{name}/restart` | POST | Restart a service (allowlisted) |
+| `/api/audit` | GET | Query audit log entries |
+
+**Security:** Rate limiting (10 req/s per IP), CORS origin validation, request body limit (1MB), audit logging for mutations.
+
+### GitOps Reconciler
+
+The GitOps loop runs every 15 minutes and handles the full deployment lifecycle:
+
+```
+gitops-reconciler.timer (every 15min)
+  └── gitops-reconciler.service
+       └── gitops-reconcile.sh
+            ├── flock (mutual exclusion)
+            ├── fetch origin (retry on network failure)
+            ├── dirty-tree guard (skip if uncommitted changes)
+            ├── pull --ff-only
+            ├── nix flake check
+            ├── validate hardware UUIDs + Go vendor hashes
+            ├── nix build .#nixosConfigurations.<host>.config.system.build.toplevel
+            ├── nixos-rebuild switch
+            ├── 30s grace period
+            ├── health check (deployment-health.sh → ivali doctor)
+            ├── on failure → rollback.sh → nixos-rebuild switch --rollback
+            └── email notification (generation diff, commit, duration)
+```
+
+---
+
 ## Secrets
 
 SOPS-encrypted with age. Files in `secrets/`:
@@ -678,6 +786,25 @@ config = lib.mkIf cfg.enable { services.<name> = { ... }; };
 - Grafana, Prometheus, Loki are localhost-only unless explicitly exposed
 - GitOps reconciler uses a lock file — avoid manual `nixos-rebuild` during reconciliation
 - SOPS secrets fail closed — features requiring secrets won't activate until age key is installed
+
+---
+
+## Roadmap: Custom Control Plane Webapp
+
+A custom webapp is planned to replace the raw API with a full control plane UI, connecting to the laptop over Tailscale.
+
+**Planned features:**
+- Real-time system status dashboard (CPU, memory, disk, services)
+- One-click deployment trigger with live progress streaming
+- Rollback UI with generation diff viewer
+- Service management (restart, logs, status)
+- Alert history and notification log
+- Tailscale network topology visualization
+- Mobile-responsive for phone/tablet access
+
+**Architecture:** The webapp will connect to the laptop via the existing REST API (`ivali api`) over Tailscale Serve HTTPS. No new ports or firewall rules — the API is already exposed at `https://prague.codlet-trench.ts.net/`.
+
+---
 
 ## License
 

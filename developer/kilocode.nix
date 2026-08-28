@@ -33,13 +33,15 @@ let
     dontBuild = true;
 
     installPhase = ''
-      mkdir -p $out/lib/node_modules/@kilocode/cli
-      cp -r ./* $out/lib/node_modules/@kilocode/cli/
+            mkdir -p $out/lib/node_modules/@kilocode/cli
+            cp -r ./* $out/lib/node_modules/@kilocode/cli/
 
-      mkdir -p $out/bin
-      echo '#!${pkgs.bash}/bin/bash' > $out/bin/kilo
-      echo 'exec ${pkgs.nodejs}/bin/node $out/lib/node_modules/@kilocode/cli/index.js "$@"' >> $out/bin/kilo
-      chmod +x $out/bin/kilo
+            mkdir -p $out/bin
+            cat > $out/bin/kilo << WRAPPER
+      #!${pkgs.bash}/bin/bash
+      exec ${pkgs.nodejs}/bin/node ${kilocode-cli}/lib/node_modules/@kilocode/cli/index.js "\$@"
+      WRAPPER
+            chmod +x $out/bin/kilo
     '';
   };
 in

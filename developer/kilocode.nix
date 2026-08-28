@@ -25,7 +25,7 @@ let
 
     src = pkgs.fetchurl {
       url = "https://registry.npmjs.org/@kilocode/cli/-/cli-7.5.5.tgz";
-      sha256 = "sha256-kBIHNpGp6ByEl0mlGbnNvHsWRPKsxTYV2ZieQ7Fnk/M=";
+      sha256 = "sha256-nIR1j3KxETxjAj9A0nMPDFnmnVssxlDXm+98vLd7nRM=";
     };
 
     buildInputs = [ pkgs.nodejs ];

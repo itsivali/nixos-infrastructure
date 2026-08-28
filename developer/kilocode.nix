@@ -25,7 +25,7 @@ let
 
     src = pkgs.fetchurl {
       url = "https://registry.npmjs.org/@kilocode/cli/-/cli-7.5.5.tgz";
-      sha256 = "sha256-1wwkcyql77lqv4akdidcy921cyxwrnwik9a9jy21rs59j4v0f4lh";
+      sha256 = "sha256-kBIHNpGp6ByEl0mlGbnNvHsWRPKsxTYV2ZieQ7Fnk/M=";
     };
 
     buildInputs = [ pkgs.nodejs ];
@@ -37,10 +37,8 @@ let
       cp -r ./* $out/lib/node_modules/@kilocode/cli/
 
       mkdir -p $out/bin
-      cat > $out/bin/kilo <<EOF
-      #!${pkgs.bash}/bin/bash
-      exec ${pkgs.nodejs}/bin/node $out/lib/node_modules/@kilocode/cli/index.js "\$@"
-      EOF
+      echo '#!${pkgs.bash}/bin/bash' > $out/bin/kilo
+      echo 'exec ${pkgs.nodejs}/bin/node $out/lib/node_modules/@kilocode/cli/index.js "$@"' >> $out/bin/kilo
       chmod +x $out/bin/kilo
     '';
   };

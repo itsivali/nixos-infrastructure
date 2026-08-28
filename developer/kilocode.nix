@@ -28,20 +28,17 @@ let
       sha256 = "sha256-nIR1j3KxETxjAj9A0nMPDFnmnVssxlDXm+98vLd7nRM=";
     };
 
-    buildInputs = [ pkgs.nodejs ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
 
     dontBuild = true;
 
     installPhase = ''
-            mkdir -p $out/lib/node_modules/@kilocode/cli
-            cp -r ./* $out/lib/node_modules/@kilocode/cli/
+      mkdir -p $out/lib/node_modules/@kilocode/cli
+      cp -r ./* $out/lib/node_modules/@kilocode/cli/
 
-            mkdir -p $out/bin
-            cat > $out/bin/kilo << WRAPPER
-      #!${pkgs.bash}/bin/bash
-      exec ${pkgs.nodejs}/bin/node ${kilocode-cli}/lib/node_modules/@kilocode/cli/index.js "\$@"
-      WRAPPER
-            chmod +x $out/bin/kilo
+      mkdir -p $out/bin
+      makeWrapper ${pkgs.nodejs}/bin/node $out/bin/kilo \
+        --add-flags "$out/lib/node_modules/@kilocode/cli/index.js"
     '';
   };
 in

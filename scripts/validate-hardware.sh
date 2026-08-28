@@ -31,10 +31,18 @@ fail() { echo "[hw-check] ❌ $*" >&2; }
 
 declare -A LIVE_UUIDS
 
+# Method 1: blkid (may need root for full results)
 while IFS= read -r line; do
   uuid="$(echo "$line" | grep -oP 'UUID="[^"]*"' | cut -d'"' -f2)"
   [[ -n "$uuid" ]] && LIVE_UUIDS["$uuid"]=1
 done < <(blkid 2>/dev/null || true)
+
+# Method 2: /dev/disk/by-uuid/ symlinks (works without root)
+for link in /dev/disk/by-uuid/*; do
+  [[ -L "$link" ]] || continue
+  uuid="$(basename "$link")"
+  [[ -n "$uuid" ]] && LIVE_UUIDS["$uuid"]=1
+done 2>/dev/null || true
 
 # Bash <4.4 treats empty associative arrays as unset under set -u.
 set +u

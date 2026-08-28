@@ -7,6 +7,7 @@
 # System-wide installation of Google Antigravity CLI (agy), successor to
 # Gemini CLI. Free tier uses Google OAuth — no API key required. Provides
 # the `agy` command for agentic development workflows.
+# Wrapped in buildFHSEnv since it's a pre-built dynamically linked binary.
 #
 # Ownership
 # ---------
@@ -18,6 +19,14 @@
 
 let
   cfg = config.ivali.antigravity;
+
+  antigravity-fhs = pkgs.buildFHSEnv {
+    name = "agy";
+    targetPkgs = pkgs: [
+      pkgs.antigravity-cli
+    ];
+    runScript = "agy";
+  };
 in
 {
   options.ivali.antigravity = {
@@ -26,7 +35,7 @@ in
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      pkgs.antigravity-cli
+      antigravity-fhs
     ];
   };
 }

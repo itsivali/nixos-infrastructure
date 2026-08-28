@@ -149,8 +149,8 @@ If a gate fails after a commit, fix the issue and create a new commit; do not am
 Every MR created via `ivali flow` **must be reconciled to `main`** before the task is considered complete. The `ivali flow` workflow is not finished until the branch is merged.
 
 1. **`ivali flow mr`** — creates the merge request from the feature branch.
-2. **`ivali flow pipeline`** — monitor CI until all jobs pass (or use `ivali flow merge --ai` which polls automatically).
-3. **`ivali flow merge`** — merge the MR into `main` once CI is green. In AI mode (`--ai`), this polls the pipeline until it passes, then merges.
+2. **`ivali flow pipeline`** — monitor CI until all jobs pass (or use `ivali flow merge` which polls automatically).
+3. **`ivali flow merge`** — merge the MR into `main` once CI is green. This polls the pipeline until it passes, then merges.
 4. If the GitLab runner is down or CI cannot run, escalate to the operator — do not merge without a passing pipeline unless explicitly authorized.
 
 **Why this rule exists:** An unmerged MR is unfinished work. The repository must stay in a state where `main` always reflects the latest accepted changes. Orphaned branches and open MRs accumulate technical debt.

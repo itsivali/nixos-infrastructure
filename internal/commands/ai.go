@@ -78,10 +78,9 @@ Change types:
 
 Examples:
   ivali ai implement                                    # Interactive: prompts for type + description
-  ivali ai implement feature "add firewall"             # Fully specified
-  ivali ai implement feature "add nginx" --ai           # AI mode (non-interactive)`,
+  ivali ai implement feature "add firewall"             # Fully specified`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("AI Implement")
 
@@ -423,7 +422,6 @@ Examples:
 		},
 	}
 
-	addAIFlag(cmd)
 	return cmd
 }
 
@@ -448,7 +446,7 @@ Runs the same gates as CI:
   6. nix flake check (flake schema)
   7. gosec          (security scan)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("AI Validate")
 
@@ -553,7 +551,6 @@ Runs the same gates as CI:
 		},
 	}
 
-	addAIFlag(cmd)
 	cmd.Flags().StringVar(&host, "host", "", "NixOS host for nix eval (e.g. prague)")
 	return cmd
 }
@@ -576,7 +573,7 @@ Auto-detects commit type from branch name:
   docs/*     → docs`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("AI Commit")
 
@@ -682,7 +679,6 @@ Auto-detects commit type from branch name:
 		},
 	}
 
-	addAIFlag(cmd)
 	return cmd
 }
 
@@ -698,7 +694,7 @@ func aiPush(a *app.App) *cobra.Command {
 
 Verifies working tree is clean and commits exist before pushing.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("AI Push")
 
@@ -743,7 +739,6 @@ Verifies working tree is clean and commits exist before pushing.`,
 		},
 	}
 
-	addAIFlag(cmd)
 	return cmd
 }
 
@@ -759,7 +754,7 @@ func aiMR(a *app.App) *cobra.Command {
 
 Uses the default merge request template from .gitlab/merge_request_templates/.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			f.header("AI Merge Request")
 
@@ -848,7 +843,6 @@ Uses the default merge request template from .gitlab/merge_request_templates/.`,
 		},
 	}
 
-	addAIFlag(cmd)
 	return cmd
 }
 
@@ -871,10 +865,10 @@ This will:
   4. Create merge request
 
 Designed for agentic workflows: the AI makes file changes, then calls
-'ivali ai quick "description" --ai' to commit and push everything.`,
+'ivali ai quick "description"' to commit and push everything.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			aiMode, _ := cmd.Flags().GetBool("ai")
+			aiMode := false
 			f := newFlowCtx(a, aiMode)
 			description := args[0]
 
@@ -1038,7 +1032,6 @@ Designed for agentic workflows: the AI makes file changes, then calls
 		},
 	}
 
-	addAIFlag(cmd)
 	return cmd
 }
 

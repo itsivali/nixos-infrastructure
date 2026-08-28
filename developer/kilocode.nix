@@ -28,7 +28,7 @@ let
       sha256 = "sha256-nIR1j3KxETxjAj9A0nMPDFnmnVssxlDXm+98vLd7nRM=";
     };
 
-    buildInputs = [ pkgs.nodejs ];
+    nativeBuildInputs = [ pkgs.makeWrapper ];
 
     dontBuild = true;
 
@@ -37,9 +37,8 @@ let
       cp -r ./* $out/lib/node_modules/@kilocode/cli/
 
       mkdir -p $out/bin
-      echo '#!${pkgs.bash}/bin/bash' > $out/bin/kilo
-      echo 'exec ${pkgs.nodejs}/bin/node $out/lib/node_modules/@kilocode/cli/index.js "$@"' >> $out/bin/kilo
-      chmod +x $out/bin/kilo
+      makeWrapper ${pkgs.nodejs}/bin/node $out/bin/kilo \
+        --add-flags "$out/lib/node_modules/@kilocode/cli/index.js"
     '';
   };
 in

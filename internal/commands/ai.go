@@ -422,7 +422,6 @@ Examples:
 		},
 	}
 
-
 	return cmd
 }
 
@@ -552,7 +551,6 @@ Runs the same gates as CI:
 		},
 	}
 
-
 	cmd.Flags().StringVar(&host, "host", "", "NixOS host for nix eval (e.g. prague)")
 	return cmd
 }
@@ -681,7 +679,6 @@ Auto-detects commit type from branch name:
 		},
 	}
 
-
 	return cmd
 }
 
@@ -741,7 +738,6 @@ Verifies working tree is clean and commits exist before pushing.`,
 			return nil
 		},
 	}
-
 
 	return cmd
 }
@@ -846,7 +842,6 @@ Uses the default merge request template from .gitlab/merge_request_templates/.`,
 			return nil
 		},
 	}
-
 
 	return cmd
 }
@@ -1036,7 +1031,6 @@ Designed for agentic workflows: the AI makes file changes, then calls
 			return nil
 		},
 	}
-
 
 	return cmd
 }

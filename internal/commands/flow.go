@@ -926,7 +926,6 @@ In AI mode, runs all gates and outputs JSON results.`,
 		},
 	}
 
-
 	cmd.Flags().StringVar(&host, "host", "", "NixOS host for nix eval (e.g. prague)")
 	return cmd
 }
@@ -1064,7 +1063,6 @@ In AI mode, description must be provided as argument.`,
 		},
 	}
 
-
 	return cmd
 }
 
@@ -1148,7 +1146,6 @@ Verifies working tree is clean and commits exist before pushing.`,
 			return nil
 		},
 	}
-
 
 	return cmd
 }
@@ -1275,7 +1272,6 @@ In AI mode, title must be provided as argument.`,
 			return nil
 		},
 	}
-
 
 	return cmd
 }
@@ -1416,7 +1412,6 @@ In AI mode, outputs JSON with the final status.`,
 			return nil
 		},
 	}
-
 
 	cmd.Flags().BoolVarP(&watch, "watch", "w", false, "Poll until pipeline completes")
 	cmd.Flags().IntVarP(&pollInterval, "interval", "i", 15, "Poll interval in seconds")
@@ -1658,7 +1653,6 @@ In AI mode, automatically polls CI until it passes before merging.`,
 		},
 	}
 
-
 	return cmd
 }
 
@@ -1840,7 +1834,6 @@ Flags:
 		},
 	}
 
-
 	cmd.Flags().BoolVarP(&dryRun, "dry-run", "d", false, "Show what would be deployed without doing it")
 	cmd.Flags().BoolVar(&skipChecks, "skip-checks", false, "Skip validation gates (emergency only)")
 	cmd.Flags().StringVar(&host, "host", "", "NixOS host for deploy (auto-detected if empty)")
@@ -1964,7 +1957,6 @@ Examples:
 			return nil
 		},
 	}
-
 
 	cmd.Flags().IntVarP(&generation, "generation", "g", 0, "Target generation (0 = previous)")
 	cmd.Flags().BoolVar(&listGens, "list", false, "List available generations")
@@ -2198,7 +2190,6 @@ Examples:
 			return nil
 		},
 	}
-
 
 	return cmd
 }
@@ -2646,7 +2637,6 @@ Examples:
 		},
 	}
 
-
 	cmd.Flags().BoolVar(&implement, "implement", true, "Call AI (opencode or freebuff) to write the code for this change (default true, use --implement=false to skip)")
 	return cmd
 }
@@ -2727,7 +2717,6 @@ step in the workflow pipeline.`,
 			return nil
 		},
 	}
-
 
 	return cmd
 }

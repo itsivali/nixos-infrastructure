@@ -108,10 +108,13 @@ except:
     pass
 " 2>/dev/null || true)
 
+set +u
 if [[ ${#DECLARED_UUIDS[@]} -eq 0 ]]; then
+  set -u
   log "⚠️  No declared UUIDs found in NixOS config — skipping"
   exit 0
 fi
+set -u
 
 log "Found ${#DECLARED_UUIDS[@]} declared UUIDs in NixOS config"
 

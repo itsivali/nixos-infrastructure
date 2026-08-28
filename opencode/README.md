@@ -12,18 +12,25 @@ Structured documentation for this NixOS infrastructure repository.
 | [deployment.md](deployment.md) | Deployment methods, CI/CD pipeline, health checks, rollback, generation tracking |
 | [troubleshooting.md](troubleshooting.md) | Common issues and fixes for flake, build, SOPS, Tailscale, Home Manager, GitLab Runner |
 | [tailscale-mesh.md](tailscale-mesh.md) | Multi-host Tailscale mesh setup, ACLs, MagicDNS, monitoring |
+| [workflow.md](workflow.md) | Ivali Flow workflow — mandatory lifecycle for all AI agents |
 
 ## Quick Reference
 
-### Adding a New Host
-1. Create `hosts/<name>.nix` with the host spec (see `hosts/default.nix` for template)
-2. Run `ivali bootstrap host <name>` to generate hardware config and secrets
-3. Apply: `sudo nixos-rebuild switch --flake .#<name>`
-
-### Deploying Changes
+### Deploying Changes (via Ivali Flow)
 ```bash
-git push origin main         # Push changes
-sudo nixos-rebuild switch --flake .#prague  # Or wait for GitOps reconciler
+ivali flow start feature "description"   # Create issue + branch
+ivali flow validate                       # Run all verification gates
+ivali flow commit                         # Stage + commit
+ivali flow push                           # Push to GitLab
+ivali flow mr                             # Create merge request
+ivali flow pipeline --watch               # Wait for CI
+ivali flow merge                          # Merge when CI passes
+```
+
+### Fast Path
+```bash
+ivali flow quick "description"           # Commit → push → MR
+ivali flow run feature "description"     # Full pipeline in one command
 ```
 
 ### Diagnosing Issues

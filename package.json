@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@kilocode/cli": "^7.5.5"
+  }
+}

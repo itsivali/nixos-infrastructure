@@ -189,8 +189,8 @@ func gitCommit(repoDir, msg string) (string, error) {
 	return strings.TrimSpace(string(out)), err
 }
 
-// runAITool tries opencode first, then falls back to freebuff.
-// Both tools receive the same prompt and run in repoDir.
+// runAITool tries opencode first, then falls back to kilocode, then antigravity.
+// All tools receive the same prompt and run in repoDir.
 // Returns the tool name used and any error.
 func runAITool(repoDir, prompt string) (string, error) {
 	// Try opencode first
@@ -202,21 +202,34 @@ func runAITool(repoDir, prompt string) (string, error) {
 		if err := cmd.Run(); err == nil {
 			return "opencode", nil
 		}
-		// opencode failed — fall through to freebuff
+		// opencode failed — fall through to kilocode
 	}
 
-	// Fall back to freebuff
-	if _, err := exec.LookPath("freebuff"); err == nil {
-		cmd := exec.Command("freebuff", "--cwd", repoDir, prompt)
+	// Fall back to kilocode
+	if _, err := exec.LookPath("kilo"); err == nil {
+		cmd := exec.Command("kilo", "run", prompt)
+		cmd.Dir = repoDir
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err == nil {
-			return "freebuff", nil
+			return "kilocode", nil
 		}
-		return "freebuff", fmt.Errorf("freebuff failed")
+		// kilocode failed — fall through to antigravity
 	}
 
-	return "", fmt.Errorf("no AI tool available (install opencode or freebuff)")
+	// Fall back to antigravity
+	if _, err := exec.LookPath("agy"); err == nil {
+		cmd := exec.Command("agy", prompt)
+		cmd.Dir = repoDir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err == nil {
+			return "antigravity", nil
+		}
+		return "antigravity", fmt.Errorf("antigravity failed")
+	}
+
+	return "", fmt.Errorf("no AI tool available (install opencode, kilocode, or antigravity)")
 }
 
 // buildImplementPrompt constructs a rich prompt for the AI based on change type.
@@ -284,7 +297,7 @@ INSTRUCTIONS — FEATURE IMPLEMENTATION:
    - go vet ./...
 
 The feature must be: production-grade, tested, documented, and follow existing patterns.
-Do NOT leave any TODOs, placeholders, or stub implementations.`
+Do NOT leave any TODOs, placeholders, or stub implementations.` + ivaliFlowWorkflow()
 
 	case "bugfix":
 		return base + `
@@ -307,7 +320,7 @@ INSTRUCTIONS — BUGFIX IMPLEMENTATION:
 6. Update documentation if the fix changes public behavior
 
 The fix must be: minimal, targeted, tested, and documented.
-Do NOT refactor unrelated code. Do NOT add features.`
+Do NOT refactor unrelated code. Do NOT add features.` + ivaliFlowWorkflow()
 
 	case "module":
 		return base + `
@@ -345,7 +358,7 @@ INSTRUCTIONS — NixOS/HOME MANAGER MODULE:
    - go build ./...
 
 The module must be: production-grade, tested, documented, and follow existing patterns.
-Do NOT leave any TODOs, placeholders, or stub implementations.`
+Do NOT leave any TODOs, placeholders, or stub implementations.` + ivaliFlowWorkflow()
 
 	case "security":
 		return base + `
@@ -382,7 +395,7 @@ INSTRUCTIONS — SECURITY HARDENING:
    - gosec -exclude-generated ./...
 
 The security change must be: thorough, tested, documented, and follow security best practices.
-Do NOT leave any TODOs, placeholders, or incomplete hardening.`
+Do NOT leave any TODOs, placeholders, or incomplete hardening.` + ivaliFlowWorkflow()
 
 	case "architecture":
 		return base + `
@@ -414,7 +427,7 @@ INSTRUCTIONS — ARCHITECTURE CHANGE:
    - nix flake check --no-build
 
 The architecture change must be: well-planned, tested, documented, and follow the domain hierarchy.
-Do NOT break existing functionality. Do NOT introduce circular dependencies.`
+Do NOT break existing functionality. Do NOT introduce circular dependencies.` + ivaliFlowWorkflow()
 
 	case "docs":
 		return base + `
@@ -441,7 +454,7 @@ INSTRUCTIONS — DOCUMENTATION UPDATE:
    - go vet ./...
 
 The documentation must be: accurate, complete, and follow existing patterns.
-Do NOT leave any TODOs or placeholder text.`
+Do NOT leave any TODOs or placeholder text.` + ivaliFlowWorkflow()
 
 	default:
 		return base + `
@@ -449,8 +462,31 @@ INSTRUCTIONS:
 
 Implement the change described above. Follow all repository conventions.
 Write tests, update documentation, and ensure all verification gates pass.
-Do NOT leave any TODOs, placeholders, or stub implementations.`
+Do NOT leave any TODOs, placeholders, or stub implementations.` + ivaliFlowWorkflow()
 	}
+}
+
+// ivaliFlowWorkflow returns the mandatory workflow instructions appended to every AI prompt.
+func ivaliFlowWorkflow() string {
+	return `
+
+MANDATORY WORKFLOW — IVAILI FLOW:
+After implementing, you MUST use ivali flow for all Git operations:
+1. ivali flow validate — run all verification gates
+2. ivali flow commit — stage and commit (conventional message, Willis Ivali authorship)
+3. ivali flow push — push branch to GitLab
+4. ivali flow mr — create merge request
+5. ivali flow pipeline --watch — wait for CI
+6. ivali flow merge — merge when CI passes
+
+NEVER commit directly with git commit. NEVER push directly with git push.
+ALWAYS use ivali flow commands. This is mandatory.
+
+Commit authorship MUST be:
+GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="itsivali@outlook.com"
+GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="itsivali@outlook.com"
+
+No AI branding in commit messages.`
 }
 
 func cleanBranchName(s string) string {
@@ -536,7 +572,7 @@ func flowStart(a *app.App) *cobra.Command {
 		Short: "Start a new workflow (creates issue + branch + optional AI implementation)",
 		Long: `Guided workflow starter with AI code generation.
 
-Creates a GitLab issue and feature branch. With --implement, the AI (opencode or freebuff)
+Creates a GitLab issue and feature branch. With --implement, the AI (opencode, kilocode, or antigravity)
 is called to write the actual code based on the change type and description.
 
 The AI understands the repository architecture and writes:
@@ -791,7 +827,7 @@ Examples:
 
 	var implement bool
 
-	cmd.Flags().BoolVar(&implement, "implement", false, "Call AI (opencode or freebuff) to write the code for this change")
+	cmd.Flags().BoolVar(&implement, "implement", false, "Call AI (opencode, kilocode, or antigravity) to write the code for this change")
 	return cmd
 }
 
@@ -2208,7 +2244,7 @@ func flowRun(a *app.App) *cobra.Command {
 
 Chains every step from issue creation to merge:
   1. Create GitLab issue + feature branch
-  2. AI implementation (opencode or freebuff)
+  2. AI implementation (opencode, kilocode, or antigravity)
   3. Validate all gates (nix fmt, go build, go test, etc.)
   4. Stage and commit
   5. Push to GitLab
@@ -2637,7 +2673,7 @@ Examples:
 		},
 	}
 
-	cmd.Flags().BoolVar(&implement, "implement", true, "Call AI (opencode or freebuff) to write the code for this change (default true, use --implement=false to skip)")
+	cmd.Flags().BoolVar(&implement, "implement", true, "Call AI (opencode, kilocode, or antigravity) to write the code for this change (default true, use --implement=false to skip)")
 	return cmd
 }
 

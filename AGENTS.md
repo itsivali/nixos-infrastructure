@@ -1,8 +1,47 @@
 # AGENTS.md: The Complete AI Engineering Contract
 
-This document defines the strict engineering contract for every AI agent working on this repository.It applies to all automated coding systems, including but not limited to: OpenCode, Claude Code, OpenAI Codex, GitHub Copilot, Google Jules, Gemini CLI, Cursor, Windsurf, Aider, Continue, and any future autonomous coding agents.
+This document defines the strict engineering contract for every AI agent working on this repository.It applies to all automated coding systems, including but not limited to: OpenCode, Kilocode, Antigravity CLI, Claude Code, OpenAI Codex, GitHub Copilot, Google Jules, Cursor, Windsurf, Aider, Continue, and any future autonomous coding agents.
 
 > **AI agents here are expected to operate as senior software engineers, not code generators.** The repository must remain in a production-ready state at all times.
+
+---
+
+## MANDATORY: USE IVAILI FLOW FOR EVERY CHANGE
+
+ALL AI agents working on this repository — opencode, kilocode, antigravity, or any other tool —
+MUST use `ivali flow` for every change. No exceptions. This is not a recommendation. This is the engineering contract.
+
+### Rules
+- NEVER commit directly with `git commit`
+- NEVER push directly with `git push`
+- NEVER merge directly with `git merge`
+- ALWAYS use `ivali flow` commands (see IVALI_FLOW.md for full reference)
+
+### The Commands
+```bash
+ivali flow start <type> "description"    # Create issue + branch
+ivali flow validate                       # Run all verification gates
+ivali flow commit                         # Stage + commit (conventional msg)
+ivali flow push                           # Push branch to GitLab
+ivali flow mr                             # Create merge request
+ivali flow pipeline --watch               # Poll CI until green
+ivali flow merge                          # Merge when CI passes
+```
+
+### For AI-Driven Work (Non-Interactive)
+```bash
+ivali flow run <type> "description"       # Full pipeline in one command
+ivali flow quick "description"            # Fast: commit -> push -> MR
+```
+
+### Commit Authorship (MANDATORY)
+```bash
+GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="itsivali@outlook.com" \
+GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="itsivali@outlook.com" \
+git commit -m "..."
+```
+
+No AI branding in commit messages. See IVALI_FLOW.md for the complete lifecycle documentation.
 
 ---
 

@@ -13,6 +13,7 @@ bw
 /.cache/
 /cmd/ivali/ivali
 .direnv/
+node_modules/
 # Go
 /ivali
 /ivali-bot

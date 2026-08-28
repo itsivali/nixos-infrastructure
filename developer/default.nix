@@ -30,7 +30,8 @@
 #   - shell.nix      — Default login shell (zsh)
 #
 #   AI Coding Agents:
-#   - freebuff.nix   — Freebuff free AI coding agent
+#   - kilocode.nix   — Kilocode CLI (fork of OpenCode)
+#   - antigravity.nix — Google Antigravity CLI (agy)
 #
 ##############################################################################
 

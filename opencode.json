@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["AGENTS.md", "IVALI_FLOW.md"],
+  "references": {
+    "repo-docs": {
+      "path": "./opencode",
+      "description": "Repository architecture, modules, deployment, and workflow documentation"
+    }
+  }
+}

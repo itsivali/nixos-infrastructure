@@ -12,7 +12,7 @@
 | **cloud** | `cloud/` | options.nix |
 | **configuration.nix** | `configuration.nix/` | configuration.nix |
 | **desktop** | `desktop/` | audio.nix, colors.nix, environment.nix, fonts.nix, gpu.nix, ... |
-| **developer** | `developer/` | aliases.nix, databases.nix, devops.nix, freebuff.nix, ... |
+| **developer** | `developer/` | aliases.nix, databases.nix, devops.nix, kilocode.nix, antigravity.nix, ... |
 | **flake.nix** | `flake.nix/` | flake.nix |
 | **home** | `home/` | neovim.nix, zed.nix, locale.nix, mime.nix, packages.nix, ... |
 | **hosts** | `hosts/` | hardware-configuration.nix, hosts.nix, prague.nix, testvm.nix, tuscany.nix |

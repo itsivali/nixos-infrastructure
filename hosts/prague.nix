@@ -31,5 +31,7 @@
   };
   config = {
     ivali.desktop.gnome.enable = true;
+    ivali.kilocode.enable = true;
+    ivali.antigravity.enable = true;
   };
 }

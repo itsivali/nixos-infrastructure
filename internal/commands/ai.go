@@ -1141,12 +1141,15 @@ func routeTask(description string) string {
 		}
 	}
 
-	// Try opencode, then freebuff
+	// Try opencode, then kilocode, then antigravity
 	if _, err := exec.LookPath("opencode"); err == nil {
 		return "opencode"
 	}
-	if _, err := exec.LookPath("freebuff"); err == nil {
-		return "freebuff"
+	if _, err := exec.LookPath("kilo"); err == nil {
+		return "kilocode"
+	}
+	if _, err := exec.LookPath("agy"); err == nil {
+		return "antigravity"
 	}
 
 	return "opencode"

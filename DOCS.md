@@ -729,7 +729,8 @@ Developer Experience:
 - aliases.nix    — Shell aliases (k8s, helm, tf, docker, go, db)
 - shell.nix      — Default login shell (zsh)
 AI Coding Agents:
-- freebuff.nix   — Freebuff free AI coding agent
+- kilocode.nix   — Kilocode CLI (fork of OpenCode)
+- antigravity.nix — Google Antigravity CLI (agy)
 #############################################################################
 
 ## developer/aliases.nix
@@ -778,14 +779,28 @@ Does NOT Own
 - Shell aliases (developer/aliases.nix)
 #############################################################################
 
-## developer/freebuff.nix
+## developer/kilocode.nix
 
 #############################################################################
-Freebuff — Free AI Coding Agent
+Kilocode CLI
 Purpose
 -------
-System-wide installation of Freebuff, a terminal-based AI coding agent
-powered by open-source models (DeepSeek, Kimi, MiniMax). No API key required.
+System-wide installation of Kilocode CLI, a fork of OpenCode that supports
+500+ AI models. Provides the `kilo` command for agentic development workflows.
+Ownership
+---------
+environment.systemPackages
+#############################################################################
+
+## developer/antigravity.nix
+
+#############################################################################
+Google Antigravity CLI
+Purpose
+-------
+System-wide installation of Google Antigravity CLI (agy), successor to
+Gemini CLI. Free tier uses Google OAuth — no API key required. Provides
+the `agy` command for agentic development workflows.
 Ownership
 ---------
 environment.systemPackages

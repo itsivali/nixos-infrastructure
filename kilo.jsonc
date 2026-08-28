@@ -1,0 +1,10 @@
+{
+  // Kilocode project config
+  // AGENTS.md is auto-discovered at project root
+  // This file adds additional instruction sources
+  "instructions": [
+    "AGENTS.md",
+    "IVALI_FLOW.md",
+    "opencode/workflow.md"
+  ]
+}

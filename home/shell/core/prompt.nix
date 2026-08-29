@@ -116,7 +116,7 @@ in
         "$golang"
         "$rust"
         "$memory_usage"
-        "$custom.disk"
+        "\${custom.disk}"
         "$status"
         "$character"
       ];

@@ -34,7 +34,7 @@ let
 
     installPhase = ''
       mkdir -p $out/lib/node_modules/@kilocode/cli
-      cp -r ./* $out/lib/node_modules/@kilocode/cli/
+      cp -r package/* $out/lib/node_modules/@kilocode/cli/
 
       mkdir -p $out/bin
       makeWrapper ${pkgs.nodejs}/bin/node $out/bin/kilo \

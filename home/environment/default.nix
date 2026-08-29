@@ -18,6 +18,7 @@
 # - session.nix    — Session settings
 # - variables.nix  — Environment variables
 # - xdg.nix        — XDG base directory settings
+# - ai-cleanup.nix — Remove legacy imperative AI tool binaries
 #
 ##############################################################################
 
@@ -31,5 +32,6 @@
     ./session.nix
     ./variables.nix
     ./xdg.nix
+    ./ai-cleanup.nix
   ];
 }

@@ -4,7 +4,9 @@
   // This file adds additional instruction sources
   "instructions": [
     "AGENTS.md",
+    "GEMINI.md",
     "IVALI_FLOW.md",
     "opencode/workflow.md"
-  ]
+  ],
+  "model": "claude-sonnet-4-5"
 }

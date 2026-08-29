@@ -6,7 +6,7 @@ This document defines the strict engineering contract for every AI agent working
 
 ---
 
-## MANDATORY: USE IVAILI FLOW FOR EVERY CHANGE
+## MANDATORY: USE IVALI FLOW FOR EVERY CHANGE
 
 ALL AI agents working on this repository — opencode, kilocode, antigravity, or any other tool —
 MUST use `ivali flow` for every change. No exceptions. This is not a recommendation. This is the engineering contract.

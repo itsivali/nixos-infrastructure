@@ -52,5 +52,10 @@
     fleet.deploymentHealth.enableRollback = true;
     ivali.dev.databases.enable = true;
     ivali.cloud.enable = true;
+
+    # ── AI Coding Agents ─────────────────────────────────────────────
+    ivali.kilocode.enable = true;
+    ivali.antigravity.enable = true;
+    ivali.dev.aiFallback.enable = true;
   };
 }

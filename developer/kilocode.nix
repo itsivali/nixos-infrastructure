@@ -8,6 +8,12 @@
 # 500+ AI models. Provides the `kilo` command for agentic development workflows.
 # Built from npm tarball since the nixpkgs package has a broken build.
 #
+# The upstream binary is a Bun 1.2 standalone executable (168 MB) with a
+# non-standard ELF layout.  autoPatchelfHook corrupts the PHDR/INTERP
+# segments when extending the interpreter path, causing a segfault.
+# buildFHSEnv provides /lib64/ld-linux-x86-64.so.2 without modifying
+# the binary — the same proven pattern used by antigravity.nix.
+#
 # Ownership
 # ---------
 # environment.systemPackages
@@ -19,37 +25,55 @@
 let
   cfg = config.ivali.kilocode;
 
-  kilocode-cli = pkgs.stdenv.mkDerivation {
-    pname = "kilocode-cli";
-    version = "7.5.5";
+  version = "7.5.5";
+
+  kilocode-base = pkgs.stdenv.mkDerivation {
+    pname = "kilocode-cli-base";
+    inherit version;
 
     src = pkgs.fetchurl {
-      url = "https://registry.npmjs.org/@kilocode/cli/-/cli-7.5.5.tgz";
-      sha256 = "sha256-nIR1j3KxETxjAj9A0nMPDFnmnVssxlDXm+98vLd7nRM=";
+      url = "https://registry.npmjs.org/@kilocode/cli-linux-x64/-/cli-linux-x64-${version}.tgz";
+      hash = "sha256-xmB10AcJvEP56v82XitjCNi8+HBqZtDleqNXMmFUBIw=";
     };
 
-    nativeBuildInputs = [ pkgs.makeWrapper ];
-
     dontBuild = true;
+    dontPatchelf = true;
 
     installPhase = ''
-      mkdir -p $out/lib/node_modules/@kilocode/cli
-      cp -r ./* $out/lib/node_modules/@kilocode/cli/
+      runHook preInstall
 
-      mkdir -p $out/bin
-      makeWrapper ${pkgs.nodejs}/bin/node $out/bin/kilo \
-        --add-flags "$out/lib/node_modules/@kilocode/cli/index.js"
+      mkdir -p $out/lib/kilocode
+      cp -r bin/* $out/lib/kilocode/
+
+      runHook postInstall
     '';
+
+    meta = {
+      description = "Kilo Code CLI";
+      homepage = "https://github.com/Kilo-Org/kilocode";
+      license = lib.licenses.mit;
+      mainProgram = "kilo";
+      platforms = [ "x86_64-linux" ];
+    };
   };
+
+  kilocode-fhs = pkgs.buildFHSEnv {
+    name = "kilo";
+    targetPkgs = pkgs: [
+      kilocode-base
+    ];
+    runScript = "${kilocode-base}/lib/kilocode/kilo";
+  };
+
 in
 {
   options.ivali.kilocode = {
-    enable = lib.mkEnableOption "Kilocode CLI (fork of OpenCode)";
+    enable = lib.mkEnableOption "Kilo Code CLI";
   };
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      kilocode-cli
+      kilocode-fhs
     ];
   };
 }

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://app.kilo.ai/config.json",
   // Kilocode project config
   // AGENTS.md is auto-discovered at project root
   // This file adds additional instruction sources

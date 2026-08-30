@@ -38,6 +38,7 @@ let
 
     dontBuild = true;
     dontPatchelf = true;
+    dontStrip = true;
 
     installPhase = ''
       runHook preInstall

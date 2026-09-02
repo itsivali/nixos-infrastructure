@@ -515,8 +515,9 @@ in
       };
     };
 
-    # Expose metrics port
-    networking.firewall.allowedTCPPorts = [ 9121 ];
+    # Metrics are served on 127.0.0.1:9121 (loopback only).
+    # Prometheus scrapes locally, so no external firewall rule is needed.
+    # Removed: networking.firewall.allowedTCPPorts = [ 9121 ];
 
     # Add to Prometheus scrape targets
     services.prometheus.scrapeConfigs = [

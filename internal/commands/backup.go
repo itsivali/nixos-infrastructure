@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -39,7 +40,11 @@ func CmdBackup(a *app.App) *cobra.Command {
 		Short: "📋  List backup snapshots",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := a.Term
-			out, err := exec.Command("sh", "-c", "RESTIC_PASSWORD_FILE=/run/secrets/restic_password RESTIC_REPOSITORY=/mnt/backup restic snapshots 2>&1").CombinedOutput()
+			env := os.Environ()
+			env = append(env, "RESTIC_PASSWORD_FILE=/run/secrets/restic_password", "RESTIC_REPOSITORY=/mnt/backup")
+			c := exec.Command("restic", "snapshots")
+			c.Env = env
+			out, err := c.CombinedOutput()
 			if err != nil {
 				fmt.Println(t.Bad("Failed to list snapshots"))
 				fmt.Println(t.Dim(string(out)))

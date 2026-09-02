@@ -737,3 +737,376 @@ func TestAPIHandleRollbackError(t *testing.T) {
 		t.Errorf("status code = %d, want %d", w.Code, http.StatusInternalServerError)
 	}
 }
+
+// ─── Middleware Tests ───────────────────────────────────────────────────────
+
+func TestRequireAuth_MissingToken(t *testing.T) {
+	server := &Server{
+		apiToken: "test-secret-token",
+		audit:    &mockAuditLogger{},
+		health:   &mockHealthService{},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	w := httptest.NewRecorder()
+
+	server.requireAuth(server.handleStatus)(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+
+	var errResp map[string]string
+	if err := json.NewDecoder(w.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode error: %v", err)
+	}
+	if errResp["error"] != "authorization required" {
+		t.Errorf("error = %q, want %q", errResp["error"], "authorization required")
+	}
+}
+
+func TestRequireAuth_InvalidFormat(t *testing.T) {
+	server := &Server{
+		apiToken: "test-secret-token",
+		audit:    &mockAuditLogger{},
+		health:   &mockHealthService{},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req.Header.Set("Authorization", "Basic abc123")
+	w := httptest.NewRecorder()
+
+	server.requireAuth(server.handleStatus)(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRequireAuth_WrongToken(t *testing.T) {
+	server := &Server{
+		apiToken: "test-secret-token",
+		audit:    &mockAuditLogger{},
+		health:   &mockHealthService{},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req.Header.Set("Authorization", "Bearer wrong-token")
+	w := httptest.NewRecorder()
+
+	server.requireAuth(server.handleStatus)(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestRequireAuth_ValidToken(t *testing.T) {
+	server := &Server{
+		apiToken:   "test-secret-token",
+		audit:      &mockAuditLogger{},
+		deployment: &mockDeploymentService{},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req.Header.Set("Authorization", "Bearer test-secret-token")
+	w := httptest.NewRecorder()
+
+	server.requireAuth(server.handleStatus)(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRequireAuth_SecondaryToken(t *testing.T) {
+	server := &Server{
+		apiToken:       "primary-token",
+		secondaryToken: "secondary-token",
+		audit:          &mockAuditLogger{},
+		deployment:     &mockDeploymentService{},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req.Header.Set("Authorization", "Bearer secondary-token")
+	w := httptest.NewRecorder()
+
+	server.requireAuth(server.handleStatus)(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRequireAuth_EmptyTokenInsecure(t *testing.T) {
+	server := &Server{
+		apiToken:   "",
+		insecure:   true,
+		audit:      &mockAuditLogger{},
+		deployment: &mockDeploymentService{},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	w := httptest.NewRecorder()
+
+	server.requireAuth(server.handleStatus)(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRequireAuth_HealthEndpointSkipsAuth(t *testing.T) {
+	server := &Server{
+		apiToken: "test-secret-token",
+		audit:    &mockAuditLogger{},
+		health:   &mockHealthService{},
+	}
+
+	// Health endpoint is not wrapped with requireAuth
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	w := httptest.NewRecorder()
+
+	server.handleHealth(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestServer_StartRequiresToken(t *testing.T) {
+	server := &Server{
+		apiToken: "",
+		insecure: false,
+		repoDir:  "/tmp",
+	}
+
+	err := server.Start()
+	if err == nil {
+		t.Error("expected error when starting without token in secure mode")
+	}
+}
+
+// ─── CORS Middleware Tests ──────────────────────────────────────────────────
+
+func TestCORS_ValidOrigin(t *testing.T) {
+	server := &Server{
+		allowedOrigins: []string{"http://127.0.0.1:8080"},
+	}
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := server.corsMiddleware(inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	req.Header.Set("Origin", "http://127.0.0.1:8080")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Header().Get("Access-Control-Allow-Origin") != "http://127.0.0.1:8080" {
+		t.Errorf("CORS header = %q, want %q", w.Header().Get("Access-Control-Allow-Origin"), "http://127.0.0.1:8080")
+	}
+}
+
+func TestCORS_InvalidOrigin(t *testing.T) {
+	server := &Server{
+		allowedOrigins: []string{"http://127.0.0.1:8080"},
+	}
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := server.corsMiddleware(inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	req.Header.Set("Origin", "http://evil.example.com")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusForbidden)
+	}
+}
+
+func TestCORS_Preflight(t *testing.T) {
+	server := &Server{
+		allowedOrigins: []string{"http://127.0.0.1:8080"},
+	}
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := server.corsMiddleware(inner)
+
+	req := httptest.NewRequest(http.MethodOptions, "/api/deploy", nil)
+	req.Header.Set("Origin", "http://127.0.0.1:8080")
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNoContent {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusNoContent)
+	}
+}
+
+func TestCORS_NoOriginHeader(t *testing.T) {
+	server := &Server{
+		allowedOrigins: []string{"http://127.0.0.1:8080"},
+	}
+
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	handler := server.corsMiddleware(inner)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+	w := httptest.NewRecorder()
+
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status code = %d, want %d (no origin = pass through)", w.Code, http.StatusOK)
+	}
+}
+
+// ─── Rate Limiter Tests ────────────────────────────────────────────────────
+
+func TestRateLimit_AllowWithinLimit(t *testing.T) {
+	server := &Server{
+		rateLimiter: newRateLimiter(10, 100),
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req.RemoteAddr = "192.168.1.1:12345"
+	w := httptest.NewRecorder()
+
+	server.rateLimitMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})).ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("status code = %d, want %d", w.Code, http.StatusOK)
+	}
+}
+
+func TestRateLimit_HealthEndpointExempt(t *testing.T) {
+	server := &Server{
+		rateLimiter: newRateLimiter(1, 1),
+	}
+
+	for i := 0; i < 5; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/api/health", nil)
+		req.RemoteAddr = "192.168.1.1:12345"
+		w := httptest.NewRecorder()
+
+		server.rateLimitMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})).ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("request %d: status code = %d, want %d (health exempt)", i, w.Code, http.StatusOK)
+		}
+	}
+}
+
+// ─── Service Name Validation Tests ─────────────────────────────────────────
+
+func TestValidateServiceName_Valid(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{"nginx.service"},
+		{"sshd.service"},
+		{"operations-web-ui.service"},
+		{"grafana-server.service"},
+		{"restic-backup.timer"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateServiceName(tt.name); err != nil {
+				t.Errorf("validateServiceName(%q) error = %v, want nil", tt.name, err)
+			}
+		})
+	}
+}
+
+func TestValidateServiceName_Empty(t *testing.T) {
+	if err := validateServiceName(""); err == nil {
+		t.Error("expected error for empty service name")
+	}
+}
+
+func TestValidateServiceName_PathTraversal(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{"../../../etc/passwd.service"},
+		{"foo/bar.service"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateServiceName(tt.name); err == nil {
+				t.Errorf("validateServiceName(%q) expected error for path traversal", tt.name)
+			}
+		})
+	}
+}
+
+func TestValidateServiceName_NotInAllowlist(t *testing.T) {
+	if err := validateServiceName("unknown.service"); err == nil {
+		t.Error("expected error for service not in allowlist")
+	}
+}
+
+func TestValidateServiceName_InvalidFormat(t *testing.T) {
+	tests := []struct {
+		name string
+	}{
+		{"service without extension"},
+		{"service; rm -rf /"},
+		{"service && evil"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := validateServiceName(tt.name); err == nil {
+				t.Errorf("validateServiceName(%q) expected error for invalid format", tt.name)
+			}
+		})
+	}
+}
+
+// ─── Extract Service Name Tests ────────────────────────────────────────────
+
+func TestExtractServiceName_Valid(t *testing.T) {
+	name, err := extractServiceName("/api/services/nginx.service/restart")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if name != "nginx.service" {
+		t.Errorf("name = %q, want %q", name, "nginx.service")
+	}
+}
+
+func TestExtractServiceName_InvalidPath(t *testing.T) {
+	_, err := extractServiceName("/api/services/invalid")
+	if err == nil {
+		t.Error("expected error for invalid path")
+	}
+}
+
+func TestExtractServiceName_NotInAllowlist(t *testing.T) {
+	_, err := extractServiceName("/api/services/evil.service/restart")
+	if err == nil {
+		t.Error("expected error for service not in allowlist")
+	}
+}

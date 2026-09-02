@@ -30,6 +30,7 @@ type Server struct {
 	secondaryToken string
 	allowedOrigins []string
 	rateLimiter    *rateLimiter
+	insecure       bool
 }
 
 // Config holds the API server configuration.
@@ -39,6 +40,10 @@ type Config struct {
 	APIToken       string
 	SecondaryToken string
 	AllowedOrigins []string
+	// Insecure allows the server to start without an API token.
+	// When false and APIToken is empty, Start() returns an error.
+	// This prevents accidental anonymous access to privileged endpoints.
+	Insecure bool
 }
 
 // rateLimiter provides token-bucket rate limiting per IP
@@ -105,7 +110,7 @@ var ServiceRestartAllowlist = map[string]bool{
 }
 
 // Valid service name pattern (alphanumeric, hyphens, underscores, dots, @ for template units)
-var validServiceName = regexp.MustCompile(`^[a-zA-Z0-9_\-\.@]+\.service$|^timer$`)
+var validServiceName = regexp.MustCompile(`^[a-zA-Z0-9_\-\.@]+\.service$|^[a-zA-Z0-9_\-\.@]+\.timer$`)
 
 // NewServer creates a new API server.
 func NewServer(cfg Config) *Server {
@@ -130,11 +135,23 @@ func NewServer(cfg Config) *Server {
 		secondaryToken: cfg.SecondaryToken,
 		allowedOrigins: allowedOrigins,
 		rateLimiter:    newRateLimiter(10, 100), // 10 req/s, burst of 100
+		insecure:       cfg.Insecure,
 	}
 }
 
 // Start starts the API server.
 func (s *Server) Start() error {
+	// Refuse to start without authentication in secure mode.
+	// This prevents accidental anonymous access to privileged endpoints
+	// (deploy, rollback, service restart) when exposed via Tailscale Serve.
+	if s.apiToken == "" && !s.insecure {
+		return fmt.Errorf("API token is required; set APIToken or use --insecure for development")
+	}
+
+	if s.apiToken == "" && s.insecure {
+		log.Printf("WARNING: Starting API server without authentication (insecure mode)")
+	}
+
 	mux := http.NewServeMux()
 
 	// Health endpoints (no auth required)

@@ -32,13 +32,18 @@ func CmdServices(a *app.App) *cobra.Command {
 				state, _ := exec.Command("systemctl", "is-active", svc).CombinedOutput()
 				stateStr := strings.TrimSpace(string(state))
 
-				mem, _ := exec.Command("sh", "-c",
-					fmt.Sprintf("systemctl show %s --property=MemoryCurrent 2>/dev/null | cut -d= -f2", svc)).CombinedOutput()
+				mem, _ := exec.Command("systemctl", "show", svc, "--property=MemoryCurrent").CombinedOutput()
 				memStr := strings.TrimSpace(string(mem))
+				// Cut the "MemoryCurrent=" prefix
+				if idx := strings.Index(memStr, "="); idx >= 0 {
+					memStr = memStr[idx+1:]
+				}
 
-				uptime, _ := exec.Command("sh", "-c",
-					fmt.Sprintf("systemctl show %s --property=ActiveEnterTimestamp 2>/dev/null | cut -d= -f2", svc)).CombinedOutput()
+				uptime, _ := exec.Command("systemctl", "show", svc, "--property=ActiveEnterTimestamp").CombinedOutput()
 				uptimeStr := strings.TrimSpace(string(uptime))
+				if idx := strings.Index(uptimeStr, "="); idx >= 0 {
+					uptimeStr = uptimeStr[idx+1:]
+				}
 
 				icon := t.Bad("✗")
 				if stateStr == "active" {
@@ -57,7 +62,7 @@ func CmdServices(a *app.App) *cobra.Command {
 			}
 
 			fmt.Println()
-			failed, _ := exec.Command("sh", "-c", "systemctl list-units --state=failed --no-legend 2>/dev/null | head -10").CombinedOutput()
+			failed, _ := exec.Command("systemctl", "list-units", "--state=failed", "--no-legend").CombinedOutput()
 			failedStr := strings.TrimSpace(string(failed))
 			if failedStr != "" {
 				fmt.Println(t.Bad("Failed Units:"))

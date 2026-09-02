@@ -31,6 +31,10 @@
       trusted-users = [ "root" username "gitlab-runner" ];
       substituters = [ "https://cache.nixos.org" ];
       warn-dirty = false;
+
+      # Increase timeouts for slow/unstable connections (WiFi, VPN, etc.)
+      timeout = 180;
+      http-connections = 50;
     };
 
     gc = {

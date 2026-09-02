@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/spf13/cobra"
@@ -20,7 +21,11 @@ func CmdRestore(a *app.App) *cobra.Command {
 		Short: "📋  List available snapshots",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := a.Term
-			out, err := exec.Command("sh", "-c", "RESTIC_PASSWORD_FILE=/run/secrets/restic_password RESTIC_REPOSITORY=/mnt/backup restic snapshots 2>&1").CombinedOutput()
+			env := os.Environ()
+			env = append(env, "RESTIC_PASSWORD_FILE=/run/secrets/restic_password", "RESTIC_REPOSITORY=/mnt/backup")
+			c := exec.Command("restic", "snapshots")
+			c.Env = env
+			out, err := c.CombinedOutput()
 			if err != nil {
 				fmt.Println(t.Bad("Failed to list snapshots"))
 				fmt.Println(t.Dim(string(out)))
@@ -41,7 +46,11 @@ func CmdRestore(a *app.App) *cobra.Command {
 				return nil
 			}
 			fmt.Println(t.Dim("Restoring from latest snapshot..."))
-			out, err := exec.Command("sh", "-c", "RESTIC_PASSWORD_FILE=/run/secrets/restic_password RESTIC_REPOSITORY=/mnt/backup restic restore latest --target / 2>&1").CombinedOutput()
+			env := os.Environ()
+			env = append(env, "RESTIC_PASSWORD_FILE=/run/secrets/restic_password", "RESTIC_REPOSITORY=/mnt/backup")
+			c := exec.Command("restic", "restore", "latest", "--target", "/")
+			c.Env = env
+			out, err := c.CombinedOutput()
 			if err != nil {
 				return fmt.Errorf("restore failed: %s\n%s", err, string(out))
 			}

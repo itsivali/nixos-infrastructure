@@ -100,6 +100,13 @@
         }
       ];
 
+      # API authentication token (required for production)
+      sops.secrets.api_token = {
+        sopsFile = ../../secrets/web-ui.yaml;
+        owner = "ivali";
+        mode = "0400";
+      };
+
       systemd.services.operations-web-ui = {
         description = "Operations Web UI API Server";
         after = [ "network-online.target" ];
@@ -121,6 +128,7 @@
           HOST_NAME = config.networking.hostName;
           REPO_DIR = cfg.repoPath;
           API_ADDR = "${cfg.address}:${toString cfg.port}";
+          IVALI_API_TOKEN_FILE = config.sops.secrets.api_token.path;
         };
 
         preStart = ''

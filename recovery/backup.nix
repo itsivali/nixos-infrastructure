@@ -67,7 +67,7 @@ let
       /home/ivali/.config
 
     restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 3
-    restic check || true
+    restic check || echo "WARNING: restic repository integrity check failed" >&2
   '';
 in
 {

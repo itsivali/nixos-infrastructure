@@ -50,9 +50,9 @@ let
   # so PipeWire has full dynamic range. This runs once at boot before
   # PipeWire starts, ensuring the hardware mixer is configured.
   alsa-init = pkgs.writeShellScript "alsa-init" ''
-    # Wait for ALSA cards to appear
+    # Wait for any ALSA card to appear (not card1 specifically)
     for i in $(seq 1 10); do
-      if [ -d /proc/asound/card1 ]; then break; fi
+      if ls /proc/asound/card[0-9]* >/dev/null 2>&1; then break; fi
       sleep 0.5
     done
 

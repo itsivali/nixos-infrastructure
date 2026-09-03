@@ -17,8 +17,8 @@
 
 {
   home.sessionVariables = {
-    EDITOR = "nvim";
-    VISUAL = "nvim";
+    EDITOR = "zeditor";
+    VISUAL = "zeditor";
     PAGER = "bat";
     MANPAGER = "sh -c 'col -bx | bat -l man -p'";
     LESS = "-R";

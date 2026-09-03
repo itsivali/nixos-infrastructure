@@ -32,9 +32,17 @@
       substituters = [ "https://cache.nixos.org" ];
       warn-dirty = false;
 
-      # Increase timeouts for slow/unstable connections (WiFi, VPN, etc.)
-      timeout = 180;
-      http-connections = 50;
+      # Optimized timeout settings for better build performance
+      timeout = 60;
+      http-connections = 25;
+      stalled-download-timeout = 30;
+
+      # Enable parallel builds for faster compilation
+      max-jobs = "auto";
+      cores = 0;
+
+      # Use case-hack for faster evaluation on case-insensitive filesystems
+      use-case-hack = true;
     };
 
     gc = {

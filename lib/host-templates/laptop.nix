@@ -133,6 +133,42 @@ in
   goBinaryCache.enable = true;
 
   ############################################################################
+  # FHS ENVIRONMENT CACHE
+  # Caches FHS environment builds (kilocode, antigravity, etc.) in the
+  # attic binary cache so they are restored in seconds instead of being
+  # rebuilt from scratch. FHS environments are expensive to build because
+  # they create entire Linux filesystem hierarchies.
+  ############################################################################
+  fhsCache = lib.mkIf (config.ivali.kilocode.enable || config.ivali.antigravity.enable) {
+    enable = true;
+    packages = lib.optionals config.ivali.kilocode.enable [
+      config.ivali.kilocode.package
+    ] ++ lib.optionals config.ivali.antigravity.enable [
+      config.ivali.antigravity.package
+    ];
+  };
+
+  ############################################################################
+  # BINARY CACHE (attic)
+  # Runs a local attic binary cache server so all packages (not just Go)
+  # are cached. Subsequent rebuilds pull from cache instead of building
+  # from source, reducing rebuild times from minutes to seconds.
+  ############################################################################
+  fleet.cache = {
+    enable = true;
+    url = "http://localhost:8080";
+    publicKey = ""; # Will be generated on first run
+    server = {
+      enable = true;
+      listen = "0.0.0.0:8080";
+      storeDir = "/var/lib/attic";
+    };
+  } // lib.optionalAttrs (hasTailscale && tailnetDomain != null) {
+    # If Tailscale is available, also expose cache to tailnet peers
+    url = "https://cache.${tailnetDomain}";
+  };
+
+  ############################################################################
   # GITLAB RUNNER
   ############################################################################
   fleet.gitlabRunner = lib.mkIf (hasGitLabRunner && hasSecrets) {

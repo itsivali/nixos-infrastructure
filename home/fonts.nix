@@ -38,7 +38,6 @@
     # ─────────────────────────────────────────────────────────────────────────
     # Microsoft Office Compatibility Fonts (LibreOffice & System)
     # ─────────────────────────────────────────────────────────────────────────
-    coreutils # Standard fallback tools
     corefonts # <--- Changed from msttcorefonts to corefonts
     vista-fonts # Calibri, Cambria, Consolas, Candara, etc. 
 

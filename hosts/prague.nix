@@ -33,5 +33,12 @@
     ivali.desktop.gnome.enable = true;
     ivali.kilocode.enable = true;
     ivali.antigravity.enable = true;
+
+    # DevOps tooling - enable only what you need
+    ivali.devops.enable = true;
+    ivali.devops.terraform.enable = true;
+    ivali.devops.kubernetes.enable = true;
+    ivali.devops.containers.enable = true;
+    ivali.devops.ci.enable = true;
   };
 }

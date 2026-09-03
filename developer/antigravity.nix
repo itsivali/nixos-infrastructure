@@ -31,11 +31,17 @@ in
 {
   options.ivali.antigravity = {
     enable = lib.mkEnableOption "Google Antigravity CLI (agy)";
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = antigravity-fhs;
+      readOnly = true;
+      description = "The antigravity FHS package (for caching)";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      antigravity-fhs
+      cfg.package
     ];
   };
 }

@@ -70,11 +70,17 @@ in
 {
   options.ivali.kilocode = {
     enable = lib.mkEnableOption "Kilo Code CLI";
+    package = lib.mkOption {
+      type = lib.types.package;
+      default = kilocode-fhs;
+      readOnly = true;
+      description = "The kilocode FHS package (for caching)";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     environment.systemPackages = [
-      kilocode-fhs
+      cfg.package
     ];
   };
 }

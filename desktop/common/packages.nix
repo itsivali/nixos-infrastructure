@@ -39,7 +39,6 @@
 
     # Interactive tooling for scripts & debugging
     imagemagick
-    jq
     libva-utils
   ];
 }

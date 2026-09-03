@@ -181,6 +181,22 @@ in
   };
 
   ############################################################################
+  # GITOPS RECONCILER
+  # Automatically pulls from GitLab main branch every 15 minutes
+  # and runs nixos-rebuild switch to apply changes.
+  ############################################################################
+  fleet.gitops = {
+    repo = "https://gitlab.com/willisivali/nixos-infrastructure";
+    branch = "main";
+  };
+
+  fleet.gitopsReconciler = {
+    enable = true;
+    schedule = "*:0/15";
+    canary = false;
+  };
+
+  ############################################################################
   # DEPLOYMENT HEALTH
   ############################################################################
   fleet.deploymentHealth = lib.mkIf (hasGitLabRunner && hasSecrets) {

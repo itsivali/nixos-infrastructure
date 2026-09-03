@@ -48,14 +48,17 @@
 { config, lib, pkgs, ... }:
 
 let
-  cfg = config.goBinaryCache;
+  goCfg = config.goBinaryCache;
+  fhsCfg = config.fhsCache;
 
   # Space-separated store paths for `nix copy`. The actual package list is
   # provided by an inline module in flake.nix (so this module needs no
   # access to the flake outputs / specialArgs and works under nixosTest too).
-  pkgPaths = lib.concatMapStringsSep " " (p: "${p}") cfg.packages;
+  goPkgPaths = lib.concatMapStringsSep " " (p: "${p}") goCfg.packages;
+  fhsPkgPaths = lib.concatMapStringsSep " " (p: "${p}") fhsCfg.packages;
 
-  cacheUrl = "file://${cfg.cacheDir}";
+  goCacheUrl = "file://${goCfg.cacheDir}";
+  atticCacheUrl = "http://localhost:8080";
 in
 {
   options.goBinaryCache = {
@@ -119,29 +122,50 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
-    # 1. Create the persistent cache directory.
-    systemd.tmpfiles.rules = [
-      "d ${cfg.cacheDir} 0755 root root - -"
+  options.fhsCache = {
+    enable = lib.mkEnableOption ''
+      cache FHS environment builds in the attic binary cache
+      so they are restored in seconds instead of rebuilt from scratch
+    '';
+
+    packages = lib.mkOption {
+      type = lib.types.listOf lib.types.package;
+      default = [ ];
+      example = "with pkgs; [ kilocode-fhs antigravity-fhs ]";
+      description = ''
+        FHS environment derivations to cache. These are typically built
+        with buildFHSEnv and are expensive to build from scratch.
+      '';
+    };
+
+    cacheBuildClosure = lib.mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = ''
+        Also cache build-time dependencies. This guarantees a from-scratch
+        rebuild is never required even after nix-collect-garbage.
+      '';
+    };
+  };
+
+  config = {
+    # ═══════════════════════════════════════════════════════════════════════
+    # Go Binary Cache
+    # ═══════════════════════════════════════════════════════════════════════
+    systemd.tmpfiles.rules = lib.mkIf goCfg.enable [
+      "d ${goCfg.cacheDir} 0755 root root - -"
     ];
 
-    # 2. Register the local cache as a substituter.
-    #    Unsigned local caches are trusted via `trusted-substituters` so the
-    #    daemon will substitute from them without a signature. mkAfter appends
-    #    to any substituters already configured (e.g. cache.nixos.org).
-    nix.settings = {
-      substituters = lib.mkAfter ([ cacheUrl ] ++ cfg.extraSubstituters);
+    nix.settings = lib.mkIf goCfg.enable {
+      substituters = lib.mkAfter ([ goCacheUrl ] ++ goCfg.extraSubstituters);
       trusted-substituters = lib.mkAfter (
-        if cfg.signCache
-        then cfg.extraSubstituters
-        else [ cacheUrl ] ++ cfg.extraSubstituters
+        if goCfg.signCache
+        then goCfg.extraSubstituters
+        else [ goCacheUrl ] ++ goCfg.extraSubstituters
       );
     };
 
-    # 3. Populate the cache after each activation. The new generation's store
-    #    paths are already realised by the time nixos-activation runs, so
-    #    `nix copy` finds them locally and copies them into the cache.
-    systemd.services.goBinaryCachePopulate = {
+    systemd.services.goBinaryCachePopulate = lib.mkIf goCfg.enable {
       description = "Populate local binary cache with Go-built tools";
       wantedBy = [ "multi-user.target" ];
       after = [ "nixos-activation.service" ];
@@ -149,27 +173,49 @@ in
       serviceConfig = {
         Type = "oneshot";
         RemainAfterExit = true;
-        # Don't block or fail the switch if caching hiccups; the build itself
-        # still succeeds, we just might miss a cache entry this round.
         SuccessExitStatus = [ 0 ];
       };
       script = ''
-        cache="${cacheUrl}"
+        cache="${goCacheUrl}"
         echo "go-binary-cache: populating $cache"
-        # Realise (build if missing) and copy package outputs + runtime closure.
-        # Idempotent: already-cached paths are skipped.
-        nix copy --to "$cache" ${pkgPaths} || true
+        nix copy --to "$cache" ${goPkgPaths} || true
         ${
-          lib.optionalString cfg.cacheBuildClosure ''
-            # Also cache build-time inputs (go-modules) so a GC'd module set is
-            # restored instead of re-downloaded from the network.
-            for d in ${pkgPaths}; do
+          lib.optionalString goCfg.cacheBuildClosure ''
+            for d in ${goPkgPaths}; do
               drv="$(nix path-info --derivation "$d" 2>/dev/null || true)"
               [ -n "$drv" ] && nix copy --to "$cache" "$drv" || true
             done
           ''
         }
         echo "go-binary-cache: done"
+      '';
+    };
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # FHS Environment Cache
+    # ═══════════════════════════════════════════════════════════════════════
+    systemd.services.fhsCachePopulate = lib.mkIf fhsCfg.enable {
+      description = "Populate attic cache with FHS environment builds";
+      wantedBy = [ "multi-user.target" ];
+      after = [ "nixos-activation.service" ];
+      path = [ pkgs.nix ];
+      serviceConfig = {
+        Type = "oneshot";
+        RemainAfterExit = true;
+        SuccessExitStatus = [ 0 ];
+      };
+      script = ''
+        echo "fhs-cache: populating attic cache with FHS builds"
+        nix copy --to "${atticCacheUrl}" ${fhsPkgPaths} || true
+        ${
+          lib.optionalString fhsCfg.cacheBuildClosure ''
+            for d in ${fhsPkgPaths}; do
+              drv="$(nix path-info --derivation "$d" 2>/dev/null || true)"
+              [ -n "$drv" ] && nix copy --to "${atticCacheUrl}" "$drv" || true
+            done
+          ''
+        }
+        echo "fhs-cache: done"
       '';
     };
   };

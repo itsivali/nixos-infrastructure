@@ -8,9 +8,12 @@
 # container orchestration, configuration management, secrets management,
 # service discovery, and GitOps.
 #
+# Packages are opt-in to reduce evaluation and build time. Enable only
+# the categories you need via the ivali.devops options.
+#
 # Ownership
 # ---------
-# environment.systemPackages for DevOps tooling
+# options.ivali.devops
 #
 # Does NOT Own
 # ------------
@@ -20,39 +23,55 @@
 #
 ##############################################################################
 
-{ pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
+let
+  cfg = config.ivali.devops;
+in
 {
-  environment.systemPackages = with pkgs; [
-    # ── CI / Linting (needed by GitLab runner Shell executor) ──────────
-    shellcheck
-    golangci-lint
+  options.ivali.devops = {
+    enable = lib.mkEnableOption "DevOps tooling (IaC, K8s, container tools)";
 
-    # ── Infrastructure as Code ──────────────────────────────────────────
-    terraform
-    opentofu
-    terraform-ls
-    packer
+    terraform = {
+      enable = lib.mkEnableOption "Terraform/OpenTofu IaC tools";
+    };
 
-    # ── Kubernetes ──────────────────────────────────────────────────────
-    kubectl
-    kubernetes-helm
-    kustomize
-    kubectx
+    kubernetes = {
+      enable = lib.mkEnableOption "Kubernetes tooling (kubectl, helm, kustomize)";
+    };
 
-    # ── Configuration Management ────────────────────────────────────────
-    ansible
+    containers = {
+      enable = lib.mkEnableOption "Container tools (docker-compose)";
+    };
 
-    # ── Secrets Management ──────────────────────────────────────────────
-    vault
+    ci = {
+      enable = lib.mkEnableOption "CI/linting tools (shellcheck, golangci-lint)";
+    };
+  };
 
-    # ── Service Discovery / Mesh ────────────────────────────────────────
-    consul
+  config = lib.mkIf cfg.enable {
+    environment.systemPackages = with pkgs; [
+      # ── CI / Linting (needed by GitLab runner Shell executor) ──────────
+    ] ++ lib.optionals cfg.ci.enable [
+      shellcheck
+      golangci-lint
 
-    # ── GitOps ──────────────────────────────────────────────────────────
-    argocd
+      # ── Infrastructure as Code ──────────────────────────────────────────
+    ] ++ lib.optionals cfg.terraform.enable [
+      terraform
+      opentofu
+      terraform-ls
 
-    # ── Container Tools ─────────────────────────────────────────────────
-    docker-compose
-  ];
+      # ── Kubernetes ──────────────────────────────────────────────────────
+    ] ++ lib.optionals cfg.kubernetes.enable [
+      kubectl
+      kubernetes-helm
+      kustomize
+      kubectx
+
+      # ── Container Tools ─────────────────────────────────────────────────
+    ] ++ lib.optionals cfg.containers.enable [
+      docker-compose
+    ];
+  };
 }

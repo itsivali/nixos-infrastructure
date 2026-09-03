@@ -31,8 +31,7 @@
     gocov = "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out";
 
     # ── Editors ───────────────────────────────────────────────────────
-    v = "nvim";
-    vi = "nvim";
+    v = "zeditor";
 
     # ── Finders ───────────────────────────────────────────────────────
     f = "fd";

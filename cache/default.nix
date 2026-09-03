@@ -73,17 +73,18 @@ in
     nix.settings.substituters = lib.mkBefore [ cfg.url ];
     nix.settings.trusted-public-keys = lib.mkBefore [ trustedKey ];
 
-    environment.systemPackages = [ pkgs.attic ];
+    environment.systemPackages = [ pkgs.attic-client ];
 
     systemd.services.attic-server = lib.mkIf cfg.server.enable {
       description = "attic binary cache server";
       after = [ "network-online.target" ];
+      requires = [ "network-online.target" ];
       wantedBy = [ "multi-user.target" ];
       serviceConfig = {
         Type = "simple";
         DynamicUser = true;
         StateDirectory = "attic";
-        ExecStart = "${pkgs.attic}/bin/attic serve --listen ${cfg.server.listen} --store ${cfg.server.storeDir}";
+        ExecStart = "${pkgs.attic-server}/bin/attic serve --listen ${cfg.server.listen} --store ${cfg.server.storeDir}";
         Restart = "on-failure";
       };
     };

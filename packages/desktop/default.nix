@@ -45,7 +45,6 @@ with pkgs; [
   mpv
 
   # Utilities
-  brightnessctl
   localsend
   mission-center
   gnome-tweaks

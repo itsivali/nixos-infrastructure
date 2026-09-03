@@ -44,18 +44,15 @@ with pkgs; [
   gitlab
   glab
   gnupg
-  google-cloud-sdk
   home-manager
   htop
   iproute2
   jq
   just
   lazygit
-  nixd
   opencode
   openssl
   packer
-  pciutils
   python3
   ripgrep
   rsync
@@ -64,7 +61,6 @@ with pkgs; [
   sysstat
   tree
   unzip
-  usbutils
   vault
   vim
   watchexec

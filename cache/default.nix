@@ -84,7 +84,7 @@ in
         Type = "simple";
         DynamicUser = true;
         StateDirectory = "attic";
-        ExecStart = "${pkgs.attic-server}/bin/attic serve --listen ${cfg.server.listen} --store ${cfg.server.storeDir}";
+        ExecStart = "${pkgs.attic-server}/bin/atticd serve --listen ${cfg.server.listen} --store ${cfg.server.storeDir}";
         Restart = "on-failure";
       };
     };

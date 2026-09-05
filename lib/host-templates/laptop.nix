@@ -150,22 +150,16 @@ in
 
   ############################################################################
   # BINARY CACHE (attic)
-  # Runs a local attic binary cache server so all packages (not just Go)
-  # are cached. Subsequent rebuilds pull from cache instead of building
-  # from source, reducing rebuild times from minutes to seconds.
+  # Dormant by design: the attic signing key has not been provisioned yet, so
+  # `publicKey` stays empty. The consumer module is fail-safe — it only wires
+  # the cache into Nix when a verifiable key is set. Enable once a real cache
+  # (with a signing key) exists; also re-introduce the attic *server* half in
+  # `cache/default.nix` (previous `atticd serve` invocation was invalid).
   ############################################################################
   fleet.cache = {
-    enable = true;
+    enable = false;
     url = "http://localhost:8080";
-    publicKey = ""; # Will be generated on first run
-    server = {
-      enable = true;
-      listen = "0.0.0.0:8080";
-      storeDir = "/var/lib/attic";
-    };
-  } // lib.optionalAttrs (hasTailscale && tailnetDomain != null) {
-    # If Tailscale is available, also expose cache to tailnet peers
-    url = "https://cache.${tailnetDomain}";
+    publicKey = "";
   };
 
   ############################################################################

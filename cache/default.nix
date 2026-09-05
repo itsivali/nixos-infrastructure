@@ -1,26 +1,26 @@
 ##############################################################################
 #
-# Binary Cache — attic (consumer + optional server)
+# Binary Cache — attic (consumer only)
 #
 # Purpose
 # -------
 # Point Nix at a binary cache so the GitOps reconciler's rebuilds are
-# seconds, not 10+ minutes. Two parts:
-#   * consumer: this host *uses* a cache at `url` (e.g. a Tailscale
-#     peer running the server half, or any attic instance).
-#   * server:   optionally run an attic server here so peers / VMs can
-#     pull this host's store. On a single laptop the consumer side is
-#     the useful one (point it at a machine that builds for you).
+# seconds, not 10+ minutes.
+#
+# NOTE: The attic *server* half was removed. The previous `atticd serve`
+# invocation was invalid for the installed atticd (modern atticd uses
+# `--config`) and the server had no signing key, so it never worked and
+# crash-looped. Re-introduce the server half as a follow-up with a real
+# signing key (SOPS-encrypted) and a correct atticd configuration file.
 #
 # Ownership
 # ---------
-# fleet.cache.*, nix.settings.substituters, optional attic systemd unit
+# fleet.cache.*, nix.settings.substituters
 #
 # Dependencies
 # ------------
-# Requires the cache's public key (base64) for `publicKey`.
-# The server half needs the attic package (MIT) and an open port on the
-# Tailscale interface.
+# Requires the cache's public key (base64) for `publicKey`. Without a key
+# the cache cannot be verified, so nothing is wired into Nix (fail-safe).
 #
 ##############################################################################
 
@@ -50,43 +50,20 @@ in
       example = "7F2...base64...";
       description = "attic public key (base64) of the cache at `url`.";
     };
-
-    server = {
-      enable = lib.mkEnableOption "run an attic server on this host";
-
-      listen = lib.mkOption {
-        type = lib.types.str;
-        default = "0.0.0.0:8080";
-        description = "Address:port the attic server listens on.";
-      };
-
-      storeDir = lib.mkOption {
-        type = lib.types.str;
-        default = "/var/lib/attic";
-        description = "Directory attic serves the store from.";
-      };
-    };
   };
 
-  config = lib.mkIf cfg.enable {
+  config = lib.mkIf (cfg.enable && cfg.publicKey != "") {
+    # Fail-safe: only wire the cache into Nix when a verifiable public key is
+    # actually configured. An empty key would produce a corrupt
+    # trusted-public-keys entry ("cache.foo.ts.net-1:" with no key material),
+    # which makes every uncached `nix` fetch hard-fail with "key is corrupt".
+    # A cache without a signing key cannot be verified, so wiring it in would
+    # be worse than not wiring it at all.
+
     # Prepend the user cache ahead of cache.nixos.org.
     nix.settings.substituters = lib.mkBefore [ cfg.url ];
     nix.settings.trusted-public-keys = lib.mkBefore [ trustedKey ];
 
     environment.systemPackages = [ pkgs.attic-client ];
-
-    systemd.services.attic-server = lib.mkIf cfg.server.enable {
-      description = "attic binary cache server";
-      after = [ "network-online.target" ];
-      requires = [ "network-online.target" ];
-      wantedBy = [ "multi-user.target" ];
-      serviceConfig = {
-        Type = "simple";
-        DynamicUser = true;
-        StateDirectory = "attic";
-        ExecStart = "${pkgs.attic-server}/bin/atticd serve --listen ${cfg.server.listen} --store ${cfg.server.storeDir}";
-        Restart = "on-failure";
-      };
-    };
   };
 }

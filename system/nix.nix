@@ -32,8 +32,11 @@
       substituters = [ "https://cache.nixos.org" ];
       warn-dirty = false;
 
-      # Optimized timeout settings for better build performance
-      timeout = 60;
+      # Build settings. NOTE: no `timeout` is set on purpose — a low global
+      # build timeout (e.g. 60s) kills any derivation that builds longer,
+      # which on this 2-core CPU includes the local Go tools (ivali, bw-tui)
+      # and makes `nixos-rebuild switch` fail nondeterministically. Nix's
+      # default (0 = no timeout) is correct here.
       http-connections = 25;
       stalled-download-timeout = 30;
 

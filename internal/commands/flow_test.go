@@ -328,3 +328,87 @@ func TestFlowMRTitle_ArgWins(t *testing.T) {
 		t.Fatalf("explicit argument must win, got %q", title)
 	}
 }
+
+// writeFakeGlab installs a fake `glab` executable (the given POSIX script) as
+// the first entry on PATH so flowMRPipelineStatus exercises its GitLab API
+// fallback logic without a real GitLab instance.
+func writeFakeGlab(t *testing.T, script string) {
+	t.Helper()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "glab")
+	if err := os.WriteFile(path, []byte("#!/bin/sh\n"+script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
+}
+
+// TestFlowMRPipelineStatus_SingularOK verifies the preferred singular
+// endpoint result is returned when it works, with no fallback needed.
+func TestFlowMRPipelineStatus_SingularOK(t *testing.T) {
+	writeFakeGlab(t, `case "$*" in
+  *"/pipeline")
+    echo '{"id":42,"status":"failed"}'
+    ;;
+  *"/pipelines")
+    echo '[]'
+    ;;
+esac
+`)
+	f := &flowCtx{repoDir: t.TempDir(), term: terminal.New()}
+	status, found, err := flowMRPipelineStatus(f, "31")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !found || status != "failed" {
+		t.Fatalf("expected (failed, true), got (%q, %v)", status, found)
+	}
+}
+
+// TestFlowMRPipelineStatus_FallsBackToPipelinesOnSingular404 verifies the
+// regression where the singular `/merge_requests/:iid/pipeline` endpoint
+// returns 404 even though a merge_request_event pipeline exists (observed on
+// gitlab.com for merge-ref pipelines). The helper must fall back to the plural
+// `/pipelines` endpoint and report the newest pipeline's status.
+func TestFlowMRPipelineStatus_FallsBackToPipelinesOnSingular404(t *testing.T) {
+	writeFakeGlab(t, `case "$*" in
+  *"/pipeline")
+    echo '{"error":"404 Not Found"}' >&2
+    exit 1
+    ;;
+  *"/pipelines")
+    echo '[{"id":42,"sha":"abc","status":"success","source":"merge_request_event"}]'
+    ;;
+esac
+`)
+	f := &flowCtx{repoDir: t.TempDir(), term: terminal.New()}
+	status, found, err := flowMRPipelineStatus(f, "31")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !found || status != "success" {
+		t.Fatalf("expected (success, true) via plural fallback, got (%q, %v)", status, found)
+	}
+}
+
+// TestFlowMRPipelineStatus_NoPipeline verifies an empty pipelines list yields
+// (empty, false) rather than an error, so callers keep polling.
+func TestFlowMRPipelineStatus_NoPipeline(t *testing.T) {
+	writeFakeGlab(t, `case "$*" in
+  *"/pipeline")
+    echo '{"error":"404 Not Found"}' >&2
+    exit 1
+    ;;
+  *"/pipelines")
+    echo '[]'
+    ;;
+esac
+`)
+	f := &flowCtx{repoDir: t.TempDir(), term: terminal.New()}
+	status, found, err := flowMRPipelineStatus(f, "31")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if found || status != "" {
+		t.Fatalf("expected (empty, false), got (%q, %v)", status, found)
+	}
+}

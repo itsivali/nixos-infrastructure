@@ -213,6 +213,46 @@ func flowMRTitle(f *flowCtx, branch string, args []string) string {
 	return title
 }
 
+// flowMRPipelineStatus returns the status of the newest pipeline associated
+// with merge request mrIID, and whether a pipeline exists yet.
+//
+// GitLab's singular GET /projects/:id/merge_requests/:iid/pipeline endpoint and
+// the head_pipeline field in MR list responses are unreliable: both can be
+// null/404 even when a merge_request_event pipeline exists for the MR head
+// (observed on gitlab.com for merge-ref pipelines). The plural
+// .../merge_requests/:iid/pipelines endpoint is authoritative and returns
+// pipelines ordered by recency, so it is used as a fallback.
+func flowMRPipelineStatus(f *flowCtx, mrIID string) (string, bool, error) {
+	// Preferred: singular endpoint returns the single latest pipeline.
+	if out, err := gitRun(f.repoDir, "glab", "api",
+		fmt.Sprintf("projects/:id/merge_requests/%s/pipeline", mrIID)); err == nil {
+		var p struct {
+			Status string `json:"status"`
+		}
+		if jerr := json.Unmarshal([]byte(out), &p); jerr == nil && p.Status != "" {
+			return p.Status, true, nil
+		}
+	}
+
+	// Fallback: plural endpoint, newest first. GitLab orders the list by
+	// recency, so pipelines[0] is the pipeline for the current MR head.
+	out, err := gitRun(f.repoDir, "glab", "api",
+		fmt.Sprintf("projects/:id/merge_requests/%s/pipelines", mrIID))
+	if err != nil {
+		return "", false, fmt.Errorf("failed to get pipeline status: %s", out)
+	}
+	var pipelines []struct {
+		Status string `json:"status"`
+	}
+	if jerr := json.Unmarshal([]byte(out), &pipelines); jerr != nil {
+		return "", false, fmt.Errorf("failed to decode pipeline list: %s", out)
+	}
+	if len(pipelines) == 0 {
+		return "", false, nil
+	}
+	return pipelines[0].Status, true, nil
+}
+
 // gitCommit runs git commit with mandatory Willis Ivali authorship.
 func gitCommit(repoDir, msg string) (string, error) {
 	cmd := exec.Command("git", "commit", "-m", msg)
@@ -1383,29 +1423,23 @@ In AI mode, outputs JSON with the final status.`,
 			}
 
 			poll := func() (string, bool, error) {
-				out, err := gitRun(f.repoDir, "glab", "api",
-					fmt.Sprintf("projects/:id/merge_requests/%s/pipeline", mrIID))
+				status, found, err := flowMRPipelineStatus(f, mrIID)
 				if err != nil {
-					return "", false, fmt.Errorf("failed to get pipeline status: %s", out)
+					return "", false, err
 				}
-				var pipeline struct {
-					Status string `json:"status"`
+				if !found {
+					return "", false, nil
 				}
-				if err := json.Unmarshal([]byte(out), &pipeline); err == nil {
-					switch pipeline.Status {
-					case "success":
-						return "passed", true, nil
-					case "failed":
-						return "failed", true, nil
-					case "canceled", "skipped":
-						return pipeline.Status, true, nil
-					case "running", "pending", "created":
-						return pipeline.Status, false, nil
-					default:
-						return pipeline.Status, false, nil
-					}
+				switch status {
+				case "success":
+					return "passed", true, nil
+				case "failed":
+					return "failed", true, nil
+				case "canceled", "skipped":
+					return status, true, nil
+				default:
+					return status, false, nil
 				}
-				return out, false, nil
 			}
 
 			if watch {
@@ -1562,27 +1596,21 @@ In AI mode, automatically polls CI until it passes before merging.`,
 						f.stepInfo("AI mode: polling CI until it passes...")
 						for i := 0; i < 120; i++ { // max 30 min
 							time.Sleep(15 * time.Second)
-							pipelineOut, err := gitRun(f.repoDir, "glab", "api",
-								fmt.Sprintf("projects/:id/merge_requests/%s/pipeline", mrIID))
-							if err != nil {
+							status, found, ferr := flowMRPipelineStatus(f, mrIID)
+							if ferr != nil || !found {
 								continue
 							}
-							var p struct {
-								Status string `json:"status"`
+							if status == "success" {
+								ciPassed = true
+								f.stepOK("CI pipeline passed (polled)")
+								break
 							}
-							if err := json.Unmarshal([]byte(pipelineOut), &p); err == nil {
-								if p.Status == "success" {
-									ciPassed = true
-									f.stepOK("CI pipeline passed (polled)")
-									break
-								}
-								if p.Status == "failed" {
-									f.stepFail("CI pipeline failed")
-									f.stepFailed()
-									return fmt.Errorf("CI pipeline failed")
-								}
-								f.stepInfo(fmt.Sprintf("  CI status: %s — waiting...", p.Status))
+							if status == "failed" {
+								f.stepFail("CI pipeline failed")
+								f.stepFailed()
+								return fmt.Errorf("CI pipeline failed")
 							}
+							f.stepInfo(fmt.Sprintf("  CI status: %s — waiting...", status))
 						}
 					} else {
 						f.stepFailed()
@@ -1596,21 +1624,15 @@ In AI mode, automatically polls CI until it passes before merging.`,
 					f.stepInfo("No pipeline found yet — waiting for CI to start...")
 					for i := 0; i < 5; i++ { // ~75 seconds
 						time.Sleep(15 * time.Second)
-						pipelineOut, err := gitRun(f.repoDir, "glab", "api",
-							fmt.Sprintf("projects/:id/merge_requests/%s/pipeline", mrIID))
-						if err != nil {
+						status, found, ferr := flowMRPipelineStatus(f, mrIID)
+						if ferr != nil || !found {
 							continue
 						}
-						var p struct {
+						mrPipeline = &struct {
 							Status string `json:"status"`
-						}
-						if err := json.Unmarshal([]byte(pipelineOut), &p); err == nil {
-							mrPipeline = &struct {
-								Status string `json:"status"`
-							}{Status: p.Status}
-							f.stepInfo(fmt.Sprintf("  CI status: %s", p.Status))
-							break
-						}
+						}{Status: status}
+						f.stepInfo(fmt.Sprintf("  CI status: %s", status))
+						break
 					}
 				}
 
@@ -2595,30 +2617,24 @@ Examples:
 				ciPassed := false
 				for i := 0; i < 120; i++ { // max 30 min
 					time.Sleep(15 * time.Second)
-					pipelineOut, err := gitRun(f.repoDir, "glab", "api",
-						fmt.Sprintf("projects/:id/merge_requests/%s/pipeline", mrIID))
-					if err != nil {
+					status, found, ferr := flowMRPipelineStatus(f, mrIID)
+					if ferr != nil || !found {
 						continue
 					}
-					var p struct {
-						Status string `json:"status"`
+					if status == "success" {
+						ciPassed = true
+						f.stepOK("CI pipeline passed")
+						break
 					}
-					if err := json.Unmarshal([]byte(pipelineOut), &p); err == nil {
-						if p.Status == "success" {
-							ciPassed = true
-							f.stepOK("CI pipeline passed")
-							break
-						}
-						if p.Status == "failed" {
-							f.stepFail("CI pipeline failed")
-							f.stepInfo("Fix CI failures, then run: ivali flow merge")
-							f.stepDone()
-							// Fall through — don't block, let user decide
-							goto pipelineDone
-						}
-						if i%4 == 0 {
-							f.stepInfo(fmt.Sprintf("  CI status: %s — waiting...", p.Status))
-						}
+					if status == "failed" {
+						f.stepFail("CI pipeline failed")
+						f.stepInfo("Fix CI failures, then run: ivali flow merge")
+						f.stepDone()
+						// Fall through — don't block, let user decide
+						goto pipelineDone
+					}
+					if i%4 == 0 {
+						f.stepInfo(fmt.Sprintf("  CI status: %s — waiting...", status))
 					}
 				}
 

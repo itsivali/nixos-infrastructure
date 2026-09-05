@@ -154,7 +154,15 @@ func gitBranch(repoDir string) (string, error) {
 }
 
 func gitUnpushed(repoDir, branch string) (string, bool) {
-	cmd := exec.Command("git", "log", "origin/"+branch+"..HEAD", "--oneline")
+	// A never-pushed feature branch has no origin/<branch> ref, so git log
+	// against it errors and flow push would silently report "no commits".
+	// Fall back to origin/main: every commit on the branch not reachable
+	// from main is unpushed work that a first push must carry.
+	base := "origin/" + branch
+	if _, err := gitRun(repoDir, "git", "rev-parse", "--verify", "--quiet", base); err != nil {
+		base = "origin/main"
+	}
+	cmd := exec.Command("git", "log", base+"..HEAD", "--oneline")
 	cmd.Dir = repoDir
 	out, err := cmd.Output()
 	if err != nil {

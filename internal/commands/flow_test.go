@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -80,11 +81,15 @@ func TestGitUnpushed_NoBranchRef(t *testing.T) {
 		}
 	}
 
-	// gitUnpushed with branch name should check origin/<branch>..HEAD.
-	// Since origin/feature/test doesn't exist, git log fails → returns false.
+	// A never-pushed feature branch has no origin/feature/test ref, so
+	// gitUnpushed falls back to origin/main and reports the branch commits
+	// as unpushed (they are — a first push would carry them).
 	commits, hasCommits := gitUnpushed(local, "feature/test")
-	if hasCommits {
-		t.Errorf("expected no unpushed commits (no remote ref), got: %q", commits)
+	if !hasCommits {
+		t.Error("expected the branch commit to be reported as unpushed (no remote ref yet)")
+	}
+	if !strings.Contains(commits, "feature commit") {
+		t.Errorf("expected 'feature commit' in unpushed list, got: %q", commits)
 	}
 }
 

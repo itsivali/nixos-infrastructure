@@ -172,6 +172,8 @@ func gitUnpushed(repoDir, branch string) (string, bool) {
 	return s, s != ""
 }
 
+// gitRun executes a git command and returns its trimmed output.
+// gitRun executes a git command and returns its trimmed output.
 func gitRun(repoDir, name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
 	if repoDir != "" {
@@ -179,6 +181,36 @@ func gitRun(repoDir, name string, args ...string) (string, error) {
 	}
 	out, err := cmd.CombinedOutput()
 	return strings.TrimSpace(string(out)), err
+}
+
+// flowMRTitle resolves the merge request title. In AI mode (non-interactive)
+// the title always comes from an explicit argument or the last commit message —
+// never from an interactive prompt, which yields an empty string and would
+// clobber a valid title.
+func flowMRTitle(f *flowCtx, branch string, args []string) string {
+	if len(args) > 0 {
+		return args[0]
+	}
+	f.stepStart("Getting title from last commit")
+	title := ""
+	if out, err := gitRun(f.repoDir, "git", "log", "-1", "--pretty=%s"); err == nil {
+		title = out
+	}
+	if title == "" {
+		title = fmt.Sprintf("Changes from %s", branch)
+	}
+	f.stepOK(title)
+	f.stepDone()
+
+	// Custom title prompt (skip in AI mode — use commit message)
+	if !f.aiMode {
+		f.stepStart("MR title")
+		if f.confirm("  Use custom title?") {
+			title = f.prompt("Title:")
+		}
+		f.stepDone()
+	}
+	return title
 }
 
 // gitCommit runs git commit with mandatory Willis Ivali authorship.
@@ -602,7 +634,7 @@ Examples:
 			f.header("Flow Start")
 
 			// AI mode: auto-implement
-			if aiMode {
+			if f.aiMode {
 				implement = true
 			}
 
@@ -1232,30 +1264,7 @@ In AI mode, title must be provided as argument.`,
 			f.stepDone()
 
 			// Get title
-			var title string
-			if len(args) > 0 {
-				title = args[0]
-			} else {
-				f.stepStart("Getting title from last commit")
-				if out, err := gitRun(f.repoDir, "git", "log", "-1", "--pretty=%s"); err == nil {
-					title = out
-				}
-				if title == "" {
-					title = fmt.Sprintf("Changes from %s", branch)
-				}
-				f.stepOK(title)
-				f.stepDone()
-
-				// Custom title prompt (skip in AI mode — use commit message)
-				if !aiMode {
-					f.stepStart("MR title")
-					if f.confirm("  Use custom title?") {
-						fmt.Print("  Title: ")
-						title = f.prompt("Title:")
-					}
-					f.stepDone()
-				}
-			}
+			title := flowMRTitle(f, branch, args)
 
 			// Load template
 			f.stepStart("Loading MR template")
@@ -2272,7 +2281,7 @@ Examples:
 			f := newFlowCtx(a, aiMode)
 			f.header("Flow Run")
 
-			if aiMode {
+			if f.aiMode {
 				implement = true
 			}
 

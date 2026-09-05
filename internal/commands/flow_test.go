@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
 // initTestRepo creates a bare git repo with a local clone, a "main" commit,
@@ -250,5 +252,79 @@ func TestGitBranch_NotRepo(t *testing.T) {
 	_, err := gitBranch(t.TempDir())
 	if err == nil {
 		t.Error("expected error for non-git directory")
+	}
+}
+
+// TestFlowMRTitle_AIKeepsCommitMessage verifies the regression where
+// `ivali flow mr` in AI mode (non-interactive stdin) clobbered the title
+// derived from the last commit message: newFlowCtx forces aiMode=true for
+// non-TTY stdin, but the caller's local `aiMode` stayed false, so the
+// interactive "Use custom title?" path ran and prompt() returned "".
+func TestFlowMRTitle_AIKeepsCommitMessage(t *testing.T) {
+	tmp := t.TempDir()
+	if out, err := exec.Command("git", "init", tmp).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	for _, args := range [][]string{
+		{"git", "-C", tmp, "config", "user.email", "test@test.com"},
+		{"git", "-C", tmp, "config", "user.name", "Test"},
+		{"git", "-C", tmp, "checkout", "-b", "main"},
+	} {
+		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "file.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	const commitMsg = "docs: stabilization acceptance documentation"
+	for _, args := range [][]string{
+		{"git", "-C", tmp, "add", "."},
+		{"git", "-C", tmp, "commit", "-m", commitMsg},
+	} {
+		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+
+	f := &flowCtx{aiMode: true, repoDir: tmp, term: terminal.New()}
+	title := flowMRTitle(f, "feature/test", nil)
+	if title != commitMsg {
+		t.Fatalf("AI mode must use last commit as title, got %q", title)
+	}
+}
+
+// TestFlowMRTitle_ArgWins verifies an explicit title argument is preferred
+// over the last commit message in any mode.
+func TestFlowMRTitle_ArgWins(t *testing.T) {
+	tmp := t.TempDir()
+	if out, err := exec.Command("git", "init", tmp).CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v\n%s", err, out)
+	}
+	for _, args := range [][]string{
+		{"git", "-C", tmp, "config", "user.email", "test@test.com"},
+		{"git", "-C", tmp, "config", "user.name", "Test"},
+		{"git", "-C", tmp, "checkout", "-b", "main"},
+	} {
+		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "file.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"git", "-C", tmp, "add", "."},
+		{"git", "-C", tmp, "commit", "-m", "some previous commit"},
+	} {
+		if out, err := exec.Command(args[0], args[1:]...).CombinedOutput(); err != nil {
+			t.Fatalf("%v: %v\n%s", args, err, out)
+		}
+	}
+
+	f := &flowCtx{aiMode: true, repoDir: tmp, term: terminal.New()}
+	title := flowMRTitle(f, "feature/test", []string{"explicit title"})
+	if title != "explicit title" {
+		t.Fatalf("explicit argument must win, got %q", title)
 	}
 }

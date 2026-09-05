@@ -273,6 +273,14 @@ func serviceChecks() []func() Check {
 	return checks
 }
 
+// runtimeSecretsMounted reports whether the runtime secrets mount exists.
+// Existence (via os.Stat) is the signal — ls output is not used so a missing
+// mount cannot masquerade as present via stderr text ending up in stdout.
+func runtimeSecretsMounted(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
 func secretChecks() []func() Check {
 	return []func() Check{
 		func() Check {
@@ -286,12 +294,10 @@ func secretChecks() []func() Check {
 			}
 		},
 		func() Check {
-			out, _ := exec.Command("ls", "-la", "/run/secrets/").CombinedOutput()
-			hasSecrets := len(strings.TrimSpace(string(out))) > 0
 			return Check{
 				Name:     "runtime-secrets",
-				Pass:     hasSecrets,
-				Message:  fmt.Sprintf("runtime secrets mounted: %v", hasSecrets),
+				Pass:     runtimeSecretsMounted("/run/secrets"),
+				Message:  fmt.Sprintf("runtime secrets mounted: %v", runtimeSecretsMounted("/run/secrets")),
 				Severity: "medium",
 			}
 		},

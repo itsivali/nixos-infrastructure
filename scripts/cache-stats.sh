@@ -2,7 +2,7 @@
 # cache-stats — Display binary cache hit/miss statistics
 #
 # Usage: cache-stats
-# Shows cache performance metrics for the local attic cache
+# Shows cache performance metrics for the local binary cache
 
 set -euo pipefail
 
@@ -40,23 +40,6 @@ if [[ -d "$LOCAL_CACHE" ]]; then
   echo ""
 fi
 
-# Attic cache stats (if server is running)
-ATTIC_URL="http://localhost:8080"
-if curl -s "$ATTIC_URL" >/dev/null 2>&1; then
-  echo -e "  ${CYAN}${BOLD}Attic Binary Cache${RESET}"
-  echo -e "  ${DIM}├──${RESET} URL: ${ATTIC_URL}"
-  echo -e "  ${DIM}├──${RESET} Status: ${GREEN}Running${RESET}"
-  
-  # Get cache stats from attic
-  if command -v attic >/dev/null 2>&1; then
-    STATS=$(attic cache stats 2>/dev/null || echo "N/A")
-    echo -e "  ${DIM}└──${RESET} Stats: ${STATS}"
-  else
-    echo -e "  ${DIM}└──${RESET} Stats: ${YELLOW}attic CLI not found${RESET}"
-  fi
-  echo ""
-fi
-
 # Substituter configuration
 echo -e "  ${CYAN}${BOLD}Configured Substituters${RESET}"
 nix show-config --json 2>/dev/null | jq -r '.substituters[]?' 2>/dev/null | while read -r sub; do
@@ -76,9 +59,5 @@ if [[ ${ENTRY_COUNT:-0} -lt 10 ]]; then
   echo -e "  ${DIM}├──${RESET} ${YELLOW}Cache is warming up. First rebuild will populate cache.${RESET}"
 fi
 
-if ! curl -s "$ATTIC_URL" >/dev/null 2>&1; then
-  echo -e "  ${DIM}├──${RESET} ${YELLOW}Attic server not running. Start with: systemctl start attic-server${RESET}"
-fi
-
-echo -e "  ${DIM}└──${RESET} ${GREEN}Run 'nix copy --to http://localhost:8080 <pkg>' to manually cache packages${RESET}"
+echo -e "  ${DIM}└──${RESET} ${GREEN}Run 'nix copy --to <binary-cache-url> <pkg>' to manually cache packages${RESET}"
 echo ""

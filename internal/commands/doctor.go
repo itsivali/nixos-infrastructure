@@ -38,6 +38,7 @@ func CmdDoctor(a *app.App) *cobra.Command {
   • Circular dependencies
   • Unused packages, stale files
   • Architecture violations
+  • Runtime probes (audio, Wayland, Firefox, SOPS, backup) — warn-only
 
 Use --fix to automatically fix issues where possible.
 Use --aggressive with --fix to also deduplicate imports, prune orphans, and more.
@@ -147,6 +148,10 @@ not fail the gate), so it can be used in CI and the GitOps reconciler.`,
 				{
 					Category: "System Health",
 					Checks:   systemHealthChecks(),
+				},
+				{
+					Category: "Runtime",
+					Checks:   runtimeHealthChecks(),
 				},
 				{
 					Category: "Formatting & Linting",
@@ -445,9 +450,31 @@ func runCheck(name, root string, args ...string) terminal.CheckStatus {
 	return terminal.StatusPass
 }
 
+// runLintTool reports optional linters (deadnix, statix).
+//
+//   - Tool not installed → Pass. Following the platform convention
+//     (CheckTailscale/CheckNixStore report "not installed" as healthy),
+//     an optional linter that is absent does not fail doctor, which is
+//     also the post-rollback health gate.
+//   - Tool installed, clean → Pass.
+//   - Tool installed, findings → Warn. deadnix/statix are advisory
+//     (not CI gates) and the registry carries a pre-existing backlog;
+//     findings surface as warnings without failing the rollback gate.
 func runLintTool(name, root string) terminal.CheckStatus {
 	if _, err := exec.LookPath(name); err != nil {
+		return terminal.StatusPass
+	}
+	args := []string{}
+	switch name {
+	case "deadnix":
+		args = []string{"--fail", root}
+	case "statix":
+		args = []string{"check", root}
+	}
+	cmd := exec.Command(name, args...)
+	cmd.Dir = root
+	if err := cmd.Run(); err != nil {
 		return terminal.StatusWarn
 	}
-	return runCheck(name, root)
+	return terminal.StatusPass
 }

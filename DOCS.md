@@ -252,24 +252,22 @@ Does NOT Own
 ## cache/default.nix
 
 #############################################################################
-Binary Cache — attic (consumer + optional server)
+Binary Cache — attic (consumer only)
 Purpose
 -------
 Point Nix at a binary cache so the GitOps reconciler's rebuilds are
-seconds, not 10+ minutes. Two parts:
-* consumer: this host *uses* a cache at `url` (e.g. a Tailscale
-peer running the server half, or any attic instance).
-* server:   optionally run an attic server here so peers / VMs can
-pull this host's store. On a single laptop the consumer side is
-the useful one (point it at a machine that builds for you).
+seconds, not 10+ minutes. The attic *server* half was removed (the old
+`atticd serve` invocation was invalid for modern atticd and no signing
+key existed). The consumer is fail-safe: nothing is wired into Nix when
+`publicKey` is empty, so a missing/empty key can never corrupt nix.conf.
 Ownership
 ---------
-fleet.cache.*, nix.settings.substituters, optional attic systemd unit
+fleet.cache.*, nix.settings.substituters
 Dependencies
 ------------
-Requires the cache's public key (base64) for `publicKey`.
-The server half needs the attic package (MIT) and an open port on the
-Tailscale interface.
+Requires the cache's public key (base64) for `publicKey`. Without a
+verifiable key the cache is simply not configured, falling back to
+cache.nixos.org.
 #############################################################################
 
 ## caching/default.nix

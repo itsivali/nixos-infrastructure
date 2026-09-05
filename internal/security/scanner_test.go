@@ -1,9 +1,29 @@
 package security
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
+
+func TestRuntimeSecretsMounted(t *testing.T) {
+	dir := t.TempDir()
+	if !runtimeSecretsMounted(dir) {
+		t.Error("expected existing directory to report mounted")
+	}
+	missing := filepath.Join(dir, "does-not-exist")
+	if runtimeSecretsMounted(missing) {
+		t.Error("expected missing path to report not mounted")
+	}
+	emptyFile := filepath.Join(dir, "empty")
+	if err := os.WriteFile(emptyFile, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if !runtimeSecretsMounted(emptyFile) {
+		t.Error("expected an existing file to report mounted (existence is the signal, regardless of contents)")
+	}
+}
 
 func TestRunFullScan(t *testing.T) {
 	result, err := RunFullScan()

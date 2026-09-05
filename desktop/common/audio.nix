@@ -46,6 +46,8 @@
 { config, lib, pkgs, ... }:
 
 let
+  audioDiagnosticScript = ../../scripts/audio-diagnostic.sh;
+
   # ALSA mixer initialization script: sets all playback volumes to 100%
   # so PipeWire has full dynamic range. This runs once at boot before
   # PipeWire starts, ensuring the hardware mixer is configured.
@@ -133,8 +135,15 @@ in
       }];
     };
 
-    # ── ALSA utils (amixer, alsactl) for mixer management ────────────────
-    environment.systemPackages = [ pkgs.alsa-utils ];
+    # ── ALSA utils (amixer, alsactl) + audio diagnostic tool ─────────────
+    # amixer/alsactl for mixer management, and an operator-installable
+    # diagnostic for PipeWire/WirePlumber/Firefox audio (audio-diagnostic).
+    environment.systemPackages = [
+      pkgs.alsa-utils
+      (pkgs.writeShellScriptBin "audio-diagnostic" ''
+        exec ${audioDiagnosticScript} "$@"
+      '')
+    ];
 
     # ── Boot-time ALSA mixer initialization ──────────────────────────────
     # Runs before PipeWire to set hardware mixer levels to 100%.

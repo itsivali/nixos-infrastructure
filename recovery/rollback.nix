@@ -55,6 +55,10 @@ in
         # Re-check in observer mode so a network blip does not trigger a rollback.
         Environment = "STRICT_HEALTH=false";
 
+        # rollback.sh writes its hysteresis timestamp here; keep the dir writable.
+        StateDirectory = "deployment-health";
+        ReadWritePaths = [ "/var/lib/deployment-health" ];
+
         TimeoutStartSec = "120s";
         StandardOutput = "journal";
         StandardError = "journal";

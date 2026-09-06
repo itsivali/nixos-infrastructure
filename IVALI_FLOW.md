@@ -1370,13 +1370,13 @@ This table is the source of truth for local vs CI gate coverage.
 
 | Gate | `flow validate` | `flow run` | `flow quick` | `ivali verify` | `ivali doctor` |
 |------|:-:|:-:|:-:|:-:|:-:|
-| `nix fmt -- --check .` | ✅ | ✅ | ❌ | ✅ | ✅ |
-| `shellcheck --severity=warning` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `nix fmt -- --check .` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `shellcheck --severity=warning` | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `go build ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `go vet ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
 | `go test -race -count=1 ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `gosec -exclude-generated ./...` | ✅ | ❌ | ❌ | ❌ | ❌ |
-| `nix flake check --no-build` | ✅ | ❌ | ❌ | ✅ | ✅ |
+| `gosec -exclude-generated ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
+| `nix flake check --no-build` | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `nix eval (host)` | ✅ (--host) | ❌ | ❌ | ❌ | ❌ |
 | Architecture linter | ❌ | ❌ | ❌ | ✅ | ✅ |
 | `deadnix` / `statix` | ❌ | ❌ | ❌ | ❌ | ✅ |
@@ -1426,15 +1426,14 @@ This table is the source of truth for local vs CI gate coverage.
 | **CI push** (GitHub) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **GitOps deploy** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | **Manual rebuild** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **`flow quick`** | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **`flow run`** | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **`flow quick`** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **`flow run`** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ## 32.5 Known Gate Gaps
 
 | Gap | Risk | Recommendation |
 |-----|------|----------------|
-| `flow quick` skips nix fmt, shellcheck, nix flake check, gosec | Code passing `quick` may fail CI | Always run `flow validate` before pushing; use `flow quick` only for rapid iteration |
-| `flow run` skips shellcheck, nix flake check, gosec | Same as above | Run `flow validate` after `flow run` implementation, before push |
+| `flow quick` / `flow run` skip `nix eval (host)` | Host evaluation not exercised before push | Use `flow validate --host <host>` before pushing |
 | `ci-deploy.sh` skips flake check, nix eval, go hash | Deployment with fewer gates than GitOps reconciler | Fix `ci-deploy.sh` to run full gate suite |
 | Architecture check only in GitLab CI | No local architecture validation unless `ivali verify` is run | Run `ivali verify` locally before push |
 | `gosec` is `allow_failure` in CI | Security scan failures don't block merges | Remove `allow_failure` to make security scan blocking |
@@ -1560,8 +1559,8 @@ Lock → HW UUID → NixOS rebuild switch
 | `ivali flow merge` | Merge when CI passes | CI must pass |
 | `ivali flow deploy` | Run rebuild.sh | Full rebuild gates |
 | `ivali flow rollback` | Roll back generation | Confirmation |
-| `ivali flow quick "desc"` | Commit → push → MR (fast) | 3 Go gates only |
-| `ivali flow run [type] "desc"` | Full AI pipeline | 4 gates |
+| `ivali flow quick "desc"` | Commit → push → MR (fast) | 7 gates (all but host eval) |
+| `ivali flow run [type] "desc"` | Full AI pipeline | 7 gates (all but host eval) |
 | `ivali flow status` | Show workflow state | — |
 | `ivali verify` | Full verification | Formatting, flake, arch, security |
 | `ivali doctor` | System health check | Everything + system health |

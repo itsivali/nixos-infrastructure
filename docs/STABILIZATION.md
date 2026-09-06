@@ -131,7 +131,7 @@ no `cache.codlet-trench.ts.net` entries, no `timeout = 60`, clean substituters f
 |------|-------|--------|-------|
 | SOPS break-glass key | operator | **pending** | Needs decision: storage location + real hardware |
 | Google Meet / Firefox audio | operator | **pending** | Requires real microphone hardware |
-| P4: CI deploy-gate alignment | backlog | **not started** | `ci-deploy.sh` has fewer gates than `gitops-reconcile.sh` |
+| P4: CI deploy-gate alignment | done | ✅ **fixed** | `ci-deploy.sh` now runs the full GitOps gate set; `ci-deploy.nix` timeout raised to 3600s |
 | P5: Elixir/OTP refactor | blocked | **not started** | Blocked on MIGRATION-READINESS.md |
 | `docs/STABILIZATION-MATRIX.md` | this PR | in progress | CI / gate coverage gaps (see separate file) |
 | `docs/MIGRATION-READINESS.md` | this PR | in progress | Acceptance for Elixir work (see separate file) |

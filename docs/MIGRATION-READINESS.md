@@ -57,8 +57,9 @@ self-enforcing, tested baseline. Migration is a **new feature**, not a rescue.
 - [x] `gitops-reconcile.service` runs every 15 minutes on prague with health gate.
 - [x] `scripts/rollback.sh` has hysteresis guards (commit-filtered) — commit `16b17dd`.
 - [x] Rollback transitions tested with unit tests for all guard scenarios.
-- [ ] **Open**: `ci-deploy.sh` gate parity (P4 gap G3 in STABILIZATION-MATRIX.md).
-      Not a blocker for migration entry, but scheduled.
+- [x] `ci-deploy.sh` gate parity — now runs the full GitOps gate set
+      (flake check, nix eval, HW UUID, Go hash verify, build, health gate,
+      rollback); `TimeoutStartSec` raised to 3600s. G3 in STABILIZATION-MATRIX.md.
 
 ---
 
@@ -74,7 +75,7 @@ self-enforcing, tested baseline. Migration is a **new feature**, not a rescue.
 
 | # | Item | Where tracked |
 |---|------|---------------|
-| NB1 | `ci-deploy.sh` gate parity | P4 backlog, STABILIZATION-MATRIX.md G3 |
+| NB1 | `ci-deploy.sh` gate parity | ✅ done — G3 closed, STABILIZATION-MATRIX.md |
 | NB2 | `gosec` blocking status | P4 backlog, G4 |
 | NB3 | `flow merge` missing-pipeline handling | bugfix/flow-merge-missing-pipeline |
 | NB4 | GitHub Actions parity (fmt / flake / eval) | P4 backlog, G5/G6 |

@@ -47,7 +47,7 @@ func TestSudoNopasswdRulesAfterCatchAll(t *testing.T) {
 	lines := strings.Split(tmpl, "\n")
 
 	// Find the emitted rule blocks for the operator user.
-	var allIdx, nopasswdIdx int = -1, -1
+	var allIdx, nopasswdIdx = -1, -1
 	var allRule, nopasswdRule string
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)

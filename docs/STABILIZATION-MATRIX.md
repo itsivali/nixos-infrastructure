@@ -66,21 +66,24 @@ operational workflows.
 | CI push (GitHub) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | GitOps deploy | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Manual rebuild | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| `flow quick` | ❌ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| `flow run` | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `flow quick` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `flow run` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 
 ## Known Gaps
 
 ### G1: `flow quick` skips nix fmt, shellcheck, flake check, gosec
 
 **Risk**: code passing `quick` may fail CI.
-**Mitigation**: always run `flow validate` before pushing; use `quick` only
-for rapid local iteration.
+**Status**: ✅ **FIXED (6 September 2026)** — `flow quick` now runs all seven
+local gates (`nix fmt`, `shellcheck`, `go build`, `go vet`, `go test -race`,
+`gosec`, `nix flake check`). Only host `nix eval` remains opt-in via
+`flow validate --host`.
 
 ### G2: `flow run` skips shellcheck, flake check, gosec
 
 **Risk**: same as G1.
-**Mitigation**: run `flow validate` after `flow run` implementation.
+**Status**: ✅ **FIXED (6 September 2026)** — `flow run` now runs the same full
+seven-gate suite as `flow quick` before committing and pushing.
 
 ### G3: `ci-deploy.sh` has fewer gates than `gitops-reconcile.sh`
 

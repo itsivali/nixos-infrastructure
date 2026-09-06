@@ -412,3 +412,24 @@ esac
 		t.Fatalf("expected (empty, false), got (%q, %v)", status, found)
 	}
 }
+
+// TestFlowGosecGatesMatchCI verifies the local flow gosec gates carry the same
+// rule exclusions as the GitLab CI go-security job. If the two diverge, a local
+// `flow validate`/`flow quick`/`flow run` can green while CI fails (or vice
+// versa) on the security scan.
+func TestFlowGosecGatesMatchCI(t *testing.T) {
+	const ciExclusions = "G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122"
+
+	if gosecExclusions != ciExclusions {
+		t.Fatalf("gosecExclusions = %q, want %q (match .gitlab-ci.yml)", gosecExclusions, ciExclusions)
+	}
+	want := []string{"-exclude-generated", "-exclude", ciExclusions, "./..."}
+	if len(gosecExtraArgs) != len(want) {
+		t.Fatalf("gosecExtraArgs length = %d, want %d", len(gosecExtraArgs), len(want))
+	}
+	for i := range want {
+		if gosecExtraArgs[i] != want[i] {
+			t.Fatalf("gosecExtraArgs[%d] = %q, want %q", i, gosecExtraArgs[i], want[i])
+		}
+	}
+}

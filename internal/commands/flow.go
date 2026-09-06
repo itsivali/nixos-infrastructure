@@ -19,6 +19,17 @@ import (
 	"github.com/itsivali/nixos-infrastructure/internal/terminal"
 )
 
+// gosecExclusions mirrors the rules excluded in .gitlab-ci.yml. Running gosec
+// without these reports findings the repository has already triaged (CLI tool
+// file permissions, intentional exec of shell commands, etc.). Keeping the
+// exclusion set synchronized between CI and local flow gates ensures the gates
+// measure the same surface.
+const gosecExclusions = "G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122"
+
+// gosecExtraArgs are the flags shared by every local `flow` gosec gate. They
+// must match the invocation in .gitlab-ci.yml so local gates and CI agree.
+var gosecExtraArgs = []string{"-exclude-generated", "-exclude", gosecExclusions, "./..."}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // FLOW CONTEXT — carries mode through all commands
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -984,7 +995,7 @@ In AI mode, runs all gates and outputs JSON results.`,
 			}
 
 			gates = append(gates, gateEntry{"gosec", func() (string, error) {
-				return gitRun(f.repoDir, "gosec", "-exclude-generated", "./...")
+				return gitRun(f.repoDir, "gosec", gosecExtraArgs...)
 			}})
 
 			for _, g := range gates {
@@ -2099,6 +2110,7 @@ Examples:
 				{"go build", func() (string, error) { return gitRun(f.repoDir, "go", "build", "./...") }},
 				{"go vet", func() (string, error) { return gitRun(f.repoDir, "go", "vet", "./...") }},
 				{"go test -race", func() (string, error) { return gitRun(f.repoDir, "go", "test", "-race", "-count=1", "./...") }},
+				{"gosec", func() (string, error) { return gitRun(f.repoDir, "gosec", gosecExtraArgs...) }},
 				{"nix flake check", func() (string, error) { return gitRun(f.repoDir, "nix", "flake", "check", "--no-build") }},
 			}
 
@@ -2480,6 +2492,7 @@ Examples:
 				{"go build", func() (string, error) { return gitRun(f.repoDir, "go", "build", "./...") }},
 				{"go vet", func() (string, error) { return gitRun(f.repoDir, "go", "vet", "./...") }},
 				{"go test -race", func() (string, error) { return gitRun(f.repoDir, "go", "test", "-race", "-count=1", "./...") }},
+				{"gosec", func() (string, error) { return gitRun(f.repoDir, "gosec", gosecExtraArgs...) }},
 				{"nix flake check", func() (string, error) { return gitRun(f.repoDir, "nix", "flake", "check", "--no-build") }},
 			}
 

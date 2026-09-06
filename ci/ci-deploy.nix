@@ -61,7 +61,11 @@ in
         User = "root";
         Group = "root";
         ExecStart = deployScript;
-        TimeoutStartSec = "300s";
+        # Full gate flow (flake check → eval → build → switch → health gate)
+        # can exceed 5 minutes on this 2-core box, especially for uncached
+        # builds. One hour gives the deployment room to complete while still
+        # failing fast on a hung build.
+        TimeoutStartSec = "3600s";
         StandardOutput = "journal";
         StandardError = "journal";
         SyslogIdentifier = "ci-deploy";

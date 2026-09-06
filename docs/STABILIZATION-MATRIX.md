@@ -44,18 +44,18 @@ operational workflows.
 | Gate | `gitops-reconcile.sh` | `rebuild.sh` | `ci-deploy.sh` |
 |------|:-:|:-:|:-:|
 | Lock acquisition | ✅ | ❌ | ✅ (shared) |
-| Dirty-tree guard | ✅ | ❌ | ❌ |
+| Dirty-tree guard | ✅ | ❌ | ✅ |
 | `git fetch` | ✅ | ✅ | ❌ |
 | `git rebase` | ❌ (ff-only pull) | ✅ | ❌ |
 | Repository integrity (`git fsck`) | ✅ | ❌ | ❌ |
 | Hardware UUID check | ✅ | ✅ | ✅ |
-| Go vendor hash verify | ✅ | ✅ (conditional) | ❌ |
-| `nix flake check` | ✅ | ✅ | ❌ |
-| `nix eval` | ❌ | ✅ | ❌ |
-| `nix build` | ✅ | ❌ (rebuild does build+activate) | ❌ |
+| Go vendor hash verify | ✅ | ✅ (conditional) | ✅ |
+| `nix flake check` | ✅ | ✅ | ✅ |
+| `nix eval` | ❌ | ✅ | ✅ |
+| `nix build` | ✅ | ❌ (rebuild does build+activate) | ✅ |
 | `nixos-rebuild switch` | ✅ | ✅ | ✅ |
-| Health gate (post-deploy) | ✅ | ❌ | ❌ |
-| Rollback on failure | ✅ | ❌ | ❌ |
+| Health gate (post-deploy) | ✅ | ❌ | ✅ |
+| Rollback on failure | ✅ | ❌ | ✅ |
 
 ## Combined View
 
@@ -85,7 +85,10 @@ for rapid local iteration.
 ### G3: `ci-deploy.sh` has fewer gates than `gitops-reconcile.sh`
 
 **Risk**: CI-triggered deploy skips flake check, nix eval, Go hash verify.
-**Mitigation**: align `ci-deploy.sh` with the full GitOps gate set (P4 backlog).
+**Status**: ✅ **FIXED (6 September 2026)** — `ci-deploy.sh` now mirrors the full
+GitOps gate set: dirty-tree guard, flake check, nix eval, HW UUID, Go hash
+verify, build, health gate, rollback on failure. `ci/ci-deploy.nix` raised
+`TimeoutStartSec` from 300s to 3600s so the gate flow cannot be killed mid-rebuild.
 
 ### G4: `gosec` is `allow_failure` / `continue-on-error` in CI
 
@@ -106,19 +109,21 @@ in bugfix/flow-merge-missing-pipeline).
 
 ---
 
-## P4: CI Deploy-Gate Alignment (Backlog)
+## P4: CI Deploy-Gate Alignment
 
 **Objective**: bring `ci-deploy.sh` to parity with `gitops-reconcile.sh`.
 
-**Required additions**:
+**Status**: ✅ **DONE (6 September 2026)** — `scripts/ci-deploy.sh` implements
+the full gate set:
+
 1. `nix flake check --no-build` before build.
 2. `nix eval` before switch.
 3. Go vendor hash verification.
 4. Post-deploy health gate.
 5. Rollback on failure.
 
-**Blocked on**: no CI-triggered deploy currently in production; GitOps from main
-is the active deployment path. Fix is forward-looking.
+`ci/ci-deploy.nix` sets `TimeoutStartSec = "3600s"` (was 300s) so a full
+build + switch + health gate on this 2-core box is not killed mid-run.
 
 ---
 

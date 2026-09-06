@@ -63,7 +63,7 @@ operational workflows.
 |----------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
 | Full local (`flow validate`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | CI push (GitLab) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| CI push (GitHub) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| CI push (GitHub) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
 | GitOps deploy | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | Manual rebuild | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
 | `flow quick` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -96,19 +96,26 @@ verify, build, health gate, rollback on failure. `ci/ci-deploy.nix` raised
 ### G4: `gosec` is `allow_failure` / `continue-on-error` in CI
 
 **Risk**: security scan failures do not block merges.
-**Mitigation**: tracked in P4 backlog; remove `allow_failure` once scan
-is fully deterministic.
+**Status**: ✅ **FIXED (6 September 2026)** — GitLab `go-security` is a blocking
+stage with no `allow_failure`; GitHub `go-security` now uses the same rule
+exclusions as GitLab and is required by `ci-summary`. Local `flow validate`,
+`flow quick`, and `flow run` gates were aligned to the same exclusion set so all
+three surfaces measure identical findings.
 
 ### G5: Architecture linter only in GitLab CI
 
 **Risk**: no local architecture validation unless `ivali verify` is run.
-**Mitigation**: run `ivali verify` locally before pushing.
+**Status**: ✅ **FIXED (6 September 2026)** — GitHub Actions gains a dedicated
+`architecture-check` job running the same `check-architecture` binary; local
+`ivali verify` continues to run it. The linter is enforced in all three surfaces.
 
 ### G6: `flow merge` treats missing pipeline as passed
 
 **Risk**: MR may merge before CI starts.
-**Mitigation**: check pipeline existence before treating as passed (tracked
-in bugfix/flow-merge-missing-pipeline).
+**Status**: ✅ **FIXED** — `flow merge` now polls briefly for the MR pipeline to
+appear and **fails** with `no CI pipeline found for MR` when none exists, instead
+of treating a missing pipeline as a pass (verified in `internal/commands/flow.go`,
+`flowMRPipelineStatus` / merge gate).
 
 ---
 

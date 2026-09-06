@@ -1389,15 +1389,15 @@ This table is the source of truth for local vs CI gate coverage.
 
 | Gate | GitLab CI | GitHub Actions |
 |------|:-:|:-:|
-| `nix fmt -- --check .` | ✅ | ❌ |
+| `nix fmt -- --check .` | ✅ | ✅ |
 | `shellcheck --severity=warning` | ✅ | ✅ |
 | `golangci-lint run` | ✅ | ✅ |
-| Architecture linter | ✅ | ❌ |
+| Architecture linter | ✅ | ✅ |
 | `go build ./...` | ✅ | ❌ (via golangci) |
 | `go test -race -count=1 ./...` | ✅ | ✅ |
-| `gosec -exclude-generated ./...` | ✅ (allow_failure) | ✅ (continue-on-error) |
-| `nix flake check --no-build` | ✅ | ❌ |
-| `nix eval .#nixosConfigurations.prague` | ✅ | ❌ |
+| `gosec -exclude-generated ./...` | ✅ (blocking) | ✅ (blocking) |
+| `nix flake check --no-build` | ✅ | ✅ |
+| `nix eval .#nixosConfigurations.prague` | ✅ | ✅ |
 
 ## 32.3 Deployment Pipeline Gates
 
@@ -1495,7 +1495,9 @@ lint → architecture → test → security → check → build
 | `go-lint` | none | YES |
 | `go-test` | go-lint | YES |
 | `shellcheck` | none | YES |
-| `go-security` | go-lint | NO (continue-on-error) |
+| `go-security` | go-lint | YES |
+| `architecture-check` | none | YES |
+| `nix-checks` | none | YES (fmt / flake check / eval) |
 | `ci-summary` | all above | YES (aggregator) |
 
 ## 33.3 CI Rules

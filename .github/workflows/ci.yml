@@ -12,6 +12,9 @@ concurrency:
 
 env:
   GO_VERSION: "1.26"
+  # Rule exclusions shared with the GitLab go-security job. Kept in one place so
+  # both CI systems measure the same security surface; see .gitlab-ci.yml.
+  GOSEC_EXCLUDE: "G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122"
 
 jobs:
   # ─────────────────────────────────────────────────
@@ -80,29 +83,63 @@ jobs:
       - name: Install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
       - name: Run gosec
-        run: gosec -exclude-generated ./...
-        continue-on-error: true
+        run: gosec -exclude-generated -exclude "$GOSEC_EXCLUDE" ./...
+
+  architecture-check:
+    name: Architecture Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build and run architecture linter
+        run: |
+          go build -o /tmp/check-architecture ./cmd/check-architecture/
+          /tmp/check-architecture
+
+  nix-checks:
+    name: Nix Checks (fmt / flake / eval)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - uses: DeterminateSystems/magic-nix-cache-action@v14
+      - name: Nix format check
+        run: nix fmt -- --check .
+      - name: Flake check (no build)
+        run: nix flake check --no-build
+      - name: Evaluate prague configuration
+        run: nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
 
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [go-lint, go-test, shellcheck, go-security]
+    needs: [go-lint, go-test, shellcheck, go-security, architecture-check, nix-checks]
     if: always()
     steps:
       - name: Check results
         run: |
           if [[ "${{ needs.go-lint.result }}" != "success" ]] || \
              [[ "${{ needs.go-test.result }}" != "success" ]] || \
-             [[ "${{ needs.shellcheck.result }}" != "success" ]]; then
+             [[ "${{ needs.shellcheck.result }}" != "success" ]] || \
+             [[ "${{ needs.go-security.result }}" != "success" ]] || \
+             [[ "${{ needs.architecture-check.result }}" != "success" ]] || \
+             [[ "${{ needs.nix-checks.result }}" != "success" ]]; then
             echo "Required CI jobs failed"
-            echo "  go-lint:     ${{ needs.go-lint.result }}"
-            echo "  go-test:     ${{ needs.go-test.result }}"
-            echo "  shellcheck:  ${{ needs.shellcheck.result }}"
-            echo "  go-security: ${{ needs.go-security.result }} (allowed to fail)"
+            echo "  go-lint:            ${{ needs.go-lint.result }}"
+            echo "  go-test:            ${{ needs.go-test.result }}"
+            echo "  shellcheck:         ${{ needs.shellcheck.result }}"
+            echo "  go-security:        ${{ needs.go-security.result }}"
+            echo "  architecture-check: ${{ needs.architecture-check.result }}"
+            echo "  nix-checks:         ${{ needs.nix-checks.result }}"
             exit 1
           fi
           echo "All required CI jobs passed"
-          echo "  go-lint:     ${{ needs.go-lint.result }}"
-          echo "  go-test:     ${{ needs.go-test.result }}"
-          echo "  shellcheck:  ${{ needs.shellcheck.result }}"
-          echo "  go-security: ${{ needs.go-security.result }}"
+          echo "  go-lint:            ${{ needs.go-lint.result }}"
+          echo "  go-test:            ${{ needs.go-test.result }}"
+          echo "  shellcheck:         ${{ needs.shellcheck.result }}"
+          echo "  go-security:        ${{ needs.go-security.result }}"
+          echo "  architecture-check: ${{ needs.architecture-check.result }}"
+          echo "  nix-checks:         ${{ needs.nix-checks.result }}"

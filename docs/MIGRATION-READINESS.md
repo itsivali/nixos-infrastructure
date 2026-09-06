@@ -76,9 +76,9 @@ self-enforcing, tested baseline. Migration is a **new feature**, not a rescue.
 | # | Item | Where tracked |
 |---|------|---------------|
 | NB1 | `ci-deploy.sh` gate parity | ✅ done — G3 closed, STABILIZATION-MATRIX.md |
-| NB2 | `gosec` blocking status | P4 backlog, G4 |
-| NB3 | `flow merge` missing-pipeline handling | bugfix/flow-merge-missing-pipeline |
-| NB4 | GitHub Actions parity (fmt / flake / eval) | P4 backlog, G5/G6 |
+| NB2 | `gosec` blocking status | ✅ done — G4 closed, STABILIZATION-MATRIX.md |
+| NB3 | `flow merge` missing-pipeline handling | ✅ done — G6 closed, STABILIZATION-MATRIX.md |
+| NB4 | GitHub Actions parity (fmt / flake / eval) | ✅ done — STABILIZATION-MATRIX.md |
 
 ---
 

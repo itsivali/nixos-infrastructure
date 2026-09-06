@@ -233,10 +233,12 @@ fi
 # Capture rollback anchor before we touch anything
 ###########################################################################
 
-CURRENT_GEN="$(
-  nix-env --list-generations --profile /nix/var/nix/profiles/system \
-    | tail -1 | awk '{print $1}'
-)"
+# The reconciler runs as the unprivileged `ivali` user (`5386fb8`), so it must
+# NOT use `nix-env --list-generations --profile /nix/var/nix/profiles/system`:
+# that opens root-owned `/nix/var/nix/profiles/system.lock` and every reconcile
+# dies with "Permission denied" right after a successful fetch. `readlink` on
+# the system profile symlink is world-readable and parseable instead.
+CURRENT_GEN="$(readlink /nix/var/nix/profiles/system | sed -E 's/.*system-([0-9]+)-link.*/\1/')"
 log "Current generation: ${CURRENT_GEN}"
 
 OLD_SHA="$LOCAL"
@@ -399,10 +401,7 @@ step_ok
 # Success
 ###########################################################################
 
-NEW_GEN="$(
-  nix-env --list-generations --profile /nix/var/nix/profiles/system \
-    | tail -1 | awk '{print $1}'
-)"
+NEW_GEN="$(readlink /nix/var/nix/profiles/system | sed -E 's/.*system-([0-9]+)-link.*/\1/')"
 
 TOTAL_ELAPSED=$(( SECONDS - GLOBAL_START ))
 

@@ -74,7 +74,9 @@ if ! git diff --cached --quiet 2>/dev/null; then
   dirty_reason="staged changes"
 fi
 
-untracked=$(git ls-files --others --exclude-standard 2>/dev/null | grep -v "^result$" | head -1)
+# `grep -v` exits 1 when nothing matches; `|| true` is REQUIRED under
+# `set -Eeuo pipefail` or a clean checkout instantly aborts the script.
+untracked=$(git ls-files --others --exclude-standard 2>/dev/null | grep -v "^result$" | head -1 || true)
 if [[ -n "$untracked" ]]; then
   dirty=true
   dirty_reason="untracked files"

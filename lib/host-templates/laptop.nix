@@ -90,18 +90,24 @@ in
         ];
       }
     ] ++ [
+      # General sudo requires a password — MUST come BEFORE the specific
+      # NOPASSWD rules below. sudoers is last-match-wins: if the catch-all
+      # `ALL` rule appears after a NOPASSWD rule for the same user, the
+      # catch-all shadows it and `sudo nixos-rebuild switch` (the GitOps
+      # reconciler's activation step) prompts for a password and fails
+      # non-interactively.
+      {
+        users = [ userName ];
+        commands = [{ command = "ALL"; }];
+      }
       # Passwordless for a few frequent, low-risk admin commands only.
+      # Kept AFTER the catch-all so these narrow rules win the last-match.
       {
         users = [ userName ];
         commands = [
           { command = "/run/current-system/sw/bin/nixos-rebuild"; options = [ "NOPASSWD" ]; }
           { command = "/run/current-system/sw/bin/systemctl start gitops-reconciler*"; options = [ "NOPASSWD" ]; }
         ];
-      }
-      # General sudo still requires a password.
-      {
-        users = [ userName ];
-        commands = [{ command = "ALL"; }];
       }
     ] ++ (extraConfig.security.sudo.extraRules or [ ]);
 

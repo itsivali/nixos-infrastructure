@@ -8,7 +8,7 @@
 # type. Routes http(s) to Firefox and media to mpv; the remaining stack
 # (file manager, image viewer, PDF viewer, archive manager, text editor,
 # terminal) follows the active desktop environment via the desktop-specific
-# handler modules (GNOME -> home/gnome, XFCE -> home/xfce).
+# handler modules (XFCE -> home/xfce).
 #
 # Ownership
 # ---------

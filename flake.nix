@@ -137,13 +137,6 @@
             ++ [ self.packages.${system}.bw-tui self.packages.${system}.ivali ];
         };
 
-        # Gruvbox recolor of the GNOME Shell theme (user-themes compatible)
-        gnome-shell-gruvbox-theme = pkgs.callPackage ./packages/gnome-shell-gruvbox-theme { };
-
-        # Collapse the right-side panel indicators behind a chevron arrow
-        # (keeps the dash-to-panel clock always visible)
-        panel-collapse = pkgs.callPackage ./packages/panel-collapse { };
-
         bw-tui = pkgs.buildGoModule {
           name = "bw-tui";
           src = goSrc;

@@ -131,11 +131,10 @@ graph TD
 
     hm --> home_shell["home/shell"]
     hm --> home_git["home/git"]
-    hm --> home_gnome["home/gnome"]
-    hm --> home_firefox["home/firefox"]
+    hm --> home_xfce["home/xfce"]
     hm --> home_editors["home/editors"]
     hm --> home_env["home/environment"]
-    hm --> home_terminal["home/terminal"]
+    hm --> home_firefox["home/firefox"]
 ```
 
 ### 2.2 Cross-Domain Import Dependencies
@@ -164,8 +163,7 @@ graph LR
     subgraph "Home Manager"
         home_firefox
         home_theming["home/theming"]
-        home_terminal
-        home_gnome
+        home_xfce
         home_shell
     end
 
@@ -174,8 +172,7 @@ graph LR
     desktop -->|import| wallpapers
     home_theming -->|import| theme
     home_firefox -->|import| theme
-    home_terminal -->|import| theme
-    home_gnome -->|import| wallpapers
+    home_xfce -->|import| theme
 
     svc -->|path ref| scripts
     auto -->|path ref| scripts

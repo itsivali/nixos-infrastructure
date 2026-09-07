@@ -138,9 +138,7 @@ domains:
       - packages/cli/default.nix
       - packages/desktop/default.nix
       - packages/user/default.nix
-    internal:
-      - packages/gnome-shell-gruvbox-theme/default.nix
-      - packages/panel-collapse/default.nix
+    internal: []
     allowed_dependencies:
       - shared.theme
     forbidden_dependencies: ["*"]
@@ -184,7 +182,7 @@ domains:
       - desktop/default.nix
     internal:
       - desktop/common/
-      - desktop/gnome/
+      - desktop/xfce/
       - desktop/login/
     allowed_dependencies:
       - core.*
@@ -204,12 +202,11 @@ domains:
       - home/ivali.nix
     internal:
       - home/firefox/
-      - home/gnome/
+      - home/xfce/
       - home/shell/
       - home/git/
       - home/editors/
       - home/environment/
-      - home/terminal/
       - home/identity/
       - home/fonts.nix
       - home/theming.nix

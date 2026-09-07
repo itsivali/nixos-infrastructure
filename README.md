@@ -191,21 +191,20 @@ deployment-health.timer (every 5 min)
 │
 ├── desktop/
 │   ├── default.nix                  # Desktop domain module
-│   ├── gnome/
-│   │   ├── default.nix              # GNOME apps + services (system-wide)
-│   │   ├── session.nix              # GNOME session, GDM, Qt theming
-│   │   └── extensions.nix           # GNOME Shell extension packages
+│   ├── xfce/
+│   │   ├── default.nix              # XFCE desktop enablement
+│   │   └── session.nix              # XFCE session, apps, power, Qt theming
 │   ├── login/
 │   │   ├── default.nix
-│   │   └── gdm.nix                  # GDM display manager + login theming
+│   │   └── lightdm.nix              # LightDM (GTK greeter) + login theming
 │   └── common/
 │       ├── audio.nix                # PipeWire audio
 │       ├── colors.nix               # Design-system color wiring
-│       ├── environment.nix          # Wayland session env vars
+│       ├── environment.nix          # Session env vars
 │       ├── fonts.nix                # Desktop font stack
 │       ├── gpu.nix                  # AMD GPU acceleration (amdgpu, Vulkan)
 │       ├── packages.nix             # Shared desktop packages
-│       ├── portals.nix              # xdg-desktop-portal (GNOME/GTK)
+│       ├── portals.nix              # xdg-desktop-portal (GTK)
 │       └── theme.nix                # Active design-system theme
 │
 ├── home/
@@ -237,13 +236,10 @@ deployment-health.timer (every 5 min)
 │   │   ├── git.nix                  # Git config, delta, aliases
 │   │   ├── delta.nix                # Delta diff viewer (gruvbox)
 │   │   └── packages.nix             # git-lfs, gitui, lazygit
-│   ├── gnome/
-│   │   ├── default.nix              # GNOME user settings barrel
-│   │   ├── shell.nix                # Dock favorites, keybindings, a11y, wallpaper
-│   │   ├── extensions.nix           # GNOME Shell extension enablement + dconf
-│   │   └── nautilus.nix             # Nautilus list view, "Open in Terminal"
-│   ├── terminal/
-│   │   └── gnome-terminal.nix       # GNOME Terminal (Gruvbox profile)
+│   ├── xfce/
+│   │   ├── default.nix              # XFCE user settings barrel
+│   │   ├── terminal.nix             # XFCE Terminal (Gruvbox profile)
+│   │   └── mime.nix                 # XFCE MIME default applications
 │   ├── firefox/
 │   │   └── default.nix              # Firefox (privacy, perf, Sidebery, Gruvbox)
 │   ├── editors/
@@ -724,8 +720,7 @@ Runtime secrets at `/run/secrets/` (symlinked by sops-nix).
 | `shell/` | Zsh, Powerlevel10k, FZF, zoxide, direnv, aliases (git, nix, navigation, etc.) |
 | `shell/bitwarden/` | Bitwarden CLI integration with fzf search |
 | `git/` | Delta diff, git-lfs, gitui, lazygit |
-| `gnome/` | Dock favorites, keybindings, a11y, wallpaper, GNOME Shell extensions, Nautilus |
-| `terminal/gnome-terminal.nix` | GNOME Terminal (Gruvbox profile) |
+| `xfce/` | XFCE session, Terminal (Gruvbox profile), MIME handlers |
 | `environment/mime.nix` | XDG MIME default applications |
 | `editors/zed.nix` | Zed editor with Nix/Python/Go/TS extensions |
 | `environment/` | Session variables, XDG paths, packages |

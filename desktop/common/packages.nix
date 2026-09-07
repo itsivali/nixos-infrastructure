@@ -5,8 +5,8 @@
 # Purpose
 # -------
 # System packages shared by every desktop host, regardless of environment.
-# Environment-specific packages (GNOME Shell extensions, app stack, ...)
-# live with their environment in desktop/gnome/*.
+# Environment-specific packages (app stack, power, ...) live with their
+# environment in desktop/xfce/*.
 #
 # Ownership
 # ---------

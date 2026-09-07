@@ -17,11 +17,6 @@
 
 {
   programs.zsh.shellAliases = {
-    # ── Clipboard ─────────────────────────────────────────────────────
-    clip = "wl-copy";
-    cclip = "wl-paste";
-    cclear = "wl-copy --clear";
-
     # ── Go ────────────────────────────────────────────────────────────
     gob = "go build";
     gor = "go run";

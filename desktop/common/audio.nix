@@ -71,7 +71,7 @@ let
   '';
 in
 {
-  config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
+  config = lib.mkIf (config.ivali.desktop.enable or false) {
     # Realtime privileges for PipeWire: the rtkit daemon grants RT policy +
     # memlock so audio threads run without scheduling jitter. Without this,
     # calls under load crackle/drop frames (Garuda ships the same setup).

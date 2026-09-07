@@ -4,9 +4,10 @@
 #
 # Purpose
 # -------
-# Wayland session environment variables shared by every desktop. Setting
-# XDG_CURRENT_DESKTOP=GNOME is what routes xdg-desktop-portal requests
-# (screen sharing, file dialogs) to the GNOME backend.
+# Session environment variables shared by every desktop. XDG_CURRENT_DESKTOP
+# and XDG_SESSION_TYPE are set by each desktop environment's own session
+# module (GNOME sets "GNOME"/wayland, XFCE sets "XFCE"/x11) so portal routing
+# tracks the active desktop rather than a hard-coded value.
 #
 # Ownership
 # ---------
@@ -17,19 +18,12 @@
 { config, lib, ... }:
 
 {
-  config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
+  config = lib.mkIf (config.ivali.desktop.enable or false) {
     environment.sessionVariables = {
-      # Wayland-first applications
-      NIXOS_OZONE_WL = "1";
-      MOZ_ENABLE_WAYLAND = "1";
-      ELECTRON_OZONE_PLATFORM_HINT = "wayland";
-      SDL_VIDEODRIVER = "wayland";
-      CLUTTER_BACKEND = "wayland";
       _JAVA_AWT_WM_NONREPARENTING = "1";
 
-      # Portal routing + GTK file dialogs through the portal
-      XDG_CURRENT_DESKTOP = "GNOME";
-      XDG_SESSION_TYPE = "wayland";
+      # Route file dialogs through the XDG portal (GTK backend) regardless
+      # of the active desktop environment.
       GTK_USE_PORTAL = "1";
     };
   };

@@ -964,8 +964,10 @@ In AI mode, runs all gates and outputs JSON results.`,
 					return gitRun(f.repoDir, "nix", "fmt", "--", "--check", ".")
 				}},
 				{"shellcheck", func() (string, error) {
-					out, err := gitRun(f.repoDir, "shellcheck", "--severity=warning")
-					if err != nil && strings.Contains(out, "No such file") {
+					// exec.Command doesn't expand globs — run through sh
+					// so scripts/*.sh matches the CI invocation exactly.
+					out, err := gitRun(f.repoDir, "sh", "-c", "shellcheck --severity=warning scripts/*.sh")
+					if err != nil && (strings.Contains(out, "No such file") || strings.Contains(out, "No files")) {
 						return "", nil
 					}
 					return out, err
@@ -995,7 +997,10 @@ In AI mode, runs all gates and outputs JSON results.`,
 			}
 
 			gates = append(gates, gateEntry{"gosec", func() (string, error) {
-				return gitRun(f.repoDir, "gosec", gosecExtraArgs...)
+				// Use nix run to match CI (.gitlab-ci.yml) — gosec is not
+				// guaranteed to be installed locally.
+				args := append([]string{"run", "nixpkgs#gosec", "--"}, gosecExtraArgs...)
+				return gitRun(f.repoDir, "nix", args...)
 			}})
 
 			for _, g := range gates {
@@ -2110,7 +2115,10 @@ Examples:
 				{"go build", func() (string, error) { return gitRun(f.repoDir, "go", "build", "./...") }},
 				{"go vet", func() (string, error) { return gitRun(f.repoDir, "go", "vet", "./...") }},
 				{"go test -race", func() (string, error) { return gitRun(f.repoDir, "go", "test", "-race", "-count=1", "./...") }},
-				{"gosec", func() (string, error) { return gitRun(f.repoDir, "gosec", gosecExtraArgs...) }},
+				{"gosec", func() (string, error) {
+					args := append([]string{"run", "nixpkgs#gosec", "--"}, gosecExtraArgs...)
+					return gitRun(f.repoDir, "nix", args...)
+				}},
 				{"nix flake check", func() (string, error) { return gitRun(f.repoDir, "nix", "flake", "check", "--no-build") }},
 			}
 
@@ -2492,7 +2500,10 @@ Examples:
 				{"go build", func() (string, error) { return gitRun(f.repoDir, "go", "build", "./...") }},
 				{"go vet", func() (string, error) { return gitRun(f.repoDir, "go", "vet", "./...") }},
 				{"go test -race", func() (string, error) { return gitRun(f.repoDir, "go", "test", "-race", "-count=1", "./...") }},
-				{"gosec", func() (string, error) { return gitRun(f.repoDir, "gosec", gosecExtraArgs...) }},
+				{"gosec", func() (string, error) {
+					args := append([]string{"run", "nixpkgs#gosec", "--"}, gosecExtraArgs...)
+					return gitRun(f.repoDir, "nix", args...)
+				}},
 				{"nix flake check", func() (string, error) { return gitRun(f.repoDir, "nix", "flake", "check", "--no-build") }},
 			}
 

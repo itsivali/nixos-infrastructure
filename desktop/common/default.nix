@@ -25,6 +25,7 @@
   imports = [
     ./colors.nix
     ./theme.nix
+    ./platform.nix
     ./audio.nix
     ./environment.nix
     ./fonts.nix

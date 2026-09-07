@@ -258,8 +258,8 @@ Examples:
 					return gitRun(repoDir, "nix", "fmt", "--", "--check", ".")
 				}},
 				{"shellcheck", func() (string, error) {
-					out, err := gitRun(repoDir, "shellcheck", "--severity=warning")
-					if err != nil && strings.Contains(out, "No such file") {
+					out, err := gitRun(repoDir, "sh", "-c", "shellcheck --severity=warning scripts/*.sh")
+					if err != nil && (strings.Contains(out, "No such file") || strings.Contains(out, "No files")) {
 						return "", nil
 					}
 					return out, err
@@ -277,7 +277,7 @@ Examples:
 					return gitRun(repoDir, "nix", "flake", "check", "--no-build")
 				}},
 				{"gosec", func() (string, error) {
-					return gitRun(repoDir, "gosec", "-exclude-generated", "./...")
+					return gitRun(repoDir, "nix", "run", "nixpkgs#gosec", "--", "-exclude-generated", "./...")
 				}},
 			}
 
@@ -495,7 +495,7 @@ Runs the same gates as CI:
 			}
 
 			gates = append(gates, gateEntry{"gosec", func() (string, error) {
-				return gitRun(f.repoDir, "gosec", "-exclude-generated", "./...")
+				return gitRun(f.repoDir, "nix", "run", "nixpkgs#gosec", "--", "-exclude-generated", "./...")
 			}})
 
 			for _, g := range gates {

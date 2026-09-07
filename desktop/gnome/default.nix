@@ -33,4 +33,11 @@
   options.ivali.desktop.gnome = {
     enable = lib.mkEnableOption "GNOME desktop environment with curated Gruvbox-theming";
   };
+
+  config = lib.mkIf (config.ivali.desktop.gnome.enable or false) {
+    # Any active desktop environment activates the shared platform gate so
+    # common/{audio,portals,environment} follow the active desktop rather
+    # than being coupled to any single environment's flag.
+    ivali.desktop.enable = true;
+  };
 }

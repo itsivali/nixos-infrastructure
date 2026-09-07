@@ -44,6 +44,17 @@
     services.displayManager.gdm.enable = true;
     services.displayManager.defaultSession = "gnome";
 
+    # ── GNOME session environment (Wayland-first, portal routing) ───────
+    environment.sessionVariables = {
+      NIXOS_OZONE_WL = "1";
+      MOZ_ENABLE_WAYLAND = "1";
+      ELECTRON_OZONE_PLATFORM_HINT = "wayland";
+      SDL_VIDEODRIVER = "wayland";
+      CLUTTER_BACKEND = "wayland";
+      XDG_CURRENT_DESKTOP = "GNOME";
+      XDG_SESSION_TYPE = "wayland";
+    };
+
     # Required by the Home Manager dconf module (home/theming.nix): without
     # it the dconf database service and GSettings plumbing are not declared,
     # so per-user dconf settings are not guaranteed to be served.

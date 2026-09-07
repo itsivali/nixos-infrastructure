@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"os"
+	"strings"
 
 	"github.com/itsivali/nixos-infrastructure/internal/events"
 	"github.com/itsivali/nixos-infrastructure/internal/state"
@@ -43,11 +44,23 @@ func (p *DesktopPlugin) Status() *state.ComponentStatus {
 	}
 	meta["desktop"] = desktopEnv
 
-	gnomePresent := false
-	if _, err := os.Stat("/run/current-system/sw/bin/gnome-shell"); err == nil {
-		gnomePresent = true
+	// Detect the installed desktop stack. nixpkgs layers the desktop
+	// environment over the generic X server, so any of these session
+	// binaries may be present in /run/current-system. Reporting the
+	// detection set (rather than a single hard-coded environment) keeps the
+	// plugin correct as the host flips between GNOME and XFCE.
+	installed := []string{}
+	for _, probe := range []struct{ bin, name string }{
+		{"gnome-shell", "gnome"},
+		{"xfce4-session", "xfce"},
+		{"plasmashell", "kde"},
+		{"cinnamon-session", "cinnamon"},
+	} {
+		if fileExists("/run/current-system/sw/bin/" + probe.bin) {
+			installed = append(installed, probe.name)
+		}
 	}
-	meta["gnome_installed"] = fmtBool(gnomePresent)
+	meta["desktop_stack_installed"] = strings.Join(installed, ",")
 
 	stateVal := state.StateHealthy
 	message := "desktop session active"

@@ -27,8 +27,12 @@
 
 {
   environment.systemPackages = with pkgs; [
-    # Wayland clipboard CLI (scripts, bot integration)
+    # Wayland clipboard CLI (scripts, bot integration) + X11 equivalent
+    # (xclip) so clipboard tooling works on both Wayland (GNOME) and X11
+    # (XFCE) desktops. The `clip`/`cclip`/`cclear` shell functions dispatch
+    # on the active session type (home/shell/core/clipboard.nix).
     wl-clipboard
+    xclip
 
     # Audio / media key control
     playerctl

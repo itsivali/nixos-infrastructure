@@ -30,7 +30,10 @@
     ssh = true;
   };
   config = {
-    ivali.desktop.gnome.enable = true;
+    # Desktop environment: XFCE (X11) replaces GNOME (Wayland). The GNOME
+    # desktop module remains in-tree but is gated off (removed in MR 2).
+    ivali.desktop.gnome.enable = false;
+    ivali.desktop.xfce.enable = true;
     ivali.kilocode.enable = true;
     ivali.antigravity.enable = true;
 

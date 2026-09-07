@@ -30,6 +30,7 @@
     ./zsh.nix
     ./history.nix
     ./prompt.nix
+    ./clipboard.nix
     ./startup
   ];
 }

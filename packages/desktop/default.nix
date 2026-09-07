@@ -47,6 +47,5 @@ with pkgs; [
   # Utilities
   localsend
   mission-center
-  gnome-tweaks
   xdg-utils
 ]

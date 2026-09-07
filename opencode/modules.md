@@ -48,10 +48,9 @@
 | delta | `home/git/delta.nix` | delta |
 | git | `home/git/git.nix` | Configure Git defaults for the develo... |
 | packages | `home/git/packages.nix` | packages |
-| default | `home/gnome/default.nix` | default |
-| extensions | `home/gnome/extensions.nix` | extensions |
-| nautilus | `home/gnome/nautilus.nix` | nautilus |
-| shell | `home/gnome/shell.nix` | shell |
+| default | `home/xfce/default.nix` | default |
+| terminal | `home/xfce/terminal.nix` | XFCE Terminal (Gruvbox profile) |
+| mime | `home/xfce/mime.nix` | XFCE MIME default applications |
 | default | `home/identity/default.nix` | default |
 | default | `home/services/default.nix` | default |
 | auto-format | `home/services/auto-format.nix` | auto-format |
@@ -85,5 +84,3 @@
 | eza | `home/shell/tools/eza.nix` | eza |
 | fastfetch | `home/shell/tools/fastfetch.nix` | fastfetch |
 | packages | `home/shell/tools/packages.nix` | packages |
-| default | `home/terminal/default.nix` | default |
-| gnome-terminal | `home/terminal/gnome-terminal.nix` | gnome-terminal |

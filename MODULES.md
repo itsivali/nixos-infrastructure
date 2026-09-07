@@ -51,10 +51,9 @@ configuration.nix                 ← stable registry of top-level domains
 │   │   ├── audio.nix             ← auto-discovered ✓
 │   │   ├── gpu.nix               ← auto-discovered ✓
 │   │   └── portals.nix           ← auto-discovered ✓
-│   ├── gnome/default.nix         ← auto-discovered ✓
-│   │   ├── extensions.nix        ← auto-discovered ✓
+│   ├── xfce/default.nix          ← auto-discovered ✓
 │   │   └── session.nix           ← auto-discovered ✓
-│   └── login/gdm.nix             ← auto-discovered ✓
+│   └── login/lightdm.nix         ← auto-discovered ✓
 │
 ├── ./observability               → observability/default.nix
 │   ├── alloy.nix                 ← auto-discovered ✓

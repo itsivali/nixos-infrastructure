@@ -57,6 +57,16 @@
     # dialog all depend on this.
     powerManagement.enable = true;
 
+    # Baseline CPU frequency governor. power-profiles-daemon (below) will
+    # override this dynamically per profile, but schedutil is the correct
+    # default for the AMD A6 APU.
+    powerManagement.cpuFreqGovernor = "schedutil";
+
+    # power-profiles-daemon provides balanced/performance/power-saver profiles
+    # via D-Bus. XFCE and applications can switch profiles without manual
+    # sysctl tweaking.
+    services.power-profiles-daemon.enable = true;
+
     # ── Bluetooth ────────────────────────────────────────────────────────
     # The GNOME desktop module enabled Bluetooth implicitly; XFCE does not.
     # Enable it explicitly so headphones, keyboards and mice work. The
@@ -95,6 +105,9 @@
       # Bluetooth applet/manager for pairing in XFCE (no blueman dependency
       # in this build — blueberry requires mint's sessions; keep it simple).
       blueman
+
+      # Screen locker for XFCE (lightweight, integrates with LightDM).
+      xfce4-screensaver
     ];
 
     # ── Restricted extras: exclude the handful of XFCE desktop daemons we

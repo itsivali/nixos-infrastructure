@@ -4,15 +4,20 @@
 #
 # Purpose
 # -------
-# AMD GPU driver and initrd configuration.
+# AMD GPU driver, firmware, Vulkan, and display configuration.
 #
 # Ownership
 # ---------
 # boot.initrd.kernelModules, services.xserver.videoDrivers, hardware.graphics
 #
+# Does NOT Own
+# ------------
+# - Kernel parameters (boot/kernel.nix)
+# - Display manager (desktop/login/lightdm.nix)
+#
 ##############################################################################
 
-{ ... }:
+{ config, lib, pkgs, ... }:
 
 {
   boot.initrd.kernelModules = [ "amdgpu" ];

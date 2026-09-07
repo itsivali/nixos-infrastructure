@@ -87,6 +87,20 @@
     qt.platformTheme = "gnome";
     qt.style = "adwaita-dark";
 
+    # ── Input / Touchpad ──────────────────────────────────────────────────
+    # libinput is the modern input stack; the XFCE module enables it via
+    # xserver, but we pin the touchpad defaults here so they survive
+    # xfce4-settings resets.
+    services.libinput = {
+      enable = true;
+      touchpad = {
+        naturalScrolling = true;
+        tapping = true;
+        disableWhileTyping = true;
+        scrollMethod = "twofinger";
+      };
+    };
+
     environment.systemPackages = with pkgs; [
       # Lightweight XFCE-native archive manager (Xarchiver) + GTK PDF viewer
       # (Evince) — the missing default handlers for the XFCE MIME stack.

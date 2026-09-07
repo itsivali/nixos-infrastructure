@@ -126,6 +126,64 @@ func CheckLocker() CheckResult {
 	return CheckResult{Name: "locker", State: state.StateWarning, Message: "no screen locker found"}
 }
 
+func CheckAMDGPU() CheckResult {
+	if _, err := os.Stat("/sys/class/drm/card0"); err != nil {
+		return CheckResult{Name: "amdgpu", State: state.StateWarning, Message: "no DRM card found"}
+	}
+	out, err := os.ReadFile("/sys/class/drm/card0/device/driver")
+	if err != nil {
+		return CheckResult{Name: "amdgpu", State: state.StateWarning, Message: "unable to read driver"}
+	}
+	if strings.Contains(string(out), "amdgpu") {
+		return CheckResult{Name: "amdgpu", State: state.StateHealthy, Message: "amdgpu driver bound"}
+	}
+	return CheckResult{Name: "amdgpu", State: state.StateWarning, Message: "amdgpu driver not bound"}
+}
+
+func CheckVulkan() CheckResult {
+	if _, err := exec.Command("which", "vulkaninfo").Output(); err != nil {
+		return CheckResult{Name: "vulkan", State: state.StateWarning, Message: "vulkaninfo not found (Vulkan may not be installed)"}
+	}
+	out, err := exec.Command("vulkaninfo", "--summary").Output()
+	if err != nil {
+		return CheckResult{Name: "vulkan", State: state.StateWarning, Message: "vulkaninfo failed"}
+	}
+	if strings.Contains(string(out), "AMD") {
+		return CheckResult{Name: "vulkan", State: state.StateHealthy, Message: "AMD Vulkan ICD present"}
+	}
+	return CheckResult{Name: "vulkan", State: state.StateHealthy, Message: "Vulkan available"}
+}
+
+func CheckTouchpad() CheckResult {
+	out, err := exec.Command("libinput", "list-devices").Output()
+	if err != nil {
+		return CheckResult{Name: "touchpad", State: state.StateWarning, Message: "libinput not available"}
+	}
+	if strings.Contains(string(out), "touchpad") || strings.Contains(string(out), "Touchpad") {
+		return CheckResult{Name: "touchpad", State: state.StateHealthy, Message: "touchpad detected"}
+	}
+	return CheckResult{Name: "touchpad", State: state.StateWarning, Message: "no touchpad found"}
+}
+
+func CheckWebcam() CheckResult {
+	if _, err := os.Stat("/dev/video0"); err != nil {
+		return CheckResult{Name: "webcam", State: state.StateWarning, Message: "no /dev/video0 device"}
+	}
+	return CheckResult{Name: "webcam", State: state.StateHealthy, Message: "webcam device present"}
+}
+
+func CheckPlatformProfile() CheckResult {
+	data, err := os.ReadFile("/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor")
+	if err != nil {
+		return CheckResult{Name: "platform-profile", State: state.StateWarning, Message: "unable to read governor"}
+	}
+	governor := strings.TrimSpace(string(data))
+	if governor == "schedutil" || governor == "ondemand" || governor == "conservative" {
+		return CheckResult{Name: "platform-profile", State: state.StateHealthy, Message: fmt.Sprintf("governor: %s", governor)}
+	}
+	return CheckResult{Name: "platform-profile", State: state.StateWarning, Message: fmt.Sprintf("governor: %s", governor)}
+}
+
 func RunAllDesktopChecks() []CheckResult {
 	return []CheckResult{
 		CheckXFCE(),
@@ -140,5 +198,10 @@ func RunAllDesktopChecks() []CheckResult {
 		CheckNoGNOMEShell(),
 		CheckNoGDM(),
 		CheckLocker(),
+		CheckAMDGPU(),
+		CheckVulkan(),
+		CheckTouchpad(),
+		CheckWebcam(),
+		CheckPlatformProfile(),
 	}
 }

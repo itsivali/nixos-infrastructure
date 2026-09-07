@@ -82,6 +82,16 @@
       "amd_iommu=on"
       "iommu=pt"
 
+      # Platform profile for AMD A6 APU: "balanced" is the default on
+      # modern kernels, but pin it explicitly so the kernel does not
+      # default to "performance" on some OEM BIOSes.
+      "platform_profile=balanced"
+
+      # Use the native backlight interface (acpi_video0 or amdgpu_bl0)
+      # instead of the legacy ACPI video driver. Matches the
+      # acpi_backlight=native param above.
+      "video.use_native_backlight=1"
+
       ##########################################################
       # Hardware: disable serial ports (no physical UART on this laptop)
       ##########################################################

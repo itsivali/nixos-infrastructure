@@ -40,7 +40,7 @@ flake.nix
   │     └── testvm.nix
   ├── lib/host-templates/laptop.nix ← generates config from hostSpec
   └── home/ivali.nix             ← Home Manager composition
-        └── home/default.nix     ← imports shell, git, gnome, firefox, editors, env
+        └── home/default.nix     ← imports shell, git, xfce, firefox, editors, env
 ```
 
 ### 1.2 Host Composition
@@ -54,7 +54,7 @@ Hosts are pure data (attrsets). The laptop template generates all NixOS configur
   userName = "ivali";
   features = { secrets = true; gitlabRunner = true; ... };
   config = {
-    ivali.desktop.gnome.enable = true;
+    ivali.desktop.xfce.enable = true;
     fleet.gitopsReconciler.enable = true;
     fleet.deploymentHealth.enable = true;
     ...
@@ -356,8 +356,8 @@ LEVEL 1 — Platform (depends on Core)
   packages/   — CLI, desktop, system, user package sets
 
 LEVEL 2 — Functional Domains (depends on Platform)
-  desktop/    — GNOME, GDM, audio, GPU, fonts, portals
-  home/       — User config (shell, git, gnome, firefox, editors, env)
+  desktop/    — XFCE, LightDM, audio, GPU, fonts, portals
+  home/       — User config (shell, git, xfce, firefox, editors, env)
   developer/  — Go, Node, Python, Kotlin, DevOps, databases
   cloud/      — Google Cloud SDK, GKE
   virtualization/ — Docker

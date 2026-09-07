@@ -40,7 +40,7 @@ with the following structure:
 
 ### Method 2: From Fresh NixOS
 
-1. Boot into fresh NixOS GNOME install
+1. Boot into fresh NixOS install
 2. Open terminal, run:
    ```bash
    curl -sSL <install-url> | bash -s -- --host <name>

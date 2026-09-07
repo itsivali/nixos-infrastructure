@@ -33,7 +33,7 @@ all wired together through a zero-touch auto-import module system.
 
 | Area | What's Included |
 |------|----------------|
-| **Desktop** | GNOME on Wayland, GTK/GNOME applications, GDM login, AMD GPU acceleration, power management, Bluetooth |
+| **Desktop** | XFCE on X11, GTK/XFCE applications, LightDM login, AMD GPU acceleration, power management, Bluetooth |
 | **Kernel** | `linuxPackages_zen` (zen kernel — RTL8821CE wifi via in-kernel rtw88), custom sysctl hardening, zRAM with zstd compression |
 | **Security** | nftables firewall, AppArmor, fail2ban, Tailscale-only SSH, kernel hardening |
 | **Networking** | NetworkManager, systemd-resolved (DoT), Tailscale with exit node, BBR |
@@ -69,7 +69,7 @@ flake.nix
 ├── boot/                         ← kernel, GRUB bootloader, zram, sysctl tuning, TPM blacklist
 ├── hardware/                     ← USB power management, device quirks
 ├── networking/                   ← NetworkManager, DNS, timezone
-├── desktop/                      ← GNOME desktop + apps, GPU acceleration, GDM
+├── desktop/                      ← XFCE desktop + apps, GPU acceleration, LightDM
 ├── home/                         ← Home Manager (shell, git, editors, fonts, services)
 │
 ├── observability/                ← Prometheus, Grafana, Loki, Alloy, Falco, OTEL
@@ -401,7 +401,7 @@ deployment-health.timer (every 5 min)
 
 ### Fresh Install
 
-Start from a clean NixOS GNOME installation. Log in as your normal user (not root):
+Start from a clean NixOS installation. Log in as your normal user (not root):
 
 ```bash
 nix --extra-experimental-features "nix-command flakes" \
@@ -504,7 +504,7 @@ prague = {
   };
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
   config = {
-    ivali.desktop.gnome.enable = true;
+    ivali.desktop.xfce.enable = true;
     ivali.observability.enable = true;
   };
 };

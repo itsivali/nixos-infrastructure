@@ -63,7 +63,7 @@ NixOS dashboards are provisioned from `/var/lib/grafana/dashboards/nixos/`.
 ### Accessing Grafana
 
 ```bash
-# Via browser (GNOME)
+# Via browser (XFCE)
 xdg-open http://localhost:3000/grafana/
 
 # Via CLI (get version)

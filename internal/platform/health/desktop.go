@@ -61,6 +61,20 @@ func CheckBluetooth() CheckResult {
 	return CheckResult{Name: "bluetooth", State: state.StateWarning, Message: fmt.Sprintf("Bluetooth is %s", status)}
 }
 
+func CheckBluetoothAdapter() CheckResult {
+	out, err := exec.Command("rfkill", "list", "bluetooth").CombinedOutput()
+	if err != nil {
+		return CheckResult{Name: "bluetooth-adapter", State: state.StateWarning, Message: "rfkill not available"}
+	}
+	if strings.Contains(string(out), "Soft blocked: no") && strings.Contains(string(out), "Hard blocked: no") {
+		return CheckResult{Name: "bluetooth-adapter", State: state.StateHealthy, Message: "adapter unblocked"}
+	}
+	if strings.Contains(string(out), "Hard blocked: yes") {
+		return CheckResult{Name: "bluetooth-adapter", State: state.StateWarning, Message: "adapter hard-blocked (physical switch?)"}
+	}
+	return CheckResult{Name: "bluetooth-adapter", State: state.StateWarning, Message: "adapter soft-blocked"}
+}
+
 func CheckNetworkManager() CheckResult {
 	out, err := exec.Command("systemctl", "is-active", "NetworkManager").CombinedOutput()
 	status := strings.TrimSpace(string(out))
@@ -192,6 +206,7 @@ func RunAllDesktopChecks() []CheckResult {
 		CheckPipeWire(),
 		CheckWirePlumber(),
 		CheckBluetooth(),
+		CheckBluetoothAdapter(),
 		CheckNetworkManager(),
 		CheckWiFi(),
 		CheckPowerManagement(),

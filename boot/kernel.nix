@@ -104,8 +104,12 @@
       # suspended state and fail to wake on new device plug-in.
       # usbcore.autosuspend=-1 prevents the kernel from ever
       # auto-suspending USB controllers or devices.
-      ##########################################################
       "usbcore.autosuspend=-1"
+
+      # Bluetooth USB adapter: disable autosuspend so headsets/keyboards
+      # don't drop connection on idle. The btusb driver shares the same
+      # USB autosuspend bug as the controllers on this laptop.
+      "btusb.enable_autosuspend=n"
 
       ##########################################################
       # Performance

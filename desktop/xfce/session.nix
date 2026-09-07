@@ -73,6 +73,15 @@
     # WirePlumber Bluetooth codec configuration ships in desktop/common.
     hardware.bluetooth.enable = true;
 
+    # Auto-enable Bluetooth adapters at boot. Some Lenovo BIOSes leave the
+    # btusb adapter soft-blocked via rfkill; BlueZ AutoEnable=true unblocks
+    # it during daemon startup so pairing works without manual intervention.
+    hardware.bluetooth.settings = {
+      General = {
+        AutoEnable = true;
+      };
+    };
+
     # ── GNOME Keyring (shared secret service) ────────────────────────────
     # Wi-Fi password storage (NetworkManager), libsecret clients and SSH key
     # storage depend on the freedesktop secret service. The XFCE module

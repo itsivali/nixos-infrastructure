@@ -29,6 +29,7 @@
   home.file.".config/xfce4/xfce4-power-manager-setup.sh" = {
     executable = true;
     text = ''
+      #!${pkgs.bash}/bin/bash
       set -euo pipefail
 
       # ── Power manager ──────────────────────────────────────────────────────

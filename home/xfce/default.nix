@@ -26,5 +26,7 @@
   imports = [
     ./terminal.nix
     ./mime.nix
+    ./panel.nix
+    ./dmenu.nix
   ];
 }

@@ -39,6 +39,12 @@
     ivali.kilocode.enable = true;
     ivali.antigravity.enable = true;
 
+    # Self-healing: run the deployment health check and automatically roll
+    # back on a genuine service regression (parity with hosts/tuscany.nix).
+    # deploymentHealth.enable is already set by the laptop template because
+    # both features.secrets and features.gitlabRunner are true.
+    fleet.deploymentHealth.enableRollback = true;
+
     # DevOps tooling - enable only what you need
     ivali.devops.enable = true;
     ivali.devops.terraform.enable = true;

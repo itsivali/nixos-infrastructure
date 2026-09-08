@@ -230,7 +230,11 @@ in
       ## FAILURE → ROLLBACK-ON-FAILURE
       ######################################################################
 
-      onFailure = [
+      # rollback-on-failure.service is only defined when
+      # fleet.deploymentHealth.enableRollback is set (see recovery/rollback.nix).
+      # Guard the OnFailure reference so hosts that enable health monitoring
+      # without rollback do not dangle into a unit that does not exist.
+      onFailure = lib.mkIf (cfg.enableRollback or false) [
         "rollback-on-failure.service"
       ];
     };

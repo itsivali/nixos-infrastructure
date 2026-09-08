@@ -232,9 +232,12 @@ check_worktree() {
   fi
 
   local git_dir="$GITOPS_WORKTREE"
-  if local_hash="$(git -C "$git_dir" rev-parse --short HEAD 2>/dev/null)"; then
+  # The service runs as root while the worktree is owned by ivali; git's
+  # "dubious ownership" guard rejects it by default. -c safe.directory makes
+  # the check work in the hardened service context.
+  if local_hash="$(git -C "$git_dir" -c safe.directory="$git_dir" rev-parse --short HEAD 2>/dev/null)"; then
     local dirty=""
-    if [[ -n "$(git -C "$git_dir" status --porcelain 2>/dev/null || true)" ]]; then
+    if [[ -n "$(git -C "$git_dir" -c safe.directory="$git_dir" status --porcelain 2>/dev/null || true)" ]]; then
       dirty=" — uncommitted changes"
     fi
     record_check "git-status" "pass" "HEAD ${local_hash}${dirty}"

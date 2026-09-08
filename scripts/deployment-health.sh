@@ -350,8 +350,14 @@ check_disk() {
 
 check_generations() {
   local gen_count
-  gen_count="$(nix-env --list-generations --profile /nix/var/nix/profiles/system 2>/dev/null | wc -l)"
-  gen_count="$(echo "$gen_count" | tr -d '[:space:]')"
+  # Count system generations via symlink links instead of `nix-env
+  # --list-generations`: nix-env needs to open the profile lock file for
+  # WRITING (/nix/var/nix/profiles/system.lock), which fails under the
+  # service's ProtectSystem=strict (read-only /nix) and previously aborted
+  # the whole script because of `set -euo pipefail`. The link count is
+  # read-only and works in the hardened service.
+  gen_count="$(find /nix/var/nix/profiles -maxdepth 1 -name 'system-*-link' 2>/dev/null | wc -l || true)"
+  gen_count="$(printf '%s\n' "$gen_count" | tr -d '[:space:]')"
   if [[ "$gen_count" =~ ^[0-9]+$ ]]; then
     if (( gen_count >= 2 )); then
       record_check "generations" "pass" "${gen_count} generations (rollback available)"

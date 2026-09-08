@@ -38,6 +38,7 @@ in
   home.file.".config/xfce4/xfce4-panel-setup.sh" = {
     executable = true;
     text = ''
+      #!${pkgs.bash}/bin/bash
       set -euo pipefail
 
       # ── Panel ──────────────────────────────────────────────────────────────

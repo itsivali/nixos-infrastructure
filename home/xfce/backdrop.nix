@@ -31,6 +31,7 @@ in
   home.file.".config/xfce4/xfce4-desktop-setup.sh" = {
     executable = true;
     text = ''
+      #!${pkgs.bash}/bin/bash
       set -euo pipefail
 
       # ── Desktop ────────────────────────────────────────────────────────────

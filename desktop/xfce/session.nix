@@ -131,6 +131,9 @@
 
       # Screen locker for XFCE (lightweight, integrates with LightDM).
       xfce4-screensaver
+
+      # Application launcher for the custom panel.
+      dmenu
     ];
 
     # ── Restricted extras: exclude the handful of XFCE desktop daemons we

@@ -1,15 +1,25 @@
 ##############################################################################
 #
-# Home — XFCE Panel
+# Home — XFCE Panel, Window Manager & Workspaces
 #
 # Purpose
 # -------
 # Custom IVΛLI XFCE panel: Gruvbox-dark appearance, favorite-app launcher,
-# numbered workspace switcher, window list, system tray, and clock.
+# numbered workspace switcher, window list, system tray, and clock. Also owns
+# the xfwm4 window-manager behavior (theme, title font, button layout) and the
+# workspace set + keyboard shortcuts that drive it. Power management and the
+# desktop backdrop live in their own modules (power.nix / backdrop.nix) so each
+# capability has a single owner.
 #
 # Ownership
 # ---------
-# xfconf.settings."xfce4-panel"
+# xfce4-panel (panel), xfce4-xfwm4 (window manager), xfce4-keyboard-shortcuts
+#
+# Does NOT Own
+# ------------
+# - Power management (power.nix)
+# - Desktop backdrop (backdrop.nix)
+# - dmenu launcher (dmenu.nix)
 #
 ##############################################################################
 
@@ -17,16 +27,13 @@
 
 let
   theme = import ../../theme/gruvbox;
+  c = theme.colors;
 in
 {
-  home.packages = with pkgs; [
-    dmenu
-  ];
-
-  # Panel and xfwm4 preferences are applied through a small setup script
-  # because xfconf property paths contain slashes and are awkward to express
-  # as nested Nix attribute sets. The script runs once at login via the
-  # user's systemd --user instance and idempotently rewrites the panel /
+  # Panel, xfwm4 and keyboard preferences are applied through a small setup
+  # script because xfconf property paths contain slashes and are awkward to
+  # express as nested Nix attribute sets. The script runs once at login via
+  # the user's systemd --user instance and idempotently rewrites the panel /
   # xfwm4 / shortcuts channels from a single source of truth.
   home.file.".config/xfce4/xfce4-panel-setup.sh" = {
     executable = true;
@@ -44,7 +51,7 @@ in
       xfconf-query -c xfce4-panel -p /panels/panel-1/length --create --type int --set 100
       xfconf-query -c xfce4-panel -p /panels/panel-1/strut --create --type bool --set true
       xfconf-query -c xfce4-panel -p /panels/panel-1/background-style --create --type int --set 0
-      xfconf-query -c xfce4-panel -p /panels/panel-1/background-color --create --type string --set "#282828"
+      xfconf-query -c xfce4-panel -p /panels/panel-1/background-color --create --type string --set "${c.bg}"
       xfconf-query -c xfce4-panel -p /panels/panel-1/background-alpha --create --type double --set 1.0
 
       # ── Plugins ────────────────────────────────────────────────────────────
@@ -92,21 +99,27 @@ in
       xfconf-query -c xfce4-xfwm4 -p /general/title_font --create --type string --set "Inter 9"
       xfconf-query -c xfce4-xfwm4 -p /general/button_layout --create --type string --set "O|SHMC"
       xfconf-query -c xfce4-xfwm4 -p /general/workspace_count --create --type int --set 10
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "1"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "2"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "3"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "4"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "5"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "6"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "7"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "8"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "9"
-      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "10"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "α Web"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "β Term"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "γ Code"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "δ Docs"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "ε Files"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "ζ Mail"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "η Comm"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "θ Media"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "ι Sys"
+      xfconf-query -c xfce4-xfwm4 -p /general/workspace_names --create --type string --set "κ Misc"
 
       # ── Keyboard shortcuts ─────────────────────────────────────────────────
       xfconf-query -c xfce4-keyboard-shortcuts -p /override --create --type bool --set true
 
+      # Launchers: dmenu (Gruvbox theme) is the primary fuzzy launcher,
+      # xfce4-appfinder remains as a fallback for the category view.
+      xfconf-query -c xfce4-keyboard-shortcuts -p /custom/<Super>p --create --type string --set "dmenu-run"
+      xfconf-query -c xfce4-keyboard-shortcuts -p /custom/<Alt>p --create --type string --set "dmenu-run"
       xfconf-query -c xfce4-keyboard-shortcuts -p /custom/<Super>space --create --type string --set "xfce4-appfinder --collapsed"
+      xfconf-query -c xfce4-keyboard-shortcuts -p /custom/<Alt>F2 --create --type string --set "xfce4-appfinder --collapsed"
+
       xfconf-query -c xfce4-keyboard-shortcuts -p /custom/<Super>1 --create --type string --set "workspace_1"
       xfconf-query -c xfce4-keyboard-shortcuts -p /custom/<Super>2 --create --type string --set "workspace_2"
       xfconf-query -c xfce4-keyboard-shortcuts -p /custom/<Super>3 --create --type string --set "workspace_3"
@@ -130,30 +143,13 @@ in
       xfconf-query -c xfce4-keyboard-shortcuts -p /custom<Shift><Super>0 --create --type string --set "move_window_to_workspace_10"
 
       xfconf-query -c xfce4-keyboard-shortcuts -p /custom<Super>Return --create --type string --set "xfce4-terminal --drop-down"
-      xfconf-query -c xfce4-keyboard-shortcuts -p /custom<Alt>F2 --create --type string --set "xfce4-appfinder --collapsed"
-
-      # ── Power manager ──────────────────────────────────────────────────────
-      xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/blank-on-ac --create --type int --set 0
-      xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/blank-on-battery --create --type int --set 0
-      xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/dpms-enabled --create --type bool --set false
-      xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/inactivity-on-ac --create --type int --set 0
-      xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/inactivity-on-battery --create --type int --set 0
-      xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lock-screen-suspend-hibernate --create --type bool --set false
-      xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/power-button-action --create --type int --set 0
-
-      # ── Desktop ────────────────────────────────────────────────────────────
-      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/image-style --create --type int --set 5
-      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/color1 --create --type string --set "#282828"
-      xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitor0/color2 --create --type string --set "#282828"
-      xfconf-query -c xfce4-desktop -p /desktop/icons/style --create --type int --set 0
-      xfconf-query -c xfce4-desktop -p /desktop/icons/show-tooltips --create --type bool --set false
     '';
   };
 
   # Run the setup script once at login after xfce4-session starts.
   systemd.user.services.xfce4-panel-setup = {
     Unit = {
-      Description = "Configure XFCE panel, workspaces, and shortcuts";
+      Description = "Configure XFCE panel, window manager, workspaces, and shortcuts";
       After = [ "graphical-session.target" ];
       PartOf = [ "graphical-session.target" ];
     };

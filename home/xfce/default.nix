@@ -16,7 +16,10 @@
 # - Apply the Gruvbox theme to xfce4-terminal
 # - Declare the XFCE MIME handler set (Thunar, Ristretto, evince, Xarchiver,
 #   mousepad, xfce4-terminal)
-# - Configure the XFCE panel, window manager and desktop to the IVΛLI look
+# - Configure the custom panel, window manager and workspaces (panel.nix)
+# - Theme the dmenu launcher (dmenu.nix)
+# - Configure XFCE power management (power.nix)
+# - Configure the desktop backdrop (backdrop.nix)
 #
 ##############################################################################
 
@@ -28,5 +31,7 @@
     ./mime.nix
     ./panel.nix
     ./dmenu.nix
+    ./power.nix
+    ./backdrop.nix
   ];
 }

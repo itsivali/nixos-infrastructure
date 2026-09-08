@@ -15,7 +15,10 @@
   hostName = "prague";
   userName = "ivali";
   repoPath = "/home/ivali/nixos-infrastructure";
-  tags = [ "tag:personal" ];
+  # tag:personal + tag:exit-node come from the laptop template. tag:infra is
+  # added here so prague is a valid destination for the tailnet ACL rules that
+  # allow SSH from tag:admin/tag:user/tag:personal sources (permits phone access).
+  tags = [ "tag:personal" "tag:infra" ];
   tailnetDomain = "codlet-trench.ts.net";
   gitlabRunnerTags = [ "nixos" "prague" "self-hosted" ];
   sshAuthorizedKeys = [

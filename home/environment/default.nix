@@ -31,5 +31,6 @@
     ./session.nix
     ./variables.nix
     ./xdg.nix
+    ./ai-cleanup.nix
   ];
 }

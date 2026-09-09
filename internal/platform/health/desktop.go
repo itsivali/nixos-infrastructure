@@ -9,33 +9,33 @@ import (
 	"github.com/itsivali/nixos-infrastructure/internal/state"
 )
 
-func CheckXFCE() CheckResult {
-	if _, err := exec.Command("systemctl", "--user", "is-active", "xfce4-session").Output(); err == nil {
-		return CheckResult{Name: "xfce-session", State: state.StateHealthy, Message: "XFCE session active"}
+func CheckGNOME() CheckResult {
+	if _, err := exec.Command("pgrep", "-x", "gnome-shell").Output(); err == nil {
+		return CheckResult{Name: "gnome-shell", State: state.StateHealthy, Message: "GNOME Shell active"}
 	}
-	if _, err := exec.Command("pgrep", "-x", "xfwm4").Output(); err == nil {
-		return CheckResult{Name: "xfce-session", State: state.StateHealthy, Message: "XFCE session active (xfwm4 running)"}
-	}
-	return CheckResult{Name: "xfce-session", State: state.StateWarning, Message: "XFCE session not detected"}
+	return CheckResult{Name: "gnome-shell", State: state.StateWarning, Message: "GNOME Shell not detected"}
 }
 
-func CheckXServer() CheckResult {
+func CheckWayland() CheckResult {
+	if os.Getenv("WAYLAND_DISPLAY") != "" {
+		return CheckResult{Name: "wayland", State: state.StateHealthy, Message: "Wayland session active"}
+	}
 	if _, err := exec.Command("systemctl", "is-active", "display-manager").Output(); err == nil {
-		return CheckResult{Name: "xserver", State: state.StateHealthy, Message: "Display manager active"}
+		return CheckResult{Name: "wayland", State: state.StateHealthy, Message: "Display manager active"}
 	}
 	if _, err := exec.Command("pgrep", "-x", "Xorg").Output(); err == nil {
-		return CheckResult{Name: "xserver", State: state.StateHealthy, Message: "Xorg running"}
+		return CheckResult{Name: "wayland", State: state.StateHealthy, Message: "Xorg fallback running"}
 	}
-	return CheckResult{Name: "xserver", State: state.StateWarning, Message: "X server not detected"}
+	return CheckResult{Name: "wayland", State: state.StateWarning, Message: "no display server detected"}
 }
 
-func CheckLightDM() CheckResult {
-	out, err := exec.Command("systemctl", "is-active", "lightdm").CombinedOutput()
+func CheckGDM() CheckResult {
+	out, err := exec.Command("systemctl", "is-active", "gdm").CombinedOutput()
 	status := strings.TrimSpace(string(out))
 	if err == nil && status == "active" {
-		return CheckResult{Name: "lightdm", State: state.StateHealthy, Message: "LightDM active"}
+		return CheckResult{Name: "gdm", State: state.StateHealthy, Message: "GDM active"}
 	}
-	return CheckResult{Name: "lightdm", State: state.StateWarning, Message: fmt.Sprintf("LightDM is %s", status)}
+	return CheckResult{Name: "gdm", State: state.StateWarning, Message: fmt.Sprintf("GDM is %s", status)}
 }
 
 func CheckPipeWire() CheckResult {
@@ -114,28 +114,17 @@ func CheckPowerManagement() CheckResult {
 	return CheckResult{Name: "power", State: state.StateHealthy, Message: "power management active"}
 }
 
-func CheckNoGNOMEShell() CheckResult {
-	if _, err := exec.Command("pgrep", "-x", "gnome-shell").Output(); err == nil {
-		return CheckResult{Name: "no-gnome-shell", State: state.StateWarning, Message: "GNOME Shell is running"}
-	}
-	return CheckResult{Name: "no-gnome-shell", State: state.StateHealthy, Message: "no GNOME Shell process"}
-}
-
-func CheckNoGDM() CheckResult {
-	out, err := exec.Command("systemctl", "is-active", "gdm").CombinedOutput()
-	status := strings.TrimSpace(string(out))
-	if err == nil && status == "active" {
-		return CheckResult{Name: "no-gdm", State: state.StateWarning, Message: "GDM is active (should be LightDM)"}
-	}
-	return CheckResult{Name: "no-gdm", State: state.StateHealthy, Message: "GDM not active"}
-}
-
 func CheckLocker() CheckResult {
-	lockers := []string{"light-locker", "xfce4-screensaver", "xscreensaver", "xss-lock"}
+	lockers := []string{"gnome-screensaver", "xdg-screensaver", "light-locker", "xscreensaver", "xss-lock"}
 	for _, l := range lockers {
 		if _, err := exec.Command("which", l).Output(); err == nil {
 			return CheckResult{Name: "locker", State: state.StateHealthy, Message: fmt.Sprintf("%s available", l)}
 		}
+	}
+	// GNOME Shell's built-in locking is the primary screen locker on Wayland;
+	// external lockers are only a fallback check.
+	if os.Getenv("XDG_SESSION_TYPE") == "wayland" {
+		return CheckResult{Name: "locker", State: state.StateHealthy, Message: "GNOME Shell built-in lock (Wayland)"}
 	}
 	return CheckResult{Name: "locker", State: state.StateWarning, Message: "no screen locker found"}
 }
@@ -200,9 +189,9 @@ func CheckPlatformProfile() CheckResult {
 
 func RunAllDesktopChecks() []CheckResult {
 	return []CheckResult{
-		CheckXFCE(),
-		CheckXServer(),
-		CheckLightDM(),
+		CheckGNOME(),
+		CheckWayland(),
+		CheckGDM(),
 		CheckPipeWire(),
 		CheckWirePlumber(),
 		CheckBluetooth(),
@@ -210,8 +199,6 @@ func RunAllDesktopChecks() []CheckResult {
 		CheckNetworkManager(),
 		CheckWiFi(),
 		CheckPowerManagement(),
-		CheckNoGNOMEShell(),
-		CheckNoGDM(),
 		CheckLocker(),
 		CheckAMDGPU(),
 		CheckVulkan(),

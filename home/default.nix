@@ -14,7 +14,7 @@
 
 let
   hostConfig = hostSpec.config or { };
-  xfceEnabled = hostConfig.ivali.desktop.xfce.enable or false;
+  gnomeEnabled = hostConfig.ivali.desktop.gnome.enable or false;
 in
 {
   imports = [
@@ -24,7 +24,7 @@ in
     ./theming.nix
     ./firefox
   ]
-  ++ (if xfceEnabled then [ ./xfce ] else [ ])
+  ++ (if gnomeEnabled then [ ./gnome ] else [ ])
   ++ [
     ./shell
     ./git

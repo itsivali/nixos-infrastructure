@@ -30,7 +30,7 @@ let
   # Qt style for GNOME platform theme (single style source for Qt surfaces).
   qt = import ./qt.nix;
 
-  # Gruvbox terminal palette (single source for the GNOME Terminal profile).
+  # Gruvbox terminal palette (single source for the GNOME Console profile).
   terminal = import ./terminal.nix {
     inherit (palette) colors terminalPalette;
   };

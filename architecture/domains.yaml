@@ -182,7 +182,7 @@ domains:
       - desktop/default.nix
     internal:
       - desktop/common/
-      - desktop/xfce/
+      - desktop/gnome/
       - desktop/login/
     allowed_dependencies:
       - core.*
@@ -202,7 +202,7 @@ domains:
       - home/ivali.nix
     internal:
       - home/firefox/
-      - home/xfce/
+      - home/gnome/
       - home/shell/
       - home/git/
       - home/editors/

@@ -13,7 +13,7 @@
 # Does NOT Own
 # ------------
 # - Kernel parameters (boot/kernel.nix)
-# - Display manager (desktop/login/lightdm.nix)
+# - Display manager (desktop/login/gdm.nix)
 #
 ##############################################################################
 

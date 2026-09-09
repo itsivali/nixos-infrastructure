@@ -8,14 +8,14 @@ The system is declarative, self-healing, and remotely controllable via Telegram.
 ```
 ┌─────────────────────────────────────────────────────┐
 │                    User (ivali)                      │
-│              Telegram Bot / SSH / XFCE              │
+│              Telegram Bot / SSH / GNOME             │
 └──────────────────────┬──────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────┐
 │                 NixOS System                         │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │ Home     │  │ Desktop  │  │ Developer        │  │
-│  │ Manager  │  │ XFCE      │  │ Go/Node/Python   │  │
+│  │ Manager  │  │ GNOME   │  │ Go/Node/Python   │  │
 │  └──────────┘  └──────────┘  └──────────────────┘  │
 │  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │ Security │  │ Boot     │  │ Networking       │  │

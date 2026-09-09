@@ -5,7 +5,7 @@
 # Purpose
 # -------
 # Gruvbox terminal appearance slice: font, ANSI palette and background/foreground
-# colors for the GNOME Terminal profile. Every color comes from theme/gruvbox/
+# colors for the GNOME Console (kgx). Every color comes from theme/gruvbox/
 # colors.nix so it cannot drift from the rest of the design system.
 #
 # Ownership

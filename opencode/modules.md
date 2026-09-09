@@ -12,21 +12,22 @@
 | **cloud** | `cloud/` | options.nix |
 | **configuration.nix** | `configuration.nix/` | configuration.nix |
 | **desktop** | `desktop/` | audio.nix, colors.nix, environment.nix, fonts.nix, gpu.nix, ... |
-| **developer** | `developer/` | aliases.nix, databases.nix, devops.nix, kilocode.nix, antigravity.nix, ... |
+| **developer** | `developer/` | ai-fallback.nix, aliases.nix, antigravity.nix, databases.nix, devops.nix, ... |
 | **flake.nix** | `flake.nix/` | flake.nix |
-| **home** | `home/` | neovim.nix, zed.nix, locale.nix, mime.nix, packages.nix, ... |
+| **hardware** | `hardware/` | usb-power.nix |
+| **home** | `home/` | neovim.nix, zed.nix, ai-cleanup.nix, locale.nix, mime.nix, ... |
 | **hosts** | `hosts/` | hardware-configuration.nix, hosts.nix, prague.nix, testvm.nix, tuscany.nix |
 | **i18n** | `i18n/` | locale.nix |
 | **lib** | `lib/` | auto-imports.nix, go-src.nix, hardware-detection.nix |
-| **networking** | `networking/` | networkmanager.nix, time.nix |
+| **networking** | `networking/` | networkmanager.nix, tailscale-serve.nix, time.nix |
 | **observability** | `observability/` | options.nix, alerting.nix, alertmanager.nix, alloy.nix, dashboards.nix, ... |
 | **recovery** | `recovery/` | backup.nix, deployment-health.nix, rollback.nix |
 | **security** | `security/` | apparmor.nix, audit.nix, fail2ban.nix, firewall.nix, hardening.nix, ... |
-| **services** | `services/` | ci-notify.nix, config.nix, options.nix, config.nix, ... |
+| **services** | `services/` | config.nix, options.nix, config.nix, options.nix, config.nix, ... |
 | **ssh** | `ssh/` | options.nix, client.nix, daemon.nix |
 | **storage** | `storage/` | btrfs.nix, tmpfs.nix |
 | **system** | `system/` | nix.nix, state.nix, users.nix |
-| **tests** | `tests/` | automation-smoke.nix, bitwarden-smoke.nix, home-manager-smoke.nix, ... |
+| **tests** | `tests/` | automation-smoke.nix, bitwarden-smoke.nix, home-manager-smoke.nix, laptop-smoke.nix, observability-smoke.nix, ... |
 | **virtualization** | `virtualization/` | docker.nix |
 
 ## Home Manager Modules
@@ -37,6 +38,7 @@
 | neovim | `home/editors/neovim.nix` | neovim |
 | zed | `home/editors/zed.nix` | zed |
 | default | `home/environment/default.nix` | default |
+| ai-cleanup | `home/environment/ai-cleanup.nix` | ai-cleanup |
 | locale | `home/environment/locale.nix` | locale |
 | mime | `home/environment/mime.nix` | mime |
 | packages | `home/environment/packages.nix` | packages |
@@ -48,9 +50,10 @@
 | delta | `home/git/delta.nix` | delta |
 | git | `home/git/git.nix` | Configure Git defaults for the develo... |
 | packages | `home/git/packages.nix` | packages |
-| default | `home/xfce/default.nix` | default |
-| terminal | `home/xfce/terminal.nix` | XFCE Terminal (Gruvbox profile) |
-| mime | `home/xfce/mime.nix` | XFCE MIME default applications |
+| default | `home/gnome/default.nix` | default |
+| applications | `home/gnome/applications.nix` | applications |
+| dconf | `home/gnome/dconf.nix` | dconf |
+| extensions | `home/gnome/extensions.nix` | extensions |
 | default | `home/identity/default.nix` | default |
 | default | `home/services/default.nix` | default |
 | auto-format | `home/services/auto-format.nix` | auto-format |
@@ -68,10 +71,11 @@
 | env | `home/shell/bitwarden/env.nix` | env |
 | default | `home/shell/core/default.nix` | default |
 | bash | `home/shell/core/bash.nix` | bash |
+| clipboard | `home/shell/core/clipboard.nix` | clipboard |
 | completion | `home/shell/core/completion.nix` | completion |
 | history | `home/shell/core/history.nix` | history |
 | keybindings | `home/shell/core/keybindings.nix` | keybindings |
-| prompt | `home/shell/core/prompt.nix` | Auto-generated module description. |
+| prompt | `home/shell/core/prompt.nix` | prompt |
 | zsh | `home/shell/core/zsh.nix` | zsh |
 | default | `home/shell/integrations/default.nix` | default |
 | atuin | `home/shell/integrations/atuin.nix` | atuin |

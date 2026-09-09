@@ -19,8 +19,8 @@ func CmdDesktop(a *app.App) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "desktop",
-		Short: "XFCE desktop diagnostics and health",
-		Long: `Desktop diagnostics for the XFCE workstation.
+		Short: "GNOME desktop diagnostics and health",
+		Long: `Desktop diagnostics for the GNOME workstation.
 
 Subcommands:
   health        Run desktop health checks`,
@@ -32,7 +32,7 @@ Subcommands:
 	healthCmd := &cobra.Command{
 		Use:   "health",
 		Short: "Run desktop health checks",
-		Long:  "Display health status of the XFCE desktop environment and related services.",
+		Long:  "Display health status of the GNOME desktop environment and related services.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := a.Term
 			fmt.Println()

@@ -34,9 +34,8 @@
     ssh = true;
   };
   config = {
-    # Desktop environment: XFCE (X11), deployed in MR 1 and decommissioned
-    # the previously-gated GNOME (Wayland) desktop in MR 2.
-    ivali.desktop.xfce.enable = true;
+    # Desktop environment: GNOME (Wayland), replaced XFCE (X11) desktop.
+    ivali.desktop.gnome.enable = true;
     ivali.kilocode.enable = true;
     ivali.antigravity.enable = true;
 

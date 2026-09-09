@@ -4,11 +4,10 @@
 #
 # Purpose
 # -------
-# XDG desktop portal integration shared by every desktop. The desktop manager
-# modules (GNOME, XFCE) wire up xdg-desktop-portal with their own backends;
-# only the file-chooser routing override is declared here so that native
-# (non-sandboxed) apps get a GTK-native file chooser regardless of the
-# active desktop.
+# XDG desktop portal integration shared by every desktop. The GNOME session
+# module enables the full portal stack; only the file-chooser routing
+# override is declared here so that native (non-sandboxed) apps get a
+# GTK-native file chooser regardless of the active desktop.
 #
 # Ownership
 # ---------
@@ -20,10 +19,18 @@
 
 {
   config = lib.mkIf (config.ivali.desktop.enable or false) {
-    xdg.portal.config.common = {
-      # GTK-native file chooser for portal file dialogs (the GNOME backend
-      # would otherwise render its own Switcheroo dialog for non-GNOME apps).
-      "org.freedesktop.impl.portal.FileChooser" = "gtk";
+    xdg.portal = {
+      enable = true;
+
+      # GNOME portal backend provides screen sharing, screenshots, and
+      # camera/microphone access through PipeWire on Wayland.
+      extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
+
+      config.common = {
+        # GTK-native file chooser for portal file dialogs (the GNOME backend
+        # would otherwise render its own Switcheroo dialog for non-GNOME apps).
+        "org.freedesktop.impl.portal.FileChooser" = "gtk";
+      };
     };
   };
 }

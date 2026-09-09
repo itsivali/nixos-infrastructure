@@ -6,8 +6,8 @@
 # -------
 # Session environment variables shared by every desktop. XDG_CURRENT_DESKTOP
 # and XDG_SESSION_TYPE are set by each desktop environment's own session
-# module (GNOME sets "GNOME"/wayland, XFCE sets "XFCE"/x11) so portal routing
-# tracks the active desktop rather than a hard-coded value.
+# module (GNOME sets "GNOME"/wayland) so portal routing tracks the active
+# desktop rather than a hard-coded value.
 #
 # Ownership
 # ---------

@@ -5,9 +5,9 @@
 # Purpose
 # -------
 # Session-aware clipboard wrappers. Under a Wayland desktop the underlying
-# tool is wl-clipboard (wl-copy/wl-paste); under an X11 desktop (e.g. XFCE)
-# it is xclip. The functions dispatch on XDG_SESSION_TYPE so a single
-# clip/cclip/cclear interface works on every desktop.
+# tool is wl-clipboard (wl-copy/wl-paste); under X11/XWayland it is xclip.
+# The functions dispatch on XDG_SESSION_TYPE so a single clip/cclip/cclear
+# interface works on every desktop.
 #
 # Ownership
 # ---------

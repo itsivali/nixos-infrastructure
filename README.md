@@ -33,7 +33,7 @@ all wired together through a zero-touch auto-import module system.
 
 | Area | What's Included |
 |------|----------------|
-| **Desktop** | XFCE on X11, GTK/XFCE applications, LightDM login, AMD GPU acceleration, power management, Bluetooth |
+| **Desktop** | GNOME on Wayland, GTK/GNOME applications, GDM login, AMD GPU acceleration, power management, Bluetooth |
 | **Kernel** | `linuxPackages_zen` (zen kernel — RTL8821CE wifi via in-kernel rtw88), custom sysctl hardening, zRAM with zstd compression |
 | **Security** | nftables firewall, AppArmor, fail2ban, Tailscale-only SSH, kernel hardening |
 | **Networking** | NetworkManager, systemd-resolved (DoT), Tailscale with exit node, BBR |
@@ -69,7 +69,7 @@ flake.nix
 ├── boot/                         ← kernel, GRUB bootloader, zram, sysctl tuning, TPM blacklist
 ├── hardware/                     ← USB power management, device quirks
 ├── networking/                   ← NetworkManager, DNS, timezone
-├── desktop/                      ← XFCE desktop + apps, GPU acceleration, LightDM
+├── desktop/                      ← GNOME desktop + apps, GPU acceleration, GDM
 ├── home/                         ← Home Manager (shell, git, editors, fonts, services)
 │
 ├── observability/                ← Prometheus, Grafana, Loki, Alloy, Falco, OTEL
@@ -191,12 +191,12 @@ deployment-health.timer (every 5 min)
 │
 ├── desktop/
 │   ├── default.nix                  # Desktop domain module
-│   ├── xfce/
-│   │   ├── default.nix              # XFCE desktop enablement
-│   │   └── session.nix              # XFCE session, apps, power, Qt theming
+│   ├── gnome/
+│   │   ├── default.nix              # GNOME desktop enablement
+│   │   └── session.nix              # GNOME session, apps, power, Qt theming
 │   ├── login/
 │   │   ├── default.nix
-│   │   └── lightdm.nix              # LightDM (GTK greeter) + login theming
+│   │   └── gdm.nix                  # GDM (Wayland) + login theming
 │   └── common/
 │       ├── audio.nix                # PipeWire audio
 │       ├── colors.nix               # Design-system color wiring
@@ -204,7 +204,7 @@ deployment-health.timer (every 5 min)
 │       ├── fonts.nix                # Desktop font stack
 │       ├── gpu.nix                  # AMD GPU acceleration (amdgpu, Vulkan)
 │       ├── packages.nix             # Shared desktop packages
-│       ├── portals.nix              # xdg-desktop-portal (GTK)
+│       ├── portals.nix              # xdg-desktop-portal (GNOME)
 │       └── theme.nix                # Active design-system theme
 │
 ├── home/
@@ -236,10 +236,11 @@ deployment-health.timer (every 5 min)
 │   │   ├── git.nix                  # Git config, delta, aliases
 │   │   ├── delta.nix                # Delta diff viewer (gruvbox)
 │   │   └── packages.nix             # git-lfs, gitui, lazygit
-│   ├── xfce/
-│   │   ├── default.nix              # XFCE user settings barrel
-│   │   ├── terminal.nix             # XFCE Terminal (Gruvbox profile)
-│   │   └── mime.nix                 # XFCE MIME default applications
+│   ├── gnome/
+│   │   ├── default.nix              # GNOME user settings barrel
+│   │   ├── dconf.nix                # GNOME Shell/Console settings (Gruvbox)
+│   │   ├── extensions.nix           # GNOME extensions (tiling, dash, etc.)
+│   │   └── applications.nix         # GNOME MIME default applications
 │   ├── firefox/
 │   │   └── default.nix              # Firefox (privacy, perf, Sidebery, Gruvbox)
 │   ├── editors/
@@ -504,7 +505,7 @@ prague = {
   };
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
   config = {
-    ivali.desktop.xfce.enable = true;
+    ivali.desktop.gnome.enable = true;
     ivali.observability.enable = true;
   };
 };
@@ -720,7 +721,7 @@ Runtime secrets at `/run/secrets/` (symlinked by sops-nix).
 | `shell/` | Zsh, Powerlevel10k, FZF, zoxide, direnv, aliases (git, nix, navigation, etc.) |
 | `shell/bitwarden/` | Bitwarden CLI integration with fzf search |
 | `git/` | Delta diff, git-lfs, gitui, lazygit |
-| `xfce/` | XFCE session, Terminal (Gruvbox profile), MIME handlers |
+| `gnome/` | GNOME Shell settings, extensions, GNOME Console (Gruvbox), MIME handlers |
 | `environment/mime.nix` | XDG MIME default applications |
 | `editors/zed.nix` | Zed editor with Nix/Python/Go/TS extensions |
 | `environment/` | Session variables, XDG paths, packages |

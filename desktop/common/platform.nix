@@ -15,13 +15,13 @@
 # Responsibilities
 # ----------------
 # - ivali.desktop.enable is set to true by any enabled desktop environment
-#   (GNOME, XFCE) and consumed by the shared common/* modules.
+#   (GNOME) and consumed by the shared common/* modules.
 # - Prevent the shared foundation from silently disabling when a host switches
 #   from one environment to another.
 #
 # Usage
 # -----
-#   ivali.desktop.xfce.enable = true;   # sets ivali.desktop.enable = true
+#   ivali.desktop.gnome.enable = true;   # sets ivali.desktop.enable = true
 #
 ##############################################################################
 

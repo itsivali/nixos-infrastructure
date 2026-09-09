@@ -21,8 +21,8 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 ┌─────────────────────────────────────────────────────────────────────┐
 │                        User Interface Layer                         │
 │  ┌──────────────┐  ┌──────────────────────────────────────────┐  │
-│  │  SSH Access  │  │  XFCE Desktop                            │  │
-│  │  (Tailscale) │  │  (X11, LightDM)                           │  │
+│  │  SSH Access  │  │  GNOME Desktop                           │  │
+│  │  (Tailscale) │  │  (Wayland, GDM)                          │  │
 │  └──────────────┘  └──────────────────────────────────────────┘  │
 └───────────────────────────┬─────────────────────────────────────────┘
                             │
@@ -44,7 +44,7 @@ The system can bootstrap itself on a fresh NixOS installation, detect hardware, 
 │  └──────────────────────────────────────────────────────────────┘  │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────────┐  │
 │  │  Boot    │  │  Desktop │  │  Security│  │  Observability   │  │
-│  │  Kernel  │  │ XFCE    │  │  Harden  │  │  Prometheus      │  │
+│  │  Kernel  │  │ GNOME   │  │  Harden  │  │  Prometheus      │  │
 │  │  zRAM    │  │  AMD GPU │  │  SOPS    │  │  Grafana         │  │
 │  │  systemd │  │  Power   │  │  Tailscale│ │  Loki            │  │
 │  └──────────┘  └──────────┘  └──────────┘  └──────────────────┘  │
@@ -191,13 +191,13 @@ Prometheus ─→ node exporter ──────────┘
 
 | Feature | Configuration |
 |---------|---------------|
-| **Environment** | XFCE (X11) |
-| **Display** | LightDM (GTK greeter) |
+| **Environment** | GNOME (Wayland), 10 workspaces, Forge tiling |
+| **Display** | GDM (Wayland greeter) |
 | **GPU** | AMD acceleration (amdgpu) |
-| **Power** | Lid suspend, idle suspend, UPower |
+| **Power** | Lid suspend, idle suspend, power-profiles-daemon, UPower |
 | **Bluetooth** | Enabled with battery reporting |
 | **Fonts** | Nerd Fonts, MS Office fonts, Noto |
-| **Apps** | Thunar (files), Ristretto (images), Evince (PDF), Xarchiver (archives), Mousepad, XFCE Terminal, Firefox (with Sidebery) |
+| **Apps** | Nautilus (files), Eye of GNOME (images), Evince (PDF), GNOME Console, GNOME Text Editor, Firefox (with Sidebery) |
 
 ### 9. Developer Toolchain
 
@@ -317,7 +317,7 @@ nixos-infrastructure/
 ├── boot/                        # Kernel, GRUB bootloader, zRAM, TPM blacklist
 ├── hardware/                    # USB power management, device quirks
 ├── networking/                  # NetworkManager, DNS, Tailscale
-├── desktop/                     # XFCE, LightDM, AMD GPU, power, audio
+├── desktop/                     # GNOME, GDM, AMD GPU, power, audio
 ├── security/                    # Hardening, firewall, SOPS
 ├── observability/               # Prometheus, Grafana, Loki
 ├── services/                    # Nginx, PostgreSQL, Valkey

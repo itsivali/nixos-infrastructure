@@ -46,9 +46,8 @@
       repoPath = "/home/ivali/nixos-infrastructure";
     };
 
-    # Desktop environment: XFCE (X11), deployed in MR 1 and decommissioned
-    # the previously-gated GNOME (Wayland) desktop in MR 2.
-    ivali.desktop.xfce.enable = true;
+    # Desktop environment: GNOME (Wayland), replaced XFCE (X11) desktop.
+    ivali.desktop.gnome.enable = true;
     fleet.gitopsReconciler.enable = true;
     fleet.deploymentHealth.enable = true;
     fleet.deploymentHealth.enableRollback = true;

@@ -23,18 +23,18 @@ nix_imports:
     type: import
     severity: allowed
 
-  - source: home/xfce/terminal.nix
+  - source: home/gnome/dconf.nix
     target: shared.theme
     type: import
     severity: allowed
 
-  - source: desktop/login/lightdm.nix
+  - source: home/gnome/extensions.nix
     target: shared.theme
     type: import
     severity: allowed
 
-  - source: desktop/login/lightdm.nix
-    target: shared.wallpapers
+  - source: desktop/login/gdm.nix
+    target: shared.theme
     type: import
     severity: allowed
 

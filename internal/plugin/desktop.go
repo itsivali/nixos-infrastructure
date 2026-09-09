@@ -48,7 +48,7 @@ func (p *DesktopPlugin) Status() *state.ComponentStatus {
 	// environment over the generic X server, so any of these session
 	// binaries may be present in /run/current-system. Reporting the
 	// detection set (rather than a single hard-coded environment) keeps the
-	// plugin correct as the host flips between GNOME and XFCE.
+	// plugin correct as the host configuration evolves.
 	installed := []string{}
 	for _, probe := range []struct{ bin, name string }{
 		{"gnome-shell", "gnome"},

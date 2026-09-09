@@ -16,6 +16,6 @@
 
 {
   imports = [
-    ./lightdm.nix
+    ./gdm.nix
   ];
 }

@@ -142,7 +142,13 @@ in
 
         ExecStart = reconcileScript;
 
-        TimeoutStartSec = "180s";
+        # A full reconcile validates the flake (which builds all 7 VM
+        # smoke-test derivations), builds the toplevel, runs nixos-rebuild
+        # switch and a health gate. On this host (AMD A6 / 14 GB) a cold
+        # desktop switch routinely exceeds 10 minutes, so 180s killed every
+        # real deploy mid-validation (systemd "start operation timed out").
+        # 1800s (30 min) covers the slowest first-build path with margin.
+        TimeoutStartSec = "1800s";
 
         StandardOutput = "journal";
         StandardError = "journal";

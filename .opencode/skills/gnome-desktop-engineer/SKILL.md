@@ -34,9 +34,13 @@ end-to-end (AGENTS.md §4.2).
 - **Shell:** GNOME Shell provides the top bar, dash, overview, application
   grid, and Quick Settings. Customize via dconf; do not replace native
   elements unless there is a compelling reason.
-- **Extensions** (`home/gnome/extensions.nix`): Clipboard Indicator, Just
-  Perfection, Dash to Dock, Forge (tiling), System Monitor Next. Add
-  extensions only when GNOME natively cannot provide the functionality.
+- **Extensions** (`home/gnome/extensions.nix`): ArcMenu (traditional app
+  menu), Blur my Shell (overview blur), Caffeine (keep-awake toggle),
+  Clipboard Indicator (clipboard history), Dash to Dock (bottom floating
+  dock), Just Perfection (panel refinement), Rounded Window Corners Reborn
+  (consistent corner radii), Vitals (compact system monitoring),
+  AppIndicator (legacy tray), Alphabetical App Grid (predictable sorting).
+  Add extensions only when GNOME natively cannot provide the functionality.
 - **MIME defaults:** `home/environment/mime.nix` + `home/gnome/applications.nix`
   route content types to the stack (Firefox, `org.gnome.Nautilus.desktop`,
   `org.gnome.eog.desktop`, `org.gnome.Evince.desktop`,
@@ -83,16 +87,22 @@ end-to-end (AGENTS.md §4.2).
 
 - GNOME is the foundation. Do not introduce heavy background services,
   indexers, or competing desktop daemons.
-- Extensions must be minimal: Clipboard Indicator, Just Perfection, Dash to
-  Dock, Forge, System Monitor Next. Avoid redundant status indicators.
+- Extensions must be minimal: ArcMenu, Blur my Shell, Caffeine, Clipboard
+  Indicator, Dash to Dock, Just Perfection, Rounded Window Corners Reborn,
+  Vitals, AppIndicator, Alphabetical App Grid. Avoid redundant status
+  indicators and extension stacking.
 - Respect the AMD A6 / 14 GB RAM constraint. Measure before adding services.
 
 ## End-to-End Verification Checklist
 
 After any desktop change, confirm the full workflow:
-- Launch app via GNOME Shell search (SUPER) and via the dash.
+- Launch app via GNOME Shell search (SUPER) and via the ArcMenu.
 - Workspace switching works via SUPER+1-0; move windows via SHIFT+SUPER+1-0.
-- Forge tiling: SUPER+W toggles tiling mode; SUPER+H/J/K/L focuses windows.
+- ArcMenu opens from the panel; categories and search work.
+- Dash to Dock sits at bottom; favorites and running indicators display.
+- Caffeine toggle activates/deactivates from the top bar.
+- Clipboard Indicator history works via SUPER+V.
+- Vitals shows CPU, memory, temperature in the top bar.
 - Drag/click file manager operations work in Nautilus; archives extract;
   images/PDFs open in eog/Evince; thumbnails render.
 - Qt apps pick up GTK/Gruvbox look.

@@ -25,6 +25,10 @@ pkgs.testers.nixosTest {
     services.xserver.enable = false;
     services.openssh.enable = false;
     system.stateVersion = "26.11";
+
+    # Strip the host's 8250 UART-disable params so the VM serial console
+    # (ttyS0) stays alive for the NixOS test driver.
+    ivali.boot.disableSerialPorts = false;
   };
 
   testScript = ''

@@ -103,6 +103,7 @@ in
         nixos-rebuild # activation step
         msmtp # sendmail (notify.sh email)
         openssh # ssh transport for git fetch/pull over git@gitlab.com
+        python3 # update-go-hashes.sh discovers buildGoModule packages via python
       ];
 
       ######################################################################

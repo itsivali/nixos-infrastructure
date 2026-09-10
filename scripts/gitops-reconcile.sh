@@ -261,6 +261,7 @@ CHANGED_FILES="$(git diff --name-only "${OLD_SHA}..HEAD")"
 
 ###########################################################################
 # Validate flake (evaluation only — VM tests are gated in GitLab CI)
+# The reconciler runs on a 2-core host; building QEMU VM tests causes
 ###########################################################################
 
 step "Flake check"

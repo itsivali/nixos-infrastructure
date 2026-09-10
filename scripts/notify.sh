@@ -17,20 +17,28 @@ if [[ -z "$MESSAGE" ]]; then
   exit 1
 fi
 
-# Dedup: hash message body, skip if sent within last 10 minutes
-DEDUP_DIR="/tmp/notify-seen"
-mkdir -p "$DEDUP_DIR"
-MSG_HASH=$(echo "$MESSAGE" | md5sum | cut -d' ' -f1)
-DEDUP_FILE="${DEDUP_DIR}/${MSG_HASH}"
-
-if [[ -f "$DEDUP_FILE" ]]; then
-  AGE=$(( $(date +%s) - $(stat -c %Y "$DEDUP_FILE") ))
-  if [[ "$AGE" -lt 600 ]]; then
-    echo "notify.sh: duplicate message suppressed (${AGE}s < 600s)" >&2
-    exit 0
-  fi
+# Dedup: hash message body, skip if sent within last 10 minutes.
+# Best-effort only — the dedup cache must never block notification delivery,
+# so a broken cache dir downgrades to always-send rather than aborting.
+DEDUP_DIR=""
+if [[ -d "${XDG_RUNTIME_DIR:-}" || -d /tmp ]]; then
+  DEDUP_DIR="${XDG_RUNTIME_DIR:-/tmp}/notify-seen-$(id -u)"
+  mkdir -p "$DEDUP_DIR" 2>/dev/null || DEDUP_DIR=""
 fi
-date -Iseconds > "$DEDUP_FILE"
+
+if [[ -n "$DEDUP_DIR" ]]; then
+  MSG_HASH=$(echo "$MESSAGE" | md5sum | cut -d' ' -f1)
+  DEDUP_FILE="${DEDUP_DIR}/${MSG_HASH}"
+
+  if [[ -f "$DEDUP_FILE" ]]; then
+    AGE=$(( $(date +%s) - $(stat -c %Y "$DEDUP_FILE") ))
+    if [[ "$AGE" -lt 600 ]]; then
+      echo "notify.sh: duplicate message suppressed (${AGE}s < 600s)" >&2
+      exit 0
+    fi
+  fi
+  date -Iseconds > "$DEDUP_FILE" 2>/dev/null || true
+fi
 
 HOST="$(hostname)"
 TIMESTAMP="$(date -Iseconds)"

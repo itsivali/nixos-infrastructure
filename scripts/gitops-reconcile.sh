@@ -260,7 +260,7 @@ CHANGELOG="$(git log --oneline "${OLD_SHA}..HEAD")"
 CHANGED_FILES="$(git diff --name-only "${OLD_SHA}..HEAD")"
 
 ###########################################################################
-# Validate flake
+# Validate flake (evaluation only — VM tests are gated in GitLab CI)
 ###########################################################################
 
 step "Flake check"

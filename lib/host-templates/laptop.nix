@@ -45,7 +45,11 @@ in
       tailscale_authkey = { sopsFile = ../../secrets/tailscale.yaml; };
       grafana_secret_key = { sopsFile = ../../secrets/tailscale.yaml; };
       gitlab-runner-token = { sopsFile = ../../secrets/gitlab-runner.yaml; };
-      notify_email = { sopsFile = ../../secrets/notifications.yaml; };
+      notify_email = {
+        sopsFile = ../../secrets/notifications.yaml;
+        owner = userName;
+        mode = "0400";
+      };
       gitlab_token = { sopsFile = ../../secrets/gitlab.yaml; };
     } // lib.optionalAttrs hasBitwarden {
       bitwarden_clientid = {

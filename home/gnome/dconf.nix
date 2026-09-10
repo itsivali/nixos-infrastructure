@@ -6,8 +6,8 @@
 # -------
 # Declarative GNOME Shell configuration via dconf. Owns workspaces, keyboard
 # shortcuts, favorite applications, appearance, power management, lock screen,
-# notifications, and GNOME Console theming. Every value is sourced from the
-# Gruvbox design system where applicable.
+# notifications, and GNOME Console theming. Interface theming (color-scheme,
+# accent-color, font-antialiasing, cursor-size) lives in home/theming.nix.
 #
 # Ownership
 # ---------
@@ -91,9 +91,11 @@ in
     "org/gnome/shell" = {
       favorite-apps = [
         "firefox.desktop"
+        "dev.zed.Zed.desktop"
         "org.gnome.Console.desktop"
         "org.gnome.Nautilus.desktop"
         "org.gnome.TextEditor.desktop"
+        "obsidian.desktop"
         "org.gnome.Settings.desktop"
         "org.gnome.Evince.desktop"
       ];
@@ -113,15 +115,6 @@ in
       picture-options = "zoom";
       lock-enabled = true;
       lock-delay = lib.hm.gvariant.mkUint32 300;
-    };
-
-    # ── Interface (supplements home/theming.nix) ─────────────────────────
-    "org/gnome/desktop/interface" = {
-      color-scheme = "prefer-dark";
-      accent-color = "orange";
-      font-antialiasing = "rgba";
-      font-hinting = "full";
-      cursor-size = theme.gtk.cursorSize;
     };
 
     # ── Power Management ─────────────────────────────────────────────────

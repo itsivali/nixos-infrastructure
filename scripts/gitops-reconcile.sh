@@ -264,7 +264,7 @@ CHANGED_FILES="$(git diff --name-only "${OLD_SHA}..HEAD")"
 ###########################################################################
 
 step "Flake check"
-if ! nix flake check --show-trace; then
+if ! nix flake check --show-trace --max-jobs 1; then
   notify "❌ Flake check failed on ${HOST} (${SHORT_SHA})"
   step_fail
   exit 1

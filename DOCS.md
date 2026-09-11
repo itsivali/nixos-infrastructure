@@ -1557,8 +1557,8 @@ Home — Spotlight Application Launcher
 Purpose
 -------
 Fast keyboard-first application launcher independent of GNOME Search.
-fuzzel is a lightweight, Wayland-native launcher that satisfies the
-IVALi Desktop spec:
+Search Light is a GNOME Shell extension that provides a Spotlight-like
+fuzzy search overlay, satisfying the IVALi Desktop spec:
 * instant open (no search daemon, no indexer)
 * application discovery via XDG desktop entries with icons
 * Enter to launch, arrow-key navigation, fuzzy matching
@@ -1569,14 +1569,16 @@ Spotlight      → fast keyboard launching (Super+Space)
 GNOME Overview → windows / workspaces
 Ownership
 ---------
-programs.fuzzel, dconf.settings."org/gnome/settings-daemon/plugins/media-keys",
+dconf.settings."org/gnome/shell/extensions/search-light",
 dconf.settings."org/gnome/desktop/wm/keybindings"
 Responsibilities
 ----------------
-- Install and theme fuzzel (Gruvbox palette)
+- Theme Search Light (Gruvbox palette)
 - Bind Super+Space to launch the launcher
 - Free Super+Space from GNOME's default input-source keybinding so the
 shortcut is available without conflict
+- Search Light runs natively within GNOME Shell — no external process,
+no wlr-layer-shell dependency (fuzzel is incompatible with Mutter)
 #############################################################################
 
 ## home/services/default.nix

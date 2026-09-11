@@ -59,7 +59,7 @@ ivali remote daemon        # systemd user-unit status
 ## Troubleshooting
 
 ```bash
-journalctl --user -u org.gnome.RemoteDesktop.User.service -b
+journalctl --user -u gnome-remote-desktop.service -b
 ```
 
 If `grctl status` shows `Closed`/`Inactive`, confirm the user session has

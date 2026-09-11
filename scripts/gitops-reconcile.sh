@@ -64,6 +64,19 @@ notify() {
   fi
 }
 
+# Desktop notification (GNOME banner) — the reconciler runs as the
+# desktop user, so it can surface deploy events on the live session.
+notify_desktop() {
+  local title="${1:-GitOps}"
+  local body="${2:-}"
+  local urgency="${3:-normal}"
+  local icon="${4:-system-update}"
+  if command -v notify-send >/dev/null 2>&1; then
+    DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-unix:path=/run/user/$(id -u)/bus}" \
+      notify-send -u "${urgency}" -i "${icon}" "${title}" "${body}" || true
+  fi
+}
+
 # Retry a command with exponential backoff
 retry() {
   local attempt=1
@@ -259,6 +272,8 @@ SHORT_SHA="$(git rev-parse --short HEAD)"
 CHANGELOG="$(git log --oneline "${OLD_SHA}..HEAD")"
 CHANGED_FILES="$(git diff --name-only "${OLD_SHA}..HEAD")"
 
+notify_desktop "GitOps deploy started" "${HOST} → ${SHORT_SHA}" normal system-update
+
 ###########################################################################
 # Validate flake (evaluation only — VM tests are gated in GitLab CI)
 # The reconciler runs on a 2-core host; building QEMU VM tests causes
@@ -360,7 +375,7 @@ step_ok
 
 step "Waiting for services to settle..."
 sleep 30
-ok "Grace period complete"
+step_ok "Grace period complete"
 
 ###########################################################################
 # Health gate — prefer runtime service health (deployment-health.sh); fall
@@ -391,6 +406,7 @@ if ! "$health_passed"; then
   log "Health check output:"
   log "${health_output}"
   notify "🚨 Health check FAILED on ${HOST} — rolling back"
+  notify_desktop "GitOps deploy failed" "${HOST} → ${SHORT_SHA}: health check failed, rolling back" critical dialog-error
   log "Initiating rollback..."
   "$ROLLBACK"
   step_fail
@@ -405,6 +421,8 @@ step_ok
 NEW_GEN="$(readlink /nix/var/nix/profiles/system | sed -E 's/.*system-([0-9]+)-link.*/\1/')"
 
 TOTAL_ELAPSED=$(( SECONDS - GLOBAL_START ))
+
+notify_desktop "GitOps deploy complete" "${HOST}: generation ${CURRENT_GEN} → ${NEW_GEN} (${SHORT_SHA})" normal system-update
 
 notify "✅ ${HOST} updated successfully
 

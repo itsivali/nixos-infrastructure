@@ -42,25 +42,25 @@ let
     "ivali-m365" = {
       name = "Microsoft 365";
       url = "https://${officeDomain}";
-      icon = "microsoft-edge";
+      icon = "microsoft-office-online";
       wmClass = "microsoft-edge";
     };
     "ivali-word" = {
       name = "Word Online";
       url = "https://word.office.com";
-      icon = "microsoft-edge";
+      icon = "ms-word";
       wmClass = "microsoft-edge";
     };
     "ivali-excel" = {
       name = "Excel Online";
       url = "https://excel.office.com";
-      icon = "microsoft-edge";
+      icon = "ms-excel";
       wmClass = "microsoft-edge";
     };
     "ivali-ppt" = {
       name = "PowerPoint Online";
       url = "https://powerpoint.office.com";
-      icon = "microsoft-edge";
+      icon = "ms-powerpoint";
       wmClass = "microsoft-edge";
     };
   };

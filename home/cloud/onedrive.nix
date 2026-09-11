@@ -29,7 +29,7 @@
 #
 ##############################################################################
 
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 
 let
   syncDir = "OneDrive";
@@ -42,7 +42,7 @@ in
     text = ''
       # OneDrive synchronization configuration
       # Sync root: ~/OneDrive (default)
-      sync_dir = ~/${syncDir}
+      sync_dir = ${config.home.homeDirectory}/${syncDir}
       # Enable monitor mode (daemon) for automatic sync
       monitor = true
       # Skip root directory checks (faster startup)
@@ -51,7 +51,7 @@ in
       # Download only changed files (bandwidth optimization)
       download_only = false
       # Disable notification popups (silent background sync)
-      disable_notifications = false
+      disable_notifications = true
     '';
   };
 

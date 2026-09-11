@@ -15,7 +15,7 @@
 | **developer** | `developer/` | ai-fallback.nix, aliases.nix, antigravity.nix, databases.nix, devops.nix, ... |
 | **flake.nix** | `flake.nix/` | flake.nix |
 | **hardware** | `hardware/` | usb-power.nix |
-| **home** | `home/` | neovim.nix, zed.nix, ai-cleanup.nix, locale.nix, mime.nix, ... |
+| **home** | `home/` | boost.nix, onedrive.nix, neovim.nix, zed.nix, ai-cleanup.nix, ... |
 | **hosts** | `hosts/` | hardware-configuration.nix, hosts.nix, prague.nix, testvm.nix, tuscany.nix |
 | **i18n** | `i18n/` | locale.nix |
 | **lib** | `lib/` | auto-imports.nix, go-src.nix, hardware-detection.nix |
@@ -34,6 +34,10 @@
 
 | Module | Location | Purpose |
 |--------|----------|---------|
+| default | `home/audio/default.nix` | default |
+| boost | `home/audio/boost.nix` | boost |
+| default | `home/cloud/default.nix` | User-level cloud integration modules:... |
+| onedrive | `home/cloud/onedrive.nix` | onedrive |
 | default | `home/editors/default.nix` | default |
 | neovim | `home/editors/neovim.nix` | neovim |
 | zed | `home/editors/zed.nix` | zed |
@@ -54,7 +58,9 @@
 | applications | `home/gnome/applications.nix` | applications |
 | dconf | `home/gnome/dconf.nix` | dconf |
 | extensions | `home/gnome/extensions.nix` | extensions |
+| remote-desktop | `home/gnome/remote-desktop.nix` | remote-desktop |
 | default | `home/identity/default.nix` | default |
+| default | `home/launcher/default.nix` | default |
 | default | `home/services/default.nix` | default |
 | auto-format | `home/services/auto-format.nix` | auto-format |
 | default | `home/shell/default.nix` | default |
@@ -88,3 +94,5 @@
 | eza | `home/shell/tools/eza.nix` | eza |
 | fastfetch | `home/shell/tools/fastfetch.nix` | fastfetch |
 | packages | `home/shell/tools/packages.nix` | packages |
+| default | `home/webapps/default.nix` | default |
+| edge-pwa | `home/webapps/edge-pwa.nix` | edge-pwa |

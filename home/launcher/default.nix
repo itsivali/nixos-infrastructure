@@ -5,8 +5,8 @@
 # Purpose
 # -------
 # Fast keyboard-first application launcher independent of GNOME Search.
-# fuzzel is a lightweight, Wayland-native launcher that satisfies the
-# IVALi Desktop spec:
+# Search Light is a GNOME Shell extension that provides a Spotlight-like
+# fuzzy search overlay, satisfying the IVALi Desktop spec:
 #   * instant open (no search daemon, no indexer)
 #   * application discovery via XDG desktop entries with icons
 #   * Enter to launch, arrow-key navigation, fuzzy matching
@@ -19,81 +19,66 @@
 #
 # Ownership
 # ---------
-# programs.fuzzel, dconf.settings."org/gnome/settings-daemon/plugins/media-keys",
-# dconf.settings."org/gnome/desktop/wm/keybindings"
+# dconf.settings."org/gnome/shell/extensions/search-light"
 #
-# Responsibilities
-# ----------------
-# - Install and theme fuzzel (Gruvbox palette)
-# - Bind Super+Space to launch the launcher
-# - Free Super+Space from GNOME's default input-source keybinding so the
-#   shortcut is available without conflict
+# Notes
+# -----
+# Search Light runs natively within GNOME Shell (no external process).
+# It uses the GNOME Shell extension framework, avoiding the wlr-layer-shell
+# dependency that fuzzel requires. This makes it compatible with Mutter.
 #
 ##############################################################################
 
-{ pkgs, lib, ... }:
+{ lib, ... }:
 
 let
-  theme = import ../../theme/gruvbox;
-  c = theme.colors;
+  # Gruvbox Dark RGB doubles for Search Light schema (dddd tuples)
+  # bg=#282828  fg=#ebdbb2  orange=#fe8019
+  bg = lib.hm.gvariant.mkTuple [
+    (lib.hm.gvariant.mkDouble 0.157)
+    (lib.hm.gvariant.mkDouble 0.157)
+    (lib.hm.gvariant.mkDouble 0.157)
+    (lib.hm.gvariant.mkDouble 0.95)
+  ];
+  fg = lib.hm.gvariant.mkTuple [
+    (lib.hm.gvariant.mkDouble 0.922)
+    (lib.hm.gvariant.mkDouble 0.859)
+    (lib.hm.gvariant.mkDouble 0.698)
+    (lib.hm.gvariant.mkDouble 1.0)
+  ];
+  orange = lib.hm.gvariant.mkTuple [
+    (lib.hm.gvariant.mkDouble 0.996)
+    (lib.hm.gvariant.mkDouble 0.502)
+    (lib.hm.gvariant.mkDouble 0.098)
+    (lib.hm.gvariant.mkDouble 1.0)
+  ];
 in
 {
-  programs.fuzzel = {
-    enable = true;
-    settings = {
-      main = {
-        font = "${theme.fonts.monospace}:size=12";
-        width = 34;
-        lines = 15;
-        horizontal-pad = 16;
-        vertical-pad = 10;
-        prompt = "❯ ";
-        dpi-aware = "no";
-        icon-theme = theme.icons.name;
-        show-actions = false;
-        layer = "overlay";
-      };
-
-      border = {
-        radius = 8;
-        width = 2;
-      };
-
-      colors = {
-        background = "${c.bgSoft}ee";
-        text = "${c.fg}ff";
-        prompt = "${c.orange}ff";
-        match = "${c.orange}ff";
-        selection = "${c.bg2}ff";
-        selection-text = "${c.fg}ff";
-        selection-match = "${c.yellow}ff";
-        border = "${c.orange}66";
-      };
-
-      dmenu = {
-        exit-immediately-if-empty = false;
-      };
-    };
-  };
-
   dconf.settings = {
     # ── Free Super+Space from GNOME's default input-source switching ────
     # GNOME binds Super+Space to switch-input-source. Clear both so the
-    # Spotlight keybinding below is the sole owner of the shortcut.
+    # Search Light keybinding below is the sole owner of the shortcut.
     "org/gnome/desktop/wm/keybindings" = {
       switch-input-source = [ ];
       switch-input-source-backward = [ ];
     };
 
-    # ── Spotlight launcher (Super+Space) ────────────────────────────────
-    "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [ "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/" ];
-    };
+    # ── Search Light (Spotlight replacement) ────────────────────────────
+    # Gruvbox-themed fuzzy search overlay triggered by Super+Space.
+    # Runs as a GNOME Shell extension — no external process, no
+    # wlr-layer-shell dependency.
+    "org/gnome/shell/extensions/search-light" = {
+      shortcut-search = [ "<Super>space" ];
+      show-panel-icon = false;
 
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
-      name = "Spotlight (fuzzel)";
-      command = "${pkgs.fuzzel}/bin/fuzzel";
-      binding = "<Super>space";
+      # Gruvbox color palette
+      background-color = bg;
+      text-color = fg;
+      border-color = orange;
+
+      border-radius = lib.hm.gvariant.mkDouble 8.0;
+      border-thickness = 2;
+      font-size = 14;
     };
   };
 }

@@ -83,10 +83,9 @@ in
 
     # ── Shell Keybindings ────────────────────────────────────────────────
     "org/gnome/shell/keybindings" = {
-      toggle-overview = [ "<Super>" ];
-      # Application grid shortcut disabled: ArcMenu is the canonical
-      # application browser (IVALi Desktop spec). Overview remains fully
-      # available for windows and workspaces.
+      # Super alone is reserved for ArcMenu (IVALi Desktop spec).
+      # Overview is accessible via the hot corner or keyboard shortcuts.
+      toggle-overview = [ ];
       toggle-application-view = [ ];
     };
 
@@ -105,10 +104,10 @@ in
         "writer.desktop"
         "Zoom.desktop"
         "LocalSend.desktop"
-        "microsoft-365.desktop"
-        "microsoft-word.desktop"
-        "microsoft-excel.desktop"
-        "microsoft-powerpoint.desktop"
+        "ivali-m365.desktop"
+        "ivali-word.desktop"
+        "ivali-excel.desktop"
+        "ivali-ppt.desktop"
       ];
     };
 
@@ -155,6 +154,7 @@ in
       custom-font = "${theme.terminal.font} ${toString theme.terminal.fontSize}";
       ignore-scrollback-limit = true;
       transparency = false;
+      show-notification = false;
     };
 
     # ── File Manager (Nautilus) ──────────────────────────────────────────

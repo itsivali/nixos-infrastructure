@@ -14,18 +14,20 @@
 #
 # Extensions
 # ----------
-# - ArcMenu: traditional application menu (Zorin-like UX)
+# - ArcMenu: traditional application menu (Zorin-like UX) — user-managed
 # - Blur my Shell: subtle visual depth on overview background
 # - Caffeine: temporary keep-awake toggle
 # - Clipboard Indicator: Wayland-compatible clipboard history
 # - Dash to Dock: persistent bottom dock for quick application access
 # - Just Perfection: top bar refinement, panel customization
+# - No Overview on Startup: boot into desktop, not the overview
 # - Rounded Window Corners Reborn: consistent corner radii
+# - Search Light: Spotlight-like fuzzy search (Super+Space)
 # - Vitals: compact system resource monitoring in top bar
 # - AppIndicator/KStatusNotifierItem: legacy system tray support
 #
 # NOTE: Alphabetical App Grid was removed. ArcMenu is the canonical
-# application browser (see AGENTS.md / IVALI Desktop spec); the GNOME
+# application browser (see AGENTS.md / IVALi Desktop spec); the GNOME
 # application grid is intentionally de-emphasized.
 #
 ##############################################################################
@@ -40,7 +42,9 @@
     gnomeExtensions.clipboard-indicator
     gnomeExtensions.dash-to-dock
     gnomeExtensions.just-perfection
+    gnomeExtensions.no-overview
     gnomeExtensions.rounded-window-corners-reborn
+    gnomeExtensions.search-light
     gnomeExtensions.vitals
     gnomeExtensions.appindicator
   ];
@@ -55,46 +59,21 @@
         pkgs.gnomeExtensions.clipboard-indicator.extensionUuid
         pkgs.gnomeExtensions.dash-to-dock.extensionUuid
         pkgs.gnomeExtensions.just-perfection.extensionUuid
+        pkgs.gnomeExtensions.no-overview.extensionUuid
         pkgs.gnomeExtensions.rounded-window-corners-reborn.extensionUuid
+        pkgs.gnomeExtensions.search-light.extensionUuid
         pkgs.gnomeExtensions.vitals.extensionUuid
         pkgs.gnomeExtensions.appindicator.extensionUuid
       ];
     };
 
     # ── ArcMenu ──────────────────────────────────────────────────────────
-    # Traditional application menu providing familiar app-browsing UX.
-    # ArcMenu is the PRIMARY graphical application browser (IVALi Desktop
-    # spec): categories, search, favorites, and power controls. GNOME
-    # Overview stays reserved for windows/workspaces, and the application
-    # grid is de-emphasized.
-    "org/gnome/shell/extensions/arcmenu" = {
-      menu-layout = "Traditional";
-      menu-width = lib.hm.gvariant.mkInt32 600;
-      menu-height = lib.hm.gvariant.mkInt32 500;
-      menu-position = "BottomCentered";
-      hot-corners = false;
-      category-show = true;
-      search-entry-top = true;
-      show-activities-button = false;
-      show-bookmarks = false;
-      show-frequent-apps = false;
-      show-power-buttons = true;
-      pinned-apps = [
-        "firefox.desktop"
-        "dev.zed.Zed.desktop"
-        "org.gnome.Console.desktop"
-        "org.gnome.Nautilus.desktop"
-        "notion-app-enhanced.desktop"
-        "writer.desktop"
-        "Zoom.desktop"
-        "LocalSend.desktop"
-        "microsoft-365.desktop"
-        "microsoft-word.desktop"
-        "microsoft-excel.desktop"
-        "microsoft-powerpoint.desktop"
-      ];
-    };
-
+    # User-managed via the GNOME Extensions app. Declarative dconf would
+    # overwrite layout/look/pinned-apps customizations on every rebuild,
+    # so ArcMenu's settings are intentionally NOT managed here. ArcMenu
+    # remains the PRIMARY graphical application browser (IVALi Desktop
+    # spec).
+    #
     # ── Blur my Shell ────────────────────────────────────────────────────
     # Subtle blur on the overview background only. NOT applied to the
     # panel, dash-to-dock, or application windows.

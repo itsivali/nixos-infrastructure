@@ -153,8 +153,8 @@ in
           credentials) cmd_credentials ;;
           certs) "$GRDCTL" status ;;
           daemon)
-            "$SYSTEMCTL" --user status org.gnome.RemoteDesktop.User.service 2>&1 | head -n 8
-            "$SYSTEMCTL" --user status org.gnome.RemoteDesktop.Headless.service 2>&1 | head -n 8
+            "$SYSTEMCTL" --user status gnome-remote-desktop.service 2>&1 | head -n 8
+            "$SYSTEMCTL" --user status gnome-remote-desktop-headless.service 2>&1 | head -n 8
             ;;
           help|-h|--help) usage ;;
           *) usage ;;

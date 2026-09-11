@@ -23,7 +23,10 @@
 # - Rounded Window Corners Reborn: consistent corner radii
 # - Vitals: compact system resource monitoring in top bar
 # - AppIndicator/KStatusNotifierItem: legacy system tray support
-# - Alphabetical App Grid: predictable application grid sorting
+#
+# NOTE: Alphabetical App Grid was removed. ArcMenu is the canonical
+# application browser (see AGENTS.md / IVALI Desktop spec); the GNOME
+# application grid is intentionally de-emphasized.
 #
 ##############################################################################
 
@@ -40,7 +43,6 @@
     gnomeExtensions.rounded-window-corners-reborn
     gnomeExtensions.vitals
     gnomeExtensions.appindicator
-    gnomeExtensions.alphabetical-app-grid
   ];
 
   dconf.settings = {
@@ -56,13 +58,15 @@
         pkgs.gnomeExtensions.rounded-window-corners-reborn.extensionUuid
         pkgs.gnomeExtensions.vitals.extensionUuid
         pkgs.gnomeExtensions.appindicator.extensionUuid
-        pkgs.gnomeExtensions.alphabetical-app-grid.extensionUuid
       ];
     };
 
     # ── ArcMenu ──────────────────────────────────────────────────────────
     # Traditional application menu providing familiar app-browsing UX.
-    # Complements GNOME Overview (Super) without competing for shortcuts.
+    # ArcMenu is the PRIMARY graphical application browser (IVALi Desktop
+    # spec): categories, search, favorites, and power controls. GNOME
+    # Overview stays reserved for windows/workspaces, and the application
+    # grid is de-emphasized.
     "org/gnome/shell/extensions/arcmenu" = {
       menu-layout = "Traditional";
       menu-width = lib.hm.gvariant.mkInt32 600;
@@ -77,10 +81,17 @@
       show-power-buttons = true;
       pinned-apps = [
         "firefox.desktop"
+        "dev.zed.Zed.desktop"
         "org.gnome.Console.desktop"
         "org.gnome.Nautilus.desktop"
-        "org.gnome.TextEditor.desktop"
-        "org.gnome.Settings.desktop"
+        "notion-app-enhanced.desktop"
+        "writer.desktop"
+        "Zoom.desktop"
+        "LocalSend.desktop"
+        "microsoft-365.desktop"
+        "microsoft-word.desktop"
+        "microsoft-excel.desktop"
+        "microsoft-powerpoint.desktop"
       ];
     };
 
@@ -132,13 +143,15 @@
     };
 
     # ── Dash to Dock ─────────────────────────────────────────────────────
-    # Floating bottom dock with subtle transparency. Compact icon size,
-    # dot indicators for running apps, intellihide for auto-hide behavior.
+    # Floating bottom dock that visually disappears into the wallpaper.
+    # FIXED transparency mode with zero background opacity: no opaque or
+    # semi-opaque panel, no visible background rectangle. Only the icons,
+    # running indicators, focus state, and a subtle hover stay visible.
     "org/gnome/shell/extensions/dash-to-dock" = {
       dock-position = "BOTTOM";
       extend-height = false;
-      transparency-mode = "DYNAMIC";
-      background-opacity = lib.hm.gvariant.mkDouble 0.75;
+      transparency-mode = "FIXED";
+      background-opacity = lib.hm.gvariant.mkDouble 0.0;
       height-fraction = lib.hm.gvariant.mkDouble 0.85;
       dash-max-icon-size = lib.hm.gvariant.mkInt32 40;
       click-action = "previews";
@@ -164,7 +177,8 @@
     # ── Just Perfection ──────────────────────────────────────────────────
     # Panel refinement only. Animations restored to default for smooth
     # desktop feel. ArcMenu replaces the app menu; Just Perfection
-    # configures the overview dash and workspace behavior.
+    # configures the overview dash and workspace behavior. The application
+    # grid is de-emphasized — ArcMenu is the canonical launcher.
     "org/gnome/shell/extensions/just-perfection" = {
       panel-size = 28;
       panel-in-overview = true;
@@ -180,7 +194,7 @@
       hot-corner = true;
       search = true;
       type-to-search = true;
-      double-super-to-appgrid = true;
+      double-super-to-appgrid = false;
       theme = true;
       ripple-box = false;
       window-demands-attention-focus = true;

@@ -182,12 +182,12 @@ in
         "beacon.enabled" = false;
         "browser.send_pings" = false;
 
-        # ── Keep logins + sessions: reject 3rd-party only, keep 1st-party ─
-        # The whole `ivali` profile (cookies, key4.db, logins.json,
-        # signedInUser.json for the Firefox Account, cache2) lives as a plain
-        # directory on the /home subvolume, so site sessions and the Firefox
-        # Account sign-in persist across rebuilds. Do NOT sanitize on shutdown.
-        "network.cookie.cookieBehavior" = 1;
+        # ── Keep logins + sessions ────────────────────────────────────
+        # cookieBehavior 0 = accept all cookies so Microsoft 365 SSO,
+        # Google Meet, Teams, and Notion authentication survive. Sessions
+        # persist because sanitizeOnShutdown is off and the whole `ivali`
+        # profile lives as a plain directory on the /home subvolume.
+        "network.cookie.cookieBehavior" = 0;
         "network.cookie.cookieBehavior.notify" = false;
         "network.cookie.lifetimePolicy" = 0;
         "privacy.sanitize.sanitizeOnShutdown" = false;
@@ -244,6 +244,16 @@ in
         "browser.urlbar.suggest.quicksuggest" = false;
         "browser.urlbar.suggest.weather" = false;
         "browser.startup.homepage" = "about:home";
+
+        # ── Toolbar: restore the Reload/Refresh button ────────────
+        # Firefox hides the reload button by default once the page is
+        # loaded. browser.uiCustomization.state pins the nav-bar layout
+        # declaratively so Back → Forward → Reload → Address bar are all
+        # visible without manual toolbar customization. This overrides the
+        # shipped default while leaving every other toolbar untouched.
+        "browser.uiCustomization.state" = ''
+          {"placements":{"nav-bar":["back-button","forward-button","stop-reload-button","home-button","urlbar-container","downloads-button","sidebar-button"],"toolbar-menubar":["menubar-items"],"TabsToolbar":["tabbrowser-tabs","new-tab-button","alltabs-button"],"PersonalToolbar":["personal-bookmarks"],"widget-extension-siderail":[{"id":"siderail-button"}]}}''
+        ;
 
         # ── Native sidebar as container + Sidebery tab tree ────────
         # sidebar.revamp enables the modern native sidebar; it hosts Sidebery,
@@ -349,12 +359,60 @@ in
   # <profile>/extensions/. extensions.autoDisableScopes=0 (above) keeps them
   # enabled on first launch. Sidebery's id is "nixos@sidebery" (the fetch
   # helper re-derives it from the xpi's install manifest).
-  home.file = lib.mkMerge (lib.mapAttrsToList
+  #
+  # Origin-specific permission policies ensure WebRTC conferencing apps
+  # (Meet, Teams, Slack, Discord, Zoom, Office web) can access camera,
+  # microphone, and screen sharing without weakening global privacy
+  # settings.
+  home.file = lib.mkMerge ((lib.mapAttrsToList
     (n: a: {
       ".mozilla/firefox/ivali/extensions/${a.id}.xpi" = {
         source = "${a.pkg}/${a.id}.xpi";
         force = true;
       };
     })
-    addons);
+    addons) ++ [
+    {
+      ".mozilla/firefox/ivali/policies/policies.json" = {
+        text = builtins.toJSON {
+          policies = {
+            Permissions = {
+              Camera = {
+                Allow = [
+                  "https://meet.google.com"
+                  "https://teams.microsoft.com"
+                  "https://slack.com"
+                  "https://discord.com"
+                  "https://zoom.us"
+                  "https://www.office.com"
+                ];
+                BlockNewRequests = false;
+              };
+              Microphone = {
+                Allow = [
+                  "https://meet.google.com"
+                  "https://teams.microsoft.com"
+                  "https://slack.com"
+                  "https://discord.com"
+                  "https://zoom.us"
+                  "https://www.office.com"
+                ];
+                BlockNewRequests = false;
+              };
+              DesktopCapture = {
+                Allow = [
+                  "https://meet.google.com"
+                  "https://teams.microsoft.com"
+                  "https://slack.com"
+                  "https://zoom.us"
+                ];
+                BlockNewRequests = false;
+              };
+            };
+          };
+        };
+        force = true;
+      };
+    }
+  ]);
 }

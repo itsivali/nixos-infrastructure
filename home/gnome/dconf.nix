@@ -84,20 +84,31 @@ in
     # ── Shell Keybindings ────────────────────────────────────────────────
     "org/gnome/shell/keybindings" = {
       toggle-overview = [ "<Super>" ];
-      toggle-application-view = [ "<Super>a" ];
+      # Application grid shortcut disabled: ArcMenu is the canonical
+      # application browser (IVALi Desktop spec). Overview remains fully
+      # available for windows and workspaces.
+      toggle-application-view = [ ];
     };
 
     # ── Favorite Applications ────────────────────────────────────────────
+    # Dock favorites in the IVALi Desktop order. ArcMenu is the primary
+    # application browser; the dock mirrors its pinned set for one-click
+    # access. GNOME Settings, Text Editor, and Evince are intentionally
+    # excluded from favorites — they remain installed and available.
     "org/gnome/shell" = {
       favorite-apps = [
         "firefox.desktop"
         "dev.zed.Zed.desktop"
         "org.gnome.Console.desktop"
         "org.gnome.Nautilus.desktop"
-        "org.gnome.TextEditor.desktop"
-        "obsidian.desktop"
-        "org.gnome.Settings.desktop"
-        "org.gnome.Evince.desktop"
+        "notion-app-enhanced.desktop"
+        "writer.desktop"
+        "Zoom.desktop"
+        "LocalSend.desktop"
+        "microsoft-365.desktop"
+        "microsoft-word.desktop"
+        "microsoft-excel.desktop"
+        "microsoft-powerpoint.desktop"
       ];
     };
 

@@ -24,7 +24,7 @@ in
     ./theming.nix
     ./firefox
   ]
-  ++ (if gnomeEnabled then [ ./gnome ] else [ ])
+  ++ (if gnomeEnabled then [ ./gnome ./launcher ./audio ./webapps ./cloud ] else [ ])
   ++ [
     ./shell
     ./git

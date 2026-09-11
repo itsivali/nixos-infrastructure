@@ -3,7 +3,9 @@ package commands
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,7 +25,8 @@ func CmdDesktop(a *app.App) *cobra.Command {
 		Long: `Desktop diagnostics for the GNOME workstation.
 
 Subcommands:
-  health        Run desktop health checks`,
+  health        Run desktop health checks
+  audio         Audio diagnostics (PipeWire/WirePlumber/EasyEffects)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -55,7 +58,33 @@ Subcommands:
 	}
 	healthCmd.Flags().BoolVarP(&watch, "watch", "w", false, "Watch for changes (refresh every 3s)")
 
-	cmd.AddCommand(healthCmd)
+	audioCmd := &cobra.Command{
+		Use:   "audio",
+		Short: "Audio diagnostics (PipeWire / WirePlumber / EasyEffects)",
+		Long: `Run the repository audio diagnostic and report on the EasyEffects
+volume-boost service and PipeWire state.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			t := a.Term
+			fmt.Println(t.Section("Audio Diagnostics"))
+
+			if out, err := exec.Command("audio-diagnostic").CombinedOutput(); err == nil {
+				fmt.Print(string(out))
+			} else {
+				fmt.Println(t.Dim("audio-diagnostic unavailable"))
+				fmt.Println(strings.TrimSpace(string(out)))
+			}
+
+			if out, err := exec.Command("systemctl", "--user", "status", "easyeffects.service").CombinedOutput(); err == nil {
+				first := strings.SplitN(string(out), "\n", 2)[0]
+				fmt.Println(t.KeyValue("EasyEffects", strings.TrimSpace(first)))
+			} else {
+				fmt.Println(t.Dim("EasyEffects service not running (audio boost disabled)"))
+			}
+			return nil
+		},
+	}
+
+	cmd.AddCommand(healthCmd, audioCmd)
 	return cmd
 }
 

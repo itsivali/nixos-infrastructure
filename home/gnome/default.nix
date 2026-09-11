@@ -26,5 +26,6 @@
     ./dconf.nix
     ./extensions.nix
     ./applications.nix
+    ./remote-desktop.nix
   ];
 }

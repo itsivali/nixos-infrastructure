@@ -17,9 +17,10 @@
 # - PipeWire with adaptive quantum (default 256 @ 48kHz = 5.3ms)
 # - WirePlumber session manager with Bluetooth codec preferences
 # - PulseAudio compatibility layer (PipeWire-Pulse)
-# - JACK support for professional audio
 # - rtkit realtime scheduling for PipeWire threads (low-latency, glitch-free
 #   audio — same realtime setup Garuda ships)
+# - Optional EasyEffects volume boost with safety limiter for higher perceived
+#   loudness at low slider positions (+8 dB default, limiter at -1 dBFS)
 # - ALSA mixer initialization for Realtek ALC236 (consistent volume across
 #   browsers, video players, and system audio)
 #
@@ -46,6 +47,8 @@
 { config, lib, pkgs, ... }:
 
 let
+  cfg = config.ivali.desktop.common.audio or { boost = { enable = false; }; };
+  boostCfg = cfg.boost or { enable = false; gainDb = 8.0; };
   audioDiagnosticScript = ../../scripts/audio-diagnostic.sh;
 
   # ALSA mixer initialization script: sets all playback volumes to 100%
@@ -71,6 +74,39 @@ let
   '';
 in
 {
+  options.ivali.desktop.common.audio = {
+    boost = {
+      enable = lib.mkEnableOption ''
+        controlled software volume boost with safety limiter.
+
+        When enabled, EasyEffects applies a gain stage (+8 dB default)
+        and a limiter at -1 dBFS before PipeWire output. This raises
+        the perceived volume at low slider positions (e.g. 40% feels
+        "strong") while preventing digital clipping at high settings.
+        The ALSA hardware volume stays at 100% for full dynamic range;
+        EasyEffects manages the software gain curve safely.
+      '';
+
+      gainDb = lib.mkOption {
+        type = lib.types.float;
+        default = 8.0;
+        description = ''
+          Preamp gain in dB applied by EasyEffects before the limiter.
+          8 dB is approximately the target where 40% slider ≈ "strong".
+        '';
+      };
+
+      limiterThreshold = lib.mkOption {
+        type = lib.types.float;
+        default = -1.0;
+        description = ''
+          Limiter threshold in dBFS. The limiter prevents peaks above
+          this level from clipping. -1.0 dBFS provides a safe ceiling.
+        '';
+      };
+    };
+  };
+
   config = lib.mkIf (config.ivali.desktop.enable or false) {
     # Realtime privileges for PipeWire: the rtkit daemon grants RT policy +
     # memlock so audio threads run without scheduling jitter. Without this,
@@ -82,7 +118,7 @@ in
       audio.enable = true;
       pulse.enable = true;
       wireplumber.enable = true;
-      jack.enable = true;
+      jack.enable = false;
 
       # ── Adaptive low-latency PipeWire config ──────────────────────────
       # 256 samples @ 48kHz = 5.3ms per buffer by default; the clock may
@@ -138,11 +174,16 @@ in
     # ── ALSA utils (amixer, alsactl) + audio diagnostic tool ─────────────
     # amixer/alsactl for mixer management, and an operator-installable
     # diagnostic for PipeWire/WirePlumber/Firefox audio (audio-diagnostic).
-    environment.systemPackages = [
-      pkgs.alsa-utils
-      (pkgs.writeShellScriptBin "audio-diagnostic" ''
-        exec ${audioDiagnosticScript} "$@"
-      '')
+    environment.systemPackages = lib.mkMerge [
+      [
+        pkgs.alsa-utils
+        (pkgs.writeShellScriptBin "audio-diagnostic" ''
+          exec ${audioDiagnosticScript} "$@"
+        '')
+      ]
+      (lib.optionals boostCfg.enable [
+        pkgs.easyeffects
+      ])
     ];
 
     # ── Boot-time ALSA mixer initialization ──────────────────────────────

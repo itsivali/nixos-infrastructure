@@ -36,6 +36,8 @@
   config = {
     # Desktop environment: GNOME (Wayland), replaced XFCE (X11) desktop.
     ivali.desktop.gnome.enable = true;
+    # Remote desktop (RDP) over Tailscale: opens 3389 on tailscale0 only.
+    ivali.desktop.remote-desktop.enable = true;
     ivali.kilocode.enable = true;
     ivali.antigravity.enable = true;
 

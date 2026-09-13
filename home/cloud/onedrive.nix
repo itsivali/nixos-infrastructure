@@ -41,17 +41,18 @@ in
   home.file.".config/onedrive/config" = {
     text = ''
       # OneDrive synchronization configuration
-      # Sync root: ~/OneDrive (default)
-      sync_dir = ${config.home.homeDirectory}/${syncDir}
-      # Enable monitor mode (daemon) for automatic sync
-      monitor = true
+      # Sync root: ~/OneDrive (default). Values must be quoted — the
+      # onedrive parser rejects unquoted values (malformed config line).
+      # `monitor` is NOT a config key: it is a CLI flag only, already
+      # passed by the systemd unit's ExecStart (--monitor).
+      sync_dir = "${config.home.homeDirectory}/${syncDir}"
       # Skip root directory checks (faster startup)
       skip_dotfiles = "false"
       skip_dir = ""
       # Download only changed files (bandwidth optimization)
-      download_only = false
+      download_only = "false"
       # Disable notification popups (silent background sync)
-      disable_notifications = true
+      disable_notifications = "true"
     '';
   };
 

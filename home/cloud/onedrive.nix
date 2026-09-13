@@ -64,7 +64,9 @@ in
     };
 
     Service = {
-      Type = "notify";
+      # onedrive does not implement sd_notify; Type=notify would leave the
+      # unit forever in "activating". simple marks it active on spawn.
+      Type = "simple";
       ExecStart = "${pkgs.onedrive}/bin/onedrive --monitor";
       Restart = "on-failure";
       RestartSec = 30;

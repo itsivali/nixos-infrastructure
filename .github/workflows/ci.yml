@@ -107,7 +107,12 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v22
       - uses: DeterminateSystems/magic-nix-cache-action@v14
       - name: Nix format check
-        run: nix fmt -- --check .
+        run: |
+          # Mirrors the GitLab nix-format fix: run in write mode then verify
+          # no diffs. `nix fmt -- --check .` can silently pass depending on
+          # nix version (--check consumed by nix itself).
+          nix fmt
+          git diff --exit-code --quiet
       - name: Flake check (no build)
         run: nix flake check --no-build
       - name: Evaluate prague configuration

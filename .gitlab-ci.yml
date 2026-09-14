@@ -28,7 +28,12 @@ nix-format:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - nix fmt -- --check .
+    # Fix: run nix fmt in write mode, then verify no diffs remain.
+    # `nix fmt -- --check .` is unreliable: depending on the nix version,
+    # --check can be consumed by nix itself rather than forwarded to the
+    # formatter, silently passing CI even when formatting errors exist.
+    - nix fmt
+    - git diff --exit-code --quiet
 
 shellcheck:
   stage: lint

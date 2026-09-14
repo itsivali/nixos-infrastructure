@@ -18,15 +18,17 @@ func NewGenerationService() *generationService {
 }
 
 func (g *generationService) List(ctx context.Context) ([]Generation, error) {
-	out, err := exec.CommandContext(ctx, "nix-env", "--list-generations",
-		"--profile", "/nix/var/nix/profiles/system").CombinedOutput()
+	out, err := exec.CommandContext(ctx, "nixos-rebuild", "list-generations").CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("list generations: %w", err)
 	}
 
 	var generations []Generation
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	for _, line := range lines {
+	for i, line := range lines {
+		if i == 0 {
+			continue
+		}
 		fields := strings.Fields(line)
 		if len(fields) < 2 {
 			continue
@@ -39,11 +41,9 @@ func (g *generationService) List(ctx context.Context) ([]Generation, error) {
 			continue
 		}
 
-		// Check if active
-		gen.Active = strings.Contains(line, "*")
+		gen.Active = strings.Contains(line, "True")
 
-		// Parse date (format: 2026-08-24 10:30:00)
-		if len(fields) >= 3 {
+		if len(fields) >= 2 {
 			dateStr := fields[1] + " " + fields[2]
 			if t, err := time.Parse("2006-01-02 15:04:05", dateStr); err == nil {
 				gen.Date = t

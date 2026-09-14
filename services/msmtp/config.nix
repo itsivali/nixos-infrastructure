@@ -34,6 +34,12 @@ in
   # short-lived access token on stdout for msmtp's passwordeval. Installed
   # globally so it is on PATH for manual `sendmail` use and the GitOps
   # reconciler (which runs sendmail as root).
+  #
+  # NOTE: OAuth2 is the ONLY supported SMTP authentication mechanism. Microsoft
+  # disabled basic authentication (LOGIN/PLAIN + password) for Exchange Online
+  # in 2025, so password-based configs no longer work. Any legacy password
+  # secret (e.g., secrets/smtp.yaml's former smtp_password) is dead and was
+  # removed — never reintroduce an smtp password for Office365.
   environment.systemPackages = lib.mkIf hasOAuth [ pkgs.oauth2ms ];
 
   # Only configure msmtp when an OAuth client ID is provided.

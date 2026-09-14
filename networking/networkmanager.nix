@@ -19,7 +19,7 @@
 #
 ##############################################################################
 
-{ ... }:
+{ config, lib, pkgs, ... }:
 
 {
   networking = {
@@ -78,6 +78,70 @@
         MulticastDNS = true;
         LLMNR = false;
       };
+    };
+  };
+
+  ############################################################
+  # Wi-Fi self-healing — purge stale connection profiles
+  ############################################################
+  #
+  # NetworkManager persists every network it has ever joined as a keyfile
+  # under /etc/NetworkManager/system-connections/. When a profile's SSID is
+  # no longer in range, NM keeps trying it and can appear "locked" to a
+  # network from an earlier installation. This service purges profiles whose
+  # SSID is not currently visible — no SSID is ever hard-coded here, so the
+  # laptop remains free to join home / hotspot / office / public Wi-Fi.
+  #
+  # Runs on a timer, is idempotent, and never blocks networking.
+  ############################################################
+
+  systemd.services.nm-stale-profiles = {
+    description = "Purge stale NetworkManager Wi-Fi profiles";
+    wants = [ "network-online.target" ];
+    after = [ "network-online.target" ];
+
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.writeShellScriptBin "nm-purge-stale-profiles" ''
+        set -euo pipefail
+
+        CONN_DIR="/etc/NetworkManager/system-connections"
+        if [[ ! -d "$CONN_DIR" ]]; then
+          exit 0
+        fi
+
+        # SSIDs currently visible on any Wi-Fi interface
+        VISIBLE="$(nmcli -t -f SSID device wifi list --rescan yes 2>/dev/null || true)"
+
+        purged=0
+        for f in "$CONN_DIR"/*.nmconnection; do
+          [[ -e "$f" ]] || continue
+          # Skip non-Wi-Fi profiles (eth, vpn, etc.)
+          if ! grep -q '^802-11-wireless' "$f" 2>/dev/null; then
+            continue
+          fi
+          ssid="$(grep -m1 '^connection.id=' "$f" 2>/dev/null | cut -d= -f2-)"
+          [[ -n "$ssid" ]] || continue
+          if ! printf '%s\n' "$VISIBLE" | grep -qxF "$ssid"; then
+            echo "Purging stale profile: ''${ssid}"
+            rm -f "$f"
+            purged=$((purged + 1))
+          fi
+        done
+
+        echo "Stale profile purge complete (''${purged} removed)"
+      ''}/bin/nm-purge-stale-profiles";
+    };
+  };
+
+  systemd.timers.nm-stale-profiles = {
+    description = "Purge stale NetworkManager Wi-Fi profiles";
+    wantedBy = [ "timers.target" ];
+
+    timerConfig = {
+      OnBootSec = "2m";
+      OnUnitActiveSec = "10m";
+      Persistent = true;
     };
   };
 }

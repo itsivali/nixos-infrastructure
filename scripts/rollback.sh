@@ -67,10 +67,18 @@ fi
 ###########################################################################
 # Capture current generation
 ###########################################################################
+# NOTE: this script is invoked from the unprivileged `ivali` user by the
+# GitOps reconciler's health gate (gitops-reconcile.sh:411), so it MUST NOT
+# use `nix-env --list-generations` here: that opens the root-owned
+# /nix/var/nix/profiles/system.lock for writing and dies with
+# "Permission denied". The system profile symlink is world-readable, so
+# `readlink` extracts the active generation number without any privilege.
+# (The actual `nixos-rebuild switch --rollback` below still escalates via
+# sudo — see the id -u branch.)
 
 CURRENT_GEN="$(
-  nix-env --list-generations --profile /nix/var/nix/profiles/system \
-    | tail -1 | awk '{print $1}'
+  readlink /nix/var/nix/profiles/system \
+    | sed -E 's/.*system-([0-9]+)-link.*/\1/'
 )"
 log "Rolling back from generation ${CURRENT_GEN}..."
 
@@ -105,8 +113,8 @@ $(echo "$ROLLBACK_OUTPUT" | tail -10)"
 fi
 
 ROLLED_TO="$(
-  nix-env --list-generations --profile /nix/var/nix/profiles/system \
-    | tail -1 | awk '{print $1}'
+  readlink /nix/var/nix/profiles/system \
+    | sed -E 's/.*system-([0-9]+)-link.*/\1/'
 )"
 
 ###########################################################################

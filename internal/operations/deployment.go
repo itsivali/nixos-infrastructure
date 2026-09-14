@@ -168,7 +168,7 @@ func (d *deploymentService) Rollback(ctx context.Context, opts RollbackOpts) (*R
 		cmd = exec.CommandContext(ctx, "nix-env", "--profile",
 			"/nix/var/nix/profiles/system", "--rollback", fmt.Sprintf("--generation=%d", opts.Generation))
 	} else {
-		cmd = exec.CommandContext(ctx, "nixos-rebuild", "switch", "--rollback")
+		cmd = exec.CommandContext(ctx, "sudo", "nixos-rebuild", "switch", "--rollback")
 	}
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -407,12 +407,11 @@ func (d *deploymentService) healthCheck(ctx context.Context) error {
 }
 
 func (d *deploymentService) generationExists(ctx context.Context, gen int) bool {
-	out, err := exec.CommandContext(ctx, "nix-env", "--list-generations",
-		"--profile", "/nix/var/nix/profiles/system").CombinedOutput()
+	out, err := exec.CommandContext(ctx, "nixos-rebuild", "list-generations").CombinedOutput()
 	if err != nil {
 		return false
 	}
-	return strings.Contains(string(out), fmt.Sprintf("%d ", gen))
+	return strings.Contains(string(out), fmt.Sprintf("%d", gen))
 }
 
 func (d *deploymentService) getChangelog(ctx context.Context, from, to string) string {

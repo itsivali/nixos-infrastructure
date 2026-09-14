@@ -1202,6 +1202,8 @@ func (m *model) renderObservability() string {
 		{"Loki", "curl -s " + observability.LokiURL() + "/ready", strconv.Itoa(observability.DefaultLokiPort)},
 		{"Alloy", "systemctl is-active alloy 2>/dev/null", "N/A"},
 		{"Falco", "systemctl is-active falco 2>/dev/null", "N/A"},
+		{"GitOps Reconciler", "systemctl is-active gitops-reconciler.timer 2>/dev/null", "15min"},
+		{"Deployment Health", "systemctl is-active deployment-health.timer 2>/dev/null", "5min"},
 		{"Node Exporter", "curl -s http://127.0.0.1:" + strconv.Itoa(observability.DefaultNodeExporterPort) + "/metrics >/dev/null 2>&1 && echo up || echo down", strconv.Itoa(observability.DefaultNodeExporterPort)},
 		{"NixOS Exporter", "ss -tlnp 2>/dev/null | grep -q :" + strconv.Itoa(observability.DefaultNixOSExporterPort) + " && echo up || echo down", strconv.Itoa(observability.DefaultNixOSExporterPort)},
 	}

@@ -3,10 +3,15 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -1108,5 +1113,130 @@ func TestExtractServiceName_NotInAllowlist(t *testing.T) {
 	_, err := extractServiceName("/api/services/evil.service/restart")
 	if err == nil {
 		t.Error("expected error for service not in allowlist")
+	}
+}
+
+// ─── HMAC Request Signature Tests ──────────────────────────────────────────
+
+const testHMACSecret = "test-hmac-secret-value"
+
+// signRequest adds the HMAC-SHA256 X-Request-Timestamp / X-Request-Signature
+// headers to req using the shared secret.
+func signRequest(t *testing.T, req *http.Request, secret string) {
+	t.Helper()
+	ts := req.Header.Get("X-Request-Timestamp")
+	if ts == "" {
+		ts = strconv.FormatInt(time.Now().Unix(), 10)
+		req.Header.Set("X-Request-Timestamp", ts)
+	}
+	canonical := fmt.Sprintf("%s\n%s\n%s", req.Method, req.URL.Path, ts)
+	mac := hmac.New(sha256.New, []byte(secret))
+	_, _ = mac.Write([]byte(canonical))
+	req.Header.Set("X-Request-Signature", hex.EncodeToString(mac.Sum(nil)))
+}
+
+func TestVerifyRequestSignature_Valid(t *testing.T) {
+	s := &Server{hmacSecret: testHMACSecret}
+	req := httptest.NewRequest(http.MethodPost, "/api/deploy", nil)
+	signRequest(t, req, testHMACSecret)
+
+	if err := s.verifyRequestSignature(req); err != nil {
+		t.Fatalf("expected valid signature to pass, got: %v", err)
+	}
+}
+
+func TestVerifyRequestSignature_MissingHeaders(t *testing.T) {
+	s := &Server{hmacSecret: testHMACSecret}
+	req := httptest.NewRequest(http.MethodPost, "/api/deploy", nil)
+	if err := s.verifyRequestSignature(req); err == nil {
+		t.Fatal("expected error for missing signature headers")
+	}
+}
+
+func TestVerifyRequestSignature_TamperedBodyPath(t *testing.T) {
+	s := &Server{hmacSecret: testHMACSecret}
+	// Signature computed for a different path than the one requested.
+	req := httptest.NewRequest(http.MethodPost, "/api/deploy", nil)
+	ts := strconv.FormatInt(time.Now().Unix(), 10)
+	req.Header.Set("X-Request-Timestamp", ts)
+	canonical := "POST\n/api/rollback\n" + ts
+	mac := hmac.New(sha256.New, []byte(testHMACSecret))
+	_, _ = mac.Write([]byte(canonical))
+	req.Header.Set("X-Request-Signature", hex.EncodeToString(mac.Sum(nil)))
+
+	if err := s.verifyRequestSignature(req); err == nil {
+		t.Fatal("expected error for signature bound to different path")
+	}
+}
+
+func TestVerifyRequestSignature_StaleTimestamp(t *testing.T) {
+	s := &Server{hmacSecret: testHMACSecret}
+	req := httptest.NewRequest(http.MethodPost, "/api/deploy", nil)
+	stale := strconv.FormatInt(time.Now().Unix()-10000, 10)
+	req.Header.Set("X-Request-Timestamp", stale)
+	canonical := "POST\n/api/deploy\n" + stale
+	mac := hmac.New(sha256.New, []byte(testHMACSecret))
+	_, _ = mac.Write([]byte(canonical))
+	req.Header.Set("X-Request-Signature", hex.EncodeToString(mac.Sum(nil)))
+
+	if err := s.verifyRequestSignature(req); err == nil {
+		t.Fatal("expected error for stale timestamp outside skew window")
+	}
+}
+
+func TestVerifyRequestSignature_NoHMACConfigured(t *testing.T) {
+	s := &Server{hmacSecret: ""}
+	req := httptest.NewRequest(http.MethodPost, "/api/deploy", nil)
+	signRequest(t, req, testHMACSecret)
+	if err := s.verifyRequestSignature(req); err == nil {
+		t.Fatal("expected error when server has no HMAC secret configured")
+	}
+}
+
+func TestRequireAuth_RequiresSignatureOnMutatingEndpoint(t *testing.T) {
+	s := &Server{
+		apiToken:   "test-token",
+		hmacSecret: testHMACSecret,
+		deployment: &mockDeploymentService{},
+	}
+
+	handler := s.requireAuth(s.handleDeploy)
+
+	// Missing signature on POST → 401
+	req := httptest.NewRequest(http.MethodPost, "/api/deploy", bytes.NewReader([]byte("{}")))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer test-token")
+	w := httptest.NewRecorder()
+	handler(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Errorf("missing signature: status = %d, want %d", w.Code, http.StatusUnauthorized)
+	}
+
+	// Valid bearer + valid signature → 200
+	req2 := httptest.NewRequest(http.MethodPost, "/api/deploy", bytes.NewReader([]byte("{}")))
+	req2.Header.Set("Content-Type", "application/json")
+	req2.Header.Set("Authorization", "Bearer test-token")
+	signRequest(t, req2, testHMACSecret)
+	w2 := httptest.NewRecorder()
+	handler(w2, req2)
+	if w2.Code != http.StatusOK {
+		t.Errorf("valid signature: status = %d, want %d", w2.Code, http.StatusOK)
+	}
+}
+
+func TestRequireAuth_GETDoesNotNeedSignature(t *testing.T) {
+	s := &Server{
+		apiToken:   "test-token",
+		hmacSecret: testHMACSecret,
+		deployment: &mockDeploymentService{},
+	}
+
+	handler := s.requireAuth(s.handleStatus)
+	req := httptest.NewRequest(http.MethodGet, "/api/status", nil)
+	req.Header.Set("Authorization", "Bearer test-token")
+	w := httptest.NewRecorder()
+	handler(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("GET without signature: status = %d, want %d", w.Code, http.StatusOK)
 	}
 }

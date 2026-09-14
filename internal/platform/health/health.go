@@ -131,10 +131,12 @@ func CheckMemory() CheckResult {
 	totalGB := float64(total) / 1024 / 1024
 	detail := fmt.Sprintf("%.1fG/%.1fG (%d%%)", usedGB, totalGB, pct)
 
-	if int(pct) >= MemoryCritThreshold {
+	// #nosec G115 -- pct is a bounded percentage (0..100), safe to narrow.
+	pctInt := int(pct)
+	if pctInt >= MemoryCritThreshold {
 		return CheckResult{Name: "memory", State: state.StateDegraded, Message: fmt.Sprintf("memory usage critical: %d%%", pct), Detail: detail}
 	}
-	if int(pct) >= MemoryWarnThreshold {
+	if pctInt >= MemoryWarnThreshold {
 		return CheckResult{Name: "memory", State: state.StateWarning, Message: fmt.Sprintf("memory usage high: %d%%", pct), Detail: detail}
 	}
 	return CheckResult{Name: "memory", State: state.StateHealthy, Message: fmt.Sprintf("memory usage normal: %d%%", pct), Detail: detail}

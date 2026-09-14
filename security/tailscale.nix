@@ -408,6 +408,15 @@ in
           fi
         fi
 
+        # Exit node advertising: verified from actual advertised routes via
+        # `tailscale debug prefs` (`.Self.ExitNodeOption` is unreliable).
+        EXIT_NODE_STATUS=0
+        if tailscale debug prefs 2>/dev/null | jq -r '.AdvertiseRoutes[]?' 2>/dev/null | grep -qE '^(0\.0\.0\.0/0|::/0)$'; then
+          EXIT_NODE_STATUS=1
+        fi
+        # Declarative intent from the Nix config (build-time constant).
+        EXIT_NODE_CONFIGURED=${if cfg.advertiseExitNode then "1" else "0"}
+
         CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
         {
           echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
@@ -419,6 +428,12 @@ in
           echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
           echo "# TYPE tailscale_magicdns_status gauge"
           echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
+          echo "# HELP tailscale_exit_node_configured Exit node requested in declarative config (1=yes, 0=no)"
+          echo "# TYPE tailscale_exit_node_configured gauge"
+          echo "tailscale_exit_node_configured{host=\"$HOSTNAME\"} $EXIT_NODE_CONFIGURED"
+          echo "# HELP tailscale_exit_node_advertised Exit node advertising status (1=advertised, 0=not)"
+          echo "# TYPE tailscale_exit_node_advertised gauge"
+          echo "tailscale_exit_node_advertised{host=\"$HOSTNAME\"} $EXIT_NODE_STATUS"
           echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
           echo "# TYPE tailscale_metrics_timestamp gauge"
           echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"
@@ -463,6 +478,15 @@ in
             TX_BYTES=$(echo "$EXPIRY_JSON" | jq '.Self.TxnBytes // 0' 2>/dev/null || echo "0")
             RX_BYTES=$(echo "$EXPIRY_JSON" | jq '.Self.RxBytes // 0' 2>/dev/null || echo "0")
 
+            # Exit node advertising: verified from actual advertised routes via
+            # `tailscale debug prefs` (`.Self.ExitNodeOption` is unreliable).
+            EXIT_NODE_STATUS=0
+            if tailscale debug prefs 2>/dev/null | jq -r '.AdvertiseRoutes[]?' 2>/dev/null | grep -qE '^(0\.0\.0\.0/0|::/0)$'; then
+              EXIT_NODE_STATUS=1
+            fi
+            # Declarative intent from the Nix config (build-time constant).
+            EXIT_NODE_CONFIGURED=${if cfg.advertiseExitNode then "1" else "0"}
+
             {
               echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
               echo "# TYPE tailscale_connected gauge"
@@ -473,6 +497,12 @@ in
               echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
               echo "# TYPE tailscale_magicdns_status gauge"
               echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
+              echo "# HELP tailscale_exit_node_configured Exit node requested in declarative config (1=yes, 0=no)"
+              echo "# TYPE tailscale_exit_node_configured gauge"
+              echo "tailscale_exit_node_configured{host=\"$HOSTNAME\"} $EXIT_NODE_CONFIGURED"
+              echo "# HELP tailscale_exit_node_advertised Exit node advertising status (1=advertised, 0=not)"
+              echo "# TYPE tailscale_exit_node_advertised gauge"
+              echo "tailscale_exit_node_advertised{host=\"$HOSTNAME\"} $EXIT_NODE_STATUS"
               echo "# HELP tailscale_peers_online Number of online Tailscale peers"
               echo "# TYPE tailscale_peers_online gauge"
               echo "tailscale_peers_online{host=\"$HOSTNAME\"} $PEER_COUNT"
@@ -519,21 +549,8 @@ in
     # Prometheus scrapes locally, so no external firewall rule is needed.
     # Removed: networking.firewall.allowedTCPPorts = [ 9121 ];
 
-    # Add to Prometheus scrape targets
-    services.prometheus.scrapeConfigs = [
-      {
-        job_name = "tailscale";
-        static_configs = [
-          {
-            targets = [ "127.0.0.1:9121" ];
-            labels = {
-              host = config.networking.hostName;
-            };
-          }
-        ];
-        scrape_interval = "30s";
-      }
-    ];
+    # Scrape target registration is centralized in observability/prometheus.nix
+    # (single authoritative owner). Do not register a scrape config here.
 
   };
 }

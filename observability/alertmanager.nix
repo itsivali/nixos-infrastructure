@@ -36,8 +36,13 @@ in
 
     smtpFrom = lib.mkOption {
       type = lib.types.str;
-      default = "gitops@codlet-trench.ts.net";
-      description = "Sender email address for alerts";
+      # Fix: Microsoft 365 (smtp.office365.com) rejects a From address that is
+      # not the authenticated mailbox. The default previously used the Tailnet
+      # pseudo-domain (gitops@codlet-trench.ts.net), which Office365 rejects,
+      # so no alert emails were ever delivered. The authenticated Outlook
+      # mailbox (itsivali@outlook.com) is the only usable sender.
+      default = "itsivali@outlook.com";
+      description = "Sender email address for alerts (must match the authenticated Office365 mailbox)";
     };
 
     smtpAuthUsername = lib.mkOption {
@@ -160,8 +165,13 @@ in
 
       systemd.services.alertmanager = {
         serviceConfig = {
-          MemoryMax = "16M";
-          MemoryHigh = "12M";
+          # Fix: 16M/12M was too low. At that limit alertmanager sat at ~12M
+          # RSS with <100KB free in its cgroup and its HTTP listener stopped
+          # accepting connections (curl to 127.0.0.1:9093 → connection
+          # refused) even though the unit reported active. Bumped to 160M/128M
+          # so it can buffer alert backlog and serve /-/ready + the API.
+          MemoryMax = "160M";
+          MemoryHigh = "128M";
           CPUQuota = "0.5%";
           CPUWeight = 20;
         };

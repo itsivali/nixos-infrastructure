@@ -42,8 +42,9 @@ in
           receivers = {
             otlp = {
               protocols = {
-                grpc.endpoint = "0.0.0.0:4317";
-                http.endpoint = "0.0.0.0:4318";
+                # Loopback only: nothing on the LAN/WAN may inject OTLP.
+                grpc.endpoint = "127.0.0.1:4317";
+                http.endpoint = "127.0.0.1:4318";
               };
             };
             hostmetrics = {
@@ -134,7 +135,7 @@ in
                   pull = {
                     exporter = {
                       prometheus = {
-                        host = "0.0.0.0";
+                        host = "127.0.0.1";
                         port = 8888;
                       };
                     };
@@ -171,24 +172,11 @@ in
         };
       };
 
-      # Expose OTel metrics endpoint
-      networking.firewall.allowedTCPPorts = [ 8888 ];
+      # OTel metrics endpoint (127.0.0.1:8888) is loopback-only. Prometheus scrapes
+      # locally, so no external firewall rule is needed.
 
-      # Add OTel to Prometheus scrape targets
-      services.prometheus.scrapeConfigs = [
-        {
-          job_name = "otelcol";
-          static_configs = [
-            {
-              targets = [ "127.0.0.1:8888" ];
-              labels = {
-                host = hostName;
-              };
-            }
-          ];
-          scrape_interval = "60s";
-        }
-      ];
+      # Scrape target registration is centralized in observability/prometheus.nix
+      # (single authoritative owner). Do not register a scrape config here.
     }
   );
 }

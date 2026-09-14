@@ -22,7 +22,7 @@ must remain modular, composable, reproducible, and always in a working state.
   `observability/`, `services/`, `automation/`, `boot/`, `storage/`, `system/`,
   `virtualization/`, `ssh/`, `i18n/`, `developer/`, `recovery/`, `cloud/`,
   `ci/`, `caching/`, `theme/`.
-- **Home Manager** — `home/` user config (`home/xfce/`,
+- **Home Manager** — `home/` user config (`home/gnome/`,
   `home/environment/`, `home/shell/`, etc.). Unprivileged, declarative, gated
   behind the same `ivali.*.enable` flags.
 - **`packages/`** — custom derivations; must build offline after source fetch.

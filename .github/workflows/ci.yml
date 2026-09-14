@@ -14,7 +14,9 @@ env:
   GO_VERSION: "1.26"
   # Rule exclusions shared with the GitLab go-security job. Kept in one place so
   # both CI systems measure the same security surface; see .gitlab-ci.yml.
-  GOSEC_EXCLUDE: "G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122"
+  # G115/G101/G703/G122 are no longer excluded — fixes via #nosec annotations
+  # (justified bounds/configured paths) and os.Root for G122 (see issue #14).
+  GOSEC_EXCLUDE: "G301,G302,G304,G306,G104,G112,G204,G706"
 
 jobs:
   # ─────────────────────────────────────────────────
@@ -107,16 +109,48 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@v22
       - uses: DeterminateSystems/magic-nix-cache-action@v14
       - name: Nix format check
-        run: nix fmt -- --check .
+        run: |
+          # Mirrors the GitLab nix-format fix: run in write mode then verify
+          # no diffs. `nix fmt -- --check .` can silently pass depending on
+          # nix version (--check consumed by nix itself).
+          nix fmt
+          git diff --exit-code --quiet
       - name: Flake check (no build)
         run: nix flake check --no-build
       - name: Evaluate prague configuration
         run: nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
 
+  check-scrape-targets:
+    name: Scrape Target Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Run scrape target check
+        run: bash ci/check-scrape-targets.sh
+
+  check-blocky:
+    name: Blocky Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Run blocky validation
+        run: bash ci/check-blocky.sh
+
+  check-exit-node:
+    name: Exit Node Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Run exit node check
+        run: bash ci/check-exit-node.sh
+
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [go-lint, go-test, shellcheck, go-security, architecture-check, nix-checks]
+    needs: [go-lint, go-test, shellcheck, go-security, architecture-check, nix-checks, check-scrape-targets, check-blocky, check-exit-node]
     if: always()
     steps:
       - name: Check results

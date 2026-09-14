@@ -120,6 +120,7 @@ in
         gnused
         gawk
         dnsutils
+        tailscale # baseline checks require `tailscale ip -4`
         iputils
         inetutils
         procps

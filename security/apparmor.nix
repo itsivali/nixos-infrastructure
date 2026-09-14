@@ -42,7 +42,11 @@
 # a service explicitly sets AppArmorProfile = "ivali-cli".
 ##############################################################################
 
-{ pkgs, lib, config, ... }:
+{ pkgs
+, lib
+, config
+, ...
+}:
 
 let
   cfg = config.ivali.security.apparmor;
@@ -50,6 +54,98 @@ let
   userName = config.users.users.ivali.name or "ivali";
 
   # Create profile derivations to avoid builtins.readFile Git tracking issues
+  blocky-profile = pkgs.writeText "blocky" ''
+    #include <tunables/global>
+
+    # Attached by services/blocky/config.nix when AppArmor is enabled.
+    # Blocky runs as a DynamicUser with the nixpkgs hardened unit config;
+    # this profile additionally limits filesystem reach. Blocklists and
+    # upstream queries go over TLS, which requires the system cert store.
+    profile blocky flags=(enforce) attach_disconnected {
+      #include <abstractions/base>
+      #include <abstractions/nameservice>
+      #include <abstractions/ssl_certs>
+
+      # Nix store: read + mmap-exec. Store binaries exec unconfined.
+      /nix/store/** r,
+      /nix/store/*/bin/** ux,
+
+      # Blocky state/run dirs
+      /var/lib/blocky/** rw,
+      /run/blocky/** rw,
+      /run/systemd/** r,
+
+      # Network: bind DNS port + reach upstreams/blocklists
+      network inet stream,
+      network inet dgram,
+      network inet6 stream,
+      network inet6 dgram,
+
+      # Devices and proc (read-only)
+      /dev/null rw,
+      /dev/urandom r,
+      /dev/random r,
+      /proc/ r,
+      /proc/** r,
+
+      # Deny
+      deny /root/** rw,
+      deny /home/** rw,
+      deny /etc/shadow r,
+    }
+  '';
+
+  ivali-api-profile = pkgs.writeText "ivali-api" ''
+    #include <tunables/global>
+
+    # Attached by services/web-ui/default.nix (operations-web-ui.service) via
+    # AppArmorProfile = "ivali-api". Confines the operator API server but
+    # allows exec of git/nix/nixos-rebuild/systemctl for repo operations.
+    profile ivali-api flags=(enforce) {
+      #include <abstractions/base>
+      #include <abstractions/nameservice>
+
+      # Nix store: read + mmap-exec. Store binaries exec unconfined.
+      /nix/store/** rm,
+      /nix/store/*/bin/** ux,
+      /run/current-system/sw/bin/** ux,
+
+      # Repository + deployment/observability state (read-write)
+      ${repoPath}/** rwk,
+      /var/lib/deployment/** rwk,
+      /var/lib/observability/** rwk,
+      /var/lib/tailscale-metrics/** r,
+      /run/deploy.lock rwk,
+
+      # Device access
+      /dev/null rw,
+      /dev/zero r,
+      /dev/urandom r,
+
+      # Proc and sys (read-only)
+      /proc/ r,
+      /proc/[0-9]*/ r,
+      /proc/[0-9]*/** r,
+      /proc/cpuinfo r,
+      /proc/meminfo r,
+      /proc/loadavg r,
+      /proc/uptime r,
+      /sys/ r,
+      /sys/** r,
+
+      # Temp files
+      /tmp/ r,
+      /tmp/** rw,
+
+      # Deny
+      deny /etc/shadow r,
+      deny /etc/passwd w,
+      deny /root/** rw,
+      deny /home/ivali/.ssh/** rw,
+      deny /home/ivali/.gnupg/** rw,
+    }
+  '';
+
   ivali-cli-profile = pkgs.writeText "ivali-cli" ''
     #include <tunables/global>
 
@@ -97,7 +193,6 @@ let
     }
   '';
 
-
 in
 {
   security.apparmor = {
@@ -119,6 +214,14 @@ in
       path = ivali-cli-profile;
       state = "enforce";
     };
+    "blocky" = {
+      path = blocky-profile;
+      state = "enforce";
+    };
+    "ivali-api" = {
+      path = ivali-api-profile;
+      state = "enforce";
+    };
   };
 
   # The stock NixOS AppArmor ExecReload also runs `aa-remove-unknown`, which
@@ -129,6 +232,6 @@ in
   # Our profiles are static, so stale-profile removal is unnecessary; reload
   # only the enabled profile files.
   systemd.services.apparmor.serviceConfig.ExecReload = lib.mkForce [
-    "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-cli-profile}"
+    "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-cli-profile} ${blocky-profile} ${ivali-api-profile}"
   ];
 }

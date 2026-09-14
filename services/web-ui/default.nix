@@ -100,8 +100,13 @@
         }
       ];
 
-      # API authentication token (required for production)
+      # API authentication token + HMAC signing secret (required for production)
       sops.secrets.api_token = {
+        sopsFile = ../../secrets/web-ui.yaml;
+        owner = "ivali";
+        mode = "0400";
+      };
+      sops.secrets.api_hmac_secret = {
         sopsFile = ../../secrets/web-ui.yaml;
         owner = "ivali";
         mode = "0400";
@@ -129,6 +134,7 @@
           REPO_DIR = cfg.repoPath;
           API_ADDR = "${cfg.address}:${toString cfg.port}";
           IVALI_API_TOKEN_FILE = config.sops.secrets.api_token.path;
+          IVALI_API_HMAC_FILE = config.sops.secrets.api_hmac_secret.path;
         };
 
         preStart = ''
@@ -190,6 +196,11 @@
 
           # Restrict socket address families to inet (TCP/UDP) and unix (systemd/D-Bus)
           RestrictAddressFamilies = [ "AF_INET" "AF_INET6" "AF_UNIX" ];
+
+          # AppArmor confinement (requires the ivali-api profile in
+          # security/apparmor.nix). Exec'd tools (git/nix/systemctl) run
+          # unconfined via the profile's `ux` rules.
+          AppArmorProfile = lib.mkIf (config.security.apparmor.enable or false) "ivali-api";
         };
 
         # Health check for systemd

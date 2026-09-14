@@ -28,7 +28,12 @@ nix-format:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
-    - nix fmt -- --check .
+    # Fix: run nix fmt in write mode, then verify no diffs remain.
+    # `nix fmt -- --check .` is unreliable: depending on the nix version,
+    # --check can be consumed by nix itself rather than forwarded to the
+    # formatter, silently passing CI even when formatting errors exist.
+    - nix fmt
+    - git diff --exit-code --quiet
 
 shellcheck:
   stage: lint
@@ -96,10 +101,13 @@ go-security:
     # Exclude G112 (Slowloris) - local CLI metrics server, not exposed to network
     # Exclude G204 (subprocess tainted input) - CLI tool intentionally runs shell commands
     # Exclude G706 (log injection) - low severity, not exploitable in local CLI context
-    # TODO(#14): G115 (integer overflow), G101 (hardcoded creds), G703 (path traversal), G122 (symlink TOCTOU)
-    #            are excluded pending security audit. Track in issue #14.
-    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122 ./...
-    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122 ./...
+    # G115 (integer overflow) - conversions use #nosec annotations with
+    #     justification where bounds are provably safe (percentages, memory stats)
+    # G101 (hardcoded credentials) - #nosec where static values are not secrets
+    # G703 (path traversal) - #nosec where path is operator-configured (SOPS)
+    # G122 (symlink TOCTOU) - fixed with os.Root-scoped APIs in go_graph.go
+    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706 ./...
+    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706 ./...
   artifacts:
     when: always
     reports:
@@ -130,3 +138,43 @@ nixos-eval-prague:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
+# ── Scrape & Service Validation ──────────────────────────────────────
+
+check-scrape-targets:
+  stage: check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - bash ci/check-scrape-targets.sh
+  artifacts:
+    when: always
+    paths:
+      - ci/
+    expire_in: 7 days
+
+check-blocky:
+  stage: check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - bash ci/check-blocky.sh
+  artifacts:
+    when: always
+    paths:
+      - ci/
+    expire_in: 7 days
+
+check-exit-node:
+  stage: check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - bash ci/check-exit-node.sh
+  artifacts:
+    when: always
+    paths:
+      - ci/
+    expire_in: 7 days

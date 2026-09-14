@@ -64,6 +64,9 @@ in
       caching.enabled = true;
       unified_alerting.enabled = false;
       alerts.enabled = false;
+      # Expose Grafana's own /metrics endpoint for Prometheus scraping
+      # (firewalled to loopback; prometheus scrapeConfigs covers it).
+      metrics.enabled = true;
     };
     provision = {
       enable = true;

@@ -279,6 +279,8 @@ func (r *Repository) RemoveDuplicateImportLines() int {
 		}
 		newContent := strings.Join(newLines, "\n")
 		if newContent != string(data) {
+			// #nosec G703 -- path is derived from repository scan of the
+			// current working tree, not attacker-controlled user input.
 			_ = os.WriteFile(path, []byte(newContent), 0644)
 		}
 	}

@@ -175,23 +175,10 @@ in
       };
     };
 
-    # Expose port in firewall for Prometheus scraping
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    # Metrics endpoint (127.0.0.1:${toString cfg.port}) is loopback-only.
+    # Prometheus scrapes locally, so no external firewall rule is needed.
 
-    # Add to Prometheus scrape targets
-    services.prometheus.scrapeConfigs = [
-      {
-        job_name = "nixos-exporter";
-        static_configs = [
-          {
-            targets = [ "127.0.0.1:${toString cfg.port}" ];
-            labels = {
-              host = config.networking.hostName;
-            };
-          }
-        ];
-        scrape_interval = "300s";
-      }
-    ];
+    # Scrape target registration is centralized in observability/prometheus.nix
+    # (single authoritative owner). Do not register a scrape config here.
   };
 }

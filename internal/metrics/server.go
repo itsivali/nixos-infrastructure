@@ -55,8 +55,10 @@ func (s *Server) updateRuntimeMetrics() {
 	for range ticker.C {
 		var memStats runtime.MemStats
 		runtime.ReadMemStats(&memStats)
-		s.collector.MemoryAlloc.Set(int64(memStats.Alloc))
-		s.collector.MemorySys.Set(int64(memStats.Sys))
+		// #nosec G115 -- runtime memory stats are uint64 but bounded well
+		// below math.MaxInt64 on 64-bit platforms.
+		s.collector.MemoryAlloc.Set(int64(memStats.Alloc)) // #nosec G115
+		s.collector.MemorySys.Set(int64(memStats.Sys))     // #nosec G115
 		s.collector.GoRoutines.Set(int64(runtime.NumGoroutine()))
 	}
 }

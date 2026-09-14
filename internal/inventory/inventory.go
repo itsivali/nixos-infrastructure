@@ -246,6 +246,7 @@ func collectMemory() MemoryInfo {
 		info.TotalGB = float64(total) / 1024 / 1024
 		info.AvailableGB = float64(avail) / 1024 / 1024
 		info.UsedGB = info.TotalGB - info.AvailableGB
+		// #nosec G115 -- result is a bounded percentage (0..100).
 		info.UsedPercent = int((total - avail) * 100 / total)
 	}
 	return info
@@ -285,6 +286,7 @@ func collectStorage() []DiskInfo {
 
 		pct := 0
 		if total > 0 {
+			// #nosec G115 -- result is a bounded percentage (0..100).
 			pct = int(used * 100 / total)
 		}
 

@@ -271,23 +271,8 @@ in
       };
     };
 
-    # Expose metrics port
-    networking.firewall.allowedTCPPorts = [ cfg.metricsPort ];
-
-    # Add to Prometheus scrape targets
-    services.prometheus.scrapeConfigs = [
-      {
-        job_name = "security-scanner";
-        static_configs = [
-          {
-            targets = [ "127.0.0.1:${toString cfg.metricsPort}" ];
-            labels = {
-              host = config.networking.hostName;
-            };
-          }
-        ];
-        scrape_interval = "30s";
-      }
-    ];
+    # The scanner HTTP server binds 127.0.0.1 (python HTTPServer above) and
+    # Prometheus scrapes it locally, so no external firewall rule is needed —
+    # registering one here would create an erroneous public port.
   };
 }

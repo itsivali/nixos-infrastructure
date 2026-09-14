@@ -430,6 +430,8 @@ func addDocHeader(path string) error {
 
 `, title)
 
+	// #nosec G703 -- path is an operator-specified module file in the local
+	// repository, not attacker-controlled user input.
 	return os.WriteFile(path, []byte(header+string(data)), 0644)
 }
 

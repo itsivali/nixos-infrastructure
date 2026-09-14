@@ -41,6 +41,19 @@
     ivali.kilocode.enable = true;
     ivali.antigravity.enable = true;
 
+    # Alertmanager recipient — must be the owner's Outlook mailbox (the same
+    # address msmtp authenticates as). Explicit here so it survives future
+    # laptop-template option changes.
+    ivali.observability.alertmanager.emailTo = "itsivali@outlook.com";
+
+    # Log aggregation: Loki + Alloy collect systemd journal errors for Grafana.
+    ivali.observability.loki.enable = true;
+    ivali.observability.alloy.enable = true;
+
+    # DNS proxy + ad-blocker for the tailnet (binds all interfaces, but the
+    # firewall only opens port 53 on tailscale0).
+    ivali.services.blocky.enable = true;
+
     # Self-healing: run the deployment health check and automatically roll
     # back on a genuine service regression (parity with hosts/tuscany.nix).
     # deploymentHealth.enable is already set by the laptop template because

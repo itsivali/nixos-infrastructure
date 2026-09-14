@@ -1,12 +1,16 @@
 package api
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +32,7 @@ type Server struct {
 	// Security
 	apiToken       string
 	secondaryToken string
+	hmacSecret     string
 	allowedOrigins []string
 	rateLimiter    *rateLimiter
 	insecure       bool
@@ -39,6 +44,11 @@ type Config struct {
 	RepoDir        string
 	APIToken       string
 	SecondaryToken string
+	// HMACSecret is the shared secret used to verify HMAC-SHA256 request
+	// signatures on mutating (POST) endpoints. Clients must send a
+	// signature over {method}\n{path}\n{unix-timestamp} in the headers
+	// X-Request-Timestamp and X-Request-Signature; see verifyRequestSignature.
+	HMACSecret     string
 	AllowedOrigins []string
 	// Insecure allows the server to start without an API token.
 	// When false and APIToken is empty, Start() returns an error.
@@ -133,6 +143,7 @@ func NewServer(cfg Config) *Server {
 		audit:          audit,
 		apiToken:       cfg.APIToken,
 		secondaryToken: cfg.SecondaryToken,
+		hmacSecret:     cfg.HMACSecret,
 		allowedOrigins: allowedOrigins,
 		rateLimiter:    newRateLimiter(10, 100), // 10 req/s, burst of 100
 		insecure:       cfg.Insecure,
@@ -184,7 +195,8 @@ func (s *Server) Start() error {
 	return srv.ListenAndServe()
 }
 
-// requireAuth wraps a handler with HMAC-SHA256 Bearer token authentication
+// requireAuth wraps a handler with authentication. Mutating (non-GET)
+// requests must additionally carry an HMAC-SHA256 request signature.
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Skip auth if no token configured (development mode)
@@ -219,8 +231,68 @@ func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
+		// Mutating requests (deploy, rollback, service restart) must be
+		// HMAC-signed to bind possession of the bearer token to a specific
+		// request (method+path+timestamp), defeating token replay across
+		// endpoints. GET endpoints remain bearer-token only.
+		if r.Method != http.MethodGet {
+			if err := s.verifyRequestSignature(r); err != nil {
+				s.auditAuthFailure(r, fmt.Sprintf("invalid request signature: %v", err))
+				s.writeError(w, http.StatusUnauthorized, "invalid request signature")
+				return
+			}
+		}
+
 		next(w, r)
 	}
+}
+
+// maxRequestTimestampSkew is the maximum acceptable age (seconds) of the
+// X-Request-Timestamp header. Protects against signature replay.
+const maxRequestTimestampSkew = 300
+
+// verifyRequestSignature validates the HMAC-SHA256 request signature on
+// mutating requests. The client signs the canonical string
+//
+//	<METHOD>\n<path>\n<unix-timestamp>
+//
+// with the shared HMAC secret and sends:
+//
+//	X-Request-Timestamp: <unix-timestamp>
+//	X-Request-Signature: <hex(hmac-sha256)>
+//
+// The Bearer token authorizes the caller's identity; the signature binds
+// that identity to this specific request, preventing cross-endpoint replay.
+func (s *Server) verifyRequestSignature(r *http.Request) error {
+	if s.hmacSecret == "" {
+		return fmt.Errorf("server has no HMAC secret configured")
+	}
+
+	ts := r.Header.Get("X-Request-Timestamp")
+	sig := r.Header.Get("X-Request-Signature")
+	if ts == "" || sig == "" {
+		return fmt.Errorf("missing X-Request-Timestamp or X-Request-Signature")
+	}
+
+	tsInt, err := strconv.ParseInt(ts, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid timestamp")
+	}
+
+	now := time.Now().Unix()
+	if skew := now - tsInt; skew < -maxRequestTimestampSkew || skew > maxRequestTimestampSkew {
+		return fmt.Errorf("timestamp outside acceptable skew window")
+	}
+
+	canonical := fmt.Sprintf("%s\n%s\n%s", r.Method, r.URL.Path, ts)
+	mac := hmac.New(sha256.New, []byte(s.hmacSecret))
+	_, _ = mac.Write([]byte(canonical))
+	expected := hex.EncodeToString(mac.Sum(nil))
+
+	if subtle.ConstantTimeCompare([]byte(sig), []byte(expected)) != 1 {
+		return fmt.Errorf("signature mismatch")
+	}
+	return nil
 }
 
 // auditAuthFailure logs authentication failures
@@ -304,7 +376,7 @@ func (s *Server) corsMiddleware(next http.Handler) http.Handler {
 		if allowed {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Request-Timestamp, X-Request-Signature")
 			w.Header().Set("Access-Control-Max-Age", "86400")
 		}
 

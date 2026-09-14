@@ -1,7 +1,7 @@
 # Architecture Progress
 
 > Tracks the state of the architectural audit and enforcement work.
-> Last updated: Session 8 — All architecture linter checks PASS, hardcoded hostnames eliminated, CI failure suppression removed.
+> Last updated: Session 9 — Security hardening complete, CI hardened with scrape/blocky/exit-node checks, dashboard reconciler status added.
 
 ---
 
@@ -38,6 +38,12 @@
 - [x] **GRUB bootloader** — Switched from systemd-boot to GRUB with NixOS snowflake theme
 - [x] **Audio fixes** — ALSA mixer init, WirePlumber rules for consistent volume on ALC236
 - [x] **Commit authorship** — Rule added to AGENTS.md, ENGINEERING.md, CONTRIBUTING.md
+- [x] **Part 3: Security** — Hardened observability and web-ui attack surface (nginx tailscale-only, OTel loopback, scanner/exporter no public ports, ivali-api AppArmor profile, web-ui AppArmor confinement)
+- [x] **Part 4: Features** — Dashboard Observability tab now shows GitOps reconciler and deployment health status
+- [x] **Part 5: Observability** — Health observer has tailscale/dnsutils deps; all dashboards and alerts verified complete
+- [x] **Part 6: CI Hardening** — Added check-scrape-targets, check-blocky, check-exit-node to GitLab CI and GitHub Actions; all registered in check stage
+- [x] **Part 7: Docs** — README updated; XFCE references removed; GNOME properly documented
+- [x] **Part 8: GRD** — GNOME Remote Desktop over Tailscale module verified complete (grd.nix, remote-desktop.nix, firewall, helper script, dconf settings)
 
 ## Architecture Linter Status
 
@@ -68,6 +74,7 @@
 - [x] Shell syntax: all scripts parse cleanly
 - [x] Nix formatting: 0 files need reformatting
 - [x] CI: GitHub Actions + GitLab CI configured (golangci-lint v2.12.2)
+- [x] CI: Scrape-target check, blocky-validate, and exit-node-check registered in both CI systems
 
 ## Verification Gate Results
 
@@ -82,6 +89,9 @@
 | `nix eval .#nixosConfigurations.testvm` | PASS |
 | `nix eval .#nixosConfigurations.tuscany` | PASS |
 | Architecture linter (7 checks) | PASS |
+| Scrape target check | PASS |
+| Blocky validation | PASS |
+| Exit node check | PASS |
 
 ## Exact Next Action
 

@@ -24,7 +24,7 @@ HOST="prague"
 
 echo "Validating Blocky configuration for ${HOST}..."
 
-BLOCKY_ENABLED="$(nix eval --json ".#nixosConfigurations.${HOST}.config.services.blocky.enable" 2>&1)" || {
+BLOCKY_ENABLED="$(nix eval --json ".#nixosConfigurations.${HOST}.config.ivali.services.blocky.enable" 2>&1)" || {
   echo "FAIL: could not evaluate services.blocky.enable for ${HOST}" >&2
   echo "$BLOCKY_ENABLED" >&2
   exit 1
@@ -36,14 +36,14 @@ if [ "$BLOCKY_ENABLED" != "true" ]; then
 fi
 echo "OK:   Blocky service is enabled"
 
-BLOCKY_PORT="$(nix eval ".#nixosConfigurations.${HOST}.config.services.blocky.port" 2>&1)" || {
+BLOCKY_PORT="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.services.blocky.port" 2>&1)" || {
   echo "FAIL: could not evaluate services.blocky.port for ${HOST}" >&2
   echo "$BLOCKY_PORT" >&2
   exit 1
 }
 echo "OK:   Blocky port = ${BLOCKY_PORT}"
 
-BLOCKY_METRICS_PORT="$(nix eval ".#nixosConfigurations.${HOST}.config.services.blocky.metricsPort" 2>&1)" || {
+BLOCKY_METRICS_PORT="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.services.blocky.metricsPort" 2>&1)" || {
   echo "FAIL: could not evaluate services.blocky.metricsPort for ${HOST}" >&2
   echo "$BLOCKY_METRICS_PORT" >&2
   exit 1

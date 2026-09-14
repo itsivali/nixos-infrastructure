@@ -36,6 +36,8 @@ declare -A SERVICE_PORTS=(
   [3100]="ivali.observability.loki"   # Loki
   [12345]="ivali.observability.alloy" # Grafana Alloy
   [4000]="services.blocky"            # Blocky DNS metrics
+  [8888]="ivali.observability.otel"      # OTel collector metrics
+  [9120]="ivali.security.scanning"      # Security scanner metrics
   [9100]="services.prometheus.exporters.node" # node_exporter
   [9101]="ivali.observability.exporters"      # nixos-exporter
   [9121]="services.tailscale"         # tailscale metrics
@@ -132,6 +134,8 @@ while IFS= read -r target; do
     services.tailscale)      enabled="tailscale";;
     ivali.observability.healthEndpoint) enabled="health";;
     ivali.services.webUI)    enabled="webUI";;
+    ivali.observability.otel) enabled="otel";;
+    ivali.security.scanning) enabled="scanning";;
     *) enabled="";;
   esac
   if [ -z "$enabled" ]; then

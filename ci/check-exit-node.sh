@@ -50,10 +50,16 @@ else
   exit 1
 fi
 
-if printf '%s' "$CHECK_SCRAPE" | grep -q "tailscale_exit_node"; then
-  echo "OK:   Exit node metrics registered"
+TAILSCALE_METRICS="$(nix eval ".#nixosConfigurations.${HOST}.config.systemd.services.tailscale-metrics.enable" 2>&1)" || {
+  echo "FAIL: could not evaluate tailscale-metrics service for ${HOST}" >&2
+  echo "$TAILSCALE_METRICS" >&2
+  exit 1
+}
+
+if [ "$TAILSCALE_METRICS" = "true" ]; then
+  echo "OK:   Exit node metrics service (tailscale-metrics) enabled"
 else
-  echo "FAIL: Exit node metrics (tailscale_exit_node_*) not in scrape config"
+  echo "FAIL: tailscale-metrics service is not enabled"
   exit 1
 fi
 

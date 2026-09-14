@@ -195,6 +195,20 @@ in
                   summary: "MagicDNS resolution failed on {{ $labels.host }}"
                   description: "MagicDNS is not resolving correctly"
 
+              # Exit node advertising: the host is configured to advertise as
+              # an exit node but tailscaled no longer advertises 0.0.0.0/0.
+              # Reliable probe: AdvertiseRoutes from `tailscale debug prefs`
+              # (`.Self.ExitNodeOption` is unreliable). Only fires when the
+              # declarative config asks for an exit node (configured=1).
+              - alert: TailscaleExitNodeNotAdvertised
+                expr: tailscale_exit_node_configured == 1 and tailscale_exit_node_advertised == 0
+                for: 5m
+                labels:
+                  severity: warning
+                annotations:
+                  summary: "Tailscale exit node not advertised on {{ $labels.host }}"
+                  description: "Exit node routes (0.0.0.0/0, ::/0) are no longer advertised; check tailscaled and tailnet ACL"
+
       '')
     ];
 

@@ -120,10 +120,37 @@ jobs:
       - name: Evaluate prague configuration
         run: nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
 
+  check-scrape-targets:
+    name: Scrape Target Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Run scrape target check
+        run: bash ci/check-scrape-targets.sh
+
+  check-blocky:
+    name: Blocky Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Run blocky validation
+        run: bash ci/check-blocky.sh
+
+  check-exit-node:
+    name: Exit Node Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: Run exit node check
+        run: bash ci/check-exit-node.sh
+
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [go-lint, go-test, shellcheck, go-security, architecture-check, nix-checks]
+    needs: [go-lint, go-test, shellcheck, go-security, architecture-check, nix-checks, check-scrape-targets, check-blocky, check-exit-node]
     if: always()
     steps:
       - name: Check results

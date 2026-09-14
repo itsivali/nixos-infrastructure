@@ -54,6 +54,10 @@ in
       };
     };
 
-    networking.firewall.allowedTCPPorts = [ 80 443 ];
+    # Observability proxy on Tailscale only (mirrors ssh/daemon.nix and RDP):
+    # the stack serves sensitive internal metrics and must stay off the
+    # public internet.
+    networking.firewall.interfaces.tailscale0.allowedTCPPorts = [ 80 443 ];
+    networking.firewall.allowedTCPPorts = lib.mkIf (!cfg.tailscaleOnly) [ 80 443 ];
   };
 }

@@ -271,8 +271,8 @@ in
       };
     };
 
-    # Expose metrics port
-    networking.firewall.allowedTCPPorts = [ cfg.metricsPort ];
-
+    # The scanner HTTP server binds 127.0.0.1 (python HTTPServer above) and
+    # Prometheus scrapes it locally, so no external firewall rule is needed —
+    # registering one here would create an erroneous public port.
   };
 }

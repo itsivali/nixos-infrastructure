@@ -196,6 +196,11 @@
 
           # Restrict socket address families to inet (TCP/UDP) and unix (systemd/D-Bus)
           RestrictAddressFamilies = [ "AF_INET" "AF_INET6" "AF_UNIX" ];
+
+          # AppArmor confinement (requires the ivali-api profile in
+          # security/apparmor.nix). Exec'd tools (git/nix/systemctl) run
+          # unconfined via the profile's `ux` rules.
+          AppArmorProfile = lib.mkIf (config.security.apparmor.enable or false) "ivali-api";
         };
 
         # Health check for systemd

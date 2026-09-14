@@ -104,6 +104,8 @@ in
         msmtp # sendmail (notify.sh email)
         openssh # ssh transport for git fetch/pull over git@gitlab.com
         python3 # update-go-hashes.sh discovers buildGoModule packages via python
+        tailscale # health gate (deployment-health.sh) resolves tailscale IP
+        dnsutils # health gate (deployment-health.sh) resolves gitlab.com via dig
       ];
 
       ######################################################################

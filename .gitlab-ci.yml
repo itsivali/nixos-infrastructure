@@ -138,3 +138,43 @@ nixos-eval-prague:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
   script:
     - nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
+# ── Scrape & Service Validation ──────────────────────────────────────
+
+check-scrape-targets:
+  stage: check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - bash ci/check-scrape-targets.sh
+  artifacts:
+    when: always
+    paths:
+      - ci/
+    expire_in: 7 days
+
+check-blocky:
+  stage: check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - bash ci/check-blocky.sh
+  artifacts:
+    when: always
+    paths:
+      - ci/
+    expire_in: 7 days
+
+check-exit-node:
+  stage: check
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - bash ci/check-exit-node.sh
+  artifacts:
+    when: always
+    paths:
+      - ci/
+    expire_in: 7 days

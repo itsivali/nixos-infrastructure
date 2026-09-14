@@ -175,8 +175,8 @@ in
       };
     };
 
-    # Expose port in firewall for Prometheus scraping
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    # Metrics endpoint (127.0.0.1:${toString cfg.port}) is loopback-only.
+    # Prometheus scrapes locally, so no external firewall rule is needed.
 
     # Scrape target registration is centralized in observability/prometheus.nix
     # (single authoritative owner). Do not register a scrape config here.

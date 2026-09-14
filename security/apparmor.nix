@@ -50,6 +50,47 @@ let
   userName = config.users.users.ivali.name or "ivali";
 
   # Create profile derivations to avoid builtins.readFile Git tracking issues
+  blocky-profile = pkgs.writeText "blocky" ''
+    #include <tunables/global>
+
+    # Attached by services/blocky/config.nix when AppArmor is enabled.
+    # Blocky runs as a DynamicUser with the nixpkgs hardened unit config;
+    # this profile additionally limits filesystem reach. Blocklists and
+    # upstream queries go over TLS, which requires the system cert store.
+    profile blocky flags=(enforce) attach_disconnected {
+      #include <abstractions/base>
+      #include <abstractions/nameservice>
+      #include <abstractions/ssl_certs>
+
+      # Nix store: read + mmap-exec. Store binaries exec unconfined.
+      /nix/store/** r,
+      /nix/store/*/bin/** ux,
+
+      # Blocky state/run dirs
+      /var/lib/blocky/** rw,
+      /run/blocky/** rw,
+      /run/systemd/** r,
+
+      # Network: bind DNS port + reach upstreams/blocklists
+      network inet stream,
+      network inet dgram,
+      network inet6 stream,
+      network inet6 dgram,
+
+      # Devices and proc (read-only)
+      /dev/null rw,
+      /dev/urandom r,
+      /dev/random r,
+      /proc/ r,
+      /proc/** r,
+
+      # Deny
+      deny /root/** rw,
+      deny /home/** rw,
+      deny /etc/shadow r,
+    }
+  '';
+
   ivali-cli-profile = pkgs.writeText "ivali-cli" ''
     #include <tunables/global>
 
@@ -119,6 +160,10 @@ in
       path = ivali-cli-profile;
       state = "enforce";
     };
+    "blocky" = {
+      path = blocky-profile;
+      state = "enforce";
+    };
   };
 
   # The stock NixOS AppArmor ExecReload also runs `aa-remove-unknown`, which
@@ -129,6 +174,6 @@ in
   # Our profiles are static, so stale-profile removal is unnecessary; reload
   # only the enabled profile files.
   systemd.services.apparmor.serviceConfig.ExecReload = lib.mkForce [
-    "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-cli-profile}"
+    "${pkgs.apparmor-parser}/bin/apparmor_parser --replace --verbose --show-cache ${ivali-cli-profile} ${blocky-profile}"
   ];
 }

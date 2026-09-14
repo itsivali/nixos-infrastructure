@@ -3,11 +3,21 @@ package graph
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 )
+
+// rootFS adapts *os.Root to the fs.FS interface for WalkDir/ReadFile.
+type rootFS struct {
+	root *os.Root
+}
+
+func (r rootFS) Open(name string) (fs.File, error) {
+	return r.root.Open(name)
+}
 
 type GoGraphJSON struct {
 	Module   string          `json:"module"`
@@ -80,16 +90,26 @@ func BuildGoGraph(root string) (*GoGraph, error) {
 	pkgMap := make(map[string]*GoPackage)
 	importMap := make(map[string]map[string]bool)
 
-	walkFn := func(path string, info os.FileInfo, err error) error {
+	internalRoot, err := os.OpenRoot(filepath.Join(root, "internal"))
+	if err != nil {
+		return nil, fmt.Errorf("opening internal dir: %w", err)
+	}
+	defer internalRoot.Close()
+
+	internalFS := rootFS{root: internalRoot}
+
+	// #nosec G122 -- os.Root-scoped handle prevents TOCTOU/symlink traversal
+	// during the walk (root-scoped APIs per gosec recommendation).
+	walkFn := func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
-		if info.IsDir() {
-			if strings.HasPrefix(info.Name(), ".") || info.Name() == "vendor" || info.Name() == "node_modules" {
-				return filepath.SkipDir
+		if d.IsDir() {
+			if strings.HasPrefix(d.Name(), ".") || d.Name() == "vendor" || d.Name() == "node_modules" {
+				return fs.SkipDir
 			}
 			if strings.HasPrefix(filepath.Base(path), "_") {
-				return filepath.SkipDir
+				return fs.SkipDir
 			}
 			return nil
 		}
@@ -98,7 +118,10 @@ func BuildGoGraph(root string) (*GoGraph, error) {
 		}
 
 		dir := filepath.Dir(path)
-		relDir, _ := filepath.Rel(root, dir)
+		relDir := "internal"
+		if dir != "." {
+			relDir = filepath.Join("internal", dir)
+		}
 		importPath := filepath.ToSlash(gg.Module + "/" + relDir)
 
 		if _, exists := pkgMap[importPath]; !exists {
@@ -109,7 +132,7 @@ func BuildGoGraph(root string) (*GoGraph, error) {
 		}
 		pkgMap[importPath].Files++
 
-		content, err := os.ReadFile(path)
+		content, err := fs.ReadFile(internalFS, path)
 		if err != nil {
 			return nil
 		}
@@ -132,7 +155,7 @@ func BuildGoGraph(root string) (*GoGraph, error) {
 		return nil
 	}
 
-	if err := filepath.Walk(filepath.Join(root, "internal"), walkFn); err != nil {
+	if err := fs.WalkDir(internalFS, ".", walkFn); err != nil {
 		return nil, fmt.Errorf("walking internal: %w", err)
 	}
 

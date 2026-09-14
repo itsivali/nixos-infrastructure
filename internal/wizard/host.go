@@ -29,6 +29,7 @@ var featureList = []string{
 	"tailscale", "tailscale-exit-node", "ssh",
 }
 
+// #nosec G101 -- static feature descriptions, not credentials.
 var featureDesc = map[string]string{
 	"secrets":             "SOPS age secrets",
 	"gitlab-runner":       "Self-hosted GitLab CI runner",

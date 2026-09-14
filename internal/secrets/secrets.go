@@ -24,6 +24,8 @@ func ReadSecret(name string) (string, error) {
 	// Check for file-based secret (standard SOPS pattern)
 	fileEnv := os.Getenv(strings.ToUpper(name) + "_FILE")
 	if fileEnv != "" {
+		// #nosec G703 -- path is operator-configured (SOPS secret file), not
+		// attacker-controlled user input.
 		data, err := os.ReadFile(fileEnv)
 		if err != nil {
 			return "", err
@@ -43,6 +45,8 @@ func ReadSecret(name string) (string, error) {
 		secretsDir = DefaultSecretsDir
 	}
 
+	// #nosec G703 -- path is operator-configured (secrets directory), not
+	// attacker-controlled user input.
 	data, err := os.ReadFile(filepath.Join(secretsDir, name))
 	if err != nil {
 		return "", err

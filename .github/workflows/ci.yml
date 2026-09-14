@@ -14,7 +14,9 @@ env:
   GO_VERSION: "1.26"
   # Rule exclusions shared with the GitLab go-security job. Kept in one place so
   # both CI systems measure the same security surface; see .gitlab-ci.yml.
-  GOSEC_EXCLUDE: "G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122"
+  # G115/G101/G703/G122 are no longer excluded — fixes via #nosec annotations
+  # (justified bounds/configured paths) and os.Root for G122 (see issue #14).
+  GOSEC_EXCLUDE: "G301,G302,G304,G306,G104,G112,G204,G706"
 
 jobs:
   # ─────────────────────────────────────────────────

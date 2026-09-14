@@ -101,10 +101,13 @@ go-security:
     # Exclude G112 (Slowloris) - local CLI metrics server, not exposed to network
     # Exclude G204 (subprocess tainted input) - CLI tool intentionally runs shell commands
     # Exclude G706 (log injection) - low severity, not exploitable in local CLI context
-    # TODO(#14): G115 (integer overflow), G101 (hardcoded creds), G703 (path traversal), G122 (symlink TOCTOU)
-    #            are excluded pending security audit. Track in issue #14.
-    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122 ./...
-    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706,G115,G101,G703,G122 ./...
+    # G115 (integer overflow) - conversions use #nosec annotations with
+    #     justification where bounds are provably safe (percentages, memory stats)
+    # G101 (hardcoded credentials) - #nosec where static values are not secrets
+    # G703 (path traversal) - #nosec where path is operator-configured (SOPS)
+    # G122 (symlink TOCTOU) - fixed with os.Root-scoped APIs in go_graph.go
+    - nix run nixpkgs#gosec -- -fmt=golint -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706 ./...
+    - nix run nixpkgs#gosec -- -fmt=sarif -out=gosec-results.sarif -exclude-generated -exclude G301,G302,G304,G306,G104,G112,G204,G706 ./...
   artifacts:
     when: always
     reports:

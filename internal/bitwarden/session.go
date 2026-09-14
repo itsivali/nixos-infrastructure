@@ -58,6 +58,8 @@ func ReadMasterPasswordFromFile() (string, error) {
 	if path == "" {
 		return "", nil
 	}
+	// #nosec G703 -- path is operator-configured SOPS secret file, not
+	// attacker-controlled user input.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("reading master password file %q: %w", path, err)
@@ -77,6 +79,8 @@ func ReadSopsEmailFromFile() (string, error) {
 	if path == "" {
 		return "", nil
 	}
+	// #nosec G703 -- path is operator-configured SOPS secret file, not
+	// attacker-controlled user input.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", fmt.Errorf("reading SOPS email file %q: %w", path, err)

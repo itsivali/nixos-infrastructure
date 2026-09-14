@@ -174,21 +174,8 @@ in
       # Expose OTel metrics endpoint
       networking.firewall.allowedTCPPorts = [ 8888 ];
 
-      # Add OTel to Prometheus scrape targets
-      services.prometheus.scrapeConfigs = [
-        {
-          job_name = "otelcol";
-          static_configs = [
-            {
-              targets = [ "127.0.0.1:8888" ];
-              labels = {
-                host = hostName;
-              };
-            }
-          ];
-          scrape_interval = "60s";
-        }
-      ];
+      # Scrape target registration is centralized in observability/prometheus.nix
+      # (single authoritative owner). Do not register a scrape config here.
     }
   );
 }

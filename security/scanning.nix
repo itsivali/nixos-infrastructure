@@ -274,20 +274,5 @@ in
     # Expose metrics port
     networking.firewall.allowedTCPPorts = [ cfg.metricsPort ];
 
-    # Add to Prometheus scrape targets
-    services.prometheus.scrapeConfigs = [
-      {
-        job_name = "security-scanner";
-        static_configs = [
-          {
-            targets = [ "127.0.0.1:${toString cfg.metricsPort}" ];
-            labels = {
-              host = config.networking.hostName;
-            };
-          }
-        ];
-        scrape_interval = "30s";
-      }
-    ];
   };
 }

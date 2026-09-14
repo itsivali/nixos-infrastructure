@@ -184,6 +184,42 @@ in
             ];
             scrape_interval = "30s";
           }
+        ]
+        ++ lib.optionals (config.ivali.tailscale.enable or false) [
+          {
+            job_name = "tailscale";
+            static_configs = [
+              {
+                targets = [ "127.0.0.1:9121" ];
+                labels = { host = hostName; };
+              }
+            ];
+            scrape_interval = "30s";
+          }
+        ]
+        ++ lib.optionals (config.ivali.security.scanning.enable or false) [
+          {
+            job_name = "security-scanner";
+            static_configs = [
+              {
+                targets = [ "127.0.0.1:${toString (config.ivali.security.scanning.metricsPort or 9120)}" ];
+                labels = { host = hostName; };
+              }
+            ];
+            scrape_interval = "30s";
+          }
+        ]
+        ++ lib.optionals (config.ivali.observability.otel.enable or false) [
+          {
+            job_name = "otelcol";
+            static_configs = [
+              {
+                targets = [ "127.0.0.1:8888" ];
+                labels = { host = hostName; };
+              }
+            ];
+            scrape_interval = "60s";
+          }
         ];
       exporters.node = {
         enable = true;

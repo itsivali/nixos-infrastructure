@@ -76,30 +76,35 @@ printf '%s\n' "$targets"
 echo
 
 # Evaluate which option values are true in the configuration.
-prometheus="$(nix eval ".#nixosConfigurations.${HOST}.config.services.prometheus.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-alertmanager="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.observability.alertmanager.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-observability="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.observability.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-loki="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.observability.loki.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-alloy="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.observability.alloy.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-blocky="$(nix eval ".#nixosConfigurations.${HOST}.config.services.blocky.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-nodeExporter="$(nix eval ".#nixosConfigurations.${HOST}.config.services.prometheus.exporters.node.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-exporters="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.observability.exporters.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-tailscale="$(nix eval ".#nixosConfigurations.${HOST}.config.services.tailscale.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-health="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.observability.healthEndpoint.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-webUI="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.services.webUI.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-otel="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.observability.otel.enable" 2>&1)" || { echo "FAIL"; exit 1; }
-scanning="$(nix eval ".#nixosConfigurations.${HOST}.config.ivali.security.scanning.enable" 2>&1)" || { echo "FAIL"; exit 1; }
+enabled_options="$(nix eval --json ".#nixosConfigurations.${HOST}.config" --apply 'cfg: {
+  prometheus    = cfg.services.prometheus.enable;
+  alertmanager  = cfg.ivali.observability.alertmanager.enable;
+  observability = cfg.ivali.observability.enable;
+  loki          = cfg.ivali.observability.loki.enable;
+  alloy         = cfg.ivali.observability.alloy.enable;
+  blocky        = cfg.services.blocky.enable;
+  nodeExporter  = cfg.services.prometheus.exporters.node.enable;
+  exporters     = cfg.ivali.observability.exporters.enable;
+  tailscale     = cfg.services.tailscale.enable;
+  health        = cfg.ivali.observability.healthEndpoint.enable;
+  webUI         = cfg.ivali.services.webUI.enable;
+  otel          = cfg.ivali.observability.otel.enable;
+  scanning      = cfg.ivali.security.scanning.enable;
+}' 2>&1)" || {
+  echo "FAIL: could not evaluate enabled-service options for ${HOST}:" >&2
+  echo "$enabled_options" >&2
+  exit 1
+}
 
-# Build a list of enabled service names.
-enabled_services=""
-for svc in prometheus alertmanager observability loki alloy blocky nodeExporter exporters tailscale health webUI otel scanning; do
-  val="${!svc}"
-  if [ "$val" = "true" ]; then
-    enabled_services="${enabled_services}${svc} "
-  fi
-done
-
-
+# Build a lookup of enabled service names.
+enabled_services="$(printf '%s' "$enabled_options" |
+  python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for k, v in data.items():
+    if v:
+        print(k)
+')"
 
 port_to_service() {
   # Map service name from SERVICE_PORTS (strip lib.optional variant via name)

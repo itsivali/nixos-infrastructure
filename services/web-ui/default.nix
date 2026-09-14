@@ -100,8 +100,13 @@
         }
       ];
 
-      # API authentication token (required for production)
+      # API authentication token + HMAC signing secret (required for production)
       sops.secrets.api_token = {
+        sopsFile = ../../secrets/web-ui.yaml;
+        owner = "ivali";
+        mode = "0400";
+      };
+      sops.secrets.api_hmac_secret = {
         sopsFile = ../../secrets/web-ui.yaml;
         owner = "ivali";
         mode = "0400";
@@ -129,6 +134,7 @@
           REPO_DIR = cfg.repoPath;
           API_ADDR = "${cfg.address}:${toString cfg.port}";
           IVALI_API_TOKEN_FILE = config.sops.secrets.api_token.path;
+          IVALI_API_HMAC_FILE = config.sops.secrets.api_hmac_secret.path;
         };
 
         preStart = ''

@@ -27,6 +27,11 @@ Authentication is required by default. Set the API token via:
   - IVALI_API_TOKEN environment variable
   - SOPS secret at /run/secrets/api_token
 
+Mutating endpoints additionally require HMAC-SHA256 request signing. Set the
+HMAC secret via:
+  - IVALI_API_HMAC_TOKEN environment variable
+  - SOPS secret at /run/secrets/api_hmac_secret
+
 Use --insecure to disable authentication (development only).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			repoDir := a.RootDir
@@ -38,6 +43,8 @@ Use --insecure to disable authentication (development only).`,
 			apiToken := os.Getenv("IVALI_API_TOKEN")
 			if apiToken == "" {
 				// Try reading from token file (SOPS secret path)
+				// #nosec G703 -- path is operator-configured SOPS secret file,
+				// not attacker-controlled user input.
 				if tokenFile := os.Getenv("IVALI_API_TOKEN_FILE"); tokenFile != "" {
 					if data, err := os.ReadFile(tokenFile); err == nil {
 						apiToken = string(data)
@@ -50,6 +57,7 @@ Use --insecure to disable authentication (development only).`,
 			}
 			if apiToken == "" {
 				// Try reading from default SOPS secret path
+				// #nosec G703 -- fixed well-known secret path.
 				if data, err := os.ReadFile("/run/secrets/api_token"); err == nil {
 					apiToken = string(data)
 					if len(apiToken) > 0 && apiToken[len(apiToken)-1] == '\n' {
@@ -58,11 +66,37 @@ Use --insecure to disable authentication (development only).`,
 				}
 			}
 
+			// HMAC secret for request signing (mutating endpoints)
+			hmacSecret := os.Getenv("IVALI_API_HMAC_TOKEN")
+			if hmacSecret == "" {
+				// Try reading from HMAC secret file (SOPS secret path)
+				// #nosec G703 -- path is operator-configured SOPS secret file,
+				// not attacker-controlled user input.
+				if hmacFile := os.Getenv("IVALI_API_HMAC_FILE"); hmacFile != "" {
+					if data, err := os.ReadFile(hmacFile); err == nil {
+						hmacSecret = string(data)
+						if len(hmacSecret) > 0 && hmacSecret[len(hmacSecret)-1] == '\n' {
+							hmacSecret = hmacSecret[:len(hmacSecret)-1]
+						}
+					}
+				}
+			}
+			if hmacSecret == "" {
+				// #nosec G703 -- fixed well-known secret path.
+				if data, err := os.ReadFile("/run/secrets/api_hmac_secret"); err == nil {
+					hmacSecret = string(data)
+					if len(hmacSecret) > 0 && hmacSecret[len(hmacSecret)-1] == '\n' {
+						hmacSecret = hmacSecret[:len(hmacSecret)-1]
+					}
+				}
+			}
+
 			cfg := api.Config{
-				Addr:     addr,
-				RepoDir:  repoDir,
-				APIToken: apiToken,
-				Insecure: insecure,
+				Addr:       addr,
+				RepoDir:    repoDir,
+				APIToken:   apiToken,
+				HMACSecret: hmacSecret,
+				Insecure:   insecure,
 			}
 
 			server := api.NewServer(cfg)

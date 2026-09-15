@@ -88,7 +88,7 @@ let
       # ── ensure a valid self-signed certificate ─────────────────────────
       needs_gen=false
       [ -s "$cert" ] && [ -s "$cert_key" ] || needs_gen=true
-      if [ "$needs_gen" = false ] && ! openssl x509 -in "$cert" -noout -subject 2>/dev/null | grep -q "/CN=$host_name"; then
+      if [ "$needs_gen" = false ] && ! openssl x509 -in "$cert" -noout -subject 2>/dev/null | grep -q "CN=$host_name"; then
         needs_gen=true
       fi
       if [ "$needs_gen" = false ] && [ -n "$tailnet_domain" ] && \

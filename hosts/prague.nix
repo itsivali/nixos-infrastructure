@@ -34,6 +34,12 @@
     ssh = true;
   };
   config = {
+    # Firewall: nftables-based default-deny ingress (security/firewall.nix).
+    # MUST stay enabled — with it off, NixOS falls back to the default
+    # iptables firewall, whose rules require xt_pkttype, which cannot load
+    # once security.lockKernelModules pins kernel.modules_disabled to 1.
+    ivali.security.firewall.enable = true;
+
     # Desktop environment: GNOME (Wayland), replaced XFCE (X11) desktop.
     ivali.desktop.gnome.enable = true;
     # Remote desktop (RDP) over Tailscale: opens 3389 on tailscale0 only.

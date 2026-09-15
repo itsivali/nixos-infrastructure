@@ -288,7 +288,10 @@ check_services() {
     "NetworkManager.service"
     "tailscaled.service"
     "blocky.service"
-    "firewall.service"
+    # The repo firewall (security/firewall.nix) runs the nftables backend,
+    # so the enforcing unit is nftables.service (not firewall.service,
+    # which only exists for the legacy iptables backend).
+    "nftables.service"
   )
 
   # Add operations-web-ui if installed

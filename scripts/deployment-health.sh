@@ -283,7 +283,13 @@ check_baseline() {
 ################################################################################
 
 check_services() {
-  local services=("sshd.service" "NetworkManager.service" "tailscaled.service")
+  local services=(
+    "sshd.service"
+    "NetworkManager.service"
+    "tailscaled.service"
+    "blocky.service"
+    "firewall.service"
+  )
 
   # Add operations-web-ui if installed
   if systemctl list-unit-files "operations-web-ui.service" >/dev/null 2>&1; then

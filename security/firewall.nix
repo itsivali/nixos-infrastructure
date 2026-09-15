@@ -139,8 +139,13 @@ in
         # Logging
         ##########################################################
 
-        logRefusedConnections = true;
-        logRefusedPackets = true;
+        # Refused-connection logging is disabled: the NixOS logging rules
+        # rely on the netfilter "pkttype" match (xt_pkttype), which cannot
+        # load once security.lockKernelModules pins kernel.modules_disabled
+        # to 1. Disabling the logging keeps the firewall fully functional
+        # (enforcement is unaffected) and avoids a failed firewall.service.
+        logRefusedConnections = false;
+        logRefusedPackets = false;
       };
 
       ############################################################

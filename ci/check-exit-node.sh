@@ -25,21 +25,21 @@ HOST="prague"
 
 echo "Validating Tailscale exit node configuration for ${HOST}..."
 
-EXIT_NODE_ENABLED="$(nix eval --json ".#nixosConfigurations.${HOST}.config.ivali.tailscale.advertiseExitNode" 2>&1)" || {
+EXIT_NODE_ENABLED="$(nix eval --json ".#nixosConfigurations.${HOST}.config.ivali.tailscale.advertiseExitNode" 2>/dev/null)" || {
   echo "FAIL: could not evaluate ivali.tailscale.advertiseExitNode for ${HOST}" >&2
-  echo "$EXIT_NODE_ENABLED" >&2
+  echo "${EXIT_NODE_ENABLED:-<no output>}" >&2
   exit 1
 }
 
 if [ "$EXIT_NODE_ENABLED" != "true" ]; then
-  echo "FAIL: ivali.tailscale.advertiseExitNode = false but exit node is expected"
+  echo "FAIL: ivali.tailscale.advertiseExitNode evaluated to '${EXIT_NODE_ENABLED}' but exit node is expected"
   exit 1
 fi
 echo "OK:   Tailscale exit node is enabled in config"
 
-CHECK_SCRAPE="$(nix eval --json ".#nixosConfigurations.${HOST}.config.services.prometheus.scrapeConfigs" 2>&1)" || {
+CHECK_SCRAPE="$(nix eval --json ".#nixosConfigurations.${HOST}.config.services.prometheus.scrapeConfigs" 2>/dev/null)" || {
   echo "FAIL: could not evaluate scrapeConfigs for ${HOST}" >&2
-  echo "$CHECK_SCRAPE" >&2
+  echo "${CHECK_SCRAPE:-<no output>}" >&2
   exit 1
 }
 
@@ -50,9 +50,9 @@ else
   exit 1
 fi
 
-TAILSCALE_METRICS="$(nix eval ".#nixosConfigurations.${HOST}.config.systemd.services.tailscale-metrics.enable" 2>&1)" || {
+TAILSCALE_METRICS="$(nix eval ".#nixosConfigurations.${HOST}.config.systemd.services.tailscale-metrics.enable" 2>/dev/null)" || {
   echo "FAIL: could not evaluate tailscale-metrics service for ${HOST}" >&2
-  echo "$TAILSCALE_METRICS" >&2
+  echo "${TAILSCALE_METRICS:-<no output>}" >&2
   exit 1
 }
 
@@ -63,14 +63,14 @@ else
   exit 1
 fi
 
-TAILSCALE_ENABLED="$(nix eval --json ".#nixosConfigurations.${HOST}.config.services.tailscale.enable" 2>&1)" || {
+TAILSCALE_ENABLED="$(nix eval --json ".#nixosConfigurations.${HOST}.config.services.tailscale.enable" 2>/dev/null)" || {
   echo "FAIL: could not evaluate services.tailscale.enable for ${HOST}" >&2
-  echo "$TAILSCALE_ENABLED" >&2
+  echo "${TAILSCALE_ENABLED:-<no output>}" >&2
   exit 1
 }
 
 if [ "$TAILSCALE_ENABLED" != "true" ]; then
-  echo "FAIL: services.tailscale.enable = false but exit node requires Tailscale"
+  echo "FAIL: services.tailscale.enable evaluated to '${TAILSCALE_ENABLED}' but exit node requires Tailscale"
   exit 1
 fi
 echo "OK:   Tailscale service is enabled"

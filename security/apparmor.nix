@@ -61,7 +61,7 @@ let
     # Blocky runs as a DynamicUser with the nixpkgs hardened unit config;
     # this profile additionally limits filesystem reach. Blocklists and
     # upstream queries go over TLS, which requires the system cert store.
-    profile blocky flags=(enforce) attach_disconnected {
+    profile blocky flags=(enforce, attach_disconnected) {
       #include <abstractions/base>
       #include <abstractions/nameservice>
       #include <abstractions/ssl_certs>

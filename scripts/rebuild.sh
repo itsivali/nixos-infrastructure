@@ -277,9 +277,10 @@ sudo nixos-rebuild switch --flake "${REPO_DIR}#${HOST}" --show-trace 2>&1 | whil
   esac
 done || BUILD_EXIT=$?
 
-# If the rebuild exited with code 4, deployment-health failed (non-critical).
+# nixos-rebuild exits 4 when the activation completed but one or more units
+# failed to start (system in a degraded state after the switch).
 if [[ $BUILD_EXIT -eq 4 ]]; then
-  warn "Deployment health check failed — rebuild succeeded but health gate failed"
+  warn "Switch completed but some units failed to start (degraded) — check 'systemctl --failed'"
   BUILD_EXIT=0
 fi
 

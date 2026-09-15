@@ -15,6 +15,8 @@ and self-healing.
 **Primary host:** `prague` (AMD laptop, NixOS 26.11)
 **Owner:** Willis Ivali (`ivali`)
 
+> 📖 **Comprehensive documentation:** See [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md) for a deep dive into the flake architecture, Home Manager structure, security stack, Tailscale zero-trust mesh, Blocky DNS filtering, network-level filtering, the tailnet, self-healing mechanisms, and system autonomy.
+
 ---
 
 ## What This Is
@@ -120,6 +122,8 @@ configuration.nix
 
 ### Control Plane
 
+The system is controlled via Tailscale — no public internet access needed.
+
 ```
 deployment-health.timer (every 5 min)
   └── deployment-health.service
@@ -132,6 +136,13 @@ deployment-health.timer (every 5 min)
                                    ├── on failure → scripts/rollback.sh
                                    └── Telegram + email notifications
 ```
+
+All web services are exposed via Tailscale Serve on port 443:
+- `/grafana/` → Grafana
+- `/prometheus/` → Prometheus
+- `/loki/` → Loki
+- `/health` → Health endpoint (JSON, 11 checks)
+- `/` → Operations Web UI (`ivali api`, port 8080)
 
 ### Repository Tree
 
@@ -178,12 +189,25 @@ deployment-health.timer (every 5 min)
 │   ├── firewall.nix                 # nftables, default deny, Tailscale-only SSH
 │   ├── tailscale.nix                # Tailscale VPN + exit node
 │   ├── hardening.nix                # Kernel/sysctl hardening stack
-│   ├── apparmor.nix                 # AppArmor profiles (CLI, reconciler)
+│   ├── apparmor.nix                 # AppArmor profiles (Blocky, CLI, API)
 │   ├── fail2ban.nix                 # SSHD + nginx jails
 │   ├── sops.nix                     # SOPS secrets with age encryption
 │   ├── sudo.nix                     # Sudo hardening (execWheelOnly, PTY required)
 │   ├── scanning.nix                 # Daily security scans + Prometheus metrics
 │   └── packages.nix                 # Security packages
+│
+├── services/
+│   ├── blocky/                      # DNS proxy & ad-blocker
+│   │   ├── default.nix              # Barrel module
+│   │   └── config.nix               # DNS filtering, upstreams, blocklists, metrics
+│   ├── msmtp/                       # Email relay (SMTP via Office365)
+│   │   ├── config.nix
+│   ├── nginx/                       # Reverse proxy (localhost-only)
+│   │   ├── config.nix, options.nix
+│   ├── postgres/                    # PostgreSQL database
+│   │   ├── config.nix, options.nix
+│   └── redis/                       # Redis key-value store
+│       ├── options.nix, service.nix
 │
 ├── networking/
 │   ├── networkmanager.nix           # NetworkManager
@@ -367,7 +391,11 @@ deployment-health.timer (every 5 min)
 │   └── gitlab-runner-reconcile.sh   # GitLab Runner reconciliation
 │
 ├── docs/
-│   └── observability.md          # Observability stack login & configuration
+│   ├── INFRASTRUCTURE.md          # Comprehensive infrastructure docs (flake, HM, security, tailnet, self-healing, autonomy)
+│   ├── observability.md           # Observability stack login & configuration
+│   ├── STABILIZATION.md           # Stabilization acceptance record
+│   ├── STABILIZATION-MATRIX.md    # Stabilization matrix
+│   └── MIGRATION-READINESS.md     # Migration readiness
 │
 ├── tests/
 │   ├── laptop-smoke.nix             # NixOS VM smoke test
@@ -393,7 +421,9 @@ deployment-health.timer (every 5 min)
     ├── hosts.md                     # Host documentation
     ├── modules.md                   # Module catalog
     ├── troubleshooting.md           # Common issues + fixes
-    └── tailscale-mesh.md            # Tailscale network topology
+    ├── tailscale-mesh.md            # Tailscale network topology
+    └── plans/                       # Generated documentation
+        └── 20260916-infrastructure-deep-dive.md  # Flake, HM, security, tailnet, self-healing, autonomy
 ```
 
 ---
@@ -525,17 +555,74 @@ prague = {
 |-------|-----------|
 | Kernel | `slab_nomerge`, `init_on_alloc/free`, `pti=on`, `vsyscall=none`, `randomize_kstack_offset=on` |
 | Sysctl | `kptr_restrict=2`, `dmesg_restrict=1`, `unprivileged_bpf_disabled=1`, `perf_event_paranoid=3` |
-| Firewall | nftables, default deny inbound, Tailscale-only SSH, ping blocked |
+| Firewall | nftables, default deny inbound, Tailscale-only SSH, ping blocked, opt-in egress filtering |
 | SSH | Password disabled, root disabled, X11 off, Tailscale interface only |
 | Sudo | `execWheelOnly`, 5min timeout, 3 attempts, PTY required |
-| AppArmor | Enabled with profiles for CLI, reconciler |
-| Fail2Ban | SSHD + nginx jails |
-| Secrets | SOPS + age encryption |
-| Scanning | Daily security scans with Prometheus metrics |
+| AppArmor | 3 profiles: Blocky (DNS), ivali-api (control plane), ivali-cli (on-demand) |
+| Fail2Ban | SSHD + nginx jails (exponential ban-time increment up to 168h) |
+| Secrets | SOPS + age encryption (90-day rotation policy) |
+| Scanning | Daily security audit with Prometheus metrics |
+
+### DNS Filtering (Blocky)
+
+Blocky is a privacy-focused DNS proxy with ad/tracker/malware blocking:
+
+- Listens on port 53, restricted to the Tailscale interface (`tailscale0`)
+- Forwards queries to upstream resolvers (Cloudflare, Quad9)
+- Blocks domains from StevenBlack hosts lists (ads, malware, gambling, porn)
+- Supports DoH (HTTPS) and DoT (TLS) upstreams
+- Prometheus metrics on port 4000 (localhost only)
+- AppArmor confined (read-only Nix store, deny /home /root /etc/shadow)
+
+### Egress Filtering
+
+Opt-in default-deny outbound policy on non-Tailscale interfaces:
+
+- Static baseline at build time (DNS resolvers: 1.1.1.1, 9.9.9.9, etc.)
+- Runtime-resolved domains (Nix, GitLab, Git, time servers) via `ivali-egress-refresh` every 5 minutes
+- Exit-node traffic is never filtered (preserves zero-trust overlay)
+
+---
+
+## Tailscale & Zero Trust
+
+The tailnet is the primary communication fabric — a WireGuard overlay network.
+
+| Feature | Description |
+|---------|-------------|
+| **MagicDNS** | Split-DNS via `tailnetDomain = "codlet-trench.ts.net"`. Hosts reachable as `<hostname>.codlet-trench.ts.net` |
+| **Exit Node** | Advertises as exit node — other tailnet members route traffic through this machine |
+| **Tailscale SSH** | Optional — intercepts port-22 from tailnet via ACL rules (bypasses sshd) |
+| **Key Expiry** | Daily check via `tailscale-key-check` service, Prometheus metrics |
+| **Metrics** | Prometheus scrape on `127.0.0.1:9121` — connection status, key expiry, MagicDNS, exit node, peer counts |
+
+All services are exposed via **Tailscale Serve** on port 443 — no public internet access, no open firewall ports.
+
+### The Tailnet Ties Into The System
+
+1. **SSH** — Tailscale-only (port 22 closed on public interfaces)
+2. **Control Plane** — Grafana, Prometheus, Loki, Health endpoint, Operations UI via Tailscale Serve
+3. **DNS Filtering** — Blocky on tailscale0 port 53
+4. **GitOps** — git fetch/pull over Tailscale SSH deploy key
+5. **Secrets** — SOPS decryption via age key on tailnet members only
+6. **Notifications** — Telegram over tailnet, Email via public SMTP
+7. **Exit Node** — Full-tunnel VPN for other tailnet members
+
+See `docs/INFRASTRUCTURE.md` §7 (The Tailnet) for full topology and details.
 
 ---
 
 ## Observability
+
+All services bind to localhost. Access via SSH tunnel or Tailscale Serve:
+
+```bash
+ssh -L 80:localhost:80 prague
+# Grafana:     http://localhost/grafana/
+# Prometheus:  http://localhost/prometheus/
+# Loki:        http://localhost/loki/
+# Health:      http://localhost/health
+```
 
 | Component | Purpose | Port |
 |-----------|---------|------|
@@ -545,19 +632,12 @@ prague = {
 | **Alloy** | Log collection + forwarding | — |
 | **Falco** | Security event detection | — |
 | **OTEL** | OpenTelemetry traces + metrics | 4317/4318 |
-| **Alertmanager** | Alert routing | 9093 |
+| **Alertmanager** | Alert routing (email via Office365) | 9093 |
 | **Health endpoint** | JSON health checks (11 checks) | 9100 |
 | **NixOS exporter** | NixOS-specific Prometheus metrics | 9101 |
-
-All services bind to localhost. Access via SSH tunnel:
-
-```bash
-ssh -L 80:localhost:80 prague
-# Grafana:     http://localhost/grafana/
-# Prometheus:  http://localhost/prometheus/
-# Loki:        http://localhost/loki/
-# Health:      http://localhost/health
-```
+| **Blocky** | DNS proxy metrics (ad-blocking status) | 4000 |
+| **Tailscale metrics** | Connection status, key expiry, exit node | 9121 |
+| **Security scanner** | Daily audit results | 9120 |
 
 ### Alerting
 
@@ -573,6 +653,47 @@ Tailscale key expiry, SLO budget burn. Alerts routed to Telegram via Alertmanage
 | Systemd journal | Persistent |
 
 ---
+
+## Self-Healing
+
+The system heals itself at three levels:
+
+1. **Service-level**: Critical services restart automatically (systemd `Restart = "always"`)
+2. **Health-level**: `deployment-health.service` runs every 5 minutes, checking 11 dimensions (system, network, GitLab, GitOps repo, worktree, Tailscale, NTP, services, disk, generations). On failure → rollback.
+3. **System-level**: `gitops-reconcile.sh` runs every 15 minutes. If post-deploy health check fails → `rollback.sh` → `nixos-rebuild switch --rollback`. Hysteresis (15-min cooldown) prevents thrashing.
+
+Key scripts:
+- `scripts/deployment-health.sh` — 11-check health probe (JSON + human output)
+- `scripts/gitops-reconcile.sh` — full deployment pipeline with retry, corruption recovery, dirty-tree guard
+- `scripts/rollback.sh` — single rollback authority (concurrency lock + hysteresis + post-rollback health gate)
+
+See `docs/INFRASTRUCTURE.md` §8 (Self-Healing) for the complete flow diagram.
+
+---
+
+## System Autonomy
+
+The system operates with minimal human intervention through a GitOps control plane:
+
+```
+Git push → Reconciler (every 15 min) → Build → Deploy → Health check
+                                                          │
+                                          ┌───────────────┤
+                                          │               │
+                                      PASS            FAIL
+                                          │               │
+                                      Done            Rollback → Retry
+```
+
+- **Automatic**: config pulls, health checks, rollbacks, notifications, log rotation, Nix formatting, Wi-Fi profile cleanup, SOPS key checks, security scans
+- **Human**: initial setup, MR review, complex failure diagnosis, SOPS key rotation, host addition
+
+The `ivali` CLI provides observability: `status`, `doctor`, `dashboard`, `reconcile`, `health`, `metrics`, `api`.
+
+See `docs/INFRASTRUCTURE.md` §9 (System Autonomy) for architecture and boundaries.
+
+---
+
 
 ## CI/CD
 
@@ -716,18 +837,26 @@ Runtime secrets at `/run/secrets/` (symlinked by sops-nix).
 
 ## Home Manager
 
+Home Manager manages user-level configuration (shell, dotfiles, packages, services) — complementary to NixOS system-level configuration.
+
 | Module | What It Configures |
 |--------|-------------------|
-| `shell/` | Zsh, Powerlevel10k, FZF, zoxide, direnv, aliases (git, nix, navigation, etc.) |
+| `shell/` | Zsh + Powerlevel10k, FZF, zoxide, direnv, Atuin, aliases (git, nix, navigation, utilities, development, ivali), startup scripts (dashboard, keybindings, completion, options), tools (bat, btop, eza, fastfetch), Bitwarden CLI |
 | `shell/bitwarden/` | Bitwarden CLI integration with fzf search |
-| `git/` | Delta diff, git-lfs, gitui, lazygit |
-| `gnome/` | GNOME Shell settings, extensions, GNOME Console (Gruvbox), MIME handlers |
-| `environment/mime.nix` | XDG MIME default applications |
+| `git/` | Delta diff (gruvbox), git-lfs, gitui, lazygit |
+| `gnome/` | GNOME Shell settings, extensions (tiling, dash), GNOME Console (Gruvbox), MIME handlers, applications |
+| `firefox/` | Firefox (privacy, performance, Sidebery, Gruvbox) |
 | `editors/zed.nix` | Zed editor with Nix/Python/Go/TS extensions |
-| `environment/` | Session variables, XDG paths, packages |
-| `fonts.nix` | Nerd Fonts, MS Office fonts, Noto |
-| `services/` | Auto-format .nix files on change |
-| `theming.nix` | GTK theme |
+| `environment/` | Session variables, XDG paths, MIME types, packages, locale |
+| `fonts.nix` | Nerd Fonts (FiraCode, JetBrainsMono), MS Office fonts, Noto |
+| `theming.nix` | GTK theme (Gruvbox) |
+| `services/` | Auto-format .nix files on change (watchexec + nix fmt) |
+| `cloud/` | OneDrive integration |
+| `launcher/` | Desktop launcher |
+| `audio/` | Audio (PipeWire) |
+| `webapps/` | Edge PWA web apps |
+
+Home Manager is wired into the flake via `home-manager.nixosModules.home-manager` with `useGlobalPkgs = true` and `useUserPackages = true`. State version: `26.11`.
 
 ---
 

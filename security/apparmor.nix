@@ -66,8 +66,11 @@ let
       #include <abstractions/nameservice>
       #include <abstractions/ssl_certs>
 
-      # Nix store: read + mmap-exec. Store binaries exec unconfined.
-      /nix/store/** r,
+      # Nix store: read + mmap. Store binaries exec unconfined.
+      # "m" is required so the dynamic loader can mmap shared libraries
+      # (libresolv.so.2 etc.) — AppArmor otherwise denies file_mmap with
+      # "failed to map segment from shared object" at startup.
+      /nix/store/** rm,
       /nix/store/*/bin/** ux,
 
       # Blocky state/run dirs

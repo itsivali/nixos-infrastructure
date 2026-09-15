@@ -103,7 +103,7 @@ let
       if [ "$needs_gen" = true ]; then
         san=""
         [ -n "$tailnet_domain" ] && san="DNS:$host_name.$tailnet_domain"
-        [ -n "$ts_ip" ] && san="$san${san:+,}IP:$ts_ip"
+        [ -n "$ts_ip" ] && san="$san''${san:+,}IP:$ts_ip"
         [ -z "$san" ] && san="DNS:localhost"
         openssl req -x509 -newkey rsa:2048 -nodes \
           -keyout "$cert_key" -out "$cert" -days 825 \

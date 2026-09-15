@@ -23,14 +23,17 @@
 # * RDP port is opened ONLY on the `tailscale0` interface — the same
 #   pattern used for SSH (see ssh/daemon.nix). The port stays closed on
 #   the public internet.
-# * Credentials are stored in the per-user GNOME keyring. The operator
-#   sets them once with `ivali-remote-desktop credentials` (wrapper around
-#   gnome-remote-desktop's secret setting API, or the GNOME Settings →
-#   Sharing panel).
-# * TLS uses GRD's auto-generated self-signed certificate
-#   (~/.local/share/gnome-remote-desktop/certs/). Self-signed certs are
-#   expected for RDP over an encrypted Tailscale overlay; clients present
-#   a one-time trust prompt.
+# * Credentials are stored in the per-user GNOME keyring. The password is
+#   declared through the repository's SOPS secret (`secrets/rdp.yaml`,
+#   mounted at /run/secrets/rdp_password) and set at each login by the
+#   user-session bootstrap unit (home/gnome/remote-desktop.nix). The
+#   username always tracks the system account. `ivali-remote-desktop
+#   credentials` remains available as a manual override.
+# * TLS uses a self-signed certificate generated (and self-healed) by the
+#   same bootstrap at ~/.local/share/gnome-remote-desktop/certs/. The CN
+#   and SAN track the Tailscale hostname, so the cert survives tailnet IP
+#   changes. Self-signed certs are expected for RDP over an encrypted
+#   Tailscale overlay; clients present a one-time trust prompt.
 #
 # Ownership
 # ---------
@@ -39,11 +42,12 @@
 #
 ##############################################################################
 
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, hostSpec ? { }, ... }:
 
 let
   cfg = config.ivali.desktop.remote-desktop;
   grd = pkgs.gnome-remote-desktop;
+  userName = hostSpec.userName or "ivali";
 in
 {
   options.ivali.desktop.remote-desktop = {
@@ -81,6 +85,16 @@ in
     networking.firewall.interfaces.tailscale0.allowedTCPPorts =
       lib.mkIf cfg.tailscaleOnly [ cfg.port ];
     networking.firewall.allowedTCPPorts = lib.mkIf (!cfg.tailscaleOnly) [ cfg.port ];
+
+    # ── RDP password secret (read by the login bootstrap) ────────────────
+    # The user-session bootstrap unit (home/gnome/remote-desktop.nix)
+    # writes these credentials into the GNOME keyring when a graphical
+    # session starts, so RDP username/password always match the account.
+    sops.secrets.rdp_password = lib.mkIf config.ivali.secrets.enable {
+      sopsFile = ../../secrets/rdp.yaml;
+      owner = userName;
+      mode = "0400";
+    };
 
     # ── Operator helper script (wraps grdctl) ─────────────────────────────
     environment.systemPackages = [

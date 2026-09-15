@@ -47,7 +47,7 @@ declare -A SERVICE_PORTS=(
 
 echo "Evaluating ${HOST} Prometheus scrape targets..."
 
-eval_out="$(nix eval --json ".#nixosConfigurations.${HOST}.config.services.prometheus.scrapeConfigs" 2>&1)" || {
+eval_out="$(nix eval --json ".#nixosConfigurations.${HOST}.config.services.prometheus.scrapeConfigs" 2>/dev/null)" || {
   echo "FAIL: could not evaluate scrapeConfigs for ${HOST}:" >&2
   echo "$eval_out" >&2
   exit 1
@@ -90,7 +90,7 @@ enabled_options="$(nix eval --json ".#nixosConfigurations.${HOST}.config" --appl
   webUI         = cfg.ivali.services.webUI.enable;
   otel          = cfg.ivali.observability.otel.enable;
   scanning      = cfg.ivali.security.scanning.enable;
-}' 2>&1)" || {
+}' 2>/dev/null)" || {
   echo "FAIL: could not evaluate enabled-service options for ${HOST}:" >&2
   echo "$enabled_options" >&2
   exit 1

@@ -160,20 +160,29 @@ jobs:
              [[ "${{ needs.shellcheck.result }}" != "success" ]] || \
              [[ "${{ needs.go-security.result }}" != "success" ]] || \
              [[ "${{ needs.architecture-check.result }}" != "success" ]] || \
-             [[ "${{ needs.nix-checks.result }}" != "success" ]]; then
+             [[ "${{ needs.nix-checks.result }}" != "success" ]] || \
+             [[ "${{ needs.check-scrape-targets.result }}" != "success" ]] || \
+             [[ "${{ needs.check-blocky.result }}" != "success" ]] || \
+             [[ "${{ needs.check-exit-node.result }}" != "success" ]]; then
             echo "Required CI jobs failed"
-            echo "  go-lint:            ${{ needs.go-lint.result }}"
-            echo "  go-test:            ${{ needs.go-test.result }}"
-            echo "  shellcheck:         ${{ needs.shellcheck.result }}"
-            echo "  go-security:        ${{ needs.go-security.result }}"
-            echo "  architecture-check: ${{ needs.architecture-check.result }}"
-            echo "  nix-checks:         ${{ needs.nix-checks.result }}"
+            echo "  go-lint:               ${{ needs.go-lint.result }}"
+            echo "  go-test:               ${{ needs.go-test.result }}"
+            echo "  shellcheck:            ${{ needs.shellcheck.result }}"
+            echo "  go-security:           ${{ needs.go-security.result }}"
+            echo "  architecture-check:    ${{ needs.architecture-check.result }}"
+            echo "  nix-checks:            ${{ needs.nix-checks.result }}"
+            echo "  check-scrape-targets:  ${{ needs.check-scrape-targets.result }}"
+            echo "  check-blocky:          ${{ needs.check-blocky.result }}"
+            echo "  check-exit-node:       ${{ needs.check-exit-node.result }}"
             exit 1
           fi
           echo "All required CI jobs passed"
-          echo "  go-lint:            ${{ needs.go-lint.result }}"
-          echo "  go-test:            ${{ needs.go-test.result }}"
-          echo "  shellcheck:         ${{ needs.shellcheck.result }}"
-          echo "  go-security:        ${{ needs.go-security.result }}"
-          echo "  architecture-check: ${{ needs.architecture-check.result }}"
-          echo "  nix-checks:         ${{ needs.nix-checks.result }}"
+          echo "  go-lint:               ${{ needs.go-lint.result }}"
+          echo "  go-test:               ${{ needs.go-test.result }}"
+          echo "  shellcheck:            ${{ needs.shellcheck.result }}"
+          echo "  go-security:           ${{ needs.go-security.result }}"
+          echo "  architecture-check:    ${{ needs.architecture-check.result }}"
+          echo "  nix-checks:            ${{ needs.nix-checks.result }}"
+          echo "  check-scrape-targets:  ${{ needs.check-scrape-targets.result }}"
+          echo "  check-blocky:          ${{ needs.check-blocky.result }}"
+          echo "  check-exit-node:       ${{ needs.check-exit-node.result }}"

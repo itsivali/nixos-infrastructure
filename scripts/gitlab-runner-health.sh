@@ -65,6 +65,28 @@ readonly GITLAB_TOKEN="${GITLAB_TOKEN:-$(cat "${GITLAB_TOKEN_FILE:-/run/secrets/
 readonly CURL_TIMEOUT=10
 
 ################################################################################
+## safe.directory for the GitOps worktree
+################################################################################
+#
+# git 2.35+ (and nix via libgit2) refuse to operate on any repository that is
+# not owned by the current user unless the path is explicitly listed in
+# safe.directory. $WORKTREE is checked out by the GitOps user while this
+# service runs as root, so without this entry both `git rev-parse` and
+# `nix flake metadata` fail with an ownership error.
+#
+# The entry lives in this service's $HOME (/var/lib/gitlab-runner-health, the
+# dedicated writable state dir) so neither the system gitconfig nor the
+# shared-services config is mutated. libgit2 reads $HOME/.gitconfig directly;
+# GIT_CONFIG_GLOBAL pins the same file for git.
+################################################################################
+
+mkdir -p "$HOME"
+if ! git config --file "$HOME/.gitconfig" --get-all safe.directory 2>/dev/null | grep -Fxq "$WORKTREE"; then
+    git config --file "$HOME/.gitconfig" --add safe.directory "$WORKTREE"
+fi
+export GIT_CONFIG_GLOBAL="$HOME/.gitconfig"
+
+################################################################################
 ## Statistics
 ################################################################################
 
@@ -435,7 +457,7 @@ log "Failures           : ${FAIL}"
 ## Write JSON state
 ################################################################################
 
-STATE_FILE="/var/lib/gitlab-runner/health-state.json"
+STATE_FILE="/var/lib/gitlab-runner-health/health-state.json"
 mkdir -p "$(dirname "$STATE_FILE")"
 
 cat > "$STATE_FILE" <<EOF

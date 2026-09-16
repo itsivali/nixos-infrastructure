@@ -231,6 +231,10 @@ in
         # once for mic + once for camera, and GNOME re-prompts via the
         # portal. This cannot be pre-approved declaratively.
         "media.navigator.permission.device" = true;
+        # Explicitly enable camera and microphone (true by default, but
+        # ensures no future Firefox default change breaks Meet/Zoom).
+        "media.getusermedia.camera.enabled" = true;
+        "media.getusermedia.microphone.enabled" = true;
         # Autoplay policy: block with exception for media
         "media.autoplay.default" = 5;
         # DRM (Widevine) for streaming services

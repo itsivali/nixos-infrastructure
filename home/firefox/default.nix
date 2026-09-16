@@ -275,6 +275,13 @@ in
         # ensures no future Firefox default change breaks Meet/Zoom).
         "media.getusermedia.camera.enabled" = true;
         "media.getusermedia.microphone.enabled" = true;
+        # Lower content process sandbox from level 4 (default on Linux) to
+        # level 3 to allow camera/mic device file access (/dev/video*,
+        # PipeWire nodes). Level 4 blocks device file access entirely,
+        # which is why Google Meet cannot access the camera despite
+        # correct Enterprise Policies and user.js settings. Level 3
+        # maintains strong security while permitting hardware access.
+        "security.sandbox.content.level" = 3;
         # Autoplay policy: block with exception for media
         "media.autoplay.default" = 5;
         # DRM (Widevine) for streaming services

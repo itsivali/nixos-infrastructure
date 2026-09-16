@@ -114,6 +114,14 @@ go-security:
       sast: gosec-results.sarif
     expire_in: 7 days
 
+gitleaks:
+  stage: security
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - nix run nixpkgs#gitleaks -- detect --no-git --source . --verbose
+
 # ── Check ─────────────────────────────────────────────────────────────────
 
 nix-flake-check:

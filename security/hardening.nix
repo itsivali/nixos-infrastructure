@@ -46,8 +46,9 @@
       '';
     };
 
-    audit.enable = false;
-    auditd.enable = false;
+    # auditd is managed by security/audit.nix via ivali.security.audit.enable.
+    # Do NOT disable auditd here — see security/audit.nix for the authoritative
+    # enable/disable gate and audit rules.
 
     pam = {
       services = {

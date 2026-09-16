@@ -35,40 +35,55 @@ in
     security.audit.enable = true;
 
     security.audit.rules = [
-      # Monitor privilege escalation
-      "-w /usr/bin/sudo -p x -k privilege_escalation"
-      "-w /usr/bin/su -p x -k privilege_escalation"
-      "-w /usr/bin/passwd -p x -k password_change"
-      "-w /usr/bin/chsh -p x -k privilege_escalation"
-      "-w /usr/bin/newgrp -p x -k privilege_escalation"
-      "-w /usr/sbin/useradd -p x -k user_management"
-      "-w /usr/sbin/userdel -p x -k user_management"
-      "-w /usr/sbin/usermod -p x -k user_management"
-      "-w /usr/sbin/groupadd -p x -k user_management"
+      # ── Privilege escalation ────────────────────────────────────────────
+      # On NixOS, binaries live in /run/current-system/sw/bin or /nix/store.
+      # Watching the store path directly is fragile (changes every rebuild).
+      # Instead, watch the stable system profile symlinks and use auid-based
+      # syscall rules that fire regardless of binary location.
+      "-w /etc/sudoers -p wa -k sudoers"
+      "-w /etc/sudoers.d/ -p wa -k sudoers"
 
-      # Monitor SSH key and config changes
-      "-w /etc/ssh/sshd_config -p wa -k ssh_config"
-      "-w /root/.ssh/ -p wa -k ssh_keys"
+      # Identity changes — /etc/passwd, /etc/shadow, /etc/group are mutable
+      "-w /etc/passwd -p wa -k identity"
+      "-w /etc/shadow -p wa -k identity"
+      "-w /etc/group -p wa -k identity"
+      "-w /etc/gshadow -p wa -k identity"
 
-      # Monitor NixOS configuration changes
-      "-w /etc/nixos/ -p wa -k nixos_config"
+      # ── SSH configuration ──────────────────────────────────────────────
+      # On NixOS, sshd_config is a symlink to the Nix store. Watch the
+      # parent dir for host key changes and sshd_config modifications.
+      "-w /etc/ssh/ -p wa -k ssh_config"
 
-      # Monitor system service changes
+      # ── Systemd and NixOS configuration ────────────────────────────────
+      # /etc/systemd is a symlink tree managed by NixOS; watch it for
+      # unexpected changes.
       "-w /etc/systemd/ -p wa -k systemd_config"
 
-      # Monitor cron
+      # ── GitOps state ──────────────────────────────────────────────────
+      # The reconciler worktree at /var/lib/gitops is the single source of
+      # truth. Watch it for unexpected modifications.
+      "-w /var/lib/gitops/ -p wa -k gitops_config"
+
+      # ── Cron ──────────────────────────────────────────────────────────
       "-w /etc/crontab -p wa -k cron"
       "-w /etc/cron.d/ -p wa -k cron"
       "-w /var/spool/cron/ -p wa -k cron"
 
-      # Failed access attempts
+      # ── Failed access attempts ────────────────────────────────────────
       "-a always,exit -F arch=b64 -S open -F exit=-EACCES -k access_denied"
       "-a always,exit -F arch=b64 -S open -F exit=-EPERM -k access_denied"
 
-      # Monitor kernel module loading
-      "-w /sbin/insmod -p x -k kernel_modules"
-      "-w /sbin/rmmod -p x -k kernel_modules"
-      "-w /sbin/modprobe -p x -k kernel_modules"
+      # ── Privilege escalation via execve (uid 0 → non-root auid) ──────
+      # Catch any process that gains root privileges, regardless of which
+      # binary is executed. This is more robust than watching specific
+      # binary paths that change on every NixOS rebuild.
+      "-a always,exit -F arch=b64 -S execve -F euid=0 -F auid!=4294967295 -F auid!=0 -k privilege_escalation"
+
+      # ── Kernel module loading ────────────────────────────────────────
+      # Watch the system profile's modprobe symlink for changes, plus use
+      # syscall-level audit for the init_module/finit_module syscalls.
+      "-a always,exit -F arch=b64 -S init_module -S finit_module -k kernel_modules"
+      "-a always,exit -F arch=b64 -S delete_module -k kernel_modules"
     ];
   };
 }

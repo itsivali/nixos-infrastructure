@@ -41,8 +41,20 @@ echo "════════════════════════�
 echo
 
 echo "── Firefox Enterprise Policy ──"
-POLICY_FILE="/etc/firefox/policies/policies.json"
-if [[ -f "$POLICY_FILE" ]]; then
+# Check both Home Manager path and legacy /etc/firefox path
+POLICY_PATHS=(
+  "/etc/profiles/per-user/ivali/lib/firefox/distribution/policies.json"
+  "/etc/firefox/policies/policies.json"
+)
+POLICY_FILE=""
+for path in "${POLICY_PATHS[@]}"; do
+  if [[ -f "$path" ]]; then
+    POLICY_FILE="$path"
+    break
+  fi
+done
+
+if [[ -n "$POLICY_FILE" ]]; then
   ok "policy-file" "exists: $POLICY_FILE"
   if have jq; then
     if jq -e '.policies.Permissions.Camera' "$POLICY_FILE" >/dev/null 2>&1; then
@@ -59,7 +71,10 @@ if [[ -f "$POLICY_FILE" ]]; then
     warn "policy-parse" "jq not installed, cannot validate policy JSON"
   fi
 else
-  fail "policy-file" "NOT found at $POLICY_FILE"
+  fail "policy-file" "NOT found at any expected path:"
+  for path in "${POLICY_PATHS[@]}"; do
+    echo "    - $path"
+  done
 fi
 
 echo
@@ -76,8 +91,9 @@ if [[ -L "${FIREFOX_BIN:-/nonexistent}" ]]; then
   LINK_TARGET="$(readlink -f "$FIREFOX_BIN" 2>/dev/null || echo "")"
   if [[ "$LINK_TARGET" == *"/nix/store/"* ]]; then
     ok "firefox-nix" "Nix store path: ${LINK_TARGET:0:60}..."
-    echo "  NOTE: Nix-wrapped Firefox reads /etc/firefox/policies/policies.json"
-    echo "        for system-wide Enterprise Policies."
+    echo "  NOTE: Nix-wrapped Firefox reads policies from its distribution/"
+    echo "        directory in the Nix store, NOT from /etc/firefox/policies/."
+    echo "        Home Manager deploys policies via programs.firefox.policies."
   fi
 fi
 

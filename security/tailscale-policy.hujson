@@ -1,0 +1,45 @@
+{
+  "tagOwners": {
+    "tag:admin": ["group:admin"],
+    "tag:infra": ["group:admin"],
+    "tag:personal": ["autogroup:member"],
+    "tag:exit-node": ["tag:admin"],
+    "tag:server": ["tag:admin"],
+    "tag:laptop": ["tag:admin"]
+  },
+  "ssh": [
+    {
+      "action": "accept",
+      "src": ["group:admin"],
+      "dst": ["autogroup:self"],
+      "users": ["autogroup:nonroot", "root"]
+    }
+  ],
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["tag:infra"],
+      "dst": ["tag:infra:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["group:admin"],
+      "dst": ["tag:infra:22,80"]
+    },
+    {
+      "action": "accept",
+      "src": ["tag:personal"],
+      "dst": ["tag:personal:*"]
+    },
+    {
+      "action": "accept",
+      "src": ["autogroup:internet"],
+      "dst": ["autogroup:internet:53"]
+    },
+    {
+      "action": "accept",
+      "src": ["autogroup:internet"],
+      "dst": ["autogroup:internet:443"]
+    }
+  ]
+}

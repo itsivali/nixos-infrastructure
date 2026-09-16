@@ -146,6 +146,46 @@ in
       '';
     });
 
+    # Enterprise Policies — camera/mic/screen-share auto-allow for conferencing
+    # sites.  Deployed via Home Manager's Firefox wrapper (NOT environment.etc)
+    # because the Nix-wrapped Firefox reads policies from its own
+    # distribution/policies.json in the Nix store, not from /etc/firefox/.
+    # See desktop/common/firefox-policies.nix for the old (broken) approach.
+    policies = {
+      Permissions = {
+        Camera = {
+          Allow = [
+            "https://meet.google.com"
+            "https://teams.microsoft.com"
+            "https://slack.com"
+            "https://discord.com"
+            "https://zoom.us"
+          ];
+          BlockNewRequests = false;
+        };
+        Microphone = {
+          Allow = [
+            "https://meet.google.com"
+            "https://teams.microsoft.com"
+            "https://slack.com"
+            "https://discord.com"
+            "https://zoom.us"
+          ];
+          BlockNewRequests = false;
+        };
+        ScreenShare = {
+          Allow = [
+            "https://meet.google.com"
+            "https://teams.microsoft.com"
+            "https://slack.com"
+            "https://discord.com"
+            "https://zoom.us"
+          ];
+          BlockNewRequests = false;
+        };
+      };
+    };
+
     # This Home Manager / nixpkgs combo defaults configPath to
     # ~/.config/mozilla/firefox, but the nixpkgs Firefox binary actually
     # stores its profiles under ~/.mozilla/firefox. Override so HM-managed
@@ -365,10 +405,9 @@ in
   # helper re-derives it from the xpi's install manifest).
   #
   # NOTE: Firefox Enterprise Policies (Camera, Microphone, ScreenShare) are
-  # now installed system-wide via desktop/common/firefox-policies.nix to
-  # /etc/firefox/policies/policies.json. The previous approach wrote
-  # policies.json into the Firefox profile directory which is NOT read by
-  # Firefox for Enterprise Policies.
+  # now deployed via Home Manager's programs.firefox.policies (see above).
+  # The Nix-wrapped Firefox reads policies from its own distribution/
+  # directory in the Nix store, NOT from /etc/firefox/policies/policies.json.
   home.file = lib.mkMerge (lib.mapAttrsToList
     (n: a: {
       ".mozilla/firefox/ivali/extensions/${a.id}.xpi" = {

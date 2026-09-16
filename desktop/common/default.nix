@@ -32,6 +32,5 @@
     ./gpu.nix
     ./packages.nix
     ./portals.nix
-    ./firefox-policies.nix
   ];
 }

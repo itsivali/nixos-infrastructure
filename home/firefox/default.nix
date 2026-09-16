@@ -360,59 +360,17 @@ in
   # enabled on first launch. Sidebery's id is "nixos@sidebery" (the fetch
   # helper re-derives it from the xpi's install manifest).
   #
-  # Origin-specific permission policies ensure WebRTC conferencing apps
-  # (Meet, Teams, Slack, Discord, Zoom, Office web) can access camera,
-  # microphone, and screen sharing without weakening global privacy
-  # settings.
-  home.file = lib.mkMerge ((lib.mapAttrsToList
+  # NOTE: Firefox Enterprise Policies (Camera, Microphone, ScreenShare) are
+  # now installed system-wide via desktop/common/firefox-policies.nix to
+  # /etc/firefox/policies/policies.json. The previous approach wrote
+  # policies.json into the Firefox profile directory which is NOT read by
+  # Firefox for Enterprise Policies.
+  home.file = lib.mkMerge (lib.mapAttrsToList
     (n: a: {
       ".mozilla/firefox/ivali/extensions/${a.id}.xpi" = {
         source = "${a.pkg}/${a.id}.xpi";
         force = true;
       };
     })
-    addons) ++ [
-    {
-      ".mozilla/firefox/ivali/policies/policies.json" = {
-        text = builtins.toJSON {
-          policies = {
-            Permissions = {
-              Camera = {
-                Allow = [
-                  "https://meet.google.com"
-                  "https://teams.microsoft.com"
-                  "https://slack.com"
-                  "https://discord.com"
-                  "https://zoom.us"
-                  "https://www.office.com"
-                ];
-                BlockNewRequests = false;
-              };
-              Microphone = {
-                Allow = [
-                  "https://meet.google.com"
-                  "https://teams.microsoft.com"
-                  "https://slack.com"
-                  "https://discord.com"
-                  "https://zoom.us"
-                  "https://www.office.com"
-                ];
-                BlockNewRequests = false;
-              };
-              DesktopCapture = {
-                Allow = [
-                  "https://meet.google.com"
-                  "https://teams.microsoft.com"
-                  "https://slack.com"
-                  "https://zoom.us"
-                ];
-                BlockNewRequests = false;
-              };
-            };
-          };
-        };
-        force = true;
-      };
-    }
-  ]);
+    addons);
 }

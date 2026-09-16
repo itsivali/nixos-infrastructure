@@ -92,7 +92,6 @@
         # AMD
         ##########################################################
         "amdgpu.dc=1"
-        "amdgpu.audio=0"
         "acpi_backlight=native"
         "acpi_osi=Linux"
         "amd_iommu=on"

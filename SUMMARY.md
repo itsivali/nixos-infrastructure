@@ -168,7 +168,7 @@ Prometheus ─→ node exporter ──────────┘
 | **zRAM** | Enabled, zstd compression, 100% RAM |
 | **Swappiness** | 180 (aggressive) |
 | **Network** | BBR congestion control, `fq` queuing |
-| **AMD GPU** | `amdgpu.dc=1`, `amdgpu.audio=0` |
+| **AMD GPU** | `amdgpu.dc=1` (DisplayPort/HDMI audio via PipeWire) |
 | **Security** | IOMMU, module lockdown, kernel image protection |
 | **TPM** | Blacklisted (tpm_crb fails with EBUSY — eliminates ~3min boot delay) |
 | **USB** | Runtime autosuspend disabled (prevents controller suspension) |

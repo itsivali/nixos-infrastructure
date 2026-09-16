@@ -117,18 +117,18 @@ in
         # Public Internet — Inbound
         ##########################################################
 
-        allowedTCPPorts = [
-          # LocalSend
-          53317
-        ];
+        # LocalSend is NOT in the global allowedTCPPorts/allowedUDPPorts
+        # because it should not be exposed on every interface (especially
+        # not on tailscale0 or the public internet). Instead, LocalSend
+        # is opened via a custom nftables rule below that restricts it
+        # to non-Tailscale interfaces (LAN and loopback).
+
+        allowedTCPPorts = [ ];
 
         allowedUDPPorts =
           [
             # Tailscale WireGuard
             41641
-
-            # LocalSend
-            53317
           ]
           ++ lib.optionals tsAdvertiseExitNode [
             # STUN
@@ -149,6 +149,13 @@ in
       };
 
       ############################################################
+      # LOCALSEND — LAN-only (not on tailscale0 or public internet)
+      ############################################################
+      # LocalSend uses TCP+UDP 53317 for file transfer. These rules
+      # allow it on every interface EXCEPT tailscale0, so it works
+      # on the LAN (WiFi/Ethernet) but stays closed on the Tailscale
+      # overlay and any public-facing interface.
+      #
       # EGRESS FILTERING — real nftables enforcement
       ############################################################
       #
@@ -167,72 +174,86 @@ in
       # already handles this via checkReversePath).
       ############################################################
 
-      nftables.ruleset = lib.mkIf cfg.enableEgressFiltering ''
-        table inet ivali-egress {
-          # Build-time static baseline — hosts that never need DNS.
-          set allowed_static_v4 {
-            type ipv4_addr
-            flags interval
-            elements = {
-              ${lib.concatStringsSep ",\n                " (map (ip: "${ip}") egressIpsV4)}
+      nftables.ruleset = lib.mkMerge [
+        # LocalSend — always active regardless of egress filtering
+        ''
+          table inet nixos {
+            chain input {
+              # LocalSend: allow on non-Tailscale interfaces only
+              iifname != "tailscale0" tcp dport 53317 accept comment "LocalSend TCP"
+              iifname != "tailscale0" udp dport 53317 accept comment "LocalSend UDP"
             }
           }
+        ''
 
-          set allowed_static_v6 {
-            type ipv6_addr
-            flags interval
-            elements = {
-              ${lib.concatStringsSep ",\n                " (map (ip: "${ip}") egressIpsV6)}
+        # Egress filtering — enabled via ivali.security.firewall.enableEgressFiltering
+        (lib.mkIf cfg.enableEgressFiltering ''
+            table inet ivali-egress {
+            # Build-time static baseline — hosts that never need DNS.
+            set allowed_static_v4 {
+              type ipv4_addr
+              flags interval
+              elements = {
+                ${lib.concatStringsSep ",\n                " (map (ip: "${ip}") egressIpsV4)}
+              }
+            }
+
+            set allowed_static_v6 {
+              type ipv6_addr
+              flags interval
+              elements = {
+                ${lib.concatStringsSep ",\n                " (map (ip: "${ip}") egressIpsV6)}
+              }
+            }
+
+            # Runtime set — populated by ivali-egress-refresh. Starts empty so
+            # the ruleset loads cleanly even before the first DNS resolution.
+            set allowed_runtime_v4 {
+              type ipv4_addr
+              flags interval
+              elements = { }
+            }
+
+            set allowed_runtime_v6 {
+              type ipv6_addr
+              flags interval
+              elements = { }
+            }
+
+            # Default-deny outbound on every interface EXCEPT tailscale0.
+            # The tailnet is a private trust boundary and must not be filtered.
+            chain egress {
+              type filter hook output priority filter;
+
+              # Always allow loopback and link-local.
+              ip daddr 127.0.0.0/8 accept
+              ip daddr 169.254.0.0/16 accept
+              ip6 daddr ::1/128 accept
+              ip6 daddr fe80::/10 accept
+              ip6 daddr ff00::/8 accept
+
+              # Always allow Tailscale — zero-trust overlay, exit node, MagicDNS.
+              ip daddr 100.64.0.0/10 accept
+              ip6 daddr 100::/64 accept
+
+              # Always allow DNS resolvers (needed to resolve the allowed set).
+              ip daddr { 1.1.1.1, 1.0.0.1, 9.9.9.9, 9.9.10.10, 8.8.8.8 } accept
+              ip6 daddr { 2606:4700:4700::1111, 2606:4700:4700::1001,
+                          2001:4860:4860::8888, 2001:4860:4860::8844 } accept
+              udp dport 53 accept
+              tcp dport 53 accept
+
+              # Allow the static baseline and the runtime-resolved domains.
+              ip daddr { @allowed_static_v4, @allowed_runtime_v4 } accept
+              ip6 daddr { @allowed_static_v6, @allowed_runtime_v6 } accept
+
+              # Default deny — log and drop.
+              log prefix "ivali-egress-deny: " counter
+              drop
             }
           }
-
-          # Runtime set — populated by ivali-egress-refresh. Starts empty so
-          # the ruleset loads cleanly even before the first DNS resolution.
-          set allowed_runtime_v4 {
-            type ipv4_addr
-            flags interval
-            elements = { }
-          }
-
-          set allowed_runtime_v6 {
-            type ipv6_addr
-            flags interval
-            elements = { }
-          }
-
-          # Default-deny outbound on every interface EXCEPT tailscale0.
-          # The tailnet is a private trust boundary and must not be filtered.
-          chain egress {
-            type filter hook output priority filter;
-
-            # Always allow loopback and link-local.
-            ip daddr 127.0.0.0/8 accept
-            ip daddr 169.254.0.0/16 accept
-            ip6 daddr ::1/128 accept
-            ip6 daddr fe80::/10 accept
-            ip6 daddr ff00::/8 accept
-
-            # Always allow Tailscale — zero-trust overlay, exit node, MagicDNS.
-            ip daddr 100.64.0.0/10 accept
-            ip6 daddr 100::/64 accept
-
-            # Always allow DNS resolvers (needed to resolve the allowed set).
-            ip daddr { 1.1.1.1, 1.0.0.1, 9.9.9.9, 9.9.10.10, 8.8.8.8 } accept
-            ip6 daddr { 2606:4700:4700::1111, 2606:4700:4700::1001,
-                        2001:4860:4860::8888, 2001:4860:4860::8844 } accept
-            udp dport 53 accept
-            tcp dport 53 accept
-
-            # Allow the static baseline and the runtime-resolved domains.
-            ip daddr { @allowed_static_v4, @allowed_runtime_v4 } accept
-            ip6 daddr { @allowed_static_v6, @allowed_runtime_v6 } accept
-
-            # Default deny — log and drop.
-            log prefix "ivali-egress-deny: " counter
-            drop
-          }
-        }
-      '';
+        '')
+      ];
     };
 
     ############################################################

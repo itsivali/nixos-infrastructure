@@ -164,7 +164,8 @@ PROFILE_DIR="${HOME}/.mozilla/firefox"
 if [[ -d "$PROFILE_DIR" ]]; then
   ok "firefox-profile" "profile directory exists: $PROFILE_DIR"
   # Check for permission database (stores camera/mic grants/denials)
-  PERM_DB="${PROFILE_DIR}/permissions.sqlite"
+  # The ivali profile is in a subdirectory
+  PERM_DB="${PROFILE_DIR}/ivali/permissions.sqlite"
   if [[ -f "$PERM_DB" ]]; then
     ok "permissions-db" "permissions.sqlite exists"
     if have sqlite3; then
@@ -191,10 +192,12 @@ fi
 
 echo
 echo "── Kernel Camera Module ──"
-if lsmod 2>/dev/null | grep -q "uvcvideo"; then
+if lsmod 2>/dev/null | grep -q "^uvcvideo"; then
   ok "uvcvideo" "loaded"
+elif modinfo uvcvideo >/dev/null 2>&1; then
+  warn "uvcvideo" "available but not loaded (may be built into kernel)"
 else
-  warn "uvcvideo" "not loaded — UVC webcam driver may not be available"
+  warn "uvcvideo" "not available — UVC webcam driver may not be available"
 fi
 
 if lsmod 2>/dev/null | grep -q "v4l2loopback"; then

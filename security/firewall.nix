@@ -117,11 +117,11 @@ in
         # Public Internet — Inbound
         ##########################################################
 
-        # LocalSend is NOT in the global allowedTCPPorts/allowedUDPPorts
+        # LocalSend is not in the global allowedTCPPorts/allowedUDPPorts
         # because it should not be exposed on every interface (especially
-        # not on tailscale0 or the public internet). Instead, LocalSend
+        # not on public internet). Instead, LocalSend
         # is opened via a custom nftables rule below that restricts it
-        # to non-Tailscale interfaces (LAN and loopback).
+        # to the Tailscale overlay only.
 
         allowedTCPPorts = [ ];
 
@@ -149,12 +149,12 @@ in
       };
 
       ############################################################
-      # LOCALSEND — LAN-only (not on tailscale0 or public internet)
+      # LOCALSEND — Tailscale only
       ############################################################
       # LocalSend uses TCP+UDP 53317 for file transfer. These rules
-      # allow it on every interface EXCEPT tailscale0, so it works
-      # on the LAN (WiFi/Ethernet) but stays closed on the Tailscale
-      # overlay and any public-facing interface.
+      # allow it on tailscale0 only, so it works
+      # exclusively over the Tailscale overlay.
+      # It is NOT exposed on LAN or public interfaces.
       #
       # EGRESS FILTERING — real nftables enforcement
       ############################################################
@@ -179,9 +179,9 @@ in
         ''
           table inet nixos {
             chain input {
-              # LocalSend: allow on non-Tailscale interfaces only
-              iifname != "tailscale0" tcp dport 53317 accept comment "LocalSend TCP"
-              iifname != "tailscale0" udp dport 53317 accept comment "LocalSend UDP"
+              # LocalSend: allow on Tailscale interface only
+              iifname == "tailscale0" tcp dport 53317 accept comment "LocalSend TCP"
+              iifname == "tailscale0" udp dport 53317 accept comment "LocalSend UDP"
             }
           }
         ''

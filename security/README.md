@@ -8,7 +8,7 @@ This directory contains all NixOS security modules for the nixos-infrastructure 
 |--------|---------|-------|
 | `audit.nix` | auditd rules for privilege escalation, identity changes, SSH config, kernel modules | `ivali.security.audit` |
 | `apparmor.nix` | Mandatory Access Control profiles | `ivali.security.apparmor` |
-| `firewall.nix` | nftables firewall, egress filtering, LocalSend LAN-only rules | `ivali.security.firewall` |
+| `firewall.nix` | nftables firewall, egress filtering, LocalSend Tailscale-only rules | `ivali.security.firewall` |
 | `hardening.nix` | Kernel protection, PAM, coredump, Polkit hardening | `ivali.security.hardening` |
 | `packages.nix` | Security utility packages | `ivali.security.packages` |
 | `sudo.nix` | Sudo hardening and configuration | `ivali.security.sudo` |
@@ -25,8 +25,8 @@ This directory contains all NixOS security modules for the nixos-infrastructure 
 | 80/tcp | TCP | IN | tailscale0 only | Grafana (Nginx reverse proxy) |
 | 3478/udp | UDP | IN | All | STUN (Tailscale exit node) |
 | 41641/udp | UDP | IN | All | Tailscale WireGuard |
-| 53317/tcp | TCP | IN | LAN only (not tailscale0) | LocalSend file transfer |
-| 53317/udp | UDP | IN | LAN only (not tailscale0) | LocalSend discovery |
+| 53317/tcp | TCP | IN | tailscale0 only | LocalSend file transfer |
+| 53317/udp | UDP | IN | tailscale0 only | LocalSend discovery |
 
 ## Audit Rules
 
@@ -61,7 +61,7 @@ Apply via: `tailscale up --reset` (requires admin auth key)
 ## Firewall Architecture
 
 - **Default policy**: Drop all inbound, allow all outbound
-- **LocalSend**: TCP+UDP 53317 on LAN only (not tailscale0)
+- **LocalSend**: TCP+UDP 53317 on tailscale0 only (Tailscale-only file sharing)
 - **Egress filtering**: Optional default-deny outbound on non-Tailscale interfaces
 - **Logging**: Disabled (incompatible with `security.lockKernelModules`)
 

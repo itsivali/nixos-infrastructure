@@ -1,936 +1,1578 @@
-# nixos-infrastructure
+# Ivali NixOS Infrastructure
 
 [![CI](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml)
-[![Go Lint](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-lint&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-lint)
-[![Go Tests](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-test&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-test)
-[![Shell Lint](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=shellcheck&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ashellcheck)
-[![Security Scan](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-security&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-security)
+[![Go Lint](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-lint\&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-lint)
+[![Go Tests](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-test\&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-test)
+[![Shell Lint](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=shellcheck\&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ashellcheck)
+[![Security Scan](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml/badge.svg?job=go-security\&branch=main)](https://github.com/itsivali/nixos-infrastructure/actions/workflows/ci.yml?query=job%3Ago-security)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![NixOS 26.11](https://img.shields.io/badge/NixOS-26.11-blue.svg)](https://nixos.org)
 [![Go 1.26](https://img.shields.io/badge/Go-1.26-00ADD8.svg)](https://go.dev)
 
-Autonomous NixOS infrastructure for a single-user laptop — declarative, reproducible,
-and self-healing.
+**Declarative NixOS infrastructure for the Ivali platform.**
 
-**Primary host:** `prague` (AMD laptop, NixOS 26.11)
-**Owner:** Willis Ivali (`ivali`)
+Reproducible. Secure. Observable. Testable. Recoverable. Operable.
 
-> 📖 **Comprehensive documentation:** See [`docs/INFRASTRUCTURE.md`](docs/INFRASTRUCTURE.md) for a deep dive into the flake architecture, Home Manager structure, security stack, Tailscale zero-trust mesh, Blocky DNS filtering, network-level filtering, the tailnet, self-healing mechanisms, and system autonomy.
-
----
-
-## What This Is
-
-A fully declarative NixOS system. Every aspect of the machine — kernel, firewall,
-desktop, services, user environment, secrets, monitoring — is described in this
-repository and applied through `nixos-rebuild`. The system manages itself through a
-GitOps control plane: it pulls changes, builds, deploys, and rolls back on failure.
-
-The codebase spans **220+ Nix modules**, **166 Go files**, and **79 shell scripts** —
-all wired together through a zero-touch auto-import module system.
+**Primary host:** `prague`
+**Primary user:** `ivali`
+**Operating system:** NixOS 26.11
+**Desktop:** KDE Plasma / Wayland
+**Architecture:** `x86_64-linux`
+**Control plane:** Go
+**Infrastructure model:** Declarative NixOS + Home Manager + GitOps + SRE principles
 
 ---
 
-## Features
+## Table of Contents
 
-| Area | What's Included |
-|------|----------------|
-| **Desktop** | GNOME on Wayland, GTK/GNOME applications, GDM login, AMD GPU acceleration, power management, Bluetooth |
-| **Kernel** | `linuxPackages_zen` (zen kernel — RTL8821CE wifi via in-kernel rtw88), custom sysctl hardening, zRAM with zstd compression |
-| **Security** | nftables firewall, AppArmor, fail2ban, Tailscale-only SSH, kernel hardening |
-| **Networking** | NetworkManager, systemd-resolved (DoT), Tailscale with exit node, BBR |
-| **SSH** | Passwordless, Tailscale-only, ShellFish-compatible |
-| **Developer** | Go, Node 22, Python 3.13, Flutter/Dart, Nix formatter |
-| **Observability** | Grafana, Prometheus, Loki, Alloy, Falco, OTEL, SLO tracking, alerting |
-| **GitOps** | Self-healing health monitor, automated reconciler, rollback on failure |
-| **Go CLI** | `ivali` — repository management, health checks, dashboard, bootstrapping |
-| **Secrets** | SOPS-encrypted with age (Tailscale, SMTP, Grafana, GitLab) |
-| **Home Manager** | Zsh + Powerlevel10k, FZF, zoxide, direnv, Zed editor, Bitwarden, Nerd Fonts |
-| **CI/CD** | GitLab source of truth + GitHub Actions mirror (validates, posts status to GitLab); deploy via GitOps reconciler |
-| **Notifications** | Email alerts via Office365 SMTP (Alertmanager, deployment results, health failures, security scans) |
-| **Control Plane** | Operations Web UI over Tailscale Serve (deploy, rollback, services, health, audit log) |
-| **Storage** | BTRFS, encrypted swap, aggressive zRAM |
-| **Packages** | Separate CLI and desktop package sets |
+* [What This Repository Is](#what-this-repository-is)
+* [Engineering Principles](#engineering-principles)
+* [Architecture at a Glance](#architecture-at-a-glance)
+* [Technology Stack](#technology-stack)
+* [Repository Structure](#repository-structure)
+* [NixOS Architecture](#nixos-architecture)
+* [KDE Desktop Architecture](#kde-desktop-architecture)
+* [Linux and System Architecture](#linux-and-system-architecture)
+* [Control Plane](#control-plane)
+* [GitOps and Deployment](#gitops-and-deployment)
+* [Testing and Verification](#testing-and-verification)
+* [Security](#security)
+* [Networking and Tailscale](#networking-and-tailscale)
+* [Observability and SRE](#observability-and-sre)
+* [Recovery and Self-Healing](#recovery-and-self-healing)
+* [Secrets](#secrets)
+* [Home Manager](#home-manager)
+* [AI Engineering](#ai-engineering)
+* [Development Workflow](#development-workflow)
+* [Installation](#installation)
+* [Daily Operations](#daily-operations)
+* [Host Management](#host-management)
+* [Documentation](#documentation)
+* [Architecture Governance](#architecture-governance)
+* [Roadmap](#roadmap)
+* [License](#license)
 
 ---
+
+# What This Repository Is
+
+`nixos-infrastructure` is the declarative infrastructure repository for the Ivali computing environment.
+
+The repository treats the laptop as an **engineered infrastructure platform**, rather than simply a Linux workstation.
+
+Everything that should be reproducible is represented as code:
+
+* operating-system configuration
+* boot configuration
+* Linux kernel configuration
+* hardware behavior
+* networking
+* firewall policy
+* Tailscale networking
+* SSH
+* secrets integration
+* KDE Plasma desktop
+* Wayland session
+* audio and Bluetooth
+* applications
+* development environments
+* user environment
+* system services
+* observability
+* security controls
+* backups
+* recovery
+* GitOps
+* deployment
+* health checking
+* automation
+* the `ivali` control plane
+* architecture governance
+
+The objective is simple:
+
+> **A known-good system should be reproducible from the repository, observable while running, and recoverable when something goes wrong.**
+
+---
+
+# Engineering Principles
+
+The repository is built around a small set of non-negotiable principles.
+
+### 1. Declarative infrastructure
+
+If infrastructure can be represented as code, it should be represented as code.
+
+Avoid undocumented manual configuration whenever practical.
+
+### 2. Reproducibility
+
+The same repository state should produce the same intended system configuration.
+
+Nix flakes provide the reproducibility boundary.
+
+### 3. Test before implementation
+
+New behavior follows:
+
+```text
+Requirement
+    ↓
+Test
+    ↓
+RED
+    ↓
+Implementation
+    ↓
+GREEN
+    ↓
+Refactor
+    ↓
+Verification
+```
+
+Bug fixes follow:
+
+```text
+Reported failure
+    ↓
+Reproduce
+    ↓
+Regression test
+    ↓
+RED
+    ↓
+Fix
+    ↓
+GREEN
+    ↓
+Regression verification
+```
+
+### 4. Architecture is executable
+
+Architecture is not merely documentation.
+
+Domain boundaries, dependencies, ownership, service contracts, and forbidden relationships should be represented in machine-readable manifests and validated by automated tests and architecture tooling.
+
+### 5. One owner for one responsibility
+
+Every important resource should have a clear owner.
+
+This applies to:
+
+* configuration
+* filesystem state
+* services
+* ports
+* secrets
+* runtime state
+* deployment authority
+* recovery authority
+
+### 6. Observability is part of the design
+
+A service is not complete merely because it starts.
+
+It should have appropriate:
+
+* health checks
+* logs
+* metrics
+* failure visibility
+* recovery behavior
+* operational documentation
+
+### 7. Recovery is a feature
+
+The system should know how to recover from expected failures.
+
+Examples include:
+
+* failed deployments
+* unhealthy generations
+* failed services
+* network failures
+* stale GitOps state
+* resource exhaustion
+* corrupted working state
+* boot failures
+
+### 8. Security by default
+
+Security boundaries should be explicit and fail closed where appropriate.
+
+### 9. Automation must remain observable
+
+Automation should never become a black box.
+
+Automated operations must leave enough evidence to answer:
+
+* what happened?
+* why did it happen?
+* what changed?
+* what generation is running?
+* what failed?
+* what recovery action occurred?
+
+### 10. Human approval remains authoritative
+
+Automation may perform well-defined operational actions, but material security, architecture, destructive-data, credential, or policy decisions remain subject to explicit human authorization.
+
+---
+
+# Architecture at a Glance
+
+The system follows this architectural model:
+
+```text
+                         ┌──────────────────────┐
+                         │       GitLab         │
+                         │   Source of Truth    │
+                         └──────────┬───────────┘
+                                    │
+                              Git change
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │    Ivali Flow        │
+                         │ TDD / CI / Gates     │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │   Architecture      │
+                         │   Validation        │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                         ┌──────────────────────┐
+                         │      GitOps          │
+                         │    Reconciler        │
+                         └──────────┬───────────┘
+                                    │
+                                    ▼
+                    ┌──────────────────────────────┐
+                    │         NixOS Host           │
+                    │                              │
+                    │  ┌────────────────────────┐  │
+                    │  │ Domains / Capabilities │  │
+                    │  └───────────┬────────────┘  │
+                    │              │               │
+                    │  ┌───────────▼────────────┐  │
+                    │  │ Service Contracts      │  │
+                    │  └───────────┬────────────┘  │
+                    │              │               │
+                    │  ┌───────────▼────────────┐  │
+                    │  │ Infrastructure Adapters│  │
+                    │  └───────────┬────────────┘  │
+                    │              │               │
+                    │       Linux / systemd       │
+                    │              │               │
+                    │      KDE / Wayland          │
+                    └──────────────┬───────────────┘
+                                   │
+                                   ▼
+                          Health / Metrics / Logs
+                                   │
+                                   ▼
+                         Recovery / Rollback
+```
+
+The fundamental invariant is:
+
+> **Hosts compose capabilities. Domains own capabilities. Services expose contracts. Infrastructure adapters implement those contracts.**
+
+---
+
+# Technology Stack
+
+| Layer               | Technology                                      |
+| ------------------- | ----------------------------------------------- |
+| OS                  | NixOS 26.11                                     |
+| Configuration       | Nix                                             |
+| Reproducibility     | Nix Flakes                                      |
+| User configuration  | Home Manager                                    |
+| Desktop             | KDE Plasma                                      |
+| Display             | Wayland                                         |
+| Login               | SDDM                                            |
+| Window system       | KWin                                            |
+| Audio               | PipeWire / WirePlumber                          |
+| Networking          | NetworkManager                                  |
+| DNS                 | systemd-resolved / configured DNS filtering     |
+| Overlay network     | Tailscale                                       |
+| Firewall            | nftables                                        |
+| SSH                 | OpenSSH / Tailscale                             |
+| Security            | AppArmor, fail2ban, kernel hardening, SOPS      |
+| Secrets             | SOPS + age                                      |
+| Control plane       | Go                                              |
+| CLI                 | `ivali`                                         |
+| Observability       | Prometheus, Grafana, Loki, Alloy, OpenTelemetry |
+| Security monitoring | Falco / security scanning                       |
+| Deployment          | GitOps                                          |
+| CI                  | GitLab + mirrored GitHub validation             |
+| Shell               | Zsh                                             |
+| Editor              | Zed                                             |
+| Browser             | Firefox + Sidebery                              |
+| Storage             | BTRFS / Nix store / zRAM                        |
+| Containerization    | Docker where required                           |
+| Automation          | systemd + NixOS modules + Go + shell            |
+| AI engineering      | OpenCode + repository-specific AI context       |
+
+---
+
+# Repository Structure
+
+The repository is organized by **architectural domain**, not merely by technology.
+
+```text
+.
+├── flake.nix
+├── configuration.nix
+│
+├── hosts/                 # Host definitions and hardware
+├── boot/                  # Kernel, bootloader, initrd, zRAM, sysctl
+├── hardware/              # Hardware-specific behavior
+├── networking/            # NetworkManager, DNS, networking policy
+├── security/              # Firewall, SOPS, AppArmor, hardening
+├── ssh/                   # SSH server/client configuration
+│
+├── desktop/               # KDE Plasma / Wayland desktop
+├── home/                  # Home Manager configuration
+├── developer/             # Development environments
+├── packages/              # Package sets
+│
+├── services/              # Reusable infrastructure services
+├── observability/         # Metrics, logs, traces and alerting
+├── recovery/              # Health and recovery mechanisms
+├── automation/            # GitOps and automation
+├── ci/                    # CI-specific infrastructure
+├── storage/               # Storage configuration
+├── virtualization/        # Containers/virtualization
+├── system/                # Core NixOS system configuration
+│
+├── internal/              # Go control-plane implementation
+├── cmd/                   # Go binaries
+├── scripts/               # Operational scripts
+├── tests/                 # NixOS/integration tests
+│
+├── architecture/          # Machine-readable architecture rules
+├── docs/                  # Human-facing documentation
+├── opencode/              # AI engineering context
+├── secrets/               # SOPS-encrypted secrets
+│
+├── AGENTS.md
+├── ENGINEERING.md
+├── CONTRIBUTING.md
+├── IVALi_FLOW.md
+├── ARCHITECTURE.md
+├── ARCHITECTURE_AUDIT.md
+├── ARCHITECTURE_PROGRESS.md
+└── README.md
+```
+
+The repository itself is the source of truth for the actual structure.
+
+Documentation must not invent directories, modules, services, or capabilities that do not exist.
+
+---
+
+# NixOS Architecture
+
+NixOS is the primary infrastructure abstraction.
+
+The configuration is divided into domains such as:
+
+```text
+Host
+ ├── Boot
+ ├── Hardware
+ ├── Networking
+ ├── Security
+ ├── SSH
+ ├── Desktop
+ ├── Developer
+ ├── Services
+ ├── Observability
+ ├── Recovery
+ ├── Automation
+ └── Storage
+```
+
+Hosts should primarily **compose capabilities**.
+
+They should not contain large amounts of domain implementation logic.
+
+## Flakes
+
+`flake.nix` defines:
+
+* inputs
+* NixOS configurations
+* Home Manager integration
+* development shells
+* packages
+* checks
+* tests
+* deployment-related outputs where applicable
+
+Typical host evaluation:
+
+```bash
+nix build .#nixosConfigurations.prague.config.system.build.toplevel
+```
+
+Validation:
+
+```bash
+nix flake check
+```
+
+Formatting:
+
+```bash
+nix fmt
+```
+
+---
+
+# KDE Desktop Architecture
+
+KDE Plasma is treated as a **first-class infrastructure domain**, not simply a collection of GUI packages.
+
+The desktop platform includes:
+
+```text
+KDE Plasma
+├── KWin
+├── Wayland
+├── SDDM
+├── XDG portals
+├── PipeWire
+├── WirePlumber
+├── Bluetooth
+├── NetworkManager integration
+├── AMD GPU acceleration
+├── Power management
+├── External displays
+├── Screen sharing
+├── Camera / microphone
+└── Application integration
+```
+
+The current desktop direction is a polished KDE Plasma environment with the **Garuda Mokka** visual design direction.
+
+The desktop configuration should remain:
+
+* declarative
+* reproducible
+* resource-conscious
+* accessible remotely when required
+* integrated with Linux security
+* observable
+* recoverable
+
+Desktop changes should be tested at the appropriate levels.
+
+For example:
+
+```text
+Nix evaluation
+      ↓
+Package availability
+      ↓
+Configuration evaluation
+      ↓
+Desktop/session test
+      ↓
+Runtime verification
+      ↓
+User-facing validation
+```
+
+Desktop infrastructure includes special attention to:
+
+* PipeWire/WirePlumber
+* microphone and speaker routing
+* Bluetooth
+* Wayland
+* XDG portals
+* screen sharing
+* camera access
+* external monitors
+* suspend/resume
+* power management
+* GPU acceleration
+* KDE application integration
+* browser integration
+* remote GUI access
+
+---
+
+# Linux and System Architecture
+
+NixOS provides the declarative layer, but Linux behavior remains fundamental.
+
+The system is therefore designed with explicit knowledge of:
+
+* Linux processes
+* systemd
+* cgroups
+* namespaces
+* capabilities
+* filesystems
+* permissions
+* sockets
+* networking
+* kernel parameters
+* kernel modules
+* device management
+* udev
+* journald
+* bootloader behavior
+* initrd
+* memory pressure
+* CPU scheduling
+* power management
+
+The engineering rule is:
+
+> **Do not hide Linux behavior behind Nix abstractions when understanding the underlying Linux mechanism is necessary to diagnose or safely change the system.**
+
+A NixOS change should therefore be validated from both perspectives:
+
+```text
+Nix declaration
+      ↓
+Generated configuration
+      ↓
+Linux/systemd behavior
+      ↓
+Runtime state
+```
+
+---
+
+# Control Plane
+
+The repository contains a Go-based control plane and CLI named:
+
+```bash
+ivali
+```
+
+The control plane provides operational capabilities including:
+
+* status
+* health
+* diagnostics
+* repository inspection
+* architecture inspection
+* dependency graphs
+* verification
+* deployment
+* reconciliation
+* rollback
+* metrics
+* dashboards
+* documentation generation
+* repository scanning
+* API access
+
+The Go architecture follows:
+
+```text
+CLI / API
+   ↓
+Application commands
+   ↓
+Domain orchestration
+   ↓
+Service interfaces
+   ↓
+Infrastructure adapters
+   ↓
+Linux / NixOS / external systems
+```
+
+Infrastructure implementations should not leak directly into unrelated domains.
+
+Service contracts provide the abstraction boundary.
+
+---
+
+# GitOps and Deployment
+
+GitLab is the authoritative source repository.
+
+GitHub is used as a validation mirror where configured.
+
+Deployment is performed by the GitOps control plane rather than treating CI as the deployment mechanism.
+
+The intended lifecycle is:
+
+```text
+Change
+  ↓
+Feature branch
+  ↓
+TDD
+  ↓
+Local verification
+  ↓
+Ivali Flow
+  ↓
+Merge Request
+  ↓
+CI gates
+  ↓
+Merge
+  ↓
+GitOps reconciliation
+  ↓
+Nix evaluation/build
+  ↓
+NixOS generation
+  ↓
+Deployment
+  ↓
+Health verification
+  ↓
+Observe
+  ↓
+Rollback if unhealthy
+```
+
+Deployment is considered successful only when the **running system** passes its post-deployment health checks.
+
+A successful build alone is not a successful deployment.
+
+---
+
+# Ivali Flow
+
+All repository changes follow `IVALi_FLOW.md`.
+
+The mandatory lifecycle is:
+
+```text
+UNDERSTAND
+    ↓
+CLASSIFY
+    ↓
+INVESTIGATE
+    ↓
+PLAN
+    ↓
+ISSUE
+    ↓
+BRANCH
+    ↓
+TEST / TDD
+    ↓
+IMPLEMENT
+    ↓
+VERIFY
+    ↓
+COMMIT
+    ↓
+PUSH
+    ↓
+MERGE REQUEST
+    ↓
+CI
+    ↓
+MERGE
+    ↓
+DEPLOY
+    ↓
+HEALTH CHECK
+    ↓
+OBSERVE
+```
+
+The AI engineering rules are intentionally strict.
+
+AI agents must:
+
+* inspect the repository before changing it
+* read applicable architecture documentation
+* follow `AGENTS.md`
+* follow `IVALi_FLOW.md`
+* write tests before implementation for new behavior
+* reproduce bugs before fixing them
+* never invent files or commands
+* never claim tests passed without evidence
+* never claim deployment succeeded without evidence
+* preserve architecture boundaries
+* avoid unnecessary rewrites
+* avoid bypassing CI
+* avoid weakening security to make a problem disappear
+
+Git lifecycle operations are performed through the repository's approved Ivali Flow mechanisms rather than ad-hoc Git operations.
+
+---
+
+# Testing and Verification
+
+Testing is layered.
+
+## Nix
+
+```bash
+nix fmt
+nix flake check
+nix build .#nixosConfigurations.prague.config.system.build.toplevel
+```
+
+## Go
+
+```bash
+go test ./...
+go test -race ./...
+go vet ./...
+go build ./...
+```
+
+## Shell
+
+```bash
+shellcheck scripts/*.sh
+```
 
 ## Architecture
 
-### System Architecture
+Architecture validation covers areas such as:
 
-```
-flake.nix
-├── hosts/              ← per-host specs (prague.nix, tuscany.nix, testvm.nix)
-│   ├── hosts.nix       ← aggregator (auto-discovers hosts/*.nix)
-│   ├── default.nix     ← bootstrap template (excluded from registry)
-│   └── <name>/         ← hardware-configuration.nix per host
-├── configuration.nix   ← top-level module registry (auto-imports everything)
-├── lib/host-templates/           ← NixOS host templates (generates full config)
-│
-├── security/                     ← SOPS secrets, Tailscale, firewall, hardening
-├── boot/                         ← kernel, GRUB bootloader, zram, sysctl tuning, TPM blacklist
-├── hardware/                     ← USB power management, device quirks
-├── networking/                   ← NetworkManager, DNS, timezone
-├── desktop/                      ← GNOME desktop + apps, GPU acceleration, GDM
-├── home/                         ← Home Manager (shell, git, editors, fonts, services)
-│
-├── observability/                ← Prometheus, Grafana, Loki, Alloy, Falco, OTEL
-├── recovery/                     ← health checks, rollback, self-heal
-├── automation/                   ← GitOps reconciler, notifications
-├── services/                     ← msmtp, nginx, postgres, redis
-├── developer/                    ← Go, Node, Python, Flutter toolchains
-├── packages/                     ← CLI, desktop, system, user package sets
-│
-├── internal/                     ← Go source code (ivali CLI)
-├── cmd/                          ← Go entry points (ivali, bw-tui)
-├── scripts/                      ← Shell scripts (deploy, health, rollback)
-├── tests/                        ← NixOS smoke tests
-└── opencode/                     ← AI context, architecture docs, troubleshooting
-```
+* forbidden imports
+* dependency direction
+* circular dependencies
+* filesystem ownership
+* duplicate ownership
+* declared dependencies
+* internal API boundaries
+* service state ownership
 
-### Module System
+## NixOS
 
-Every top-level directory with a `default.nix` is auto-imported by `configuration.nix`
-via `lib/auto-imports.nix`. No manual registration needed.
+Where appropriate:
 
-```
-configuration.nix
-  └── auto-imports.nix scans repo root
-       ├── automation/      ✓ has default.nix → imported
-       ├── boot/            ✓ has default.nix → imported
-       ├── desktop/         ✓ has default.nix → imported (explicit)
-       ├── hardware/        ✓ has default.nix → imported
-       ├── home/            ✗ excluded (wired via flake.nix)
-       ├── hosts/           ✗ excluded (pinned hardware config)
-       ├── lib/             ✗ excluded (helper functions)
-       ├── packages/        ✗ excluded (package sets, not modules)
-       ├── scripts/         ✗ excluded (shell scripts)
-       ├── secrets/         ✗ excluded (SOPS files)
-       └── tests/           ✗ excluded (imported separately)
-```
+* NixOS VM tests
+* service tests
+* security smoke tests
+* observability tests
+* Home Manager tests
+* integration tests
 
-**To add a new domain module:**
-1. Create `newdomain/default.nix`
-2. It will be auto-discovered on next rebuild
+## Verification philosophy
 
-**To add a module within an existing domain:**
-1. Create `domain/submodule.nix`
-2. Import it in `domain/default.nix` (for ordered imports)
+The preferred order is:
 
-**To skip a file from auto-import:**
-- Prefix with `_` (e.g., `_common.nix`)
-
-### Control Plane
-
-The system is controlled via Tailscale — no public internet access needed.
-
-```
-deployment-health.timer (every 5 min)
-  └── deployment-health.service
-       └── scripts/deployment-health.sh
-            └── on failure → gitops-reconciler.service
-                              └── scripts/gitops-reconcile.sh
-                                   ├── git pull + nix flake check
-                                   ├── nix build + nixos-rebuild switch
-                                   ├── post-deployment health check
-                                   ├── on failure → scripts/rollback.sh
-                                   └── Telegram + email notifications
-```
-
-All web services are exposed via Tailscale Serve on port 443:
-- `/grafana/` → Grafana
-- `/prometheus/` → Prometheus
-- `/loki/` → Loki
-- `/health` → Health endpoint (JSON, 11 checks)
-- `/` → Operations Web UI (`ivali api`, port 8080)
-
-### Repository Tree
-
-```
-.
-├── .github/workflows/ci.yml        # GitHub Actions: validates mirror, posts status to GitLab
-├── .sops.yaml                       # SOPS age configuration
-├── AGENTS.md                        # AI agent context
-├── DOCS.md                          # Auto-generated module docs (112 modules)
-├── Makefile                         # Go build targets (ivali, bw-tui)
-├── README.md                        # This file
-│
-├── flake.nix                        # Flake: inputs, outputs, nixosConfigurations
-├── configuration.nix                # Top-level NixOS module registry (auto-imports)
-├── go.mod / go.sum                  # Go module definition
-│
-├── hosts/
-│   ├── hosts.nix                    # Host registry (prague, testvm, default)
-│   ├── hardware-configuration.nix   # Fallback hardware config
-│   └── prague/
-│       └── hardware-configuration.nix
-│
-├── lib/
-│   ├── auto-imports.nix             # Domain module scanner
-│   ├── hardware-detection.nix       # Hardware detection helpers
-│   └── host-templates/
-│       ├── default.nix
-│       └── laptop.nix               # Generates full NixOS config from hostSpec
-│
-├── boot/
-│   ├── kernel.nix                   # Linux zen kernel, kernel params, TPM blacklist, serial port disable
-│   ├── loader.nix                   # GRUB bootloader with NixOS snowflake theme
-│   ├── sysctl.nix                   # Kernel hardening (slab_nomerge, pti, etc.)
-│   ├── zram.nix                     # zRAM with zstd (100% memory)
-│   ├── plymouth.nix                 # Boot splash
-│   ├── tpm.nix                      # TPM support (blacklisted — see kernel.nix)
-│   └── plymouth.nix                 # Boot splash (Gruvbox theme)
-│
-├── hardware/
-│   ├── default.nix                   # Hardware domain barrel
-│   └── usb-power.nix                 # Disable USB runtime autosuspend
-│
-├── security/
-│   ├── firewall.nix                 # nftables, default deny, Tailscale-only SSH
-│   ├── tailscale.nix                # Tailscale VPN + exit node
-│   ├── hardening.nix                # Kernel/sysctl hardening stack
-│   ├── apparmor.nix                 # AppArmor profiles (Blocky, CLI, API)
-│   ├── fail2ban.nix                 # SSHD + nginx jails
-│   ├── sops.nix                     # SOPS secrets with age encryption
-│   ├── sudo.nix                     # Sudo hardening (execWheelOnly, PTY required)
-│   ├── scanning.nix                 # Daily security scans + Prometheus metrics
-│   └── packages.nix                 # Security packages
-│
-├── services/
-│   ├── blocky/                      # DNS proxy & ad-blocker
-│   │   ├── default.nix              # Barrel module
-│   │   └── config.nix               # DNS filtering, upstreams, blocklists, metrics
-│   ├── msmtp/                       # Email relay (SMTP via Office365)
-│   │   ├── config.nix
-│   ├── nginx/                       # Reverse proxy (localhost-only)
-│   │   ├── config.nix, options.nix
-│   ├── postgres/                    # PostgreSQL database
-│   │   ├── config.nix, options.nix
-│   └── redis/                       # Redis key-value store
-│       ├── options.nix, service.nix
-│
-├── networking/
-│   ├── networkmanager.nix           # NetworkManager
-│   └── time.nix                     # Timezone, NTP
-│
-├── desktop/
-│   ├── default.nix                  # Desktop domain module
-│   ├── gnome/
-│   │   ├── default.nix              # GNOME desktop enablement
-│   │   └── session.nix              # GNOME session, apps, power, Qt theming
-│   ├── login/
-│   │   ├── default.nix
-│   │   └── gdm.nix                  # GDM (Wayland) + login theming
-│   └── common/
-│       ├── audio.nix                # PipeWire audio
-│       ├── colors.nix               # Design-system color wiring
-│       ├── environment.nix          # Session env vars
-│       ├── fonts.nix                # Desktop font stack
-│       ├── gpu.nix                  # AMD GPU acceleration (amdgpu, Vulkan)
-│       ├── packages.nix             # Shared desktop packages
-│       ├── portals.nix              # xdg-desktop-portal (GNOME)
-│       └── theme.nix                # Active design-system theme
-│
-├── home/
-│   ├── ivali.nix                    # User config entry point
-│   ├── default.nix                  # Home Manager domain module
-│   ├── fonts.nix                    # Nerd Fonts, MS Office fonts, Noto
-│   ├── theming.nix                  # GTK theme
-│   ├── shell/
-│   │   ├── default.nix              # Shell domain module (auto-imports children)
-│   │   ├── aliases/                 # Domain-grouped shell aliases
-│   │   │   ├── git.nix              # Git aliases (gpall, gco, gaa, etc.)
-│   │   │   ├── nix.nix              # Nix aliases (rebuild, switch, etc.)
-│   │   │   ├── navigation.nix       # cd, ls, tree aliases
-│   │   │   ├── utilities.nix        # General utilities
-│   │   │   ├── development.nix      # Dev aliases
-│   │   │   └── ivali.nix            # CLI aliases
-│   │   ├── bitwarden/               # Bitwarden CLI integration
-│   │   │   ├── cache.nix, completion.nix, env.nix
-│   │   ├── core/                    # Zsh, bash, history, completion, keybindings
-│   │   │   ├── prompt.nix           # Powerlevel10k prompt
-│   │   │   └── startup/             # Startup scripts
-│   │   │       ├── 10-dashboard.nix # Welcome dashboard
-│   │   │       ├── 20-completion.nix
-│   │   │       ├── 30-keybindings.nix
-│   │   │       └── 50-options.nix
-│   │   ├── integrations/            # Direnv, FZF, Zoxide, Atuin
-│   │   └── tools/                   # Bat, Btop, Eza, Fastfetch, packages
-│   ├── git/
-│   │   ├── git.nix                  # Git config, delta, aliases
-│   │   ├── delta.nix                # Delta diff viewer (gruvbox)
-│   │   └── packages.nix             # git-lfs, gitui, lazygit
-│   ├── gnome/
-│   │   ├── default.nix              # GNOME user settings barrel
-│   │   ├── dconf.nix                # GNOME Shell/Console settings (Gruvbox)
-│   │   ├── extensions.nix           # GNOME extensions (tiling, dash, etc.)
-│   │   └── applications.nix         # GNOME MIME default applications
-│   ├── firefox/
-│   │   └── default.nix              # Firefox (privacy, perf, Sidebery, Gruvbox)
-│   ├── editors/
-│   │   └── zed.nix                  # Zed editor with extensions
-│   ├── environment/
-│   │   ├── variables.nix            # Session variables (SOPS_AGE_KEY_FILE, etc.)
-│   │   ├── xdg.nix                  # XDG directory paths
-│   │   ├── mime.nix                 # MIME type default applications
-│   │   ├── packages.nix             # User packages
-│   │   ├── session.nix              # Session init
-│   │   └── locale.nix               # Locale
-│   ├── services/
-│   │   └── auto-format.nix          # Auto-format .nix files on change
-│   └── identity/
-│       └── default.nix              # User identity
-│
-├── observability/
-│   ├── options.nix                  # Observability options (enable flag)
-│   ├── prometheus.nix               # Prometheus metrics collection
-│   ├── grafana.nix                  # Grafana dashboards + data sources
-│   ├── loki.nix                     # Loki log aggregation
-│   ├── alloy.nix                    # Grafana Alloy log collection
-│   ├── falco.nix                    # Falco security event detection
-│   ├── otel.nix                     # OpenTelemetry collector
-│   ├── alertmanager.nix             # Alertmanager routing to Telegram
-│   ├── alerting.nix                 # Prometheus alerting rules
-│   ├── health-endpoint.nix          # JSON health endpoint (11 checks)
-│   ├── dashboards.nix               # Auto-provisioned Grafana dashboards
-│   ├── nixos-exporter.nix           # NixOS Prometheus exporter
-│   ├── journald.nix                 # Systemd journal persistence
-│   ├── retention.nix                # Data retention policies
-│   ├── slo.nix                      # SLO tracking + error budget alerts
-│   └── packages.nix                 # Observability packages
-│
-├── automation/
-│   ├── options.nix                  # GitOps options
-│   ├── gitops-reconciler.nix        # GitOps reconciliation loop + timer
-│   └── common.nix                   # Shared constants
-│
-├── recovery/
-│   ├── deployment-health.nix        # Health check timer + service
-│   └── rollback.nix                 # Self-heal rollback on failure
-│
-├── services/
-│   ├── msmtp/                       # Email relay (SMTP via Office365)
-│   │   ├── config.nix
-│   ├── nginx/                       # Reverse proxy (localhost-only)
-│   │   ├── config.nix, options.nix
-│   ├── postgres/                    # PostgreSQL database
-│   │   ├── config.nix, options.nix
-│   └── redis/                       # Redis key-value store
-│       ├── options.nix, service.nix
-│
-├── developer/
-│   ├── languages.nix                # Go, Node 22, Python 3.13, Flutter/Dart
-│   └── shell.nix                    # Developer shell defaults
-│
-├── ssh/
-│   ├── daemon.nix                   # SSH daemon (Tailscale-only, no password)
-│   ├── client.nix                   # SSH client config
-│   └── options.nix                  # SSH options
-│
-├── ci/
-│   ├── gitlab-runner.nix            # Self-hosted GitLab Runner
-│   └── ci-deploy.nix                # CI deploy service
-│
-├── packages/
-│   ├── cli/default.nix              # CLI tools (bat, ripgrep, fzf, jq, etc.)
-│   ├── desktop/default.nix          # GUI apps (Firefox, Obsidian, VLC, etc.)
-│   ├── system/default.nix           # System-wide packages
-│   └── user/default.nix             # User-only packages
-│
-├── system/
-│   ├── nix.nix                      # Nix daemon config
-│   ├── users.nix                    # System users
-│   └── state.nix                    # NixOS state version
-│
-├── i18n/
-│   └── locale.nix                   # Locale settings
-│
-├── storage/
-│   ├── btrfs.nix                    # BTRFS config
-│   └── tmpfs.nix                    # Tmpfs mounts
-│
-├── virtualization/
-│   └── docker.nix                   # Docker + weekly auto-prune
-│
-├── cmd/
-│   ├── ivali/main.go                # Go CLI entry point
-│   └── bw-tui/main.go               # Bitwarden TUI entry point
-│
-├── internal/
-│   ├── commands/                    # CLI commands (20+ files)
-│   │   ├── root.go, status.go, doctor.go, dashboard.go
-│   │   ├── health.go, health_checks.go, scan.go, verify.go
-│   │   ├── explain.go, graph.go, suggest.go, metrics.go
-│   │   ├── bootstrap.go, bootstrap_host.go
-│   │   ├── deploy.go, rebuild.go, reconcile.go, update.go
-│   │   ├── docs.go, completion.go, extract.go
-│   │   └── progress.go
-│   ├── dashboard/                   # Bubble Tea TUI dashboard (6 tabs)
-│   ├── config/                      # Config loading + tests
-│   ├── graph/                       # Module import graph + tests
-│   ├── parser/                      # Nix file parser + tests
-│   ├── scanner/                     # Repository scanner + tests
-│   ├── repository/                  # Repository abstraction + tests
-│   ├── template/                    # Code generation templates
-│   │   ├── host.go, domain.go, service.go, shell.go
-│   │   ├── editor.go, packages.go, generate.go
-│   ├── terminal/                    # Terminal UI helpers + tests
-│   ├── bitwarden/                   # Bitwarden CLI client (cache, clipboard, TUI)
-│   ├── logger/                      # Structured logging + tests
-│   └── wizard/                      # Interactive setup wizard
-│
-├── scripts/
-│   ├── install-fresh-nixos.sh       # Fresh NixOS install script
-│   ├── deployment-health.sh         # Health check script
-│   ├── gitops-reconcile.sh          # GitOps reconciliation script
-│   ├── rollback.sh                  # Generation rollback script
-│   ├── ci-deploy.sh                 # CI deploy script
-│   ├── rotate-sops-key.sh           # SOPS key rotation
-│   ├── sops-setup.sh                # SOPS initial setup
-│   ├── gitlab-runner-health.sh      # GitLab Runner health check
-│   └── gitlab-runner-reconcile.sh   # GitLab Runner reconciliation
-│
-├── docs/
-│   ├── INFRASTRUCTURE.md          # Comprehensive infrastructure docs (flake, HM, security, tailnet, self-healing, autonomy)
-│   ├── observability.md           # Observability stack login & configuration
-│   ├── STABILIZATION.md           # Stabilization acceptance record
-│   ├── STABILIZATION-MATRIX.md    # Stabilization matrix
-│   └── MIGRATION-READINESS.md     # Migration readiness
-│
-├── tests/
-│   ├── laptop-smoke.nix             # NixOS VM smoke test
-│   ├── security-smoke.nix           # Security config test
-│   ├── observability-smoke.nix      # Observability test
-│   ├── services-smoke.nix           # Services test
-│   ├── home-manager-smoke.nix       # Home Manager test
-│   ├── automation-smoke.nix         # Automation test
-│   └── bitwarden-smoke.nix          # Bitwarden test
-│
-├── secrets/
-│   ├── tailscale.yaml               # Tailscale auth key, Grafana secret
-│   ├── notifications.yaml           # Email notifications
-│   ├── smtp.yaml                    # SMTP credentials (Office365)
-│   ├── gitlab-runner.yaml           # Runner registration token
-│   ├── gitlab.yaml                  # GitLab API token
-│   ├── bitwarden.yaml               # Bitwarden secrets
-│   └── hosts/prague.yaml            # Per-host secrets
-│
-└── opencode/                        # AI context + troubleshooting docs
-    ├── architecture.md              # Architecture deep-dive
-    ├── deployment.md                # Deployment procedures
-    ├── hosts.md                     # Host documentation
-    ├── modules.md                   # Module catalog
-    ├── troubleshooting.md           # Common issues + fixes
-    ├── tailscale-mesh.md            # Tailscale network topology
-    └── plans/                       # Generated documentation
-        └── 20260916-infrastructure-deep-dive.md  # Flake, HM, security, tailnet, self-healing, autonomy
+```text
+Format
+ ↓
+Unit tests
+ ↓
+Architecture tests
+ ↓
+Static analysis
+ ↓
+Build/evaluation
+ ↓
+Integration tests
+ ↓
+Deployment
+ ↓
+Runtime health
+ ↓
+Operational observation
 ```
 
 ---
 
-## Installation
+# Security
 
-### Fresh Install
+Security is implemented as multiple layers.
 
-Start from a clean NixOS installation. Log in as your normal user (not root):
+| Layer            | Controls                                   |
+| ---------------- | ------------------------------------------ |
+| Kernel           | Kernel hardening and restricted interfaces |
+| Network          | nftables and explicit network policy       |
+| Identity         | Unix users/groups and sudo policy          |
+| SSH              | Hardened SSH and Tailscale access          |
+| Overlay          | Tailscale zero-trust network               |
+| Application      | Service sandboxing and least privilege     |
+| Mandatory access | AppArmor where applicable                  |
+| Abuse prevention | fail2ban where applicable                  |
+| Secrets          | SOPS + age                                 |
+| Monitoring       | Prometheus / security telemetry            |
+| Detection        | Falco / security scanning                  |
+| Recovery         | Rollback and generation recovery           |
+
+Security changes should follow:
+
+```text
+Threat
+  ↓
+Control
+  ↓
+Verification
+  ↓
+Monitoring
+  ↓
+Recovery
+```
+
+Security must not depend on undocumented manual state.
+
+---
+
+# Networking and Tailscale
+
+Tailscale is the primary trusted network overlay for private administration and service access.
+
+The intended model is:
+
+```text
+Internet
+   │
+   X
+   │
+Public exposure
+   │
+   X
+   │
+Tailscale
+   │
+   ├── SSH
+   ├── Administration
+   ├── Control Plane
+   ├── Monitoring
+   ├── DNS services
+   └── Remote access
+```
+
+The tailnet provides:
+
+* private connectivity
+* MagicDNS
+* secure SSH access
+* exit-node capability where configured
+* remote administration
+* service access
+* monitoring access
+* emergency access
+
+Firewall rules must preserve a clear ownership model.
+
+A network port should have one authoritative owner.
+
+---
+
+# Observability and SRE
+
+The system follows SRE principles rather than treating monitoring as an afterthought.
+
+The observability model covers:
+
+```text
+Metrics
+Logs
+Traces
+Events
+Health
+SLOs
+Alerts
+Audit
+Recovery
+```
+
+Primary components include:
+
+* Prometheus
+* Grafana
+* Loki
+* Grafana Alloy
+* OpenTelemetry
+* Alertmanager
+* Falco
+* NixOS/system exporters
+* custom health endpoints
+* `ivali` diagnostics
+
+## Service observability
+
+Every important service should answer:
+
+1. Is it running?
+2. Is it healthy?
+3. What resources is it consuming?
+4. What has it logged?
+5. What dependencies does it have?
+6. What happens if it fails?
+7. How is it recovered?
+8. How is its failure detected?
+
+## SRE principles
+
+The system emphasizes:
+
+* reliability
+* availability
+* observability
+* recoverability
+* capacity awareness
+* graceful degradation
+* failure isolation
+* automation
+* operational simplicity
+* measurable health
+
+---
+
+# Recovery and Self-Healing
+
+Self-healing is bounded automation, not unrestricted autonomy.
+
+The recovery hierarchy is:
+
+```text
+Service failure
+     ↓
+systemd recovery
+     ↓
+Health detection
+     ↓
+Operational remediation
+     ↓
+Deployment rollback
+     ↓
+Previous known-good generation
+```
+
+Recovery actions must be:
+
+* deterministic
+* observable
+* bounded
+* auditable
+* reversible where possible
+
+The system should avoid recovery loops and deployment thrashing through:
+
+* locking
+* cooldowns
+* hysteresis
+* health gates
+* generation validation
+
+Rollback is treated as a first-class operational capability.
+
+---
+
+# Secrets
+
+Secrets are encrypted using:
+
+```text
+SOPS + age
+```
+
+Secrets must never be committed in plaintext.
+
+Typical secret categories include:
+
+* Tailscale credentials
+* SMTP credentials
+* GitLab credentials
+* service credentials
+* host-specific secrets
+* application secrets
+
+Runtime secret material should be exposed only to the authorized consumer.
+
+The architecture follows:
+
+```text
+Encrypted secret
+      ↓
+SOPS / age
+      ↓
+Authorized runtime consumer
+```
+
+No alternate ad-hoc secret-management mechanism should be introduced without an explicit architectural decision.
+
+---
+
+# Home Manager
+
+Home Manager provides the user-level configuration layer.
+
+Typical responsibilities include:
+
+* Zsh
+* shell aliases
+* terminal tooling
+* Git configuration
+* editor configuration
+* Firefox
+* fonts
+* MIME defaults
+* XDG configuration
+* user packages
+* desktop integration
+* application preferences
+* development tooling
+
+The system-level and user-level boundaries are intentional:
+
+```text
+NixOS
+  → Operating system
+  → Services
+  → Security
+  → Hardware
+  → Networking
+
+Home Manager
+  → User environment
+  → Applications
+  → Shell
+  → User configuration
+  → Desktop preferences
+```
+
+---
+
+# AI Engineering
+
+This repository is designed to be operated with AI-assisted engineering.
+
+AI agents are expected to function as **senior infrastructure engineers**, not code generators.
+
+The repository therefore provides dedicated AI context under:
+
+```text
+opencode/
+```
+
+and repository-level governance through:
+
+```text
+AGENTS.md
+IVALi_FLOW.md
+ENGINEERING.md
+ARCHITECTURE.md
+ARCHITECTURE_AUDIT.md
+ARCHITECTURE_PROGRESS.md
+```
+
+AI agents must understand four major engineering domains:
+
+### NixOS
+
+* Nix language
+* flakes
+* module system
+* options
+* overlays
+* derivations
+* NixOS evaluation
+* Home Manager
+* system generations
+* reproducibility
+
+### Linux
+
+* systemd
+* journald
+* networking
+* filesystems
+* permissions
+* processes
+* cgroups
+* kernel behavior
+* hardware
+* boot
+* troubleshooting
+
+### KDE
+
+* Plasma
+* KWin
+* Wayland
+* SDDM
+* portals
+* PipeWire
+* WirePlumber
+* KDE configuration
+* desktop performance
+* application integration
+
+### SRE
+
+* reliability
+* monitoring
+* alerting
+* SLOs
+* incident response
+* capacity
+* failure domains
+* recovery
+* rollback
+* operational automation
+
+AI work must preserve the repository's architecture and operational invariants.
+
+---
+
+# Development Workflow
+
+Before modifying the system:
+
+```bash
+git status
+```
+
+Then inspect the relevant architecture and repository guidance.
+
+Typical validation:
+
+```bash
+nix fmt
+nix flake check
+go test ./...
+go vet ./...
+go build ./...
+shellcheck scripts/*.sh
+```
+
+For the primary host:
+
+```bash
+nix build .#nixosConfigurations.prague.config.system.build.toplevel
+```
+
+For repository-wide verification:
+
+```bash
+ivali verify
+```
+
+For diagnostics:
+
+```bash
+ivali doctor
+```
+
+For status:
+
+```bash
+ivali status
+```
+
+The exact command set should always be confirmed against the current repository implementation rather than assumed from historical documentation.
+
+---
+
+# Installation
+
+The preferred installation path is the repository's maintained installer.
+
+From a fresh NixOS environment:
 
 ```bash
 nix --extra-experimental-features "nix-command flakes" \
-  shell nixpkgs#curl --command bash -c \
+  shell nixpkgs#curl \
+  --command bash -c \
   'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
 ```
 
-The installer will:
-1. Enable `nix-command` and `flakes` in the user Nix config
-2. Clone this repository to `~/nixos-infrastructure`
-3. Copy `/etc/nixos/hardware-configuration.nix` to `hosts/hardware-configuration.nix`
-4. Install a Git pre-commit hook for auto-formatting
-5. Run `nix fmt`
-6. Build and switch to `.#prague`
+The installer is responsible for bootstrapping the repository and preparing the host configuration.
 
-After the switch completes, reboot:
+After installation:
 
 ```bash
-sudo reboot
+ivali status
+ivali doctor
+tailscale status
 ```
 
-Commit and push the generated hardware file:
+Before performing destructive or hardware-sensitive operations, verify the generated configuration and recovery path.
+
+---
+
+# Daily Operations
+
+## Repository
 
 ```bash
-cd ~/nixos-infrastructure
-git add hosts/prague.nix hosts/prague/hardware-configuration.nix secrets/hosts/prague.yaml
-git commit -m "chore: add hardware configuration for prague"
-git push
+ivali status
+ivali doctor
+ivali verify
+ivali metrics
+ivali scan
 ```
 
-### Verify Installation
+## Nix
 
 ```bash
-ivali status          # Repository state summary
-ivali doctor          # Full health check
-tailscale status      # Tailscale VPN status
-ssh -T git@gitlab.com # Verify GitLab SSH access
+nix fmt
+nix flake check
+nix flake update
+nix store gc
 ```
 
----
-
-## Daily Workflow
-
-### NixOS Commands
+## System
 
 ```bash
-rebuild          # nixos-rebuild switch --flake .#prague
-test-rebuild     # dry build without switching
-check            # nix flake check --print-build-logs
-fmt              # nix fmt (also runs on save and pre-commit)
-update           # nix flake update
-clean            # nix store gc
+systemctl --failed
+journalctl -b
+nixos-rebuild list-generations
 ```
 
-### Go CLI (`ivali`)
-
-| Command | Description |
-|---------|-------------|
-| `ivali status` | Repository state: branch, hosts, modules, domains, health |
-| `ivali doctor` | Full health check (supports `--fix`, `--aggressive`) |
-| `ivali dashboard` | Interactive TUI (Bubble Tea, 6 tabs) |
-| `ivali explain <mod>` | Module details: purpose, imports, options |
-| `ivali graph tree` | Module import hierarchy |
-| `ivali graph deps` | Flat dependency list |
-| `ivali bootstrap host` | Generate new host from template |
-| `ivali bootstrap module` | Generate new module from template |
-| `ivali bootstrap service` | Generate new service module |
-| `ivali docs` | Generate DOCS.md from module headers |
-| `ivali suggest` | Improvement recommendations |
-| `ivali metrics` | Repository metrics (supports `--json`) |
-| `ivali verify` | Full verification suite |
-| `ivali deploy` | Remote deployment via `nixos-rebuild` |
-| `ivali reconcile` | GitOps reconciliation |
-| `ivali update` | Pull + flake update |
-| `ivali scan` | Force fresh repository scan |
-| `ivali extract shell` | Analyze shell configuration |
-| `ivali api` | REST API server for the control plane webapp |
-
----
-
-## Host Management
-
-Hosts are defined as per-host spec files (`hosts/<name>.nix`), auto-discovered
-by `hosts/hosts.nix` (the aggregator). The flake generates `nixosConfigurations`
-dynamically from this registry.
-
-```nix
-prague = {
-  hostName = "prague";
-  userName = "ivali";
-  repoPath = "/home/ivali/nixos-infrastructure";
-  tags = [ "tag:personal" ];
-  tailnetDomain = "codlet-trench.ts.net";
-  features = {
-    secrets = true;
-    gitlabRunner = true;
-    tailscale = true;
-    tailscaleExitNode = true;
-    ssh = true;
-  };
-  sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
-  config = {
-    ivali.desktop.gnome.enable = true;
-    ivali.observability.enable = true;
-  };
-};
-```
-
-### Adding a New Host
-
-1. Create `hosts/<name>.nix` with the host spec (see `hosts/default.nix` for template)
-2. Run `ivali bootstrap host <name>` to generate hardware config and secrets
-3. Run `nixos-rebuild switch --flake .#<name>`
-
----
-
-## Security
-
-| Layer | Technology |
-|-------|-----------|
-| Kernel | `slab_nomerge`, `init_on_alloc/free`, `pti=on`, `vsyscall=none`, `randomize_kstack_offset=on` |
-| Sysctl | `kptr_restrict=2`, `dmesg_restrict=1`, `unprivileged_bpf_disabled=1`, `perf_event_paranoid=3` |
-| Firewall | nftables, default deny inbound, Tailscale-only SSH, ping blocked, opt-in egress filtering |
-| SSH | Password disabled, root disabled, X11 off, Tailscale interface only |
-| Sudo | `execWheelOnly`, 5min timeout, 3 attempts, PTY required |
-| AppArmor | 3 profiles: Blocky (DNS), ivali-api (control plane), ivali-cli (on-demand) |
-| Fail2Ban | SSHD + nginx jails (exponential ban-time increment up to 168h) |
-| Secrets | SOPS + age encryption (90-day rotation policy) |
-| Scanning | Daily security audit with Prometheus metrics |
-
-### DNS Filtering (Blocky)
-
-Blocky is a privacy-focused DNS proxy with ad/tracker/malware blocking:
-
-- Listens on port 53, restricted to the Tailscale interface (`tailscale0`)
-- Forwards queries to upstream resolvers (Cloudflare, Quad9)
-- Blocks domains from StevenBlack hosts lists (ads, malware, gambling, porn)
-- Supports DoH (HTTPS) and DoT (TLS) upstreams
-- Prometheus metrics on port 4000 (localhost only)
-- AppArmor confined (read-only Nix store, deny /home /root /etc/shadow)
-
-### Egress Filtering
-
-Opt-in default-deny outbound policy on non-Tailscale interfaces:
-
-- Static baseline at build time (DNS resolvers: 1.1.1.1, 9.9.9.9, etc.)
-- Runtime-resolved domains (Nix, GitLab, Git, time servers) via `ivali-egress-refresh` every 5 minutes
-- Exit-node traffic is never filtered (preserves zero-trust overlay)
-
----
-
-## Tailscale & Zero Trust
-
-The tailnet is the primary communication fabric — a WireGuard overlay network.
-
-| Feature | Description |
-|---------|-------------|
-| **MagicDNS** | Split-DNS via `tailnetDomain = "codlet-trench.ts.net"`. Hosts reachable as `<hostname>.codlet-trench.ts.net` |
-| **Exit Node** | Advertises as exit node — other tailnet members route traffic through this machine |
-| **Tailscale SSH** | Optional — intercepts port-22 from tailnet via ACL rules (bypasses sshd) |
-| **Key Expiry** | Daily check via `tailscale-key-check` service, Prometheus metrics |
-| **Metrics** | Prometheus scrape on `127.0.0.1:9121` — connection status, key expiry, MagicDNS, exit node, peer counts |
-
-All services are exposed via **Tailscale Serve** on port 443 — no public internet access, no open firewall ports.
-
-### The Tailnet Ties Into The System
-
-1. **SSH** — Tailscale-only (port 22 closed on public interfaces)
-2. **Control Plane** — Grafana, Prometheus, Loki, Health endpoint, Operations UI via Tailscale Serve
-3. **DNS Filtering** — Blocky on tailscale0 port 53
-4. **GitOps** — git fetch/pull over Tailscale SSH deploy key
-5. **Secrets** — SOPS decryption via age key on tailnet members only
-6. **Notifications** — Telegram over tailnet, Email via public SMTP
-7. **Exit Node** — Full-tunnel VPN for other tailnet members
-
-See `docs/INFRASTRUCTURE.md` §7 (The Tailnet) for full topology and details.
-
----
-
-## Observability
-
-All services bind to localhost. Access via SSH tunnel or Tailscale Serve:
+## Networking
 
 ```bash
-ssh -L 80:localhost:80 prague
-# Grafana:     http://localhost/grafana/
-# Prometheus:  http://localhost/prometheus/
-# Loki:        http://localhost/loki/
-# Health:      http://localhost/health
+tailscale status
+ip addr
+ip route
+resolvectl status
 ```
 
-| Component | Purpose | Port |
-|-----------|---------|------|
-| **Prometheus** | Metrics collection + alerting | 9090 |
-| **Grafana** | Dashboards + visualization | 3000 |
-| **Loki** | Log aggregation | 3100 |
-| **Alloy** | Log collection + forwarding | — |
-| **Falco** | Security event detection | — |
-| **OTEL** | OpenTelemetry traces + metrics | 4317/4318 |
-| **Alertmanager** | Alert routing (email via Office365) | 9093 |
-| **Health endpoint** | JSON health checks (11 checks) | 9100 |
-| **NixOS exporter** | NixOS-specific Prometheus metrics | 9101 |
-| **Blocky** | DNS proxy metrics (ad-blocking status) | 4000 |
-| **Tailscale metrics** | Connection status, key expiry, exit node | 9121 |
-| **Security scanner** | Daily audit results | 9120 |
+## Services
 
-### Alerting
+```bash
+systemctl --type=service
+systemctl --failed
+```
 
-Prometheus alerting rules for: disk space, high CPU/memory, failed services,
-Tailscale key expiry, SLO budget burn. Alerts routed to Telegram via Alertmanager.
-
-### Retention
-
-| Data | Retention |
-|------|-----------|
-| Prometheus metrics | 15 days |
-| Loki logs | 7 days |
-| Systemd journal | Persistent |
+The `ivali` CLI should be preferred for higher-level diagnostics where an equivalent command exists.
 
 ---
 
-## Self-Healing
+# Host Management
 
-The system heals itself at three levels:
+Hosts are represented as explicit infrastructure definitions.
 
-1. **Service-level**: Critical services restart automatically (systemd `Restart = "always"`)
-2. **Health-level**: `deployment-health.service` runs every 5 minutes, checking 11 dimensions (system, network, GitLab, GitOps repo, worktree, Tailscale, NTP, services, disk, generations). On failure → rollback.
-3. **System-level**: `gitops-reconcile.sh` runs every 15 minutes. If post-deploy health check fails → `rollback.sh` → `nixos-rebuild switch --rollback`. Hysteresis (15-min cooldown) prevents thrashing.
+Current hosts may include:
 
-Key scripts:
-- `scripts/deployment-health.sh` — 11-check health probe (JSON + human output)
-- `scripts/gitops-reconcile.sh` — full deployment pipeline with retry, corruption recovery, dirty-tree guard
-- `scripts/rollback.sh` — single rollback authority (concurrency lock + hysteresis + post-rollback health gate)
+```text
+prague
+tuscany
+testvm
+```
 
-See `docs/INFRASTRUCTURE.md` §8 (Self-Healing) for the complete flow diagram.
+Additional hosts should be introduced through the repository's host architecture rather than by copying an existing configuration and manually modifying it.
+
+For a new host:
+
+```text
+Host definition
+      ↓
+Hardware configuration
+      ↓
+Capabilities
+      ↓
+Secrets
+      ↓
+Architecture validation
+      ↓
+Nix evaluation
+      ↓
+Build
+      ↓
+Deployment
+      ↓
+Health verification
+```
+
+The planned `oracle-edge` ARM64 infrastructure follows the same architectural principles while serving a different operational role: lightweight, hardened, always-on infrastructure for remote control-plane, monitoring, emergency access, backup, and supporting services.
 
 ---
 
-## System Autonomy
+# Documentation
 
-The system operates with minimal human intervention through a GitOps control plane:
+The repository intentionally separates architectural truth from operational documentation.
 
+| Document                   | Purpose                                   |
+| -------------------------- | ----------------------------------------- |
+| `README.md`                | Repository entry point                    |
+| `AGENTS.md`                | AI agent operating rules                  |
+| `IVALi_FLOW.md`            | Mandatory engineering/deployment workflow |
+| `ENGINEERING.md`           | Engineering standards                     |
+| `CONTRIBUTING.md`          | Contribution rules                        |
+| `ARCHITECTURE.md`          | Intended architecture                     |
+| `ARCHITECTURE_AUDIT.md`    | Current-state architecture conformance    |
+| `ARCHITECTURE_PROGRESS.md` | Migration and implementation progress     |
+| `docs/INFRASTRUCTURE.md`   | Detailed infrastructure reference         |
+| `opencode/`                | AI-specific repository context            |
+| `docs/`                    | Operational and subsystem documentation   |
+
+### Documentation authority
+
+When documentation conflicts with executable repository state:
+
+```text
+Current repository
+        ↓
+Executable tests
+        ↓
+Architecture manifests
+        ↓
+Architecture tooling
+        ↓
+Nix evaluation
+        ↓
+Go tests/build
+        ↓
+Runtime evidence
+        ↓
+Documentation
+        ↓
+Historical assumptions
 ```
-Git push → Reconciler (every 15 min) → Build → Deploy → Health check
-                                                          │
-                                          ┌───────────────┤
-                                          │               │
-                                      PASS            FAIL
-                                          │               │
-                                      Done            Rollback → Retry
-```
 
-- **Automatic**: config pulls, health checks, rollbacks, notifications, log rotation, Nix formatting, Wi-Fi profile cleanup, SOPS key checks, security scans
-- **Human**: initial setup, MR review, complex failure diagnosis, SOPS key rotation, host addition
-
-The `ivali` CLI provides observability: `status`, `doctor`, `dashboard`, `reconcile`, `health`, `metrics`, `api`.
-
-See `docs/INFRASTRUCTURE.md` §9 (System Autonomy) for architecture and boundaries.
+Documentation should be corrected rather than used to justify behavior that no longer exists.
 
 ---
 
+# Architecture Governance
 
-## CI/CD
+Architecture is maintained through machine-readable definitions under:
 
-### CI model
+```text
+architecture/
+```
 
-GitLab is the single source of truth and push-mirrors to GitHub — no code
-originates on GitHub. Deployment is driven by the GitOps reconciler, **not** CI.
-GitHub Actions only validates the mirror and reports back to GitLab.
+These definitions describe concepts such as:
 
-### GitHub Actions (mirror validator)
+* domains
+* dependencies
+* ownership
+* exceptions
+* service boundaries
 
-Runs on portable GitHub-hosted runners (`ubuntu-latest`) via the Nix installer
-action — no self-hosted GitLab runner required. Jobs:
+Architecture validation should detect:
 
-| Job | What it does |
-|-----|--------------|
-| `secret-scan` | gitleaks `detect` (no-git source scan); fails on committed secrets; allowlists `.age`/`secrets`/`hardware-configuration`/`flake.lock` |
-| `go-build` | `CGO_ENABLED=0 go build ./...` (cross-compiles without a C toolchain) |
-| `go-test` | `CGO_ENABLED=1 go test -race ./...` |
-| `nix-format` | `nix fmt` then `git diff --exit-code` (avoids the buggy `nix fmt --check`) |
-| `nixos-checks` | `nix build` of every `nixosConfigurations` (dry build; `continue-on-error`) |
-| `gitlab-status` | posts the combined status back to GitLab via the GitLab API (only when `GITLAB_TOKEN` is set) |
+* invalid domains
+* forbidden dependencies
+* dependency cycles
+* filesystem ownership conflicts
+* duplicate ownership
+* undeclared dependencies
+* internal API violations
+* invalid exceptions
+* service-state ownership violations
+
+The goal is progressive enforcement:
+
+```text
+Implicit
+   ↓
+Documented
+   ↓
+Machine-readable
+   ↓
+Tested
+   ↓
+CI-enforced
+   ↓
+Self-protecting
+```
+
+An architecture exception must be explicit, justified, scoped, and reviewable.
 
 ---
 
-## Notification Stack
+# Operational Model
 
-All alerts, deployment results, and health failures are routed through email notifications via Office365 SMTP.
+The infrastructure follows a layered control model:
 
-| Component | Purpose |
-|-----------|---------|
-| **notify.sh** | Central notification script — sends email via msmtp, deduplicates within 600s |
-| **msmtp** | Outbound email relay (Office365 SMTP, OAuth2 bearer auth via `oauth2ms`) |
-| **Alertmanager** | Prometheus alert routing — warning (5min group) and critical (10s wait) receivers |
-| **Prometheus alerting** | Rules for: disk, CPU/memory, failed services, Tailscale expiry, NixOS generation drift, security scans |
-| **observability-lite** | Low-CPU health collector — polls `/proc` every 60s, fires `notify` on threshold breach |
-| **SOPS secrets** | `secrets/notifications.yaml` (recipient), `secrets/smtp.yaml` (credentials) |
-
-**Notification flow:**
+```text
+                    ┌───────────────────────┐
+                    │       Human           │
+                    │ Architecture / Policy │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │     Ivali Flow        │
+                    │ Engineering Governance│
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │      GitLab           │
+                    │   Source of Truth     │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │       CI Gates        │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │      GitOps           │
+                    │    Reconciliation     │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │       NixOS           │
+                    │      Generation        │
+                    └───────────┬───────────┘
+                                │
+                                ▼
+                    ┌───────────────────────┐
+                    │ Health / Observability│
+                    └───────────┬───────────┘
+                                │
+                         ┌──────┴──────┐
+                         ▼             ▼
+                       Healthy       Failed
+                         │             │
+                         ▼             ▼
+                       Observe      Recover
+                                       │
+                                       ▼
+                                    Rollback
 ```
-Prometheus alert → Alertmanager → email → Outlook inbox
-health check failure → notify.sh → email
-GitOps deploy success/failure → notify.sh → email
-security scan failure → notify.sh → email
-```
+
+This separation is intentional.
+
+**Code acceptance, deployment, runtime health, and recovery are different concerns.**
 
 ---
 
-## WebUI & Tailscale Control Plane
+# Design Goals
 
-The control plane is exposed over Tailscale — no public internet access, no open firewall ports.
+The long-term goal is not simply to have a highly configured laptop.
 
-### Remote Access Architecture
+The goal is to build a **small, disciplined infrastructure platform** that demonstrates production engineering principles:
 
-```
-You (any device on tailnet)
-  │
-  ▼
-Tailscale MagicDNS → prague.codlet-trench.ts.net
-  │
-  ▼
-Tailscale Serve (HTTPS termination, port 443)
-  │
-  ├── /grafana/    → Grafana (port 3000)
-  ├── /prometheus/ → Prometheus (port 9090)
-  ├── /loki/       → Loki (port 3100)
-  ├── /health      → Health endpoint (port 9100, JSON)
-  └── /            → Operations Web UI (port 8080)
-```
+* declarative infrastructure
+* reproducibility
+* architecture governance
+* automated testing
+* secure networking
+* least privilege
+* observability
+* SRE practices
+* automated recovery
+* controlled deployment
+* explicit ownership
+* AI-assisted engineering
+* operational simplicity
 
-| Service | Port | Binding | Access |
-|---------|------|---------|--------|
-| **Nginx reverse proxy** | 80 | localhost | Local browser |
-| **Grafana** | 3000 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/grafana/` |
-| **Prometheus** | 9090 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/prometheus/` |
-| **Loki** | 3100 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/loki/` |
-| **Health endpoint** | 9100 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/health` |
-| **Operations Web UI** | 8080 | 127.0.0.1 | `https://prague.codlet-trench.ts.net/` |
-| **Tailscale metrics** | 9121 | 127.0.0.1 | Prometheus scrape target |
-
-### Operations Web UI (API)
-
-The `ivali api` binary serves a REST API on port 8080, exposed via Tailscale Serve with HMAC-SHA256 bearer token auth.
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Health check (unauthenticated) |
-| `/api/status` | GET | Deployment status |
-| `/api/drift` | GET | Configuration drift detection |
-| `/api/deployments` | GET | Last 20 deployment records |
-| `/api/deployments/latest` | GET | Latest deployment record |
-| `/api/deploy` | POST | Trigger deployment (pull + build + switch) |
-| `/api/rollback` | POST | Rollback to previous generation |
-| `/api/generations` | GET | List NixOS generations |
-| `/api/services` | GET | List systemd services and status |
-| `/api/services/{name}/restart` | POST | Restart a service (allowlisted) |
-| `/api/audit` | GET | Query audit log entries |
-
-**Security:** Rate limiting (10 req/s per IP), CORS origin validation, request body limit (1MB), audit logging for mutations.
-
-### GitOps Reconciler
-
-The GitOps loop runs every 15 minutes and handles the full deployment lifecycle:
-
-```
-gitops-reconciler.timer (every 15min)
-  └── gitops-reconciler.service
-       └── gitops-reconcile.sh
-            ├── flock (mutual exclusion)
-            ├── fetch origin (retry on network failure)
-            ├── dirty-tree guard (skip if uncommitted changes)
-            ├── pull --ff-only
-            ├── nix flake check
-            ├── validate hardware UUIDs + Go vendor hashes
-            ├── nix build .#nixosConfigurations.<host>.config.system.build.toplevel
-            ├── nixos-rebuild switch
-            ├── 30s grace period
-            ├── health check (deployment-health.sh → ivali doctor)
-            ├── on failure → rollback.sh → nixos-rebuild switch --rollback
-            └── email notification (generation diff, commit, duration)
-```
+The system should remain understandable even as it grows.
 
 ---
 
-## Secrets
+# Roadmap
 
-SOPS-encrypted with age. Files in `secrets/`:
+Major areas of ongoing development include:
 
-| File | Contents |
-|------|----------|
-| `tailscale.yaml` | Auth key, Grafana secret |
-| `notifications.yaml` | Email notifications |
-| `smtp.yaml` | SMTP credentials (Office365) |
-| `gitlab-runner.yaml` | Runner registration token |
-| `gitlab.yaml` | GitLab API token |
-| `hosts/<name>.yaml` | Per-host secrets |
+### Architecture
 
-Runtime secrets at `/run/secrets/` (symlinked by sops-nix).
+* continuous architecture auditing
+* complete service-contract migration
+* removal of legacy coupling
+* stronger dependency enforcement
+* configuration ownership consolidation
+* filesystem ownership enforcement
+
+### NixOS
+
+* continued modularization
+* reproducible host provisioning
+* improved hardware abstraction
+* stronger NixOS test coverage
+* automated generation validation
+
+### KDE
+
+* polished KDE Plasma environment
+* Garuda Mokka-inspired visual system
+* Wayland-first configuration
+* PipeWire/WirePlumber reliability
+* display and suspend reliability
+* remote GUI administration
+* resource-conscious desktop operation
+
+### SRE
+
+* stronger SLO coverage
+* improved health models
+* richer incident diagnostics
+* better recovery automation
+* capacity monitoring
+* deployment safety
+* failure-domain isolation
+
+### Control Plane
+
+* richer `ivali` diagnostics
+* architecture-aware operations
+* deployment history
+* health and recovery visualization
+* operational API
+* control-plane web UI
+* mobile-friendly administration over Tailscale
+
+### Infrastructure
+
+* ARM64 `oracle-edge`
+* hardened always-on control-plane infrastructure
+* remote monitoring
+* backup and recovery services
+* emergency access
+* encrypted backup
+* resilient external watchdog capability
 
 ---
 
-## Home Manager
+# Definition of Done
 
-Home Manager manages user-level configuration (shell, dotfiles, packages, services) — complementary to NixOS system-level configuration.
+A change is not complete merely because the code compiles.
 
-| Module | What It Configures |
-|--------|-------------------|
-| `shell/` | Zsh + Powerlevel10k, FZF, zoxide, direnv, Atuin, aliases (git, nix, navigation, utilities, development, ivali), startup scripts (dashboard, keybindings, completion, options), tools (bat, btop, eza, fastfetch), Bitwarden CLI |
-| `shell/bitwarden/` | Bitwarden CLI integration with fzf search |
-| `git/` | Delta diff (gruvbox), git-lfs, gitui, lazygit |
-| `gnome/` | GNOME Shell settings, extensions (tiling, dash), GNOME Console (Gruvbox), MIME handlers, applications |
-| `firefox/` | Firefox (privacy, performance, Sidebery, Gruvbox) |
-| `editors/zed.nix` | Zed editor with Nix/Python/Go/TS extensions |
-| `environment/` | Session variables, XDG paths, MIME types, packages, locale |
-| `fonts.nix` | Nerd Fonts (FiraCode, JetBrainsMono), MS Office fonts, Noto |
-| `theming.nix` | GTK theme (Gruvbox) |
-| `services/` | Auto-format .nix files on change (watchexec + nix fmt) |
-| `cloud/` | OneDrive integration |
-| `launcher/` | Desktop launcher |
-| `audio/` | Audio (PipeWire) |
-| `webapps/` | Edge PWA web apps |
+A production-quality change should satisfy the applicable requirements below:
 
-Home Manager is wired into the flake via `home-manager.nixosModules.home-manager` with `useGlobalPkgs = true` and `useUserPackages = true`. State version: `26.11`.
-
----
-
-## Conventions
-
-### Doc Headers
-
-Every `.nix` module has a standard header:
-
-```nix
-##############################################################################
-#
-# Module Name
-#
-# Purpose
-# -------
-# What this module does.
-#
-# Ownership
-# ---------
-# Options this module declares.
-#
-##############################################################################
+```text
+✓ Requirement understood
+✓ Architecture understood
+✓ Existing implementation inspected
+✓ Failure reproduced where applicable
+✓ Test written first where applicable
+✓ RED demonstrated where applicable
+✓ Implementation completed
+✓ GREEN demonstrated
+✓ Refactoring completed where useful
+✓ Architecture tests pass
+✓ Security implications reviewed
+✓ Nix evaluation passes
+✓ Go tests/build pass where applicable
+✓ Shell validation passes where applicable
+✓ CI passes
+✓ Merge completed through Ivali Flow
+✓ Deployment verified
+✓ Runtime health verified
+✓ Observability verified
+✓ Recovery path verified
+✓ Documentation updated
 ```
 
-### Options Pattern
+The exact gates depend on the change.
 
-Options in `options.nix`, implementation in sibling files:
+The principle does not:
 
-```nix
-# options.nix
-options.ivali.<domain>.enable = lib.mkEnableOption "...";
-
-# service.nix
-config = lib.mkIf cfg.enable { services.<name> = { ... }; };
-```
-
-### Naming
-
-| Pattern | Meaning |
-|---------|---------|
-| `default.nix` | Barrel file (imports only) |
-| `options.nix` | Option declarations |
-| `_*.nix` | Private (skipped by auto-import) |
+> **A change is complete when the repository, generated system, and running system all agree that the change is correct.**
 
 ---
 
-## Safety Notes
+# License
 
-- Use `nixos-rebuild boot` (not `switch`) when the display might drop
-- Tailscale DNS/routes default to off during setup
-- Grafana, Prometheus, Loki are localhost-only unless explicitly exposed
-- GitOps reconciler uses a lock file — avoid manual `nixos-rebuild` during reconciliation
-- SOPS secrets fail closed — features requiring secrets won't activate until age key is installed
+MIT — see [`LICENSE`](LICENSE).
 
----
-
-## Roadmap: Custom Control Plane Webapp
-
-A custom webapp is planned to replace the raw API with a full control plane UI, connecting to the laptop over Tailscale.
-
-**Planned features:**
-- Real-time system status dashboard (CPU, memory, disk, services)
-- One-click deployment trigger with live progress streaming
-- Rollback UI with generation diff viewer
-- Service management (restart, logs, status)
-- Alert history and notification log
-- Tailscale network topology visualization
-- Mobile-responsive for phone/tablet access
-
-**Architecture:** The webapp will connect to the laptop via the existing REST API (`ivali api`) over Tailscale Serve HTTPS. No new ports or firewall rules — the API is already exposed at `https://prague.codlet-trench.ts.net/`.
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).

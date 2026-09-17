@@ -1,537 +1,1861 @@
-# AGENTS.md: The Complete AI Engineering Contract
+# AGENTS.md
 
-This document defines the strict engineering contract for every AI agent working on this repository.It applies to all automated coding systems, including but not limited to: OpenCode, Kilocode, Antigravity CLI, Claude Code, OpenAI Codex, GitHub Copilot, Google Jules, Cursor, Windsurf, Aider, Continue, and any future autonomous coding agents.
+# The Complete AI Engineering Contract
 
-> **AI agents here are expected to operate as senior software engineers, not code generators.** The repository must remain in a production-ready state at all times.
+> **Repository:** `nixos-infrastructure`
+> **Owner:** Willis Ivali
+> **Primary Host:** `prague`
+> **Primary User:** `ivali`
+> **Timezone:** `Africa/Nairobi`
+> **Engineering Model:** TDD + Domain-Oriented Architecture + NixOS + GitOps
+> **Git Workflow:** `ivali flow`
+> **Repository State:** Production infrastructure
+> **Authority:** Mandatory for every AI agent working in this repository
 
 ---
 
-## MANDATORY: USE IVAILI FLOW FOR EVERY CHANGE
+# 1. Purpose
 
-ALL AI agents working on this repository — opencode, kilocode, antigravity, or any other tool —
-MUST use `ivali flow` for every change. No exceptions. This is not a recommendation. This is the engineering contract.
+This document is the **operating contract for every AI agent** working on this repository.
 
-### Rules
-- NEVER commit directly with `git commit`
-- NEVER push directly with `git push`
-- NEVER merge directly with `git merge`
-- ALWAYS use `ivali flow` commands (see IVALI_FLOW.md for full reference)
+It applies to all automated coding systems, including but not limited to:
 
-### The Commands
-```bash
-ivali flow start <type> "description"    # Create issue + branch
-ivali flow validate                       # Run all verification gates
-ivali flow commit                         # Stage + commit (conventional msg)
-ivali flow push                           # Push branch to GitLab
-ivali flow mr                             # Create merge request
-ivali flow pipeline --watch               # Poll CI until green
-ivali flow merge                          # Merge when CI passes
+* OpenCode
+* KiloCode
+* Antigravity
+* Claude Code
+* OpenAI Codex
+* GitHub Copilot
+* Google Jules
+* Cursor
+* Windsurf
+* Aider
+* Continue
+* future autonomous coding agents
+
+The specific AI tool does not matter.
+
+**The repository rules remain the same.**
+
+AI agents are expected to operate as senior software engineers, not code generators.
+
+The objective is not merely to produce code that compiles.
+
+The objective is to maintain a:
+
+* production-ready
+* reproducible
+* secure
+* tested
+* observable
+* recoverable
+* modular
+* maintainable
+* architecturally coherent
+
+NixOS infrastructure platform.
+
+---
+
+# 2. Absolute Priority
+
+When instructions conflict, follow this hierarchy:
+
+```text
+1. Security
+2. Data integrity
+3. Reliability
+4. Correctness
+5. Architectural integrity
+6. Reproducibility
+7. Maintainability
+8. Observability
+9. Performance
+10. Convenience
 ```
 
-### For AI-Driven Work (Non-Interactive)
-```bash
-ivali flow run <type> "description"       # Full pipeline in one command
-ivali flow quick "description"            # Fast: commit -> push -> MR
+Convenience never overrides security, correctness, architecture, or data integrity.
+
+---
+
+# 3. Repository Authority
+
+AI agents must not rely on assumptions from previous conversations, model memory, stale prompts, or undocumented context.
+
+**The repository itself is authoritative.**
+
+Use this authority hierarchy:
+
+```text
+Actual repository state
+        ↓
+Executable tests
+        ↓
+Architecture enforcement
+        ↓
+CI configuration
+        ↓
+Current implementation
+        ↓
+Current operational configuration
+        ↓
+Current task-specific documentation
+        ↓
+Engineering standards
+        ↓
+General repository documentation
+        ↓
+CONTEXT_HANDOFF.md
+        ↓
+Previous AI assumptions / conversation history
 ```
 
-### Commit Authorship (MANDATORY)
-```bash
-GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="itsivali@outlook.com" \
-GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="itsivali@outlook.com" \
-git commit -m "..."
+If documentation and implementation disagree:
+
+1. do not blindly choose either
+2. identify the discrepancy
+3. determine which represents intended versus actual behavior
+4. verify using executable evidence where possible
+5. update the appropriate source of truth
+6. document the decision when material
+
+**Documentation is evidence and engineering context; it is not permission to invent repository behavior.**
+
+---
+
+# 4. MANDATORY AI SESSION BOOTSTRAP
+
+Every meaningful AI task begins with a repository bootstrap.
+
+An agent must **read the repository before planning implementation**.
+
+The first meaningful phase is:
+
+```text
+BOOTSTRAP
+   ↓
+PLAN
+   ↓
+IMPLEMENT
+   ↓
+VERIFY
 ```
 
-No AI branding in commit messages. See IVALI_FLOW.md for the complete lifecycle documentation.
+An agent must not immediately edit files merely because the user supplied an implementation request.
+
+Before producing an implementation plan, determine:
+
+* repository state
+* applicable governing documents
+* relevant architecture
+* affected domains
+* existing implementation
+* existing tests
+* current CI/deployment gates
+* relevant operational documentation
+* current known gaps
+* applicable security constraints
+* applicable recovery/rollback requirements
 
 ---
 
-## PART 1: Engineering Philosophy & The Contract
+# 5. MANDATORY PLAN MODE
 
-### 1.1 Core Philosophy
+## 5.1 Every New Task Begins in Plan Mode
 
-The primary goal of this repository is **not to generate code**, but to build and maintain a complete, polished, and reliable operating system environment.
+For every non-trivial task, the AI agent must begin in **Plan Mode**.
 
-- **Production-Grade:** Every implementation is treated as production software.
-- **Holistic:** Every feature must feel complete and integrated.
-- **End-to-End:** Every workflow must function from start to finish.
-- **Zero Tolerance:** No unfinished features, dead code, duplicated modules, placeholder implementations, or partially completed work.
+Plan Mode is a reasoning and repository-understanding phase.
 
-Whenever an AI agent makes a change, it assumes **total ownership** of ensuring the affected feature reaches production quality.
+It is not implementation.
 
-### 1.2 The Golden Rule: Never Stop at the First Success
+The agent must first:
 
-A successful build, a passing test suite, a green CI pipeline, or a successful `nixos-rebuild` are **checkpoints, not finish lines.**
+```text
+Understand
+    ↓
+Read governing documents
+    ↓
+Identify applicable documents
+    ↓
+Inspect repository state
+    ↓
+Inspect affected implementation
+    ↓
+Inspect tests
+    ↓
+Inspect architecture
+    ↓
+Identify risks and dependencies
+    ↓
+Form implementation plan
+    ↓
+Present / record plan
+    ↓
+Only then implement
+```
 
-The task is only complete when:
-
-1. The requested feature works flawlessly end-to-end.
-2. Every affected workflow functions (e.g., Telegram bots receive, authenticate, execute, and respond to commands).
-3. All regressions are fixed.
-4. The implementation is polished.
-5. Documentation matches reality.
-
-**The Mandatory Iteration Loop:**
-`Understand` ➔ `Implement` ➔ `Build` ➔ `Test` ➔ `Observe` ➔ `Fix Issues` ➔ `Refine` ➔ **`Repeat`**
-
-If testing exposes an issue, fix it. Do not stop simply because the original prompt appears satisfied. The repository's health matters more than the individual task.
-
-### 1.3 Definition of Done
-
-A task is complete **only** when all of the following are explicitly true:
-
-- [ ] The feature and its entire workflow function perfectly.
-- [ ] Code meshes perfectly with Home Manager, NixOS, existing modules, and services.
-- [ ] No `TODO`s, placeholders, magic values, or experimental hacks remain.
-- [ ] All verification gates pass (`nix fmt`, `nix eval`, `nix flake check`, `ivali verify`, `ivali doctor`, etc.).
-- [ ] **ALL gates pass BEFORE rebuild** — never run `rebuild.sh` or `nixos-rebuild` without first passing all evaluation gates.
-- [ ] The repository is left in a cleaner, better state than it was found.
+No production implementation should begin before this planning phase is complete.
 
 ---
 
-## PART 2: Repository Architecture & Organization
+# 6. Mandatory Document Reference Protocol
 
-### 2.1 Flake and Module Architecture
+## 6.1 `AGENTS.md` Is Always Required
 
-This repository is driven by Nix Flakes. The architecture must remain strictly modular, composable, and updated.
+**Every AI task must reference `AGENTS.md`.**
 
-- **Branch Tracking:** All core configuration files (including `flake.nix` and `ivali.nix`) must strictly track the `unstable` branch, rather than the stable release stream.
+This is true even for:
 
-| Directory            | Purpose & Strict Rules                                                                                                               |
-| :------------------- | :----------------------------------------------------------------------------------------------------------------------------------- |
-| **`hosts/`**         | Contains machine-specific configurations. Must be minimal and only pull in required profiles/modules. No complex logic belongs here. |
-| **`modules/nixos/`** | System-level NixOS modules. Must be highly parameterized using `lib.mkIf` and `lib.mkOption`.                                        |
-| **`modules/home/`**  | User-level Home Manager modules. Must remain strictly unprivileged and declarative.                                                  |
-| **`packages/`**      | Custom Nix packages and derivations. Must build entirely offline after source fetching.                                              |
+* documentation changes
+* small bug fixes
+* refactors
+* shell changes
+* Nix changes
+* Go changes
+* desktop changes
+* architecture work
+* CI changes
+* security changes
+* deployment changes
 
-### 2.2 Organization Conventions
-
-- **One Module = One Capability:** Do not mix unrelated services.
-- **Opt-In by Default:** All modules must be disabled by default (`config.modules.service.enable = false;`).
-- **Absolute Paths:** Avoid relative paths in shell scripts and systemd services. Always use Nix string interpolation (e.g., `${pkgs.gnugrep}/bin/grep`).
+The agent must treat this document as the primary AI operating contract.
 
 ---
 
-## PART 3: Workflows, Verification, & CI/CD
+## 6.2 Agents Must Determine Which Other Documents Apply
 
-### 3.1 Development & GitOps Workflow
+After reading `AGENTS.md`, the agent must identify the additional repository documents relevant to the task.
 
-Manual intervention is forbidden. The entire system must be reproducible from this repository via automated GitOps reconciliation loops.
+At minimum, inspect the appropriate documents from:
 
-- **Declarative Only:** Do not use imperative commands (`pip install`, `apt get`, `npm install -g`) to solve problems. If it is not in the Nix configuration, it does not exist.
-- **State Management:** Any required state directories must be explicitly defined and handled via `tmpfs` or standard persistent storage declarations.
-- **Stash Before Rebase:** Always `git stash` local changes before running `git pull --rebase`, `git rebase`, or any operation that rewrites history. Pop the stash immediately after. Never rebase with unstaged changes — Git will refuse and the workflow stalls.
+```text
+ENGINEERING.md
+CONTRIBUTING.md
+ARCHITECTURE.md
+ARCHITECTURE_AUDIT.md
+ARCHITECTURE_PROGRESS.md
+IVALi_FLOW.md
+README.md
+CONTEXT_HANDOFF.md
+```
 
-### 3.2 Verification Gates
+For infrastructure-specific work, also inspect applicable documents such as:
 
-Before considering any work complete, the agent MUST run and clear all applicable verification gates. Failures must always be fixed before completion.
+```text
+STABILIZATION.md
+STABILIZATION-MATRIX.md
+MIGRATION-READINESS.md
+OBSERVABILITY.md
+```
 
-- `nix fmt`: Enforces standard formatting.
-- `nix flake check --no-build`: Validates the flake schema and syntax.
-- `nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.name`: Validates configuration evaluates without error.
-- `ivali verify` & `ivali doctor`: Custom repository health checks.
-- `go test ./...`: Required whenever Go utilities or extensions are modified.
-- `golangci-lint run`: Required whenever Go code is modified. The `go-lint` CI job **must** pass — no `continue-on-error`, no exceptions. Fix all lint issues before pushing.
+and any other domain-specific documentation discovered in the repository.
 
-### 3.2.1 MANDATORY: Gates Before Rebuild (Hard Rule)
+---
 
-**ALL verification gates MUST pass BEFORE running `scripts/rebuild.sh` or any `nixos-rebuild` command.** This is a hard requirement with zero exceptions.
+# 7. Document Selection Is Task-Driven
 
-The mandatory pre-rebuild sequence is:
+Agents must not blindly read every document for every trivial change.
+
+Instead, determine the **document dependency set** for the task.
+
+### Example: Architecture change
+
+Required context will normally include:
+
+```text
+AGENTS.md
+ENGINEERING.md
+ARCHITECTURE.md
+ARCHITECTURE_AUDIT.md
+ARCHITECTURE_PROGRESS.md
+architecture/domains.yaml
+architecture/dependencies.yaml
+architecture/exceptions.yaml
+IVALi_FLOW.md
+CONTEXT_HANDOFF.md
+```
+
+### Example: Stabilization / verification change
+
+Normally include:
+
+```text
+AGENTS.md
+ENGINEERING.md
+STABILIZATION.md
+STABILIZATION-MATRIX.md
+IVALi_FLOW.md
+ARCHITECTURE.md
+CONTEXT_HANDOFF.md
+```
+
+### Example: Observability change
+
+Normally include:
+
+```text
+AGENTS.md
+ENGINEERING.md
+ARCHITECTURE.md
+ARCHITECTURE_AUDIT.md
+OBSERVABILITY.md
+STABILIZATION.md
+STABILIZATION-MATRIX.md
+IVALi_FLOW.md
+CONTEXT_HANDOFF.md
+```
+
+### Example: KDE/Desktop migration
+
+Normally include:
+
+```text
+AGENTS.md
+ENGINEERING.md
+ARCHITECTURE.md
+MIGRATION-READINESS.md
+STABILIZATION.md
+STABILIZATION-MATRIX.md
+IVALi_FLOW.md
+CONTEXT_HANDOFF.md
+```
+
+plus the relevant desktop modules and tests.
+
+### Example: Deployment change
+
+Normally include:
+
+```text
+AGENTS.md
+ENGINEERING.md
+ARCHITECTURE.md
+STABILIZATION.md
+STABILIZATION-MATRIX.md
+IVALi_FLOW.md
+CONTEXT_HANDOFF.md
+```
+
+plus the relevant deployment scripts, CI definitions, services, and tests.
+
+---
+
+# 8. The Planning Document Map
+
+Every meaningful Plan Mode session should produce a **Document Map**.
+
+The map identifies which repository documents were consulted and why.
+
+Example:
+
+```text
+DOCUMENT MAP
+
+Mandatory:
+- AGENTS.md
+  Purpose: AI operating contract and engineering rules.
+
+Applicable:
+- ARCHITECTURE.md
+  Purpose: target architecture and domain ownership.
+- ARCHITECTURE_AUDIT.md
+  Purpose: current architectural conformance.
+- STABILIZATION-MATRIX.md
+  Purpose: current verification gate coverage.
+- IVALi_FLOW.md
+  Purpose: approved development and Git lifecycle.
+- CONTEXT_HANDOFF.md
+  Purpose: current unfinished work and session state.
+
+Domain-specific:
+- OBSERVABILITY.md
+  Purpose: current monitoring architecture and operational procedures.
+```
+
+The exact list should change according to the task.
+
+---
+
+# 9. Plan Mode Must Reference Evidence
+
+A plan must not consist solely of generic intentions such as:
+
+```text
+Update the service.
+Add tests.
+Run CI.
+```
+
+Instead, the plan must identify:
+
+```text
+Existing implementation
+Existing tests
+Relevant architecture boundary
+Relevant documentation
+State ownership
+Dependencies
+Expected behavior
+Verification gates
+Deployment implications
+Rollback implications
+```
+
+Where useful, reference concrete:
+
+* files
+* directories
+* modules
+* services
+* commands
+* tests
+* architecture rules
+* CI jobs
+* documentation sections
+
+---
+
+# 10. Planning Must Resolve Documentation Conflicts
+
+If multiple documents appear to disagree, the agent must explicitly identify the conflict.
+
+Example:
+
+```text
+OBSERVABILITY.md says X.
+
+Current Nix configuration implements Y.
+
+STABILIZATION-MATRIX.md records Z.
+
+Therefore:
+- X appears to describe the intended/documented state.
+- Y is the current implementation.
+- Z is the last verified operational state.
+
+Plan:
+verify current runtime behavior before changing any of them.
+```
+
+Never silently choose whichever document is most convenient.
+
+---
+
+# 11. Planning Must Identify the Source of Truth
+
+For every important behavior being changed, determine:
+
+```text
+Source of Truth
+      ↓
+Implementation
+      ↓
+Tests
+      ↓
+Documentation
+      ↓
+Runtime
+      ↓
+CI / Deployment
+```
+
+If multiple sources of truth exist, treat this as a potential architecture or maintainability issue.
+
+The agent should determine whether the task requires:
+
+* implementation change
+* documentation correction
+* test correction
+* architecture correction
+* migration
+* removal of duplicate ownership
+
+---
+
+# 12. Mandatory Repository State Inspection
+
+Before substantial changes, inspect:
 
 ```bash
-# 1. Format check
-nix fmt
+git status --short
+git branch --show-current
+git log -n 10 --oneline
+git diff
+```
 
-# 2. Flake validity
+Also inspect the relevant repository structure and source files.
+
+Never destroy existing user work.
+
+---
+
+# 13. MANDATORY IVAI FLOW
+
+## 13.1 `ivali flow` Is the Only Git Workflow
+
+**Every AI-driven change MUST use `ivali flow`.**
+
+No AI agent may bypass it.
+
+This applies to:
+
+* feature work
+* bug fixes
+* refactors
+* security changes
+* documentation changes
+* architecture changes
+* dependency changes
+* configuration changes
+* emergency fixes, unless explicitly authorized
+
+Lifecycle:
+
+```text
+Issue
+  ↓
+Feature Branch
+  ↓
+TDD
+  ↓
+Implementation
+  ↓
+Verification
+  ↓
+Commit
+  ↓
+Push
+  ↓
+Merge Request
+  ↓
+CI
+  ↓
+Review / Approval
+  ↓
+Merge
+  ↓
+GitOps Reconciliation
+```
+
+---
+
+# 14. Forbidden Direct Git Operations
+
+AI agents MUST NOT use direct Git lifecycle commands to bypass `ivali flow`.
+
+Do not directly perform:
+
+```bash
+git commit
+git push
+git merge
+```
+
+Do not bypass the workflow with:
+
+```bash
+git push origin main
+git merge main
+git commit --no-verify
+```
+
+Do not bypass repository hooks or verification using:
+
+```bash
+--no-verify
+```
+
+unless explicitly authorized.
+
+---
+
+# 15. IVAI FLOW Command Authority
+
+See `IVALi_FLOW.md` for authoritative command behavior.
+
+Typical commands include:
+
+```bash
+ivali flow start <type> "description"
+ivali flow validate
+ivali flow commit
+ivali flow push
+ivali flow mr
+ivali flow pipeline --watch
+ivali flow merge
+```
+
+Automated flows may use:
+
+```bash
+ivali flow run <type> "description"
+```
+
+or:
+
+```bash
+ivali flow quick "description"
+```
+
+**Never invent `ivali flow` commands.**
+
+If command behavior is uncertain, inspect:
+
+```text
+IVALi_FLOW.md
+```
+
+and the actual implementation before proceeding.
+
+---
+
+# 16. Git Ownership and Authorship
+
+All commits must use:
+
+```text
+Willis Ivali <itsivali@outlook.com>
+```
+
+AI agents must not add AI branding such as:
+
+```text
+Co-authored-by: AI
+Generated by AI
+Created by ChatGPT
+Created by Claude
+Created by OpenCode
+```
+
+---
+
+# 17. Golden Rule: Understand Before Changing
+
+An AI agent must understand the affected repository surface before modifying it.
+
+Determine:
+
+* what the component does
+* who owns it
+* what depends on it
+* what it depends on
+* what tests exist
+* what architecture rules apply
+* what state it owns
+* what configuration it consumes
+* whether another implementation already exists
+* what documentation describes it
+* what CI verifies it
+* what deployment mechanism activates it
+* how failure is detected
+* how recovery occurs
+
+---
+
+# 18. Search Before Creating
+
+Before creating a new:
+
+* service
+* module
+* command
+* script
+* test helper
+* interface
+* configuration option
+* dashboard
+* health check
+* deployment mechanism
+* architecture rule
+
+search the repository first.
+
+Prefer:
+
+```text
+Existing implementation
+        ↓
+Extend / refactor
+```
+
+over:
+
+```text
+Existing implementation
+        +
+New competing implementation
+```
+
+---
+
+# 19. Mandatory TDD
+
+All new production behavior follows:
+
+```text
+RED → GREEN → REFACTOR
+```
+
+Required lifecycle:
+
+```text
+Requirement
+     ↓
+Acceptance Criterion
+     ↓
+Write Test
+     ↓
+Run Test
+     ↓
+Confirm RED
+     ↓
+Implement Minimum Code
+     ↓
+Run Test
+     ↓
+Confirm GREEN
+     ↓
+Refactor
+     ↓
+Run Tests Again
+```
+
+Production implementation must not precede its corresponding test unless a documented exception applies.
+
+---
+
+# 20. Regression-First Bug Fixing
+
+For reproducible bugs:
+
+```text
+Reproduce
+   ↓
+Write regression test
+   ↓
+Confirm RED
+   ↓
+Fix
+   ↓
+Confirm GREEN
+   ↓
+Refactor
+   ↓
+Run relevant suite
+```
+
+Do not fix first and test afterward unless explicitly justified.
+
+---
+
+# 21. Never Weaken Tests
+
+AI agents must never:
+
+* remove assertions
+* weaken expected values
+* delete tests
+* skip tests
+* ignore tests
+* reduce coverage
+* mock away the behavior being tested
+* modify the requirement merely to accommodate implementation difficulty
+
+---
+
+# 22. Verification Before Rebuild
+
+This is a hard rule.
+
+**Never run `scripts/rebuild.sh` or `nixos-rebuild` before applicable evaluation gates pass.**
+
+Required sequence:
+
+```text
+Format
+  ↓
+Flake Check
+  ↓
+Host Evaluation
+  ↓
+Relevant Tests
+  ↓
+Only Then
+  ↓
+Build / Rebuild
+```
+
+Typical sequence:
+
+```bash
+nix fmt -- --check
 nix flake check --no-build
+nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.name
+```
 
-# 3. Configuration evaluation
+Only then proceed to an approved rebuild.
+
+---
+
+# 23. Verification Contract
+
+Use the applicable gates for the changed surface.
+
+Typical checks:
+
+```bash
+nix fmt -- --check
+nix flake check --no-build
 nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.name
 
-# 4. Only then run rebuild
-./scripts/rebuild.sh
+go build ./...
+go test ./...
+go test -race -count=1 ./...
+go vet ./...
+
+golangci-lint run ./... --timeout=5m
+
+bash -n scripts/*.sh
 ```
 
-**Why this rule exists:** NixOS rebuilds are expensive (15-30 minutes). A configuration error discovered during build wastes significant time. Evaluation gates catch errors in seconds.
+Architecture:
 
-**Enforcement:** If an agent runs `rebuild.sh` or `nixos-rebuild` without first passing all gates, the agent has violated this contract. The agent must fix the issue, re-run all gates, and only then rebuild.
-
-### 3.3 CI/CD Integration
-
-If the task modifies CI workflows (e.g., GitHub Actions or GitLab CI):
-
-- Ensure cache optimization is preserved.
-- Jobs must run independently where possible, failing fast on syntax or formatting errors.
-
-### 3.4 Commit & Push Gate
-
-The work is not released until every verification gate passes **and** the change is pushed to GitLab:
-
-1. Clear all gates in §3.2. Never skip a failing gate.
-2. **`golangci-lint run` must pass.** The `go-lint` CI job is a required gate — no `continue-on-error`, no exceptions. Fix all lint issues before pushing. If you cannot fix a lint issue, explain why in a comment and open an issue.
-3. Commit with a concise, conventional message and no local-only changes, secrets, or debug artifacts.
-4. **One logical change per commit.** Do not bundle unrelated concerns (e.g., bug fixes, feature wiring, and secret rotations) into a single commit; split mixed changes into separate, independently buildable commits before pushing. `git reset --mixed HEAD~1` followed by `git add -p` is the standard way to recover an already-mixed commit.
-5. Push to **GitLab** (`git push origin main`) — GitLab is the single source of truth. Never push to GitHub directly; the GitHub mirror updates automatically from GitLab.
-6. Confirm the GitHub Actions run on the mirror goes green before declaring the work complete.
-
-**Commit Authorship (MANDATORY):** All commits must be authored as `Willis Ivali <itsivali@outlook.com>`. AI agents must NOT add their own branding (e.g., "Generated with Codebuff", "Co-Authored-By: AI") to commit messages. Use:
 ```bash
-GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="itsivali@outlook.com" \
-GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="itsivali@outlook.com" \
-git commit -m "..."
+go test ./internal/architecture/... -v
+./ci/check-architecture
 ```
 
-If a gate fails after a commit, fix the issue and create a new commit; do not amend the failed one.
+Repository health:
 
-### 3.5 MR Reconciliation (Mandatory)
+```bash
+ivali verify
+ivali doctor
+```
 
-Every MR created via `ivali flow` **must be reconciled to `main`** before the task is considered complete. The `ivali flow` workflow is not finished until the branch is merged.
-
-1. **`ivali flow mr`** — creates the merge request from the feature branch.
-2. **`ivali flow pipeline`** — monitor CI until all jobs pass (or use `ivali flow merge` which polls automatically).
-3. **`ivali flow merge`** — merge the MR into `main` once CI is green. This polls the pipeline until it passes, then merges.
-4. If the GitLab runner is down or CI cannot run, escalate to the operator — do not merge without a passing pipeline unless explicitly authorized.
-
-**Why this rule exists:** An unmerged MR is unfinished work. The repository must stay in a state where `main` always reflects the latest accepted changes. Orphaned branches and open MRs accumulate technical debt.
-
-**Enforcement:** If an agent creates an MR but does not merge it (or document why it cannot be merged), the agent has violated this contract. The task is incomplete until the branch is reconciled.
-
-### 3.6 Testing Requirements
-
-Every code change must be verified before committing. No exceptions.
-
-**Pre-commit verification checklist (mandatory for every session):**
-
-1. **Nix formatting:** `nix fmt` — all `.nix` files must pass.
-2. **Nix evaluation:** `nix eval .#nixosConfigurations.<host>.config.system.build.toplevel.name` — must evaluate without error.
-3. **Go compilation:** `go build ./...` — must compile cleanly.
-4. **Go tests:** `go test ./...` — all tests must pass.
-5. **Shell syntax:** `bash -n scripts/*.sh` — must parse without syntax errors (run BEFORE any other shell checks).
-6. **Shell lint:** `shellcheck scripts/*.sh` — if scripts are modified.
-
-**End-to-end feature testing:**
-
-- Every feature must be tested from the user's perspective, not just compilation.
-- Desktop changes: verify launching apps, keybindings, theming, sidebar behavior.
-- Service changes: verify systemd unit starts, logs are clean, health checks pass.
-- Script changes: verify the script runs correctly with realistic inputs.
-- Go changes: verify the CLI/bot produces correct output for representative commands.
-
-**Logic-level testing:**
-
-- Every function must have at least one test case covering its primary behavior.
-- Every conditional branch must be exercised by at least one test.
-- Edge cases (empty input, missing files, permission errors) must be tested where applicable.
-- Tests must be deterministic — no flaky tests, no time-dependent assertions.
-
-**Code completeness:**
-
-- No stub implementations (e.g., `return nil`, `return "default"`) in production code.
-- No `TODO`/`FIXME`/`HACK` comments indicating incomplete work.
-- No dead code (unexported functions never called, unused variables, unreachable branches).
-- No duplicate implementations — extract shared logic to utility packages.
-- All options declared in Nix modules must be consumed by at least one configuration path.
-- Every registered check/test must have a non-trivial implementation (not a no-op).
-
-**Commit discipline:**
-
-- One logical change per commit. Never bundle unrelated concerns.
-- Each commit must independently pass all verification gates.
-- Use `git add -p` to split mixed changes into separate commits.
-- Commit messages must follow conventional format: `type(scope): description`.
+Do not claim a gate passed unless it was actually executed and observed.
 
 ---
 
-## PART 4: Security, Desktop Architecture & Maintenance
+# 24. Definition of Evidence
 
-### 4.1 Security & Secrets Management
+AI agents must distinguish:
 
-Security is a hard constraint.
+```text
+PLANNED
+```
 
-- **No Plaintext Secrets:** Never commit passwords, API keys, or tokens.
-- **No Hardcoded Secrets:** Never hardcode secret values — not even as fallbacks, defaults, or placeholder credentials. Every secret must live exclusively in SOPS-encrypted files under `secrets/`. This includes Grafana secret keys, admin passwords, API tokens, and any other credential. If a module needs a secret, declare it via `sops.secrets.<name>.sopsFile`. Test VMs that cannot decrypt SOPS must provide throwaway values directly on the NixOS service settings — never embed them in the module.
-- **Secrets Integration:** All sensitive data must be managed via secure deployment tools (e.g., `sops-nix` or `agenix`).
-- **Principle of Least Privilege:** Systemd services must be locked down using standard hardening parameters (`DynamicUser = true`, `ProtectSystem = "strict"`, etc.) unless absolutely necessary.
+from:
 
-### 4.2 Desktop & UI Architecture
+```text
+IMPLEMENTED
+```
 
-When modifying the graphical environment or terminal spaces:
+from:
 
-- **Terminal Integrity:** When modifying terminal configurations, ensure frameworks remain isolated as intended (e.g., retaining the Powerlevel10k framework while isolating Starship to a single segment).
-- **Cohesion:** The user experience must feel intentional. Theming, fonts, and colors must utilize the centralized repository configuration.
-- **End-to-End UI Testing:** Modifications to UI components require verification that launching, clicking, tooltips, and real-time updating work seamlessly.
+```text
+VERIFIED
+```
 
-### 4.3 Documentation Standards
+from:
 
-- **README Requirements:** Every new module or significant package must include a local `README.md` explaining its purpose, options, and troubleshooting steps.
-- **Self-Documenting Code:** Use Nix `description` fields robustly for all custom options.
+```text
+DEPLOYED
+```
 
-### 4.4 Continuous Maintenance & Troubleshooting
+from:
 
-- **Logging:** All custom scripts and services must output structured or highly readable logs to `journalctl`.
-- **Rollback Readiness:** Every change must evaluate safely. Ensure configurations do not break NixOS rollback capabilities.
+```text
+HEALTHY
+```
+
+These are different states.
+
+For example:
+
+```text
+Implemented ≠ Verified
+Verified ≠ Deployed
+Deployed ≠ Healthy
+```
+
+Never collapse these states into a single claim.
 
 ---
 
-## PART 5: Architectural Audit & Enforcement Framework
+# 25. Architecture Contract
 
-This section defines the comprehensive architectural governance contract. Every AI agent must internalize these phases before performing any structural work on the repository.
+The repository follows domain-oriented architecture.
 
-### 5.1 Role Definition
+Core invariant:
 
-You are the lead systems architect and senior NixOS infrastructure engineer taking ownership of this repository. Your responsibility is to audit, understand, refactor, isolate, test, and enforce the architecture.
-
-You are NOT starting a greenfield project. You are working on an existing, functional, highly customized NixOS infrastructure repository. Your job is to improve its architecture without destroying existing functionality.
-
-### 5.2 Primary Objective
-
-Transform the repository into a:
-
-> Strongly modular, domain-oriented, dependency-aware NixOS infrastructure platform with explicit boundaries, isolated runtime services, clear ownership, reproducible builds, and CI-enforced architectural rules.
-
-The goal is that a developer can work on one subsystem without accidentally modifying or breaking unrelated subsystems.
-
-For example: modifying GNOME should NOT unexpectedly affect Telegram, GitOps, Tailscale, Firewall, Security, or Observability. Likewise, modifying Telegram should not require changing GNOME implementation.
-
-### 5.3 Hybrid Architecture Principle
-
-Do NOT interpret this as "turn every NixOS module into a microservice." Implement a hybrid architecture:
-
-**Declarative domains** — Strongly isolated NixOS/Home Manager modules for: boot, hardware, kernel, desktop, GNOME, networking, Tailscale, security, packages, developer tooling, secrets, recovery, etc.
-
-**Runtime services** — Isolated service boundaries for things that actually behave as services: Telegram Control Plane, GitOps, Observability, Backup, Self-Healing, Automation, etc.
-
-Runtime services must communicate through explicit interfaces rather than directly modifying one another's implementation or state.
-
-### 5.4 Phases of Architectural Governance
-
-#### Phase 0 — Stop and Understand the Repository
-
-Before changing anything: DO NOT MOVE FILES, DO NOT DELETE FILES, DO NOT REWRITE MODULES, DO NOT CHANGE ARCHITECTURE, DO NOT "CLEAN UP" RANDOMLY. First inspect the repository using `git status`, `git branch`, `git log`, `git diff`, `find`, `tree`, `rg`, `git grep`, `nix eval`, `nix flake check`.
-
-#### Phase 1 — Complete Architectural Audit
-
-Inspect at minimum: `flake.nix`, `flake.lock`, `configuration.nix`, and every top-level directory. Determine ownership from actual behavior, not directory names.
-
-#### Phase 2 — Inventory Everything
-
-Build an inventory of: Nix modules, Home Manager modules, systemd services, systemd timers, scripts, executables, packages, secrets, configuration files, generated files, state directories, runtime sockets, network dependencies, host-specific configuration, CI jobs, automation, external dependencies.
-
-For every significant component determine: Name, Path, Domain, Owner, Type, Public interface, Internal implementation, Dependencies, Consumers, State, Filesystem access, Runtime dependencies, Network dependencies, Secrets, Side effects, Host dependencies.
-
-#### Phase 3 — Build the Real Dependency Graph
-
-Determine dependencies from the source. Track: Nix dependencies (imports, option references, config references, flake inputs, package references), Runtime dependencies (systemd Requires/Wants/After/Before/BindsTo/PartOf/ExecStart*), Script dependencies (sourced scripts, commands, binaries, environment variables, files, sockets, directories), Filesystem dependencies (/etc, /var/lib, /var/cache, /run, /home, /opt, other persistent state).
-
-#### Phase 4 — Produce Dependency Graphs
-
-Create `ARCHITECTURE_AUDIT.md` with actual dependency graphs using Mermaid where practical. The final graph MUST reflect the actual repository. Do not invent dependencies.
-
-#### Phase 5 — Create a Runtime Service Graph
-
-Create a separate graph for runtime services showing: Telegram, GitOps, Backup, Monitoring, Self-Healing, Automation and their real dependencies. The graph must show service interactions, not filesystem paths.
-
-#### Phase 6 — Find Circular Dependencies
-
-Detect all dependency cycles (A → B → C → A). For every cycle document: Source, Complete cycle, Why it exists, Whether it is legitimate, Risk, Proposed resolution. Do not break legitimate NixOS module relationships merely because they appear circular.
-
-#### Phase 7 — Find Cross-Domain Coupling
-
-Identify cases where one domain directly depends on another domain's implementation. These should be considered violations unless explicitly documented as exceptions.
-
-#### Phase 8 — Find Cross-Domain Filesystem Access
-
-Find all cases where one domain accesses another domain's state. Inspect shell scripts for file operations against another subsystem's private files. Classify every finding as: Allowed, Questionable, Forbidden.
-
-#### Phase 9 — Find Duplicate Configuration
-
-Search for duplicate systemd services, firewall rules, packages, GNOME configuration, environment variables, secrets configuration, networking configuration, GTK settings, dconf configuration, Home Manager configuration. The goal is: one authoritative owner for each configuration concern.
-
-#### Phase 10 — Find Undeclared Dependencies
-
-Find dependencies that happen to work only because something else installs or configures them. Every dependency must be explicit.
-
-#### Phase 11 — Find Internal API Violations
-
-Every domain must eventually have PUBLIC and INTERNAL boundaries. Another domain must not directly consume internal paths unless the dependency is explicitly approved and documented.
-
-#### Phase 12 — Find Cross-Service State Mutation
-
-A service MUST NOT directly modify another service's private state. A service may request another service to change its state via an interface. It must not own or directly mutate that state.
-
-#### Phase 13 — Design Domain Boundaries
-
-After completing the audit, define the actual domains. Derive domain boundaries from the actual repository. For each domain document: Purpose, Owner, Public API, Internal implementation, Allowed dependencies, Forbidden dependencies, State ownership, Filesystem ownership, Runtime services, Tests.
-
-#### Phase 14 — Dependency Direction
-
-Establish a one-directional dependency hierarchy. Dependencies must flow in a controlled direction. Avoid domain-to-domain cycles.
-
-#### Phase 15 — Host Composition
-
-Hosts should compose capabilities (e.g., `modules.desktop.gnome.enable = true`). Hosts should NOT contain subsystem implementation.
-
-#### Phase 16 — Public Contracts
-
-Every domain must expose a small public interface. Consumers should depend on public options/contracts. They should not reach into implementation files.
-
-#### Phase 17 — State Ownership
-
-Every state directory must have exactly one owner. Create a state ownership table documenting: path, owner, consumers, mutation authority.
-
-#### Phase 18 — Configuration Ownership
-
-For every major configuration concern determine: Owner, Consumers, Mutation authority. Avoid multiple owners.
-
-#### Phase 19 — Architecture Manifest
-
-Create a machine-readable architecture manifest (`architecture/domains.yaml`, `architecture/dependencies.yaml`, `architecture/exceptions.yaml`) describing: domain, paths, public paths, internal paths, allowed dependencies, forbidden dependencies, state ownership.
-
-#### Phase 20 — Architectural Exceptions
-
-Create `architecture/exceptions.yaml`. Every exception must specify: source, target, reason, owner, review/expiry. Never hide architectural exceptions.
-
-#### Phase 21 — Build the Architecture Linter
-
-Implement a dedicated architecture checker that validates: (1) Forbidden imports, (2) Circular dependencies, (3) Cross-domain filesystem access, (4) Duplicate configuration, (5) Undeclared dependencies, (6) Internal module access, (7) Cross-service state mutation. The implementation should be deterministic, fast, dependency-light, testable, readable, CI-friendly.
-
-#### Phase 22 — Local Architecture Command
-
-Create a simple developer command (e.g., `./ci/check-architecture`) that runs all architecture checks and reports PASS/FAIL with exit non-zero on failure.
-
-#### Phase 23 — Test the Architecture Checker
-
-Create fixtures for: valid architecture, forbidden import, circular dependency, filesystem violation, duplicate configuration, undeclared dependency, internal API violation, cross-service state mutation. The tests must prove the checker catches each violation.
-
-#### Phase 24 — CI Integration
-
-Integrate architecture validation into the existing CI system. Architecture validation must run before expensive builds. Preferred flow: lint → architecture → tests → flake check → build.
-
-#### Phase 25 — CI Must Protect the Architecture
-
-After migration, someone should not be able to add a forbidden cross-domain dependency without CI failing. The architecture must become self-enforcing.
-
-#### Phase 26 — Migration
-
-Only after audit, graph, domain design, architecture manifest, checker, and checker tests are complete should the repository migration begin. Migrate incrementally. Recommended order: (1) Establish boundaries, (2) Establish ownership, (3) Add public interfaces, (4) Remove internal dependencies, (5) Fix filesystem coupling, (6) Fix undeclared dependencies, (7) Break cycles, (8) Separate runtime service state, (9) Remove obsolete code, (10) Enable strict CI enforcement.
-
-#### Phase 27 — Preserve Existing Functionality
-
-This is NOT a feature rewrite. Preserve existing functionality. Pay particular attention to: NixOS boot, GNOME, Home Manager, Tailscale, firewall, SSH, secrets, GitOps, GitLab Runner, Telegram control plane, observability, self-healing, recovery, developer environment.
-
-#### Phase 28 — Dead Code
-
-During the audit identify: unused modules, unused scripts, obsolete services, duplicate scripts, unreachable code, dead configuration, obsolete remnants, abandoned automation, unused packages. Classify as: ACTIVE, LEGACY, DEAD, UNCERTAIN. Only remove code when you can establish that it is dead or explicitly obsolete.
-
-#### Phase 29 — NixOS Validation
-
-After each meaningful migration run `nix flake check`. Use targeted evaluation/build checks where appropriate. Do not repeatedly run expensive full system switches. Prefer: `nix flake check`, `nix eval`, `nixos-rebuild build --flake .`.
-
-#### Phase 30 — No Architectural Magic
-
-Do not solve coupling by introducing: giant shared modules, global mutable state, hidden environment variables, undocumented shell scripts, arbitrary symlinks, implicit dependencies, filesystem hacks. If two domains need to communicate, define a contract.
-
-#### Phase 31 — Runtime Service Contracts
-
-For services such as Telegram, GitOps, Backup, Monitoring, Self-Healing, define explicit interfaces. Choose the simplest appropriate mechanism (Unix sockets, CLI interfaces, systemd interfaces, local HTTP APIs, structured files). Do not introduce network APIs merely because "microservices" sounds modern.
-
-#### Phase 32 — Document the Architecture
-
-Create `ARCHITECTURE_AUDIT.md` and `ARCHITECTURE_PROGRESS.md`. The audit must explain: current architecture, domains, dependencies, dependency graph, runtime graph, cycles, coupling, filesystem violations, duplicate configuration, undeclared dependencies, internal API violations, state ownership violations, proposed architecture, migration plan. The progress document must contain: completed, current phase, known violations, tests, remaining work, exact next step.
-
-#### Phase 33 — Context Handoff
-
-NEVER leave the repository in an ambiguous state. At the end of every major phase update `ARCHITECTURE_PROGRESS.md` with the exact state of the work. If running out of context: STOP. Document what was completed, what changed, what remains, what failed, and the exact next action.
-
-#### Phase 34 — Final Acceptance Test
-
-The architecture transformation is complete only when ALL of the following are true:
-
-- [ ] Repository fully audited
-- [ ] Actual dependency graph created
-- [ ] Runtime dependency graph created
-- [ ] Domains defined
-- [ ] Domain ownership documented
-- [ ] Public interfaces defined
-- [ ] Internal implementations isolated
-- [ ] State ownership defined
-- [ ] Filesystem ownership defined
-- [ ] Circular dependencies eliminated or explicitly justified
-- [ ] Forbidden imports eliminated
-- [ ] Cross-domain filesystem access eliminated or documented
-- [ ] Duplicate configuration eliminated
-- [ ] Undeclared dependencies eliminated
-- [ ] Internal API violations eliminated
-- [ ] Cross-service state mutation eliminated
-- [ ] Architecture manifest implemented
-- [ ] Architecture exceptions documented
-- [ ] Architecture linter implemented
-- [ ] Architecture linter tested
-- [ ] CI integration implemented
-- [ ] CI rejects architectural violations
-- [ ] Existing CI continues working
-- [ ] Nix flake check passes
-- [ ] Relevant tests pass
-- [ ] Existing functionality preserved
-- [ ] Dead code identified and appropriately handled
-- [ ] Documentation complete
-
-### 5.5 Final Target Architecture
-
-The final repository should behave like this:
-
-```
-┌─────────────────────┐
-│       prague        │
-│        HOST         │
-└──────────┬──────────┘
-│
-COMPOSITION ONLY
-│
-┌──────────────────────┼──────────────────────┐
-│                      │                      │
-▼                      ▼                      ▼
-DESKTOP              NETWORKING              SECURITY
-│                      │                      │
-▼                      ▼                      ▼
-INTERNAL               INTERNAL               INTERNAL
-
-
-RUNTIME SERVICES
-
-┌─────────────┐       ┌─────────────┐
-│  TELEGRAM   │──────▶│   GITOPS    │
-└─────────────┘ API   └─────────────┘
-│
-▼
-OWNED STATE
-
-
-┌─────────────┐
-│   BACKUP    │
-└──────┬──────┘
-│
-│ API / approved interface
-▼
-SERVICE-OWNED STATE
+```text
+Hosts compose capabilities.
+Domains own capabilities.
+Services expose contracts.
+Infrastructure adapters implement those contracts.
 ```
 
-The following must NEVER happen:
-- Telegram directly modifying /var/lib/gitops
-- GNOME reaching into Telegram internals
-- Networking reaching into GitOps internals
-- Any circular dependency chain (A → B → C → A)
+A capability should have one authoritative owner.
 
-### 5.6 Most Important Instruction
+Avoid:
 
-Do not simply produce an architecture document. Do not simply recommend a new directory structure. Actually: AUDIT → MODEL → GRAPH → DESIGN → IMPLEMENT → TEST → ENFORCE → DOCUMENT.
+* duplicate firewall ownership
+* duplicate Tailscale configuration
+* duplicate secrets declarations
+* duplicate health implementations
+* duplicate deployment engines
+* duplicate observability ownership
+* competing service implementations
 
-The repository must end up with architectural boundaries that are: explicit, testable, reproducible, enforceable, maintainable. The ultimate goal is: a developer or LLM can modify one subsystem without accidentally coupling, breaking, or modifying unrelated subsystems — and CI automatically prevents architectural regression.
+---
 
+# 26. Architecture Documentation
 
+Architecture work must consider:
 
+```text
+ARCHITECTURE.md
+ARCHITECTURE_AUDIT.md
+ARCHITECTURE_PROGRESS.md
+architecture/domains.yaml
+architecture/dependencies.yaml
+architecture/exceptions.yaml
+```
 
+Architecture must be machine-enforced where practical.
 
+The architecture checker should detect:
 
+* forbidden imports
+* circular dependencies
+* filesystem boundary violations
+* duplicate configuration
+* undeclared dependencies
+* internal API access
+* cross-service state mutation
 
+---
+
+# 27. State Ownership
+
+Every persistent state location must have an identifiable owner.
+
+Conceptually:
+
+```text
+Deployment state → Deployment domain
+Backup state → Backup domain
+Health state → Health domain
+Notification state → Notification domain
+Observability state → Observability domain
+```
+
+One service must not directly mutate another service's private state.
+
+---
+
+# 28. Runtime Service Boundaries
+
+Services should communicate through explicit contracts.
+
+Appropriate mechanisms include:
+
+* CLI
+* Unix sockets
+* systemd interfaces
+* local HTTP APIs
+* structured files
+* approved event mechanisms
+
+Use the simplest mechanism that preserves the boundary.
+
+---
+
+# 29. Nix/NixOS Engineering
+
+Nix configuration must remain:
+
+* declarative
+* reproducible
+* modular
+* explicit
+* composable
+* evaluatable
+
+Do not introduce unmanaged imperative configuration as a permanent solution.
+
+Persistent behavior must have a repository source of truth.
+
+---
+
+# 30. Security Contract
+
+Never commit:
+
+* passwords
+* API keys
+* tokens
+* private keys
+* credentials
+* secret configuration
+
+Use approved mechanisms such as:
+
+* SOPS
+* age
+* sops-nix
+
+Never log secrets.
+
+Never expose secrets through diagnostics.
+
+Never put secret values in source as fallbacks.
+
+---
+
+# 31. Network Security
+
+Networking follows least privilege.
+
+Every exposed service should have:
+
+* owner
+* purpose
+* access boundary
+* firewall policy
+* authentication
+* monitoring
+
+Tailscale does not automatically eliminate the need for service authentication or host firewall policy.
+
+---
+
+# 32. Systemd Security
+
+Where compatible, use appropriate hardening:
+
+```text
+DynamicUser
+NoNewPrivileges
+ProtectSystem
+ProtectHome
+PrivateTmp
+PrivateDevices
+RestrictAddressFamilies
+RestrictNamespaces
+CapabilityBoundingSet
+```
+
+Do not blindly apply hardening that breaks required functionality.
+
+---
+
+# 33. Observability Contract
+
+Important services should provide appropriate:
+
+* logs
+* metrics
+* health information
+* failure reporting
+* diagnostics
+* recovery visibility
+
+Observability must describe actual runtime behavior.
+
+For observability changes, agents must consult the repository's observability documentation and current architecture before changing collectors, exporters, dashboards, alerting, retention, or notification paths.
+
+The observability stack is a consumer of service behavior, not an excuse to create duplicate service ownership.
+
+---
+
+# 34. Backup and Recovery
+
+Backup is production functionality.
+
+A backup implementation must define:
+
+* scope
+* encryption
+* destination
+* retention
+* verification
+* restoration
+* monitoring
+* failure handling
+
+A backup that cannot be restored is not sufficient evidence of recoverability.
+
+---
+
+# 35. Desktop Engineering
+
+Desktop changes must preserve the complete desktop platform.
+
+For changes involving KDE, GNOME, themes, browsers, audio, display, portals, remote desktop, or applications, inspect the relevant architecture and migration documentation before implementation.
+
+Verify surrounding integration rather than only the changed package.
+
+---
+
+# 36. CI/CD
+
+The preferred lifecycle is:
+
+```text
+Plan
+    ↓
+TDD
+    ↓
+Local Verification
+    ↓
+ivali flow
+    ↓
+Merge Request
+    ↓
+CI
+    ↓
+Approval
+    ↓
+Merge
+    ↓
+GitOps
+    ↓
+Deployment
+    ↓
+Health Verification
+```
+
+CI validates changes.
+
+GitOps reconciles accepted changes.
+
+CI must not silently become an independent deployment engine.
+
+---
+
+# 37. Documentation Contract
+
+Documentation must describe reality.
+
+When behavior changes materially, update the relevant documentation.
+
+Important repository documents include:
+
+```text
+README.md
+AGENTS.md
+ENGINEERING.md
+CONTRIBUTING.md
+ARCHITECTURE.md
+ARCHITECTURE_AUDIT.md
+ARCHITECTURE_PROGRESS.md
+IVALi_FLOW.md
+STABILIZATION.md
+STABILIZATION-MATRIX.md
+MIGRATION-READINESS.md
+OBSERVABILITY.md
+CONTEXT_HANDOFF.md
+```
+
+Not every task requires modifying all of them.
+
+The agent must determine which documents are affected by the change.
+
+---
+
+# 38. Documentation Dependency Rule
+
+Repository documentation forms a connected engineering model.
+
+When a task changes behavior represented in multiple documents, update all affected documents or explicitly record why a document remains unchanged.
+
+For example:
+
+```text
+Architecture change
+    ↓
+ARCHITECTURE.md
+ARCHITECTURE_AUDIT.md
+ARCHITECTURE_PROGRESS.md
+architecture/*.yaml
+tests
+possibly README / operational docs
+```
+
+Observability change:
+
+```text
+Implementation
+    ↓
+OBSERVABILITY.md
+STABILIZATION-MATRIX.md
+architecture model
+tests
+CI / runtime validation
+```
+
+Migration change:
+
+```text
+Implementation
+    ↓
+MIGRATION-READINESS.md
+STABILIZATION.md
+architecture documentation
+tests
+operational documentation
+```
+
+The objective is to prevent documentation drift.
+
+---
+
+# 39. Context Handoff
+
+AI sessions are replaceable.
+
+The repository must not depend on hidden model context.
+
+Incomplete work must be recorded in:
+
+```text
+CONTEXT_HANDOFF.md
+```
+
+The handoff should contain:
+
+```text
+Current objective
+Completed work
+Files changed
+Tests run
+Tests not run
+Current failures
+Known blockers
+Architectural decisions
+Current branch
+Current commit
+Next exact action
+Relevant documents
+```
+
+The **Relevant Documents** section is important.
+
+It should identify the documents the next agent must read before continuing.
+
+---
+
+# 40. No Hidden Context
+
+A future AI agent must be able to continue using:
+
+```text
+Repository
++
+AGENTS.md
++
+Applicable engineering documentation
++
+Architecture documentation
++
+CONTEXT_HANDOFF.md
+```
+
+without depending on:
+
+* previous chat messages
+* hidden model memory
+* undocumented assumptions
+* private reasoning
+* unrecorded decisions
+
+---
+
+# 41. Architecture Work Requires a Different Workflow
+
+Ordinary work:
+
+```text
+Understand
+ ↓
+Plan
+ ↓
+TDD
+ ↓
+Implement
+ ↓
+Verify
+ ↓
+ivali flow
+```
+
+Architecture work:
+
+```text
+Audit
+ ↓
+Model
+ ↓
+Graph
+ ↓
+Design
+ ↓
+Write Architecture Tests
+ ↓
+RED
+ ↓
+Implement
+ ↓
+GREEN
+ ↓
+Enforce
+ ↓
+Verify
+ ↓
+Document
+ ↓
+ivali flow
+```
+
+Do not perform repository-wide architectural migration for an isolated bug.
+
+Do not perform a local patch when the task explicitly requires architectural correction.
+
+---
+
+# 42. Feature Completeness
+
+The agent owns the complete affected workflow.
+
+For example:
+
+```text
+Configuration
+ ↓
+Build
+ ↓
+Installation
+ ↓
+Service
+ ↓
+Permissions
+ ↓
+Runtime
+ ↓
+Health
+ ↓
+Logs
+ ↓
+Recovery
+ ↓
+Tests
+ ↓
+Documentation
+```
+
+Do not stop merely because compilation succeeds.
+
+---
+
+# 43. Correct Iteration Loop
+
+The repository follows:
+
+```text
+BOOTSTRAP
+    ↓
+DOCUMENT MAP
+    ↓
+UNDERSTAND
+    ↓
+PLAN
+    ↓
+DEFINE BEHAVIOR
+    ↓
+WRITE TEST
+    ↓
+RED
+    ↓
+IMPLEMENT
+    ↓
+GREEN
+    ↓
+REFACTOR
+    ↓
+VERIFY
+    ↓
+OBSERVE
+    ↓
+FIX
+    ↓
+VERIFY AGAIN
+    ↓
+DOCUMENT
+    ↓
+IVALI FLOW
+    ↓
+CI
+    ↓
+MERGE
+    ↓
+GITOPS
+    ↓
+HEALTH
+```
+
+---
+
+# 44. Definition of Done
+
+A task is complete only when all applicable conditions are satisfied.
+
+## Planning
+
+* [ ] `AGENTS.md` was consulted.
+* [ ] Applicable repository documents were identified.
+* [ ] A Document Map was created for meaningful work.
+* [ ] Repository state was inspected.
+* [ ] Existing implementation was inspected.
+* [ ] Existing tests were inspected.
+* [ ] Relevant architecture was understood.
+* [ ] Documentation conflicts were identified and resolved.
+* [ ] Source of truth was identified.
+* [ ] Scope and risks were understood.
+
+## TDD
+
+* [ ] Requirement converted into observable behavior.
+* [ ] Test written before production implementation.
+* [ ] Test was actually RED.
+* [ ] Failure reason understood.
+* [ ] Minimum implementation written.
+* [ ] Test became GREEN.
+* [ ] Refactoring completed where appropriate.
+* [ ] Regression tests added where required.
+
+## Implementation
+
+* [ ] Feature works end-to-end.
+* [ ] No duplicate implementation introduced.
+* [ ] No dead code introduced.
+* [ ] No speculative functionality introduced.
+* [ ] No unfinished production code remains.
+
+## Architecture
+
+* [ ] Correct domain owns the change.
+* [ ] Public/internal boundaries respected.
+* [ ] State ownership preserved.
+* [ ] No forbidden coupling introduced.
+* [ ] Architecture tests pass where applicable.
+* [ ] Machine-readable architecture updated where necessary.
+* [ ] Architectural exceptions documented where necessary.
+
+## Security
+
+* [ ] No plaintext secrets.
+* [ ] No credentials embedded in source.
+* [ ] Least privilege preserved.
+* [ ] Security-sensitive behavior tested where applicable.
+* [ ] No sensitive information logged.
+
+## Verification
+
+* [ ] Formatting passes.
+* [ ] Nix checks pass where applicable.
+* [ ] Host evaluation passes where applicable.
+* [ ] Go build passes where applicable.
+* [ ] Go tests pass where applicable.
+* [ ] Go race tests pass where applicable.
+* [ ] Go lint passes where applicable.
+* [ ] Shell validation passes where applicable.
+* [ ] Architecture checks pass.
+* [ ] Repository health checks pass where applicable.
+* [ ] Relevant observability checks pass.
+* [ ] Runtime health verified where applicable.
+
+## Rebuild
+
+* [ ] Required evaluation gates passed before rebuild.
+* [ ] Rebuild completed successfully if required.
+* [ ] Runtime health verified if required.
+* [ ] Rollback path remains available.
+
+## Documentation
+
+* [ ] Documentation matches reality.
+* [ ] Applicable operational documentation updated.
+* [ ] Architecture documentation updated if necessary.
+* [ ] Stabilization documentation updated if necessary.
+* [ ] Migration documentation updated if necessary.
+* [ ] Observability documentation updated if necessary.
+* [ ] `CONTEXT_HANDOFF.md` updated when required.
+* [ ] Next-agent relevant documents identified where work remains incomplete.
+
+## Git
+
+* [ ] Work went through `ivali flow`.
+* [ ] Commit uses correct authorship.
+* [ ] No AI branding exists in commit metadata.
+* [ ] CI passed.
+* [ ] MR reconciled according to `ivali flow`.
+* [ ] No unreviewed production changes remain.
+
+---
+
+# 45. What an AI Agent Must Never Do
+
+An AI agent must never:
+
+```text
+Implement before understanding the repository.
+```
+
+```text
+Implement before planning a non-trivial task.
+```
+
+```text
+Ignore AGENTS.md.
+```
+
+```text
+Ignore applicable repository documentation.
+```
+
+```text
+Assume previous AI conversation context is authoritative.
+```
+
+```text
+Invent repository structure.
+```
+
+```text
+Invent dependencies.
+```
+
+```text
+Implement before writing the test.
+```
+
+```text
+Claim tests passed without running them.
+```
+
+```text
+Claim CI passed without observing CI.
+```
+
+```text
+Weaken a test to make code pass.
+```
+
+```text
+Delete a test because it is inconvenient.
+```
+
+```text
+Bypass ivali flow.
+```
+
+```text
+Push directly to main.
+```
+
+```text
+Commit directly with git commit.
+```
+
+```text
+Merge directly with git merge.
+```
+
+```text
+Discard user changes.
+```
+
+```text
+Expose secrets.
+```
+
+```text
+Introduce duplicate implementations.
+```
+
+```text
+Silently expand scope.
+```
+
+```text
+Leave undocumented architectural violations.
+```
+
+```text
+Run a rebuild before required evaluation gates pass.
+```
+
+```text
+Declare a task complete merely because the original prompt appears satisfied.
+```
+
+---
+
+# 46. What an AI Agent Must Always Do
+
+An AI agent must:
+
+```text
+Read before changing.
+```
+
+```text
+Reference AGENTS.md.
+```
+
+```text
+Identify applicable repository documents.
+```
+
+```text
+Build a Document Map for meaningful work.
+```
+
+```text
+Plan before implementation.
+```
+
+```text
+Search before creating.
+```
+
+```text
+Test before implementing.
+```
+
+```text
+Prove RED.
+```
+
+```text
+Implement the minimum required behavior.
+```
+
+```text
+Prove GREEN.
+```
+
+```text
+Refactor while preserving behavior.
+```
+
+```text
+Verify actual results.
+```
+
+```text
+Preserve existing work.
+```
+
+```text
+Respect architecture.
+```
+
+```text
+Protect secrets.
+```
+
+```text
+Use ivali flow.
+```
+
+```text
+Keep documentation synchronized with reality.
+```
+
+```text
+Document meaningful decisions.
+```
+
+```text
+Leave a clean handoff when work cannot be completed.
+```
+
+---
+
+# 47. Final AI Operating Contract
+
+Every AI agent working on this repository operates under the following contract:
+
+> **You are not here merely to generate code.**
+>
+> You are maintaining a production infrastructure system.
+>
+> **Read the repository before changing it.**
+>
+> **Read `AGENTS.md` before planning.**
+>
+> **Identify and reference every repository document relevant to the task.**
+>
+> **Begin meaningful work in Plan Mode.**
+>
+> Build a Document Map.
+>
+> Determine the source of truth.
+>
+> Resolve documentation and implementation discrepancies before acting.
+>
+> Understand ownership, dependencies, state, security, observability, recovery, and deployment implications.
+>
+> Define the behavior before implementing it.
+>
+> **Write the test first.**
+>
+> **Run the test and prove it fails.**
+>
+> Implement the minimum required behavior.
+>
+> **Run the test and prove it passes.**
+>
+> Refactor without breaking the contract.
+>
+> Test the complete workflow.
+>
+> Respect domain boundaries.
+>
+> Protect system state and secrets.
+>
+> Never fabricate verification.
+>
+> Never bypass `ivali flow`.
+>
+> Never destroy existing work.
+>
+> Keep documentation synchronized with actual repository behavior.
+>
+> Leave the repository in a better, more understandable, and more reproducible state than you found it.
+
+The canonical AI lifecycle is:
+
+```text
+┌──────────────────────┐
+│      BOOTSTRAP       │
+│ Read AGENTS.md       │
+│ Inspect repository   │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│    DOCUMENT MAP      │
+│ Identify applicable  │
+│ repository documents │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│      PLAN MODE       │
+│ Understand           │
+│ Audit                │
+│ Determine ownership  │
+│ Identify risks       │
+│ Define scope         │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│   DEFINE BEHAVIOR    │
+│ Acceptance criteria  │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│     WRITE TEST       │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│        RED           │
+│    PROVE FAILURE     │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│      IMPLEMENT       │
+│     MINIMUM CODE     │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│       GREEN          │
+│    PROVE SUCCESS     │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│      REFACTOR        │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│       VERIFY         │
+│ Tests / lint / arch  │
+│ Nix / security / CI  │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│       OBSERVE        │
+│ Runtime / health /   │
+│ logs / metrics       │
+└──────────┬───────────┘
+           ↓
+       Issues?
+       /    \
+     YES     NO
+      ↓       ↓
+    FIX    DOCUMENT
+      │       │
+      └───┬───┘
+          ↓
+┌──────────────────────┐
+│      IVAI FLOW        │
+│ Commit / Push / MR    │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│         CI           │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│        MERGE         │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│       GITOPS         │
+│ Reconcile / Deploy   │
+└──────────┬───────────┘
+           ↓
+┌──────────────────────┐
+│   HEALTH VERIFICATION│
+│ Runtime confirmation │
+└──────────────────────┘
+```
+
+## The Non-Negotiable Rule
+
+```text
+AGENTS.md
+   +
+Applicable Repository Documents
+   +
+Actual Repository State
+   +
+Tests
+   +
+Architecture Enforcement
+   +
+CI Evidence
+   +
+Runtime Evidence
+```
+
+form the AI agent's working context.
+
+**No AI agent may treat the current chat, model memory, or a user-provided task description as a substitute for repository context.**
+
+**Every task starts with understanding. Every meaningful task starts in Plan Mode. Every plan references the documents that govern it. Every implementation is test-first. Every result is verified with evidence. Every change follows `ivali flow`.**
+
+**This is the contract.**
 

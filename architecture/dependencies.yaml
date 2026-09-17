@@ -1,172 +1,1045 @@
 # Architecture Manifest: Dependency Graph
-# Documents actual cross-domain dependencies found in the repository.
-# Each entry represents a real dependency from source analysis.
 
-nix_imports:
-  - source: boot/plymouth.nix
-    target: shared.theme
-    type: import
-    severity: allowed
+#
 
-  - source: desktop/common/colors.nix
-    target: shared.theme
-    type: import
-    severity: allowed
+# PURPOSE
 
-  - source: home/theming.nix
-    target: shared.theme
-    type: import
-    severity: allowed
+# -------
 
-  - source: home/firefox/default.nix
-    target: shared.theme
-    type: import
-    severity: allowed
+# This manifest is the authoritative, machine-readable record of
 
-  - source: home/gnome/dconf.nix
-    target: shared.theme
-    type: import
-    severity: allowed
+# cross-domain dependencies detected in the repository.
 
-  - source: home/gnome/extensions.nix
-    target: shared.theme
-    type: import
-    severity: allowed
+#
 
-  - source: desktop/login/gdm.nix
-    target: shared.theme
-    type: import
-    severity: allowed
+# It serves two purposes:
 
-script_references:
-  - source: automation/gitops-reconciler.nix
-    target: shared.scripts/gitops-reconcile.sh
-    type: path_ref
-    severity: allowed
+#
 
-  - source: ci/gitlab-runner.nix
-    target: shared.scripts/gitlab-runner-health.sh
-    type: path_ref
-    severity: allowed
+# 1. Describe dependencies that actually exist in repository source.
 
-  - source: ci/gitlab-runner.nix
-    target: shared.scripts/gitlab-runner-reconcile.sh
-    type: path_ref
-    severity: allowed
+# 2. Provide the enforcement input used by architecture validation.
 
-  - source: ci/ci-deploy.nix
-    target: shared.scripts/ci-deploy.sh
-    type: path_ref
-    severity: allowed
+#
 
-  - source: observability/lite.nix
-    target: shared.scripts/notify.sh
-    type: builtins.readFile
-    severity: questionable
+# IMPORTANT
 
-  - source: recovery/deployment-health.nix
-    target: shared.scripts/deployment-health.sh
-    type: path_ref
-    severity: allowed
+# ---------
 
-  - source: recovery/rollback.nix
-    target: shared.scripts/deployment-health.sh
-    type: path_ref
-    severity: allowed
+# This file MUST NOT be treated as a permission to create new dependencies.
 
-  - source: recovery/rollback.nix
-    target: shared.scripts/rollback.sh
-    type: path_ref
-    severity: allowed
+# A dependency is valid only when:
 
-sops_references:
-  - source: lib/host-templates/laptop.nix
-    target: shared.secrets/tailscale.yaml
-    type: sops_ref
-    severity: allowed
+#
 
-  - source: lib/host-templates/laptop.nix
-    target: shared.secrets/gitlab-runner.yaml
-    type: sops_ref
-    severity: allowed
+# - the source and target are valid architectural domains/resources;
 
-  - source: lib/host-templates/laptop.nix
-    target: shared.secrets/notifications.yaml
-    type: sops_ref
-    severity: allowed
+# - the dependency is permitted by architecture/domains.yaml;
 
-  - source: lib/host-templates/laptop.nix
-    target: shared.secrets/gitlab.yaml
-    type: sops_ref
-    severity: allowed
+# - the dependency respects domain hierarchy;
 
-  - source: lib/host-templates/laptop.nix
-    target: shared.secrets/bitwarden.yaml
-    type: sops_ref
-    severity: allowed
+# - the dependency uses the target's declared public interface;
 
-  - source: ci/gitlab-runner.nix
-    target: shared.secrets/gitlab.yaml
-    type: sops_ref
-    severity: allowed
+# - state/filesystem ownership is respected;
 
-  - source: recovery/backup.nix
-    target: shared.secrets/restic.yaml
-    type: sops_ref
-    severity: allowed
+# - no architecture exception is required unless explicitly declared;
 
-  - source: recovery/backup.nix
-    target: shared.secrets/rclone.yaml
-    type: sops_ref
-    severity: allowed
+# - the dependency is covered by verification.
 
-option_namespace_reads:
-  - source: ci/gitlab-runner.nix
-    target: runtime.automation
-    option: fleet.gitops
-    severity: questionable
+#
 
-  - source: recovery/deployment-health.nix
-    target: runtime.automation
-    option: fleet.gitops
-    severity: questionable
+# Repository reality remains authoritative over this manifest.
+
+# If this manifest disagrees with the implementation, the discrepancy
+
+# MUST be reported and resolved rather than silently normalised.
+
+manifest:
+schema_version: "3.0"
+kind: dependency_graph
+authoritative: true
+
+purpose:
+- repository_dependency_inventory
+- architecture_enforcement
+- dependency_boundary_validation
+- state_ownership_validation
+- filesystem_boundary_validation
+- migration_tracking
+
+governing_documents:
+domain_model: architecture/domains.yaml
+exceptions: architecture/exceptions.yaml
+architecture: ARCHITECTURE.md
+audit: ARCHITECTURE_AUDIT.md
+progress: ARCHITECTURE_PROGRESS.md
+stabilization: STABILIZATION.md
+migration_readiness: MIGRATION-READINESS.md
+engineering_contract: ENGINEERING.md
+ai_contract: AGENTS.md
+delivery_flow: IVALi_FLOW.md
+
+source_of_truth:
+implementation: repository_source
+domain_policy: architecture/domains.yaml
+exceptions: architecture/exceptions.yaml
+dependency_inventory: architecture/dependencies.yaml
+
+# ---------------------------------------------------------------------------
+
+# DEPENDENCY TYPES
+
+# ---------------------------------------------------------------------------
+
+dependency_types:
+
+nix_import:
+description: >
+A Nix module, expression, or configuration file imports another
+Nix module or architecture-owned resource.
+enforcement: strict
+
+path_reference:
+description: >
+A source file references an executable, script, configuration file,
+generated artifact, or repository-owned path.
+enforcement: strict
+
+builtins_read_file:
+description: >
+Nix evaluates and embeds the contents of another file at evaluation
+time using builtins.readFile or equivalent.
+enforcement: strict
+
+sops_reference:
+description: >
+A Nix module or service references an encrypted SOPS/age secret.
+enforcement: strict
+
+option_namespace:
+description: >
+A source domain reads configuration options owned by another domain.
+enforcement: strict
 
 filesystem_access:
-  - source: ci/gitlab-runner.nix
-    target: /var/lib/gitops
-    access: read_write
-    owner: runtime.automation (implicit)
-    severity: questionable
-    exception: EXC-011
+description: >
+A component reads, writes, creates, deletes, or manages state in a
+filesystem location owned by another domain.
+enforcement: strict
 
-  - source: recovery/deployment-health.nix
-    target: /var/lib/gitops
-    access: read
-    owner: runtime.automation (implicit)
-    severity: questionable
+service_state:
+description: >
+A service creates or manages persistent runtime state owned by a
+different service/domain.
+enforcement: strict
 
-  - source: recovery/deployment-health.sh
-    target: /var/lib/gitops
-    access: read
-    owner: runtime.automation (implicit)
-    severity: questionable
+generated_artifact:
+description: >
+A component consumes an artifact generated by another component.
+enforcement: strict
 
-  - source: ci/gitlab-runner-health.sh
-    target: /var/lib/gitops
-    access: read
-    owner: runtime.automation (implicit)
-    severity: questionable
+runtime_api:
+description: >
+A runtime service communicates with another service through an
+explicit API, socket, RPC, HTTP, IPC, or equivalent contract.
+enforcement: strict
 
-  - source: internal/commands/status.go
-    target: /var/lib/observability/state.json
-    access: read
-    owner: runtime.observability
-    severity: questionable
+command_invocation:
+description: >
+A component invokes an executable owned by another domain.
+enforcement: strict
+
+# ---------------------------------------------------------------------------
+
+# SEVERITY
+
+# ---------------------------------------------------------------------------
+
+severity_levels:
+
+allowed:
+meaning: >
+Dependency is explicitly permitted by the domain architecture and
+conforms to the relevant ownership and interface rules.
+
+questionable:
+meaning: >
+Dependency currently exists but requires architectural review,
+explicit justification, migration tracking, or an exception.
+
+transitional:
+meaning: >
+Dependency is intentionally retained during a documented migration
+and MUST have an owner, rationale, migration target, and exit criteria.
+
+violation:
+meaning: >
+Dependency violates an architectural invariant or declared domain
+boundary and MUST block architectural acceptance unless an explicit
+approved exception applies.
+
+# ---------------------------------------------------------------------------
+
+# NIX IMPORT DEPENDENCIES
+
+# ---------------------------------------------------------------------------
+
+nix_imports:
+
+* source: boot/plymouth.nix
+  target: shared.theme
+  type: import
+  dependency_type: nix_import
+  severity: allowed
+  interface: public
+  rationale: >
+  Plymouth presentation configuration consumes the repository's
+  shared visual theme contract.
+  state_owner: shared.theme
+  verification:
+
+  * architecture-validation
+  * nix-evaluation
+
+* source: desktop/common/colors.nix
+  target: shared.theme
+  type: import
+  dependency_type: nix_import
+  severity: allowed
+  interface: public
+  rationale: >
+  Desktop color configuration consumes the shared theme contract.
+  state_owner: shared.theme
+  verification:
+
+  * architecture-validation
+  * nix-evaluation
+
+* source: home/theming.nix
+  target: shared.theme
+  type: import
+  dependency_type: nix_import
+  severity: allowed
+  interface: public
+  rationale: >
+  Home Manager theming consumes the shared theme contract.
+  state_owner: shared.theme
+  verification:
+
+  * architecture-validation
+  * nix-evaluation
+
+* source: home/firefox/default.nix
+  target: shared.theme
+  type: import
+  dependency_type: nix_import
+  severity: allowed
+  interface: public
+  rationale: >
+  Firefox presentation configuration consumes shared theme resources.
+  state_owner: shared.theme
+  verification:
+
+  * architecture-validation
+  * nix-evaluation
+
+# NOTE:
+
+# These entries are legacy GNOME paths and MUST be reconciled with the
+
+# KDE migration architecture. They are retained here only if they still
+
+# exist in the repository.
+
+#
+
+# If these paths no longer exist, they MUST be removed from this manifest.
+
+# If they still exist but are transitional, severity MUST be transitional
+
+# and the migration must be documented.
+
+* source: home/gnome/dconf.nix
+  target: shared.theme
+  type: import
+  dependency_type: nix_import
+  severity: transitional
+  interface: public
+  rationale: >
+  Legacy GNOME configuration consuming the shared theme contract.
+  Retained only while GNOME-to-KDE migration artifacts remain present.
+  migration:
+  target: home/kde
+  exit_condition: >
+  GNOME configuration is removed and KDE becomes the sole supported
+  desktop configuration.
+  verification:
+
+  * architecture-validation
+  * kde-migration-validation
+
+* source: home/gnome/extensions.nix
+  target: shared.theme
+  type: import
+  dependency_type: nix_import
+  severity: transitional
+  interface: public
+  rationale: >
+  Legacy GNOME extension configuration consuming shared theme resources.
+  migration:
+  target: home/kde
+  exit_condition: >
+  GNOME extension configuration is removed from the supported desktop
+  configuration.
+  verification:
+
+  * architecture-validation
+  * kde-migration-validation
+
+* source: desktop/login/gdm.nix
+  target: shared.theme
+  type: import
+  dependency_type: nix_import
+  severity: transitional
+  interface: public
+  rationale: >
+  Legacy GDM configuration consuming shared presentation resources.
+  KDE migration may replace GDM with an alternative display-manager
+  configuration.
+  migration:
+  target: desktop/login
+  exit_condition: >
+  The supported login/display-manager implementation is aligned with
+  the KDE target architecture.
+  verification:
+
+  * architecture-validation
+  * desktop-integrity
+
+# ---------------------------------------------------------------------------
+
+# SCRIPT / EXECUTABLE DEPENDENCIES
+
+# ---------------------------------------------------------------------------
+
+script_references:
+
+* source: automation/gitops-reconciler.nix
+  target: shared.scripts/gitops-reconcile.sh
+  type: path_ref
+  dependency_type: path_reference
+  severity: allowed
+  interface: public
+  ownership:
+  target_owner: shared.scripts
+  execution_owner: runtime.automation
+  verification:
+
+  * architecture-validation
+  * shell-syntax
+  * deployment-validation
+
+* source: ci/gitlab-runner.nix
+  target: shared.scripts/gitlab-runner-health.sh
+  type: path_ref
+  dependency_type: path_reference
+  severity: allowed
+  interface: public
+  ownership:
+  target_owner: shared.scripts
+  execution_owner: runtime.ci
+  verification:
+
+  * architecture-validation
+  * shell-syntax
+  * ci-validation
+
+* source: ci/gitlab-runner.nix
+  target: shared.scripts/gitlab-runner-reconcile.sh
+  type: path_ref
+  dependency_type: path_reference
+  severity: allowed
+  interface: public
+  ownership:
+  target_owner: shared.scripts
+  execution_owner: runtime.ci
+  verification:
+
+  * architecture-validation
+  * shell-syntax
+  * ci-validation
+
+* source: ci/ci-deploy.nix
+  target: shared.scripts/ci-deploy.sh
+  type: path_ref
+  dependency_type: path_reference
+  severity: allowed
+  interface: public
+  ownership:
+  target_owner: shared.scripts
+  execution_owner: runtime.ci
+  verification:
+
+  * architecture-validation
+  * shell-syntax
+  * deployment-validation
+
+* source: observability/lite.nix
+  target: shared.scripts/notify.sh
+  type: builtins.readFile
+  dependency_type: builtins_read_file
+  severity: questionable
+  interface: public
+  rationale: >
+  Observability currently consumes notification script contents directly.
+  This creates implementation coupling between observability and a shared
+  executable rather than a notification service contract.
+  risks:
+
+  * implementation_coupling
+  * difficult_runtime_substitution
+  * duplicated_notification_policy
+    preferred_direction: >
+    Observability should emit notification events through the notification
+    service contract rather than owning notification implementation details.
+    verification:
+  * architecture-validation
+  * observability-validation
+    migration:
+    target: runtime.services.notification
+    exit_condition: >
+    Observability consumes the notification contract without embedding
+    the implementation of notify.sh.
+
+* source: recovery/deployment-health.nix
+  target: shared.scripts/deployment-health.sh
+  type: path_ref
+  dependency_type: path_reference
+  severity: allowed
+  interface: public
+  ownership:
+  target_owner: shared.scripts
+  execution_owner: runtime.recovery
+  verification:
+
+  * architecture-validation
+  * shell-syntax
+  * recovery-validation
+
+* source: recovery/rollback.nix
+  target: shared.scripts/deployment-health.sh
+  type: path_ref
+  dependency_type: path_reference
+  severity: allowed
+  interface: public
+  ownership:
+  target_owner: shared.scripts
+  execution_owner: runtime.recovery
+  verification:
+
+  * architecture-validation
+  * shell-syntax
+  * recovery-validation
+
+* source: recovery/rollback.nix
+  target: shared.scripts/rollback.sh
+  type: path_ref
+  dependency_type: path_reference
+  severity: allowed
+  interface: public
+  ownership:
+  target_owner: shared.scripts
+  execution_owner: runtime.recovery
+  verification:
+
+  * architecture-validation
+  * shell-syntax
+  * rollback-validation
+
+# ---------------------------------------------------------------------------
+
+# SOPS / SECRET DEPENDENCIES
+
+# ---------------------------------------------------------------------------
+
+sops_references:
+
+* source: lib/host-templates/laptop.nix
+  target: shared.secrets/tailscale.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+  * secret-permission-validation
+
+* source: lib/host-templates/laptop.nix
+  target: shared.secrets/gitlab-runner.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+
+* source: lib/host-templates/laptop.nix
+  target: shared.secrets/notifications.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+
+* source: lib/host-templates/laptop.nix
+  target: shared.secrets/gitlab.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+
+* source: lib/host-templates/laptop.nix
+  target: shared.secrets/bitwarden.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+
+* source: ci/gitlab-runner.nix
+  target: shared.secrets/gitlab.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+  * ci-validation
+
+* source: recovery/backup.nix
+  target: shared.secrets/restic.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+  * backup-validation
+
+* source: recovery/backup.nix
+  target: shared.secrets/rclone.yaml
+  type: sops_ref
+  dependency_type: sops_reference
+  severity: allowed
+  access: read
+  interface: secret
+  state_owner: shared.secrets
+  verification:
+
+  * architecture-validation
+  * sops-validation
+  * backup-validation
+
+# ---------------------------------------------------------------------------
+
+# OPTION-NAMESPACE DEPENDENCIES
+
+# ---------------------------------------------------------------------------
+
+option_namespace_reads:
+
+* source: ci/gitlab-runner.nix
+  target: runtime.automation
+  option: fleet.gitops
+  dependency_type: option_namespace
+  severity: questionable
+  access: read
+  rationale: >
+  CI directly consumes an option namespace owned by runtime.automation.
+  This is acceptable only when fleet.gitops is explicitly exposed as
+  a public configuration contract.
+  required_condition:
+  public_option: true
+  declared_in: architecture/domains.yaml
+  preferred_interface:
+  type: public_option_contract
+  verification:
+
+  * architecture-validation
+  * nix-evaluation
+
+* source: recovery/deployment-health.nix
+  target: runtime.automation
+  option: fleet.gitops
+  dependency_type: option_namespace
+  severity: questionable
+  access: read
+  rationale: >
+  Recovery consumes GitOps configuration owned by runtime.automation.
+  The dependency must remain read-only and contract-based.
+  required_condition:
+  public_option: true
+  read_only: true
+  verification:
+
+  * architecture-validation
+  * recovery-validation
+
+# ---------------------------------------------------------------------------
+
+# FILESYSTEM DEPENDENCIES
+
+# ---------------------------------------------------------------------------
+
+filesystem_access:
+
+* source: ci/gitlab-runner.nix
+  target: /var/lib/gitops
+  access: read_write
+  dependency_type: filesystem_access
+  owner: runtime.automation
+  severity: questionable
+  ownership_mode: delegated
+  exception: EXC-011
+  rationale: >
+  CI currently requires write access to GitOps runtime state owned by
+  runtime.automation. This crosses a runtime-domain state boundary.
+  security:
+  least_privilege: required
+  direct_state_mutation: exception_only
+  migration:
+  preferred_interface: runtime.automation.public_api
+  goal: >
+  Replace direct filesystem mutation with an explicit automation
+  service/API contract where practical.
+  verification:
+
+  * architecture-validation
+  * filesystem-ownership
+  * security-validation
+  * exception-validation
+
+* source: recovery/deployment-health.nix
+  target: /var/lib/gitops
+  access: read
+  dependency_type: filesystem_access
+  owner: runtime.automation
+  severity: questionable
+  ownership_mode: observer
+  rationale: >
+  Recovery observes GitOps state owned by runtime.automation.
+  Direct filesystem observation is permitted only when the state is
+  explicitly exposed as a read-only operational interface.
+  preferred_interface:
+  type: health_or_status_contract
+  verification:
+
+  * architecture-validation
+  * filesystem-ownership
+  * recovery-validation
+
+* source: recovery/deployment-health.sh
+  target: /var/lib/gitops
+  access: read
+  dependency_type: filesystem_access
+  owner: runtime.automation
+  severity: questionable
+  ownership_mode: observer
+  rationale: >
+  Deployment-health logic reads automation state directly.
+  Prefer a stable health/status contract over filesystem coupling.
+  verification:
+
+  * architecture-validation
+  * filesystem-ownership
+  * recovery-validation
+
+* source: ci/gitlab-runner-health.sh
+  target: /var/lib/gitops
+  access: read
+  dependency_type: filesystem_access
+  owner: runtime.automation
+  severity: questionable
+  ownership_mode: observer
+  rationale: >
+  CI health logic observes runtime automation state.
+  The read must not mutate, repair, or assume ownership of that state.
+  verification:
+
+  * architecture-validation
+  * filesystem-ownership
+  * ci-validation
+
+* source: internal/commands/status.go
+  target: /var/lib/observability/state.json
+  access: read
+  dependency_type: filesystem_access
+  owner: runtime.observability
+  severity: questionable
+  ownership_mode: observer
+  rationale: >
+  The control-plane status command directly reads observability-owned
+  filesystem state. This creates a filesystem coupling that should be
+  replaced by an explicit observability status/health contract.
+  preferred_interface:
+  type: service_contract
+  candidate: internal/services
+  verification:
+
+  * architecture-validation
+  * filesystem-ownership
+  * go-test
+  * service-contract-validation
+
+# ---------------------------------------------------------------------------
+
+# CROSS-SERVICE STATE DEPENDENCIES
+
+# ---------------------------------------------------------------------------
 
 cross_service_state:
-  - source: ci/gitlab-runner-reconcile.service
-    target: /var/lib/gitops
-    access: creates_and_manages
-    owner: runtime.automation (implicit)
-    severity: questionable
-    exception: EXC-011
+
+* source: ci/gitlab-runner-reconcile.service
+  target: /var/lib/gitops
+  access: creates_and_manages
+  dependency_type: service_state
+  owner: runtime.automation
+  severity: questionable
+  ownership_mode: delegated
+  exception: EXC-011
+  rationale: >
+  The CI reconciliation service manages persistent GitOps state owned by
+  runtime.automation. This is a deliberate but architecturally sensitive
+  cross-domain state dependency.
+  invariants:
+
+  * runtime.automation remains the sole logical owner
+  * CI MUST NOT create competing state
+  * CI MUST NOT redefine GitOps state semantics
+  * recovery MUST remain able to restore automation state
+  * backup MUST include state where required
+  * state transitions MUST remain observable
+    preferred_interface:
+    type: automation_service_contract
+    verification:
+  * architecture-validation
+  * service-state-ownership
+  * exception-validation
+  * recovery-validation
+  * observability-validation
+
+# ---------------------------------------------------------------------------
+
+# GLOBAL DEPENDENCY INVARIANTS
+
+# ---------------------------------------------------------------------------
+
+invariants:
+
+dependency_direction:
+rule: >
+Dependencies MUST follow the hierarchy defined by architecture/domains.yaml.
+enforcement: hard
+
+allowlist:
+rule: >
+A dependency is valid only when the source domain explicitly permits
+the target domain or resource.
+enforcement: hard
+
+forbidden_dependencies:
+rule: >
+A dependency MUST NOT exist when explicitly forbidden by the source
+domain unless a valid architecture exception applies.
+enforcement: hard
+
+public_interfaces:
+rule: >
+Cross-domain consumers MUST use the target domain's declared public
+interface. Internal implementation paths MUST NOT be consumed directly.
+enforcement: hard
+
+undeclared_dependencies:
+rule: >
+Any detected dependency absent from this manifest MUST be treated as
+undeclared and therefore architecturally invalid until classified.
+enforcement: hard
+
+filesystem_ownership:
+rule: >
+A domain MUST NOT write another domain's state directory without an
+explicit ownership delegation or approved exception.
+enforcement: hard
+
+state_ownership:
+rule: >
+Persistent state MUST have exactly one logical owner.
+Observers MUST NOT become secondary owners.
+enforcement: hard
+
+read_only_observation:
+rule: >
+Health, status, metrics, dashboards, and recovery observers MUST NOT
+mutate the state they inspect.
+enforcement: hard
+
+service_contracts:
+rule: >
+Repeated cross-domain filesystem or implementation coupling SHOULD be
+replaced by explicit service contracts when a stable contract exists.
+enforcement: migration
+
+secret_boundaries:
+rule: >
+Secret consumers MUST receive only the secrets they require and MUST NOT
+assume ownership of secret storage or encryption state.
+enforcement: hard
+
+observability_consumer:
+rule: >
+Observability MAY consume signals from other domains but MUST NOT become
+the owner of application, deployment, recovery, or service state.
+enforcement: hard
+
+recovery_authority:
+rule: >
+Recovery components MAY restore another domain's state only through an
+explicitly defined recovery authority. Recovery MUST NOT silently assume
+permanent ownership.
+enforcement: hard
+
+no_shadow_state:
+rule: >
+A consumer MUST NOT create a second persistent representation of another
+domain's authoritative state without explicit architectural approval.
+enforcement: hard
+
+exception_integrity:
+rule: >
+Every dependency marked questionable, transitional, or violation MUST
+have an explicit architectural classification and, where required,
+a valid exception in architecture/exceptions.yaml.
+enforcement: hard
+
+# ---------------------------------------------------------------------------
+
+# EXCEPTION REQUIREMENTS
+
+# ---------------------------------------------------------------------------
+
+exception_requirements:
+
+required_for:
+- cross_domain_state_write
+- direct_internal_import
+- forbidden_dependency
+- hierarchy_violation
+- duplicate_state_owner
+- direct_filesystem_mutation
+- security_boundary_relaxation
+- public_interface_bypass
+
+exception_fields_required:
+- id
+- reason
+- owner
+- affected_domains
+- risk
+- mitigation
+- expiry_or_review
+- migration_target
+- verification
+
+exception_expiry:
+rule: >
+Exceptions MUST NOT become permanent architecture through neglect.
+Expired or ownerless exceptions MUST fail architecture validation.
+
+# ---------------------------------------------------------------------------
+
+# MIGRATION RULES
+
+# ---------------------------------------------------------------------------
+
+migration:
+
+transitional_dependencies:
+required_fields:
+- rationale
+- current_state
+- target_state
+- migration_owner
+- exit_condition
+- verification
+
+legacy_paths:
+rule: >
+References to superseded desktop, service, or infrastructure paths MUST
+be explicitly classified as legacy or transitional and MUST NOT be
+silently treated as current architecture.
+
+dependency_reduction:
+rule: >
+Migration work MUST reduce architectural coupling or provide a documented
+reason why the coupling is intentionally retained.
+
+manifest_synchronization:
+rule: >
+Dependency classification MUST be updated whenever implementation,
+architecture, or migration state changes.
+
+# ---------------------------------------------------------------------------
+
+# AUTOMATIC VALIDATION CONTRACT
+
+# ---------------------------------------------------------------------------
+
+validation:
+
+schema:
+- manifest-schema
+- domain-reference-validation
+- dependency-type-validation
+- severity-validation
+
+graph:
+- allowed-dependency-validation
+- forbidden-dependency-validation
+- hierarchy-validation
+- cycle-detection
+- undeclared-dependency-detection
+
+boundaries:
+- public-interface-validation
+- internal-api-boundary-validation
+- filesystem-ownership-validation
+- state-ownership-validation
+- secret-boundary-validation
+
+exceptions:
+- exception-exists
+- exception-valid
+- exception-not-expired
+- exception-scope-valid
+
+migration:
+- transitional-dependency-validation
+- legacy-reference-validation
+- migration-exit-condition-validation
+
+repository:
+- source-path-existence
+- target-path-existence
+- orphaned-entry-detection
+- duplicate-entry-detection
+- stale-entry-detection
+
+# ---------------------------------------------------------------------------
+
+# CHANGE CONTROL
+
+# ---------------------------------------------------------------------------
+
+change_control:
+
+adding_dependency:
+requires:
+- source_domain
+- target_domain_or_resource
+- dependency_type
+- rationale
+- interface
+- ownership_analysis
+- verification
+additional_when_cross_domain_state:
+- exception_or_explicit_ownership_contract
+
+removing_dependency:
+requires:
+- implementation_verification
+- architecture_manifest_update
+- regression_verification
+
+changing_severity:
+requires:
+- evidence
+- rationale
+- architecture_validation
+
+changing_owner:
+requires:
+- state_migration_plan
+- recovery_plan
+- backup_impact_analysis
+- observability_impact_analysis
+
+changing_public_interface:
+requires:
+- consumer_inventory
+- compatibility_analysis
+- migration_plan
+- regression_tests
+
+# ---------------------------------------------------------------------------
+
+# DEPENDENCY GRAPH VALIDITY CONTRACT
+
+# ---------------------------------------------------------------------------
+
+graph_validity:
+
+a_valid_dependency_graph_MUST:
+- contain_only_existing_or_explicitly_transitional_references
+- reference_valid_domains
+- respect_domain_hierarchy
+- respect_allowed_dependencies
+- respect_forbidden_dependencies
+- use_public_interfaces
+- preserve_single_state_ownership
+- preserve_filesystem_ownership
+- preserve_secret_boundaries
+- contain_no_unapproved_cycles
+- contain_no_unapproved_internal_crossings
+- contain_no_unapproved_direct_state_mutation
+- contain_no_untracked_transitional_dependencies
+- contain_no_expired_exceptions
+- be synchronized with repository implementation
+- be covered by architecture verification
+
+acceptance_rule: >
+Architecture validation MUST fail closed. Unknown, undeclared, stale,
+conflicting, or unclassified dependencies MUST NOT silently pass as
+compliant architecture.
+

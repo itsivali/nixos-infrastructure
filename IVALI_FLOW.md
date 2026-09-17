@@ -1,1619 +1,1099 @@
-# IVALI_FLOW.md — Mandatory AI Engineering Workflow
+# Architecture Progress
 
-> **This document is mandatory reading for every AI agent working on this repository.**
-> Before performing any work, read this file. It defines the complete lifecycle for every change.
-
----
-
-# 1. ROLE
-
-You are an autonomous senior/principal-level engineer working on the `nixos-infrastructure` repository.
-
-You are **not a code generator**.
-
-You are responsible for:
-
-* understanding the existing architecture;
-* diagnosing problems;
-* classifying bugs correctly;
-* implementing complete fixes;
-* writing or updating tests;
-* maintaining architectural boundaries;
-* maintaining documentation;
-* validating the repository;
-* fixing every failure you introduce or discover;
-* iterating until GitLab CI passes;
-* ensuring the final change is safely merged into `main`;
-* providing a clear explanation of what was broken, what changed, and why.
-
-You must treat this repository as **production infrastructure**.
-
-Do not make changes merely because they appear technically possible. Preserve the repository's existing architecture and conventions unless the task explicitly requires architectural change.
+> Tracks the migration from the current repository architecture toward the target architecture defined in `ARCHITECTURE.md`, using `ARCHITECTURE_AUDIT.md` as the evidence-based conformance record.
+>
+> **Last updated:** Session 9
+> **Status:** Architecture enforcement operational; remaining work is primarily consolidation, re-audit, and controlled migration of legacy boundaries.
 
 ---
 
-# 2. THE GOLDEN RULE
+## 1. Purpose
 
-## ALWAYS USE IVALI FLOW
+`ARCHITECTURE_PROGRESS.md` is the **migration and implementation status document** for the repository architecture.
 
-Every feature, bug fix, refactor, module change, security change, documentation change, CI change, dependency change, or infrastructure change MUST follow **Ivali Flow**.
+It answers:
 
-The mandatory lifecycle is:
+* What architectural work has been completed?
+* What remains to be migrated?
+* Which audit findings have been resolved?
+* Which findings remain open?
+* Which architecture controls are already enforced?
+* What verification has passed?
+* What is the next architectural action?
+
+It does **not** define the architecture itself.
+
+The repository architecture is defined by:
+
+* `ARCHITECTURE.md` — target architecture and architectural rules
+* `ARCHITECTURE_AUDIT.md` — current-state evidence and conformance assessment
+* `architecture/domains.yaml` — domain declarations
+* `architecture/dependencies.yaml` — dependency declarations
+* `architecture/exceptions.yaml` — explicitly approved exceptions
+* Architecture tests and linter — executable architectural enforcement
+
+---
+
+# 2. Architectural End State
+
+The migration is working toward the following invariant:
 
 ```text
-UNDERSTAND
-    ↓
-CLASSIFY
-    ↓
-PLAN
-    ↓
-CREATE / UPDATE ISSUE
-    ↓
-CREATE WORKING BRANCH
-    ↓
-IMPLEMENT
-    ↓
-TEST
-    ↓
-LOCAL VERIFICATION
-    ↓
-COMMIT
-    ↓
-PUSH TO GITLAB
-    ↓
-MERGE REQUEST
-    ↓
-GITLAB CI
-    ↓
-INVESTIGATE FAILURES
-    ↓
-FIX
-    ↓
-RE-RUN CI
-    ↓
-REPEAT UNTIL GREEN
-    ↓
-MERGE TO MAIN
-    ↓
-REPORT CHANGE
+Hosts compose capabilities.
+Domains own capabilities.
+Services expose contracts.
+Infrastructure adapters implement contracts.
 ```
 
-A task is **not complete** because:
+The intended dependency direction is:
 
-* the code was written;
-* the code looks correct;
-* local tests passed;
-* `nix flake check` passed;
-* a commit was created;
-* an MR was opened;
-* CI is still running;
-* CI failed but the failure is "unrelated";
-* the original bug appears fixed.
+```text
+HOST
+  │
+  ▼
+DOMAIN
+  │
+  ▼
+APPLICATION / ORCHESTRATION
+  │
+  ▼
+SERVICE CONTRACT
+  │
+  ▼
+INFRASTRUCTURE ADAPTER
+  │
+  ▼
+EXTERNAL SYSTEM
+```
 
-The task is complete only when the required workflow has reached a valid terminal state.
+The following principles remain mandatory:
+
+1. Hosts compose domains; domains do not depend on hosts.
+2. Domains own their capabilities and state.
+3. Cross-domain dependencies are explicit.
+4. Service consumers depend on contracts rather than concrete implementations.
+5. Infrastructure adapters implement service contracts.
+6. A state path has one authoritative owner.
+7. Configuration has one authoritative owner.
+8. Network ports have one authoritative owner.
+9. Secrets have one authoritative management path.
+10. Exceptions are explicit, documented, owned, and reviewable.
+11. Architecture rules are executable wherever practical.
+12. CI must prevent architectural regression.
+13. Recovery and deployment paths must remain independently understandable.
+14. Observability observes system state; it does not become the owner of another domain's state.
 
 ---
 
-# 3. GITLAB IS THE SOURCE OF TRUTH
+# 3. Migration Status
 
-GitLab is the authoritative source of truth for this repository.
+| Phase | Area                                      | Status                       |
+| ----- | ----------------------------------------- | ---------------------------- |
+| 0     | Re-audit current repository               | **In progress / continuous** |
+| 1     | Machine-readable architecture             | **Complete**                 |
+| 2     | State and filesystem ownership            | **Substantially complete**   |
+| 3     | Configuration ownership and consolidation | **In progress**              |
+| 4     | Service contracts                         | **Substantially complete**   |
+| 5     | Consumer migration                        | **In progress**              |
+| 6     | Legacy implementation removal             | **In progress**              |
+| 7     | Continuous architecture enforcement       | **Operational**              |
 
-The canonical repository is:
+The architecture is therefore no longer dependent solely on documentation.
+
+It is progressively moving through:
 
 ```text
-git@gitlab.com:willisivali/nixos-infrastructure.git
+Implicit
+   ↓
+Documented
+   ↓
+Machine-readable
+   ↓
+Tested
+   ↓
+CI-enforced
+   ↓
+Self-protecting
 ```
 
-Never treat:
+---
 
-* a local working tree;
-* an AI's internal state;
-* a generated patch;
-* a local build;
-* a GitHub mirror;
-* a copied repository;
-* a temporary branch
+# 4. Phase 0 — Continuous Re-Audit
 
-as the authoritative state.
+## Objective
 
-The authoritative lifecycle is:
+Ensure architectural decisions and historical findings remain accurate against the **current repository**, rather than treating historical audit results as permanent truth.
+
+## Completed
+
+* [x] Repository structure audited.
+* [x] Domain boundaries documented.
+* [x] Dependency relationships identified.
+* [x] State ownership reviewed.
+* [x] Filesystem boundaries reviewed.
+* [x] Service contracts identified.
+* [x] Historical architectural violations catalogued.
+* [x] Historical exceptions reviewed.
+* [x] Architecture linter introduced.
+* [x] Architecture tests introduced.
+
+## Ongoing
+
+* [ ] Revalidate every historical violation against the current tree.
+* [ ] Remove findings that no longer exist.
+* [ ] Convert unresolved findings into explicit migration tasks.
+* [ ] Ensure every exception still has a valid owner and reason.
+* [ ] Ensure audit evidence references current repository paths.
+* [ ] Periodically rerun the complete architectural inventory.
+
+### Rule
+
+Historical findings are **evidence**, not current truth.
+
+Every historical violation must eventually be classified as:
 
 ```text
-GitLab
-   ↓
-Feature/Bug branch
-   ↓
-Merge Request
-   ↓
+RESOLVED
+RETAINED AS VALID EXCEPTION
+MIGRATION REQUIRED
+NO LONGER APPLICABLE
+```
+
+---
+
+# 5. Phase 1 — Machine-Readable Architecture
+
+## Objective
+
+Move architectural rules from prose into machine-readable declarations and executable validation.
+
+## Completed
+
+* [x] `architecture/domains.yaml`
+* [x] `architecture/dependencies.yaml`
+* [x] `architecture/exceptions.yaml`
+* [x] Domain declarations introduced.
+* [x] Dependency declarations introduced.
+* [x] Exception declarations introduced.
+* [x] Architecture linter integrated into validation.
+* [x] Architecture tests introduced.
+* [x] CI enforcement integrated.
+
+## Current State
+
+The architecture is now represented by both:
+
+```text
+Human-readable architecture
+        +
+Machine-readable architecture
+        +
+Executable architecture tests
+        +
+Architecture linter
+```
+
+## Remaining
+
+* [ ] Continue expanding machine-readable ownership metadata where useful.
+* [ ] Ensure every new domain is explicitly declared.
+* [ ] Ensure every cross-domain dependency is declared.
+* [ ] Prevent undocumented exceptions from entering the repository.
+
+---
+
+# 6. Phase 2 — State and Filesystem Ownership
+
+## Objective
+
+Establish clear ownership for persistent state and prevent implicit cross-domain filesystem dependencies.
+
+## Completed
+
+* [x] `/var/lib/gitops` ownership formalized.
+* [x] GitOps state ownership documented.
+* [x] Filesystem boundary violations identified.
+* [x] Existing filesystem exceptions documented.
+* [x] `service_state_ownership` architecture rule enabled.
+* [x] P0 state ownership violation resolved.
+* [x] CI/automation shared-state behavior explicitly documented through an architecture exception.
+
+## Historical Findings Addressed
+
+The following areas were identified during the audit:
+
+* `/var/lib/gitops`
+* `/var/lib/observability`
+* `/var/lib/health-endpoint`
+* `/var/lib/prometheus`
+* `/var/lib/loki`
+* `/var/lib/attic`
+* `/var/lib/tailscale-metrics`
+* `/var/lib/gitlab-runner-health`
+* `/var/lib/deployment-health`
+* `/var/lib/security-scanner`
+* `/var/lib/valkey`
+
+These must continue to be treated as ownership boundaries rather than arbitrary filesystem locations.
+
+## Remaining
+
+* [ ] Revalidate every historical state path.
+* [ ] Ensure systemd `StateDirectory` is used where appropriate.
+* [ ] Replace implicit consumers with explicit service contracts where practical.
+* [ ] Remove obsolete filesystem exceptions when migrations complete.
+
+---
+
+# 7. Phase 3 — Configuration Ownership and Consolidation
+
+## Objective
+
+Ensure each architectural concern has one authoritative configuration source.
+
+## Completed
+
+* [x] Duplicate `allowUnfree` configuration reviewed.
+* [x] Tailscale SSH firewall ownership consolidated.
+* [x] AppArmor bot paths parameterized.
+* [x] GitOps-related configuration coupling reduced.
+* [x] CI notification configuration decoupled from unrelated feature flags.
+* [x] Deployment-health configuration decoupled from GitOps option ownership.
+* [x] GitLab Runner configuration decoupled from GitOps option ownership.
+
+## Remaining Known Issue
+
+| ID | Severity | Area              | Description                                                                                                        | Status |
+| -- | -------- | ----------------- | ------------------------------------------------------------------------------------------------------------------ | ------ |
+| 11 | LOW      | Nix configuration | `nix.settings.substituters` remains split between `system/nix.nix`, `caching/default.nix`, and `cache/default.nix` | Open   |
+
+This remains acceptable while explicitly tracked, but should eventually be consolidated into one authoritative configuration path.
+
+## Additional Consolidation Targets
+
+The audit should continue checking for:
+
+* duplicate resource limits
+* duplicate package declarations
+* duplicate firewall rules
+* duplicate service configuration
+* duplicate environment variables
+* duplicate systemd settings
+* duplicate observability configuration
+* duplicate network configuration
+* duplicate secret configuration
+
+---
+
+# 8. Phase 4 — Service Contracts
+
+## Objective
+
+Make runtime capabilities depend on stable service contracts rather than concrete implementations or shell-script coupling.
+
+## Completed
+
+The control plane has defined the following service contracts:
+
+### `NotificationService`
+
+Responsible for:
+
+* alerts
+* deployment results
+* health alerts
+
+### `BackupService`
+
+Responsible for:
+
+* triggering backups
+* backup status
+* snapshot listing
+* latest snapshot
+* latest run information
+
+### `MetricsProvider`
+
+Responsible for:
+
+* metrics queries
+* service status
+* system metrics
+
+### `HealthChecker`
+
+Responsible for:
+
+* system health
+* service health
+* network health
+* disk health
+
+### `PlatformService`
+
+Responsible for:
+
+* health
+* status
+* doctor
+* rebuild
+* rollback
+
+## Implementations
+
+Concrete implementations exist under:
+
+```text
+internal/services/impl/
+```
+
+including:
+
+* `ResticBackup`
+* `PrometheusMetrics`
+* `SystemHealthChecker`
+* `NixOSPlatform`
+* `Notification`
+
+## Registry
+
+Service wiring is centralized through:
+
+```text
+internal/services/container.go
+```
+
+and the application entrypoint.
+
+## Remaining
+
+* [ ] Continue migrating consumers away from direct infrastructure access.
+* [ ] Remove redundant implementations.
+* [ ] Replace remaining shell-script service coupling with explicit interfaces where appropriate.
+* [ ] Verify every service has a documented owner and lifecycle.
+* [ ] Add contract-level tests for critical services.
+
+---
+
+# 9. Phase 5 — Consumer Migration
+
+## Objective
+
+Move consumers from implementation-specific dependencies toward declared contracts and domain boundaries.
+
+## Completed
+
+* [x] Major service boundaries identified.
+* [x] Runtime service contracts established.
+* [x] Service implementations separated from interfaces.
+* [x] Several cross-domain dependencies decoupled.
+* [x] Hardcoded hostname assumptions removed from production code.
+
+## Completed Boundary Fixes
+
+### CI notification
+
+Previously coupled to:
+
+```text
+fleet.gitlabRunner.enable
+```
+
+Now uses its own configuration ownership.
+
+### Deployment health
+
+Previously coupled directly to:
+
+```text
+fleet.gitops
+```
+
+Now owns its required repository and branch configuration explicitly.
+
+### GitLab Runner
+
+Previously coupled directly to:
+
+```text
+fleet.gitops
+```
+
+Now owns its required repository and branch configuration explicitly.
+
+### AppArmor
+
+Hardcoded bot paths were replaced with configurable state/log directory variables.
+
+### Firewall
+
+Duplicate Tailscale SSH port ownership was removed.
+
+## Remaining
+
+* [ ] Identify remaining direct cross-domain imports.
+* [ ] Replace implicit filesystem reads with explicit contracts where practical.
+* [ ] Remove direct service-name assumptions where an API/contract is more appropriate.
+* [ ] Remove unnecessary shell-to-shell coupling.
+* [ ] Ensure all dependencies are represented in `architecture/dependencies.yaml`.
+
+---
+
+# 10. Phase 6 — Legacy Removal
+
+## Objective
+
+Remove architectural mechanisms that have been replaced by the target architecture.
+
+## Historical Legacy Targets
+
+The migration has identified:
+
+* `notify.sh` embedding
+* hardcoded hostnames
+* direct GitOps state consumers
+* duplicate configuration
+* implicit service dependencies
+* direct filesystem reads across domain boundaries
+* duplicated ownership
+* undocumented network dependencies
+* legacy deployment-health coupling
+
+## Completed
+
+* [x] Hardcoded `prague` references removed from identified production files.
+* [x] CI failure suppression removed.
+* [x] Architecture false positives for standard external tools reduced.
+* [x] Filesystem boundary exceptions documented.
+* [x] GitOps ownership formalized.
+* [x] Several direct option dependencies removed.
+
+## Remaining
+
+* [ ] Remove obsolete compatibility paths.
+* [ ] Remove obsolete exceptions after successful migration.
+* [ ] Remove legacy shell-based implementations once contract replacements are verified.
+* [ ] Delete dead code identified during audits.
+* [ ] Re-run architecture tests after each removal.
+
+---
+
+# 11. Phase 7 — Architecture Enforcement
+
+## Objective
+
+Make architectural regression detectable before deployment.
+
+## Architecture Linter
+
+The following checks are currently operational:
+
+```text
+✓ forbidden_imports
+✓ circular_dependencies
+✓ filesystem_boundaries
+✓ duplicate_ownership
+✓ declared_dependencies
+✓ internal_api_boundaries
+✓ service_state_ownership
+```
+
+### Current Result
+
+```text
+7 / 7 architecture checks PASS
+```
+
+## Enforcement Targets
+
+The architecture enforcement system must continue to validate:
+
+1. Domain validity
+2. Dependency direction
+3. Circular dependencies
+4. Filesystem ownership
+5. Configuration ownership
+6. Exception validity
+7. Forbidden cross-domain access
+8. Duplicate ownership
+9. Undeclared dependencies
+10. Host/domain boundaries
+
+## CI
+
+Architecture validation is part of the repository verification process.
+
+Both CI systems are configured for the relevant verification gates:
+
+```text
 GitLab CI
-   ↓
-main
+GitHub Actions
 ```
 
-Production deployment is a separate lifecycle:
+The goal is:
 
 ```text
-main
-   ↓
-GitOps reconciler
-   ↓
-validation
-   ↓
-build
-   ↓
-activation
-   ↓
-health check
-   ↓
-rollback if required
+Architecture violation
+        ↓
+Automated detection
+        ↓
+CI failure
+        ↓
+Change cannot safely proceed
 ```
 
-CI validates.
+---
 
-GitOps deploys.
+# 12. Security Architecture Progress
 
-The AI must never bypass this separation.
+Security work is considered part of architecture because security boundaries must remain consistent with domain and ownership boundaries.
+
+## Completed
+
+* [x] Hardcoded Grafana credentials removed.
+* [x] SOPS-based secret management enforced.
+* [x] `.gitignore` hardened.
+* [x] Web UI attack surface reduced.
+* [x] Nginx restricted to Tailscale access.
+* [x] OTel exposure restricted to loopback.
+* [x] Scanner/exporter public exposure removed.
+* [x] `ivali-api` AppArmor profile added.
+* [x] Web UI AppArmor confinement added.
+* [x] AppArmor paths parameterized.
+* [x] Tailscale SSH firewall ownership consolidated.
+
+## Remaining
+
+* [ ] Continue security architecture regression tests.
+* [ ] Revalidate AppArmor profiles after service changes.
+* [ ] Verify all secret consumers against declared ownership.
+* [ ] Ensure no new public listeners are introduced without explicit architectural ownership.
 
 ---
 
-# 4. NEVER BYPASS IVALI FLOW
+# 13. Platform and Hardware Progress
 
-Do not:
+These changes are implementation work supporting the architectural target and are tracked here because they affect host composition and operational behavior.
 
-* directly edit `main`;
-* directly push changes to `main`;
-* force-push protected branches;
-* merge around CI;
-* disable CI checks to make a pipeline green;
-* mark failed jobs as allowed failures merely to hide a defect;
-* delete tests because they expose a bug;
-* weaken validation to accommodate broken code;
-* bypass architecture checks;
-* deploy an unvalidated configuration;
-* run `nixos-rebuild` merely to discover whether code is valid;
-* claim success while CI is failing;
-* leave an MR open and call the task complete;
-* leave an unexplained failing pipeline;
-* create unrelated changes in the same commit/MR.
+## Hardware
 
-If the workflow is blocked, investigate the reason and fix the underlying problem.
+* [x] `hardware/` domain established.
+* [x] USB power-management configuration added.
 
-If the problem cannot safely be fixed autonomously, stop before performing the unsafe operation and clearly report the blocker.
+## Boot
 
----
+* [x] TPM-related boot issues addressed.
+* [x] Serial ports disabled where unnecessary.
+* [x] Boot time significantly reduced.
+* [x] GRUB adopted.
+* [x] NixOS snowflake boot theme configured.
 
-# 5. BUG CLASSIFICATION IS MANDATORY
+## Audio
 
-Every bug must be classified before implementation.
+* [x] ALSA mixer initialization addressed.
+* [x] WirePlumber rules added for consistent ALC236 behavior.
+* [x] Audio behavior verified against the current desktop configuration.
 
-Do not simply call everything a "bug".
+## Desktop
 
-Use one primary classification.
-
-## Bug Classes
-
-### `configuration`
-
-Incorrect NixOS/Home Manager configuration.
-
-Examples:
-
-* invalid Nix expression;
-* incorrect option;
-* wrong module wiring;
-* incorrect service configuration;
-* evaluation failure.
-
-### `architecture`
-
-Violation of repository architecture or domain boundaries.
-
-Examples:
-
-* cross-domain dependency;
-* circular dependency;
-* module reaching into another domain's internal state;
-* duplicate ownership;
-* incorrect dependency direction.
-
-### `build`
-
-Failure during package/configuration build.
-
-Examples:
-
-* derivation failure;
-* missing dependency;
-* compilation failure;
-* unavailable package;
-* build-time environment problem.
-
-### `test`
-
-Test failure or missing/incorrect test coverage.
-
-Examples:
-
-* failing Go test;
-* missing regression test;
-* flaky test;
-* incorrect test assumptions.
-
-### `runtime`
-
-Failure after deployment or during service execution.
-
-Examples:
-
-* systemd service failure;
-* service crash;
-* incorrect runtime configuration;
-* health check failure.
-
-### `networking`
-
-Network connectivity or network configuration failure.
-
-Examples:
-
-* NetworkManager;
-* DNS;
-* Tailscale;
-* firewall;
-* routing;
-* interface configuration.
-
-### `security`
-
-Security vulnerability or security configuration defect.
-
-Examples:
-
-* exposed secret;
-* incorrect permissions;
-* firewall weakness;
-* unsafe systemd configuration;
-* authentication problem.
-
-### `ci`
-
-GitLab CI/CD failure.
-
-Examples:
-
-* invalid `.gitlab-ci.yml`;
-* broken CI job;
-* runner problem caused by repository configuration;
-* incorrect CI dependency.
-
-### `gitops`
-
-GitOps reconciliation/deployment failure.
-
-Examples:
-
-* repository drift;
-* reconciliation failure;
-* deployment state mismatch;
-* rollback failure.
-
-### `observability`
-
-Monitoring, logging, alerting, metrics, or health-check failure.
-
-### `documentation`
-
-Documentation contradicts actual repository behavior or required documentation is missing.
-
-### `dependency`
-
-Dependency/version/input problem.
-
-### `performance`
-
-Resource exhaustion or inefficient implementation.
-
-### `regression`
-
-Previously working functionality was broken by a change.
+* [x] GNOME architecture documented.
+* [x] Legacy XFCE documentation references removed.
+* [x] GNOME Remote Desktop configuration verified.
+* [x] Remote desktop firewall integration verified.
+* [x] Remote desktop helper tooling verified.
 
 ---
 
-# 6. BUG CLASSIFICATION FORMAT
+# 14. Observability Progress
 
-Before fixing a bug, record:
+## Completed
+
+* [x] Observability enabled on `prague`.
+* [x] Observability documentation created.
+* [x] Health observer dependencies validated.
+* [x] Dashboard health information verified.
+* [x] GitOps reconciler status added to dashboard.
+* [x] Deployment health status added to dashboard.
+* [x] Scrape-target validation added.
+* [x] Blocky validation added.
+* [x] Exit-node validation added.
+* [x] CI registration completed for these checks.
+
+## Architectural Rule
+
+Observability is a **consumer of system state**, not the owner of state belonging to another domain.
+
+Any future observability feature must therefore identify:
 
 ```text
-Bug Classification:
-Primary: <classification>
-Secondary: <optional classification>
-
-Affected Domain:
-<domain>
-
-Affected Components:
-<files/modules/services>
-
-Observed Failure:
-<what actually happens>
-
-Expected Behavior:
-<what should happen>
-
-Root Cause:
-<root cause once established>
-
-Regression Risk:
-<low|medium|high|critical>
+Observed domain
+      ↓
+Contract / metric
+      ↓
+Observability consumer
 ```
 
-Do not guess the root cause.
-
-If the root cause is unknown, investigate it.
+rather than directly taking ownership of the observed domain's persistent state.
 
 ---
 
-# 7. REPRODUCE BEFORE FIXING
+# 15. CI and Verification Progress
 
-For bugs, the AI must first reproduce or otherwise establish the failure.
+## Completed
 
-The preferred lifecycle is:
+* [x] GitLab CI architecture validation.
+* [x] GitHub Actions architecture validation.
+* [x] `golangci-lint` v2 integration.
+* [x] Scrape-target check.
+* [x] Blocky validation.
+* [x] Exit-node validation.
+* [x] CI failure suppression removed.
+* [x] Architecture linter registered in verification.
+
+## Current Required Verification
 
 ```text
-Observe failure
+Formatting
+    ↓
+Architecture tests
+    ↓
+Architecture linter
+    ↓
+Go tests / build / vet
+    ↓
+Shell validation
+    ↓
+Nix evaluation
+    ↓
+Integration verification
+    ↓
+Build
+    ↓
+Runtime health
+```
+
+---
+
+# 16. TDD and Architecture Progress
+
+Architectural changes follow the repository's TDD model.
+
+## New Architectural Behavior
+
+```text
+Define invariant
       ↓
-Reproduce failure
+Write test
       ↓
-Identify affected component
+Run test
       ↓
-Classify bug
+RED
       ↓
-Determine root cause
+Implement architecture
       ↓
-Create failing regression test
+GREEN
       ↓
-Implement fix
-      ↓
-Run regression test
+Refactor
       ↓
 Run complete verification
 ```
 
-For a code-level bug, a regression test should fail against the broken implementation and pass after the fix whenever practical.
+## Architectural Bug Fix
 
-Do not write a test that merely confirms the implementation you already wrote.
+```text
+Reproduce violation
+      ↓
+Write regression test
+      ↓
+RED
+      ↓
+Fix architecture
+      ↓
+GREEN
+      ↓
+Refactor
+      ↓
+Run complete verification
+```
 
-The test must validate the intended behavior.
+Architecture rules themselves should therefore be treated as executable behavior, not merely documentation.
 
 ---
 
-# 8. WHEN AN ERROR OCCURS, INVESTIGATE IT
+# 17. Verification Status
 
-If you encounter an error while implementing a feature, do not stop and ask Willis to fix it unless the error genuinely requires human intervention.
+The following verification has been completed according to the latest recorded validation run:
 
-An error encountered during implementation becomes part of the engineering task.
+| Gate                     | Status |
+| ------------------------ | ------ |
+| Nix formatting           | PASS   |
+| Go build                 | PASS   |
+| Go vet                   | PASS   |
+| Go tests                 | PASS   |
+| Shell syntax             | PASS   |
+| `prague` Nix evaluation  | PASS   |
+| `testvm` Nix evaluation  | PASS   |
+| `tuscany` Nix evaluation | PASS   |
+| Architecture linter      | PASS   |
+| Scrape-target validation | PASS   |
+| Blocky validation        | PASS   |
+| Exit-node validation     | PASS   |
+| `golangci-lint` v2       | PASS   |
 
-You must:
-
-1. capture the exact error;
-2. identify where it originated;
-3. classify it;
-4. determine the root cause;
-5. fix it;
-6. add or improve tests where appropriate;
-7. rerun the failed verification;
-8. run the broader verification suite;
-9. continue the Ivali Flow.
-
-For example:
+### Architecture Linter
 
 ```text
-Feature implementation
+7 / 7 checks PASS
+```
+
+---
+
+# 18. Current Open Work
+
+The remaining work should be tracked by architectural outcome rather than by historical session number.
+
+## HIGH
+
+No currently recorded unresolved HIGH-severity architecture violations.
+
+## MEDIUM
+
+No currently recorded unresolved MEDIUM-severity violations from the previous audit.
+
+## LOW
+
+### LOW-11 — Substituter configuration consolidation
+
+Current configuration is distributed across:
+
+```text
+system/nix.nix
+caching/default.nix
+cache/default.nix
+```
+
+### Required outcome
+
+Establish one authoritative configuration path for substituters.
+
+### Status
+
+```text
+OPEN — ACCEPTABLE
+```
+
+It remains tracked because duplicate ownership increases the risk of configuration drift.
+
+---
+
+# 19. Historical Work Completed
+
+The earlier session-based architecture program produced the following major outcomes:
+
+* [x] Full architectural audit.
+* [x] Dependency graph.
+* [x] Domain design.
+* [x] State ownership model.
+* [x] Architecture manifests.
+* [x] Architecture linter.
+* [x] Architecture tests.
+* [x] CI integration.
+* [x] High-severity violation remediation.
+* [x] Medium-severity violation remediation.
+* [x] Service contracts.
+* [x] Service implementations.
+* [x] Service registry.
+* [x] Security hardening.
+* [x] Observability integration.
+* [x] Hardware domain.
+* [x] Boot improvements.
+* [x] Audio improvements.
+* [x] GNOME documentation alignment.
+* [x] GNOME Remote Desktop integration.
+* [x] CI security and infrastructure checks.
+* [x] Documentation alignment.
+
+Historical phase numbers remain useful as project history, but **current architectural status is determined by the phase model in this document and the evidence in `ARCHITECTURE_AUDIT.md`.**
+
+---
+
+# 20. Next Architectural Actions
+
+The next work should proceed in this order:
+
+### 1. Re-audit
+
+Run the current architecture audit against the repository as it exists now.
+
+Confirm:
+
+* domains
+* dependencies
+* state ownership
+* filesystem ownership
+* configuration ownership
+* service contracts
+* exceptions
+* runtime services
+
+### 2. Resolve LOW-11
+
+Consolidate:
+
+```text
+nix.settings.substituters
+```
+
+into a single authoritative configuration path.
+
+### 3. Re-run architecture enforcement
+
+Run:
+
+```text
+architecture tests
+architecture linter
+Go tests
+Go build
+Go vet
+golangci-lint
+Nix evaluation
+shell validation
+```
+
+### 4. Revalidate exceptions
+
+Review every entry in:
+
+```text
+architecture/exceptions.yaml
+```
+
+and classify it as:
+
+```text
+VALID
+MIGRATE
+REMOVE
+EXPIRED
+```
+
+### 5. Continue consumer migration
+
+Prioritize:
+
+```text
+direct filesystem access
+hardcoded service dependencies
+implicit systemd dependencies
+shell-script coupling
+cross-domain imports
+duplicate configuration
+```
+
+### 6. Remove obsolete architecture
+
+Once replacements are verified:
+
+```text
+legacy implementation
         ↓
-Nix evaluation fails
+migration complete
         ↓
-Classify: configuration
+regression tests
         ↓
-Investigate dependency/module/options
+remove legacy path
         ↓
-Fix
+remove exception
         ↓
-nix flake check
+architecture linter
         ↓
-nix eval
-        ↓
-CI
+CI verification
 ```
 
-Do not report:
+### 7. Establish continuous enforcement
 
-> "There was a Nix error."
-
-Report:
-
-> "The feature introduced a configuration evaluation failure because module X referenced option Y before the required module was imported. The dependency was corrected and a regression check was added. Local evaluation and GitLab CI now pass."
-
----
-
-# 9. UNDERSTAND THE REPOSITORY BEFORE MODIFYING IT
-
-Before changing code:
-
-1. inspect the repository structure;
-2. read `AGENTS.md`;
-3. read `ENGINEERING.md`;
-4. read `ARCHITECTURE.md`;
-5. inspect relevant domain documentation;
-6. inspect the relevant existing modules;
-7. inspect tests;
-8. inspect existing patterns;
-9. inspect Git history when useful;
-10. determine the correct architectural location for the change.
-
-Do not immediately start writing code.
-
-Prefer extending existing capabilities over creating duplicates.
-
-Do not redesign the repository simply because you prefer another architecture.
-
----
-
-# 10. ISSUE-FIRST ENGINEERING
-
-Every substantive change must correspond to a GitLab Issue.
-
-Use the appropriate issue classification:
+No architectural migration should be considered complete until:
 
 ```text
-[feature]
-[bugfix]
-[module]
-[security]
-[architecture]
-[docs]
-[maintenance]
-```
-
-The issue must describe:
-
-* problem or desired capability;
-* affected area;
-* acceptance criteria;
-* testing requirements;
-* relevant architectural constraints.
-
-For bugs, include:
-
-* reproduction;
-* expected behavior;
-* actual behavior;
-* classification;
-* root cause;
-* regression-test requirement.
-
-The implementation must be traceable:
-
-```text
-Issue
-  ↓
-Branch
-  ↓
-Commit
-  ↓
-Merge Request
-  ↓
-CI
-  ↓
-Merge
-```
-
----
-
-# 11. BRANCHING
-
-Never perform development work directly on `main`.
-
-Use the appropriate branch:
-
-```text
-feature/<description>
-bugfix/<description>
-module/<description>
-security/<description>
-architecture/<description>
-docs/<description>
-maintenance/<description>
-```
-
-Examples:
-
-```text
-feature/tailscale-exit-node
-bugfix/gitops-reconciler-dns
-module/alertmanager-email
-security/harden-ssh
-architecture/notification-service
-```
-
-The branch must reflect the actual change.
-
----
-
-# 12. USE THE IVALI CLI
-
-When available, use the repository's `ivali` workflow commands rather than bypassing them with equivalent manual GitLab operations.
-
-Preferred lifecycle:
-
-```bash
-ivali flow start
-```
-
-or:
-
-```bash
-ivali flow start feature "description"
-```
-
-Then:
-
-```bash
-ivali flow validate
-ivali flow commit
-ivali flow push
-ivali flow mr
-ivali flow pipeline --watch
-ivali flow merge
-```
-
-For an LLM-driven workflow (non-interactive when stdin is not a terminal):
-
-```bash
-ivali flow run <type> "<description>"
-```
-
-or:
-
-```bash
-ivali flow quick "<description>"
-```
-
-However, the AI must understand what the command is doing rather than blindly executing it.
-
-If `ivali flow` itself is broken, classify that as a repository bug and fix the implementation of `ivali flow` through Ivali Flow.
-
----
-
-# 13. LOCAL VERIFICATION
-
-Before pushing, run all applicable local verification gates.
-
-At minimum:
-
-```bash
-nix fmt -- --check .
-nix flake check --no-build
-nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
-```
-
-Where applicable:
-
-```bash
-go build ./...
-go test ./...
-go vet ./...
-golangci-lint run ./...
-bash -n scripts/*.sh
-```
-
-And repository-specific validation:
-
-```bash
-ivali verify
-ivali doctor
-```
-
-Use the actual repository commands and existing Makefile/CI definitions rather than inventing alternative validation mechanisms.
-
----
-
-# 14. NEVER REBUILD BEFORE VALIDATION
-
-This is a hard rule.
-
-Do not run:
-
-```bash
-nixos-rebuild
-```
-
-or:
-
-```bash
-./scripts/rebuild.sh
-```
-
-until all required evaluation and verification gates have passed.
-
-The sequence is:
-
-```text
-Edit
- ↓
-Format
- ↓
-Flake check
- ↓
-Configuration evaluation
- ↓
-Tests
- ↓
-Commit
- ↓
-Push
- ↓
-GitLab CI
- ↓
-Merge
- ↓
-ONLY THEN consider deployment/rebuild
-```
-
-A rebuild is not a substitute for CI.
-
----
-
-# 15. GITLAB CI IS THE FINAL CODE GATE
-
-The AI must push the change to GitLab and monitor the resulting CI pipeline.
-
-The AI must not declare success while CI is:
-
-* pending;
-* running;
-* failed;
-* canceled;
-* blocked;
-* skipped when the job is required.
-
-The desired state is:
-
-```text
-Pipeline: PASSED
-MR: MERGEABLE
-MR: MERGED
-main: UPDATED
-```
-
----
-
-# 16. CI FAILURE IS PART OF THE TASK
-
-If GitLab CI fails:
-
-**DO NOT STOP.**
-
-Treat the failure as new diagnostic evidence.
-
-The workflow becomes:
-
-```text
-CI failure
-   ↓
-Read failing job
-   ↓
-Capture exact failure
-   ↓
-Classify failure
-   ↓
-Trace root cause
-   ↓
-Fix repository
-   ↓
-Add/update regression test if appropriate
-   ↓
-Run local verification
-   ↓
-Commit fix
-   ↓
-Push
-   ↓
-CI again
-```
-
-Repeat until the pipeline passes.
-
-This loop is mandatory:
-
-```text
-IMPLEMENT
-   ↓
-CI
-   ↓
-FAIL?
- ┌─┴─┐
-YES  NO
- ↓    ↓
-FIX  CONTINUE
- ↓
-CI
- ↓
-REPEAT
-```
-
-Never tell Willis:
-
-> "CI failed; you can fix it."
-
-Instead, investigate and fix it yourself unless the failure requires an explicit human decision or unavailable external access.
-
----
-
-# 17. DO NOT HIDE CI FAILURES
-
-Never:
-
-* add `|| true` to suppress a legitimate failure;
-* change a job to `allow_failure` merely to make CI green;
-* delete a failing test;
-* weaken an assertion;
-* skip a job;
-* disable architecture checks;
-* remove validation;
-* change the acceptance criteria to match broken behavior.
-
-The goal is **a genuinely green pipeline**, not a cosmetically green pipeline.
-
----
-
-# 18. COMMITS
-
-Use conventional commit messages.
-
-Examples:
-
-```text
-feat: add tailscale exit node configuration
-fix: resolve gitops reconciler DNS failure
-module: isolate alertmanager configuration
-security: harden ssh service
-arch: enforce notification service boundary
-docs: document gitops deployment lifecycle
-test: add regression coverage for flow validation
-```
-
-One logical change per commit.
-
-Do not mix:
-
-* unrelated bug fixes;
-* feature implementation;
-* secret rotation;
-* formatting-only changes;
-* architectural redesign
-
-into one commit.
-
-All commits must use:
-
-```text
-Author:
-Willis Ivali <itsivali@outlook.com>
-```
-
-Do not add:
-
-```text
-Co-Authored-By: AI
-Generated by...
-Created with...
-```
-
-or AI branding.
-
----
-
-# 19. MERGE REQUEST
-
-Every substantive change must have a GitLab Merge Request.
-
-The MR must explain:
-
-* what changed;
-* why it changed;
-* affected components;
-* root cause for bugs;
-* implementation;
-* testing;
-* architectural impact;
-* security impact;
-* documentation impact;
-* related issue.
-
-Use the repository's existing MR templates.
-
----
-
-# 20. AN MR IS NOT COMPLETE UNTIL IT IS MERGED
-
-An open MR is unfinished work.
-
-The normal terminal state is:
-
-```text
-Issue
- ↓
 Implementation
- ↓
-MR
- ↓
-CI GREEN
- ↓
-MR MERGED
- ↓
-main UPDATED
+     +
+Tests
+     +
+Architecture manifest
+     +
+Architecture linter
+     +
+CI enforcement
+     +
+Documentation
 ```
 
-Use:
-
-```bash
-ivali flow pipeline --watch
-```
-
-and:
-
-```bash
-ivali flow merge
-```
-
-where appropriate.
-
-Do not merge around failed CI.
-
-Do not leave orphaned branches or unfinished MRs without documenting why the workflow cannot continue.
+all agree.
 
 ---
 
-# 21. PRODUCTION DEPLOYMENT
+# 21. Deployment Gate
 
-The AI must understand the distinction between:
+Architecture work is **not complete merely because tests pass**.
 
-## Code acceptance
+Before applying a production host change, the repository must have:
 
-```text
-GitLab CI → MR → main
-```
+* [x] Architecture tests passing.
+* [x] Architecture linter passing.
+* [x] Go tests passing.
+* [x] Go build passing.
+* [x] Nix evaluation passing.
+* [x] Shell validation passing.
+* [x] Security checks passing.
+* [ ] Current working tree reviewed.
+* [ ] `ivali flow` used for the Git lifecycle.
+* [ ] Deployment health verified after activation.
+* [ ] Rollback path available.
 
-and:
-
-## Production deployment
-
-```text
-main
-   ↓
-GitOps reconciler
-   ↓
-flake validation
-   ↓
-build
-   ↓
-activation
-   ↓
-health gate
-   ↓
-rollback if necessary
-```
-
-GitLab CI does **not** deploy.
-
-The GitOps reconciler is responsible for deployment.
-
-The AI should therefore normally finish its task after the repository is correctly merged and CI is green.
-
-Do not independently introduce deployment mechanisms that bypass the repository's GitOps architecture.
-
----
-
-# 22. ARCHITECTURE PRESERVATION
-
-The repository follows a modular architecture.
-
-Respect:
-
-* domain boundaries;
-* explicit dependencies;
-* single ownership of state;
-* one capability per module;
-* declarative configuration;
-* NixOS/Home Manager separation;
-* service contracts;
-* centralized notification mechanisms;
-* GitOps deployment boundaries.
-
-Before adding a new capability, ask:
+The deployment sequence remains:
 
 ```text
-Does this capability already exist?
-Where is its proper domain?
-Who owns its state?
-What depends on it?
-What does it depend on?
-Does it introduce a circular dependency?
-Does it cross a domain boundary?
-Can the existing abstraction be extended?
-```
-
-Do not duplicate existing services or scripts.
-
----
-
-# 23. SECURITY
-
-Never commit:
-
-* passwords;
-* tokens;
-* API keys;
-* private keys;
-* SMTP credentials;
-* authentication secrets;
-* plaintext SOPS data.
-
-Use the repository's existing secret-management mechanism.
-
-Never expose secrets in:
-
-* commits;
-* CI logs;
-* error output;
-* issue descriptions;
-* MR descriptions;
-* email notifications.
-
----
-
-# 24. CHANGE NOTIFICATION IS MANDATORY
-
-Every repository change must generate a notification to Willis.
-
-The notification must explain the change in human terms.
-
-The email must answer:
-
-1. What changed?
-2. Why did it change?
-3. What was broken, if anything?
-4. What was the root cause?
-5. What was done to fix it?
-6. What files/components were affected?
-7. What tests were performed?
-8. Did local verification pass?
-9. Did GitLab CI pass?
-10. Was the MR merged?
-11. Was production deployment performed?
-12. Is any action required from Willis?
-
-Do not send a meaningless:
-
-> "Repository updated."
-
-notification.
-
-The notification must be useful enough that Willis can understand the change without reading the entire diff.
-
----
-
-# 25. CHANGE SUMMARY FORMAT
-
-Every completed task must produce a structured summary:
-
-```text
-Change Type:
-<feature|bugfix|module|security|architecture|docs|maintenance>
-
-Classification:
-<primary classification>
-
-Issue:
-<#number>
-
-Branch:
-<branch>
-
-Merge Request:
-!<number>
-
-What Changed:
-<concise description>
-
-What Was Broken:
-<problem, or "Nothing was broken; this was a new feature.">
-
-Root Cause:
-<root cause, or "Not applicable.">
-
-What Was Fixed:
-<solution>
-
-Files / Components:
-<important affected areas>
-
-Tests:
-<tests performed>
-
-Local Verification:
-<PASS/FAIL>
-
-GitLab CI:
-<PASS/FAIL>
-
-MR:
-<MERGED/OPEN/BLOCKED>
-
-Production Deployment:
-<NOT PERFORMED/PERFORMED/ROLLED BACK>
-
-Action Required:
-<NONE or explicit action>
-```
-
----
-
-# 26. EMAIL NOTIFICATION TEMPLATE
-
-Use the following template for repository change notifications.
-
-## Subject
-
-```text
-[Ivali Flow] <CHANGE TYPE>: <SHORT DESCRIPTION> — <CI STATUS>
-```
-
-Examples:
-
-```text
-[Ivali Flow] BUGFIX: GitOps DNS failure resolved — CI PASSED
-[Ivali Flow] FEATURE: Tailscale exit-node support added — CI PASSED
-[Ivali Flow] SECURITY: SSH hardening updated — CI PASSED
-[Ivali Flow] ARCHITECTURE: Notification service boundaries corrected — CI PASSED
-```
-
-## Email Body
-
-```text
-Ivali Flow — Repository Change Report
-
-Repository
------------
-nixos-infrastructure
-GitLab: git@gitlab.com:willisivali/nixos-infrastructure.git
-
 Change
-------
-Type: <feature|bugfix|module|security|architecture|docs|maintenance>
-Classification: <classification>
-
-Issue
------
-#<issue-number>
-
-Merge Request
--------------
-!<mr-number>
-
-Branch
-------
-<branch-name>
-
-What Changed
-------------
-<Clear explanation of what was changed and why.>
-
-What Was Broken
----------------
-<Describe the problem that existed before the change.
-
-If this was a new feature rather than a bug fix:
-"Nothing was broken. This was a new capability.">
-
-Root Cause
-----------
-<Explain the technical root cause.
-
-If not applicable:
-"Not applicable — new feature.">
-
-What Was Fixed
---------------
-<Explain exactly what was changed to resolve the issue or implement
-the requested capability.>
-
-Affected Components
--------------------
-<List the important modules, services, scripts, tests, or documentation
-that changed.>
-
-Testing & Verification
-----------------------
-Local verification:
-<details>
-
-Tests:
-<details>
-
-GitLab CI:
-<PASSED / FAILED>
-
-Important CI jobs:
-- <job>: <status>
-- <job>: <status>
-- <job>: <status>
-
-Merge Status
-------------
-MR: <MERGED / OPEN / BLOCKED>
-
-main:
-<UPDATED / NOT UPDATED>
-
-Production Deployment
----------------------
-<NOT PERFORMED — awaiting operator-controlled deployment>
-
-or:
-
-<DEPLOYED — generation <number> activated successfully>
-
-or:
-
-<DEPLOYED — rollback performed because <reason>>
-
-Summary
--------
-<2–5 sentence human-readable summary of what happened.
-
-Example:
-
-A GitOps reconciliation failure was traced to DNS resolution occurring
-before NetworkManager had established the expected resolver state.
-The reconciler was updated to use the repository's network readiness
-check, and a regression test was added. Local verification passed and
-GitLab CI completed successfully. The change was merged into main;
-production deployment was not performed.>
-
-Action Required
----------------
-<NONE>
-
-or:
-
-<Describe exactly what Willis needs to do.>
-
-Ivali Flow Status
------------------
-UNDERSTAND       ✓
-CLASSIFY         ✓
-IMPLEMENT        ✓
-TEST             ✓
-LOCAL VERIFY     ✓
-COMMIT           ✓
-PUSH             ✓
-MR               ✓
-CI               ✓
-MERGE            ✓
-
-Ivali Flow completed successfully.
+  ↓
+TDD
+  ↓
+RED
+  ↓
+Implementation
+  ↓
+GREEN
+  ↓
+Refactor
+  ↓
+Architecture validation
+  ↓
+CI
+  ↓
+Merge through ivali flow
+  ↓
+GitOps reconciliation
+  ↓
+Generation switch
+  ↓
+Health validation
+  ↓
+Rollback if unhealthy
 ```
 
----
-
-# 27. EMAIL FAILURE MUST NOT CORRUPT THE WORKFLOW
-
-Email notification is important, but failure to send an email must not cause a valid repository change to be considered invalid.
-
-If email delivery fails:
-
-1. record the notification failure;
-2. do not expose secrets;
-3. do not roll back a correct repository change solely because email failed;
-4. report that notification delivery failed.
-
-The notification subsystem itself should be treated as a bug if it repeatedly fails.
+Direct Git lifecycle bypasses remain prohibited.
 
 ---
 
-# 28. HUMAN-READABLE FINAL REPORT
+# 22. Definition of Architectural Completion
 
-At the end of every task, provide Willis with two summaries.
+The architecture migration is complete when:
 
-## Summary of What Was Broken
+* every domain has a clear owner;
+* every dependency is declared;
+* every persistent state path has one owner;
+* every configuration concern has one authoritative source;
+* service boundaries are contract-based;
+* cross-domain dependencies are explicit;
+* exceptions are minimal and justified;
+* legacy implementations have been removed;
+* architecture tests cover the important invariants;
+* the architecture linter passes;
+* CI prevents architectural regression;
+* deployment and recovery paths are independently understandable;
+* operational documentation reflects the actual repository;
+* the current audit contains no unexplained architectural violations.
 
-Explain:
-
-* the original problem;
-* how it manifested;
-* the affected component;
-* the root cause;
-* the severity/risk.
-
-## Summary of What Happened to Fix It
-
-Explain:
-
-* what was changed;
-* why the solution is correct;
-* what tests were added/updated;
-* what verification passed;
-* what GitLab CI did;
-* whether the MR was merged;
-* whether production was deployed.
-
-Do not dump raw logs unless they are necessary.
-
-Translate technical failures into understandable engineering conclusions.
-
----
-
-# 29. DO NOT STOP AT THE FIRST SUCCESS
-
-A passing test does not mean the work is complete.
-
-After fixing the immediate problem, inspect for:
-
-* related regressions;
-* duplicate logic;
-* dead code;
-* missing tests;
-* documentation drift;
-* architecture violations;
-* security implications;
-* inconsistent configuration;
-* error handling problems;
-* failure recovery problems.
-
-The mandatory loop remains:
+The final state should be:
 
 ```text
-Understand
- → Classify
- → Implement
- → Test
- → Verify
- → Observe
- → Fix
- → Refine
- → Verify again
+ARCHITECTURE.md
+      │
+      │ defines target
+      ▼
+Architecture manifests
+      │
+      │ define machine-readable rules
+      ▼
+Architecture tests + linter
+      │
+      │ enforce invariants
+      ▼
+CI
+      │
+      │ prevents regression
+      ▼
+Implementation
+      │
+      │ produces runtime system
+      ▼
+ARCHITECTURE_AUDIT.md
+      │
+      │ records actual conformance
+      ▼
+ARCHITECTURE_PROGRESS.md
+      │
+      │ tracks migration
+      └───────────────┐
+                      ▼
+                 Next action
 ```
 
 ---
 
-# 30. FINAL DEFINITION OF DONE
+# 23. Document Relationship
 
-A task is DONE only when all applicable conditions are satisfied:
+These documents intentionally have different responsibilities:
 
-* [ ] Correct issue exists
-* [ ] Change is correctly classified
-* [ ] Correct branch used
-* [ ] Root cause established for bugs
-* [ ] Regression test added for bugs where applicable
-* [ ] Implementation complete
-* [ ] No known unfinished work introduced
-* [ ] Tests pass
-* [ ] Formatting passes
-* [ ] Architecture validation passes
-* [ ] Flake validation passes
-* [ ] Host configuration evaluates successfully
-* [ ] Relevant Go checks pass
-* [ ] Relevant shell checks pass
-* [ ] Security checks pass
-* [ ] GitLab CI passes
-* [ ] MR created
-* [ ] MR merged
-* [ ] `main` contains the accepted change
-* [ ] No unintended local changes remain
-* [ ] Documentation reflects reality
-* [ ] Change notification is generated
-* [ ] Notification contains a meaningful broken/fixed summary
-* [ ] Production deployment has NOT been performed unless explicitly part of the authorized task
+| Document                         | Responsibility                            |
+| -------------------------------- | ----------------------------------------- |
+| `AGENTS.md`                      | AI operating contract                     |
+| `ENGINEERING.md`                 | Engineering standards                     |
+| `ARCHITECTURE.md`                | **Target architecture**                   |
+| `ARCHITECTURE_AUDIT.md`          | **Current architectural conformance**     |
+| `ARCHITECTURE_PROGRESS.md`       | **Migration and implementation progress** |
+| `architecture/domains.yaml`      | Domain declarations                       |
+| `architecture/dependencies.yaml` | Dependency declarations                   |
+| `architecture/exceptions.yaml`   | Approved exceptions                       |
+| Architecture tests/linter        | Executable enforcement                    |
+| `IVALi_FLOW.md`                  | Git lifecycle                             |
+| `CONTEXT_HANDOFF.md`             | Session continuity                        |
+
+The separation is intentional:
+
+```text
+ARCHITECTURE.md
+"What should the system look like?"
+
+ARCHITECTURE_AUDIT.md
+"What does the repository actually look like?"
+
+ARCHITECTURE_PROGRESS.md
+"How do we move from the current state to the target state?"
+```
+
+This separation prevents the architecture, audit, and migration documents from becoming contradictory sources of truth.
 
 ---
 
-# 31. THE IVALI FLOW COMMANDMENT
-
-For every task, remember:
+# 24. Current Status
 
 ```text
-GitLab is the source of truth.
-
-Ivali Flow is the mandatory engineering workflow.
-
-Bugs must be classified.
-
-Bugs must be investigated, not merely patched.
-
-Errors discovered during implementation become part of the task.
-
-CI failures must be investigated and fixed.
-
-CI must be green before merge.
-
-MRs must be reconciled into main.
-
-Deployment is separate from code acceptance.
-
-Never bypass the workflow.
-
-Never hide a failure.
-
-Never declare success prematurely.
-
-Always explain what was broken.
-
-Always explain what was fixed.
-
-Always notify Willis of repository changes.
-
-The objective is not merely to change code.
-
-The objective is to leave the repository healthier,
-more reliable, more testable, and more maintainable than it was found.
+Architecture definition       ████████████████████  Complete
+Machine-readable architecture ████████████████████  Complete
+Architecture testing          ████████████████████  Operational
+Architecture linting          ████████████████████  Operational
+CI enforcement                ████████████████████  Operational
+State ownership               ███████████████████░  Substantially complete
+Service contracts             ███████████████████░  Substantially complete
+Consumer migration            ███████████████░░░░░  In progress
+Configuration consolidation   ████████████████░░░░  In progress
+Legacy removal                ██████████████░░░░░░  In progress
+Continuous re-audit           █████████████████░░░  Ongoing
 ```
 
----
+**Overall architectural state:**
 
-# 32. GATE INCORPENDENCY REFERENCE
+> **The repository has moved from documented architecture to machine-readable, tested, and CI-enforced architecture. The remaining work is controlled migration and consolidation, not architectural discovery.**
 
-This section documents the **actual verification gates** each command runs.
-This table is the source of truth for local vs CI gate coverage.
-
-## 32.1 Local Command Gates
-
-| Gate | `flow validate` | `flow run` | `flow quick` | `ivali verify` | `ivali doctor` |
-|------|:-:|:-:|:-:|:-:|:-:|
-| `nix fmt -- --check .` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `shellcheck --severity=warning` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `go build ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `go vet ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `go test -race -count=1 ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `gosec -exclude-generated ./...` | ✅ | ✅ | ✅ | ❌ | ❌ |
-| `nix flake check --no-build` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `nix eval (host)` | ✅ (--host) | ❌ | ❌ | ❌ | ❌ |
-| Architecture linter | ❌ | ❌ | ❌ | ✅ | ✅ |
-| `deadnix` / `statix` | ❌ | ❌ | ❌ | ❌ | ✅ |
-| Duplicate imports check | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Orphan modules check | ❌ | ❌ | ❌ | ✅ | ✅ |
-| Security scan | ❌ | ❌ | ❌ | ✅ | ✅ |
-| System health | ❌ | ❌ | ❌ | ❌ | ✅ |
-
-## 32.2 CI Pipeline Gates
-
-| Gate | GitLab CI | GitHub Actions |
-|------|:-:|:-:|
-| `nix fmt -- --check .` | ✅ | ✅ |
-| `shellcheck --severity=warning` | ✅ | ✅ |
-| `golangci-lint run` | ✅ | ✅ |
-| Architecture linter | ✅ | ✅ |
-| `go build ./...` | ✅ | ❌ (via golangci) |
-| `go test -race -count=1 ./...` | ✅ | ✅ |
-| `gosec -exclude-generated ./...` | ✅ (blocking) | ✅ (blocking) |
-| `nix flake check --no-build` | ✅ | ✅ |
-| `nix eval .#nixosConfigurations.prague` | ✅ | ✅ |
-
-## 32.3 Deployment Pipeline Gates
-
-| Gate | `gitops-reconcile.sh` | `rebuild.sh` | `ci-deploy.sh` |
-|------|:-:|:-:|:-:|
-| Lock acquisition | ✅ | ❌ | ✅ (shared) |
-| Dirty-tree guard | ✅ | ❌ | ❌ |
-| `git fetch` | ✅ | ✅ | ❌ |
-| `git rebase` | ❌ (ff-only pull) | ✅ | ❌ |
-| Repository integrity (`git fsck`) | ✅ | ❌ | ❌ |
-| Hardware UUID check | ✅ | ✅ | ✅ |
-| Go vendor hash verify | ✅ | ✅ (conditional) | ❌ |
-| `nix flake check` | ✅ | ✅ | ❌ |
-| `nix eval` | ❌ | ✅ | ❌ |
-| `nix build` | ✅ | ❌ (rebuild does build+activate) | ❌ |
-| `nixos-rebuild switch` | ✅ | ✅ | ✅ |
-| Health gate (post-deploy) | ✅ | ❌ | ❌ |
-| Rollback on failure | ✅ | ❌ | ❌ |
-
-## 32.4 Gate Coverage Summary
-
-| Scenario | nix fmt | shellcheck | go build | go vet | go test | gosec | nix flake check | nix eval | arch check | HW UUID | health |
-|----------|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| **Full local** (`flow validate`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ |
-| **CI push** (GitLab) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| **CI push** (GitHub) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **GitOps deploy** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
-| **Manual rebuild** | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
-| **`flow quick`** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **`flow run`** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-
-## 32.5 Known Gate Gaps
-
-| Gap | Risk | Recommendation |
-|-----|------|----------------|
-| `flow quick` / `flow run` skip `nix eval (host)` | Host evaluation not exercised before push | Use `flow validate --host <host>` before pushing |
-| `ci-deploy.sh` skips flake check, nix eval, go hash | Deployment with fewer gates than GitOps reconciler | Fix `ci-deploy.sh` to run full gate suite |
-| Architecture check only in GitLab CI | No local architecture validation unless `ivali verify` is run | Run `ivali verify` locally before push |
-| `gosec` is `allow_failure` in CI | Security scan failures don't block merges | Remove `allow_failure` to make security scan blocking |
-| `flow merge` treats missing pipeline as passed | MR may merge before CI starts | Check pipeline existence before treating as passed |
-
----
-
-# 33. CI PIPELINE REFERENCE
-
-## 33.1 GitLab CI Stages
-
-```text
-lint → architecture → test → security → check → build
-```
-
-### Stage: lint
-
-| Job | Command | Purpose |
-|-----|---------|---------|
-| `nix-format` | `nix fmt -- --check .` | Nix formatting |
-| `shellcheck` | `shellcheck --severity=warning scripts/*.sh` | Shell script linting |
-| `go-lint` | `golangci-lint run ./... --timeout=5m` | Go static analysis |
-
-### Stage: architecture
-
-| Job | Command | Purpose |
-|-----|---------|---------|
-| `architecture-check` | `go build -o /tmp/check-architecture ./cmd/check-architecture/ && /tmp/check-architecture` | Architecture boundary enforcement |
-
-### Stage: test
-
-| Job | Command | Purpose |
-|-----|---------|---------|
-| `go-build` | `go build ./...` | Go compilation |
-| `go-test` | `CGO_ENABLED=1 go test -race -count=1 -timeout 10m ./...` | Go tests with race detector |
-
-### Stage: security
-
-| Job | Command | Purpose |
-|-----|---------|---------|
-| `go-security` | `gosec -exclude-generated ./...` | Security scan (**allow_failure: true**) |
-
-### Stage: check
-
-| Job | Command | Purpose |
-|-----|---------|---------|
-| `nix-flake-check` | `nix flake check --no-build` | Flake schema validation |
-
-### Stage: build
-
-| Job | Command | Purpose |
-|-----|---------|---------|
-| `nixos-eval-prague` | `nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name` | NixOS configuration evaluation |
-
-## 33.2 GitHub Actions Jobs
-
-| Job | Dependencies | Required |
-|-----|-------------|----------|
-| `go-lint` | none | YES |
-| `go-test` | go-lint | YES |
-| `shellcheck` | none | YES |
-| `go-security` | go-lint | YES |
-| `architecture-check` | none | YES |
-| `nix-checks` | none | YES (fmt / flake check / eval) |
-| `ci-summary` | all above | YES (aggregator) |
-
-## 33.3 CI Rules
-
-All CI jobs run on:
-- Merge request events
-- Default branch (`main`) pushes
-
-Retry: max 1, on `runner_system_failure` or `stuck_or_timeout_failure`
-Timeout: 15 minutes per job
-
----
-
-# 34. DEPLOYMENT PIPELINE REFERENCE
-
-## 34.1 GitOps Reconciler (Primary)
-
-Triggered by `gitops-reconciler.service` every 15 minutes.
-
-```text
-Lock → Clone/Fetch → Dirty-tree guard → Fetch → Integrity check →
-Revision comparison → Pull (ff-only) → Flake check → HW UUID →
-Go hash → Build → [Canary VM] → Activate → Grace period →
-Health gate → Rollback if failed
-```
-
-## 34.2 Manual Rebuild (`scripts/rebuild.sh`)
-
-Run by the operator directly.
-
-```text
-Git fetch → Rebase → HW UUID → Go hash (conditional) →
-Nix eval → Flake check → NixOS rebuild switch
-```
-
-## 34.3 CI-Triggered Deploy (`scripts/ci-deploy.sh`)
-
-Triggered from GitLab CI pipeline.
-
-```text
-Lock → HW UUID → NixOS rebuild switch
-```
-
-**Note:** This has significantly fewer gates than the GitOps reconciler.
-
----
-
-# 35. QUICK REFERENCE CARD
-
-## Commands
-
-| Command | Purpose | Gates |
-|---------|---------|-------|
-| `ivali flow start [type] "desc"` | Create issue + branch | None |
-| `ivali flow validate` | Run all verification gates | 7-8 gates |
-| `ivali flow commit` | Stage + commit with conventional msg | Blocks main |
-| `ivali flow push` | Push branch to GitLab | Clean tree |
-| `ivali flow mr` | Create merge request | All commits pushed |
-| `ivali flow pipeline` | Check CI status | — |
-| `ivali flow pipeline --watch` | Poll CI until terminal | — |
-| `ivali flow merge` | Merge when CI passes | CI must pass |
-| `ivali flow deploy` | Run rebuild.sh | Full rebuild gates |
-| `ivali flow rollback` | Roll back generation | Confirmation |
-| `ivali flow quick "desc"` | Commit → push → MR (fast) | 7 gates (all but host eval) |
-| `ivali flow run [type] "desc"` | Full AI pipeline | 7 gates (all but host eval) |
-| `ivali flow status` | Show workflow state | — |
-| `ivali verify` | Full verification | Formatting, flake, arch, security |
-| `ivali doctor` | System health check | Everything + system health |
-
-## Commit Convention
-
-```text
-type(scope): description
-```
-
-**Types:** `feat`, `fix`, `module`, `security`, `arch`, `docs`, `test`, `chore`
-
-## Branch Convention
-
-```text
-<type>/<cleaned-description>
-```
-
-**Prefixes:** `feature/`, `bugfix/`, `module/`, `security/`, `architecture/`, `docs/`, `maintenance/`
-
-## Commit Authorship (MANDATORY)
-
-```bash
-GIT_AUTHOR_NAME="Willis Ivali" GIT_AUTHOR_EMAIL="itsivali@outlook.com" \
-GIT_COMMITTER_NAME="Willis Ivali" GIT_COMMITTER_EMAIL="itsivali@outlook.com" \
-git commit -m "..."
-```
-
-## Verification Sequence (MANDATORY before push)
-
-```bash
-# 1. Format check
-nix fmt -- --check .
-
-# 2. Shell lint (if scripts modified)
-shellcheck --severity=warning scripts/*.sh
-
-# 3. Go checks
-go build ./...
-go vet ./...
-go test -race -count=1 ./...
-
-# 4. Flake validity
-nix flake check --no-build
-
-# 5. Configuration evaluation
-nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
-
-# 6. Architecture check
-go run ./cmd/check-architecture/
-
-# 7. Full verification
-ivali verify
-```

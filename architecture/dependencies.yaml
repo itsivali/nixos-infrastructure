@@ -23,7 +23,7 @@ nix_imports:
     type: import
     severity: allowed
 
-  - source: home/gnome/dconf.nix
+  - source: home/gnome/desktop.nix
     target: shared.theme
     type: import
     severity: allowed

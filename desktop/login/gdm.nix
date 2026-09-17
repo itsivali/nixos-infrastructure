@@ -1,15 +1,15 @@
 ##############################################################################
 #
-# Desktop — Login (SDDM)
+# Desktop — Login (GDM)
 #
 # Purpose
 # -------
-# SDDM display manager for KDE Plasma 6. Wayland-native greeter,
-# greeter theming, and boot session selection.
+# GDM display manager for GNOME. Wayland-native greeter, greeter theming,
+# and boot session selection.
 #
 # Ownership
 # ---------
-# services.displayManager.sddm
+# services.displayManager.gdm
 #
 ##############################################################################
 
@@ -17,9 +17,9 @@
 
 {
   config = lib.mkIf (config.ivali.desktop.enable or false) {
-    # SDDM is enabled declaratively in desktop/kde/session.nix via
-    # services.displayManager.sddm.enable = true.
+    # GDM is enabled declaratively in desktop/gnome/session.nix via
+    # services.displayManager.gdm.enable = true.
     # This module exists to keep the login/default.nix barrel organized
-    # and to document SDDM as the canonical display manager.
+    # and to document GDM as the canonical display manager for GNOME.
   };
 }

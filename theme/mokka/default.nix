@@ -4,7 +4,7 @@
 #
 # Purpose
 # -------
-# Aggregate view of the Garuda Mokka design system for KDE Plasma 6.
+# Aggregate view of the Catppuccin Mocha Mauve design system for GNOME/GTK.
 # Single import point for the whole Mokka design system.
 #
 # Upstream source
@@ -39,29 +39,8 @@ in
   name = "mokka";
   displayName = "Mokka";
 
-  # KDE Global Theme name (look-and-feel package)
-  lookAndFeel = "Mokka";
+  description = "Catppuccin Mocha Mauve design system for GNOME/GTK";
 
-  # KDE Color Scheme name
-  colorScheme = "Mokka";
-
-  # KDE Plasma desktop theme
-  plasmaTheme = "Mokka";
-
-  # Kvantum theme (from nixpkgs: catppuccin-kvariant=mocha accent=mauve)
-  kvantum = {
-    package = "catppuccin-kvantum";
-    variant = "mocha";
-    accent = "mauve";
-    themeName = "Catppuccin-Mocha-Mauve";
-  };
-
-  # Window decoration (Aurorae)
-  windowDecoration = {
-    library = "org.kde.kwin.aurorae.v2";
-    theme = "__aurorae__svg__CatppuccinMocha-Classic";
-  };
-
-  # Splash screen
-  splashScreen = "Catppuccin-Mocha-Mauve-splash";
+  # GTK theme configuration (GTK3/GTK4)
+  # Consumed by home/theming.nix for the GTK theme + icon theme + cursor
 }

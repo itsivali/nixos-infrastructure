@@ -40,8 +40,8 @@
     # once security.lockKernelModules pins kernel.modules_disabled to 1.
     ivali.security.firewall.enable = true;
 
-    # Desktop environment: KDE Plasma 6 (Wayland/SDDM), replacing GNOME.
-    ivali.desktop.kde.enable = true;
+    # Desktop environment: GNOME (Wayland/GDM), replacing KDE Plasma 6.
+    ivali.desktop.gnome.enable = true;
     # Remote desktop (RDP) over Tailscale: opens 3389 on tailscale0 only.
     ivali.desktop.remote-desktop.enable = true;
     ivali.kilocode.enable = true;

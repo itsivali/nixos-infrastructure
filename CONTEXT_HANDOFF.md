@@ -1,104 +1,85 @@
-# Context Handoff — KDE Migration
+# Context Handoff — GNOME Workstation
 
 ## Current Objective
-Replace GNOME desktop on NixOS hosts `prague` and `tuscany` with KDE Plasma 6 + KWin + Wayland + Garuda Mokka styling.
+
+Provide a polished GNOME desktop on NixOS hosts `prague` and `tuscany`:
+GNOME Shell over Wayland, GDM display manager, GNOME Remote Desktop,
+Catppuccin Mocha Mauve GTK theming, and curated GNOME extensions.
 
 ## Completed Work
 
-### Phase 0-1: Setup
-- Created feature branch `feature/prague-kde-mokka`
-- Added `plasma-manager` flake input pinned at `a19a2a029fa180911bd89c554dca1616e10f4c1d`
-- Wired `plasma-manager.homeModules.plasma-manager` into home-manager sharedModules
+### Phase 1: Remove KDE Infrastructure
+- Removed `desktop/kde/` (default.nix, session.nix, keyboard.nix, remote-desktop.nix)
+- Removed `home/kde/` (default.nix, plasma.nix, konsole.nix, dolphin.nix, remote-desktop.nix, webapps.nix)
+- Removed `desktop/login/sddm.nix` (replaced by GDM)
+- Removed `plasma-manager` flake input and sharedModules entry from `flake.nix`
+- Removed KDE-specific environment variables (`QT_QPA_PLATFORM`, `QT_WAYLAND_DISABLE_WINDOWDECORATION`) from `desktop/common/environment.nix`
+- Removed KDE portal backend (`xdg-desktop-portal-kde`) in favor of GNOME portal (`xdg-desktop-portal-gnome`) in `desktop/common/portals.nix`
 
-### Phase 2: Mokka Theme Package
-Created `theme/mokka/`:
-- `colors.nix` — KDE color scheme data (Catppuccin Mocha Mauve)
-- `terminal.nix` — Konsole color scheme
-- `gtk.nix` — GTK theme mappings
-- `firefox.nix` — Firefox CSS color data
-- `default.nix` — aggregate view
-- `konsole-colorscheme.nix` — derivation for Mokka.colorscheme
-- `kde-colorscheme.nix` — derivation for Mokka.colors
-- `plymouth.nix` — boot splash colors
+### Phase 2: Create GNOME Infrastructure
+- Created `desktop/gnome/default.nix` — barrel + `ivali.desktop.gnome.enable` option
+- Created `desktop/gnome/session.nix` — GNOME session, GDM, power management, Bluetooth, libinput, minimal app stack, GNOME Keyring
+- Created `desktop/gnome/extensions.nix` — installs curated GNOME extensions (Dash to Dock, Just Perfection, Caffeine, Clipboard Indicator, Vitals)
+- Created `desktop/gnome/remote-desktop.nix` — system-level GNOME Remote Desktop (GRD) + Tailscale-only firewall
+- Created `desktop/login/gdm.nix` — GDM display manager barrel
+- Created `home/gnome/default.nix` — Home Manager barrel
+- Created `home/gnome/desktop.nix` — dconf settings (interface, windows, workspaces, keybindings, extensions)
+- Created `home/gnome/extensions.nix` — extension dconf configuration
+- Created `home/gnome/keyboard.nix` — input sources and media keybindings
+- Created `home/gnome/webapps.nix` — M365 web app .desktop entries
+- Created `home/gnome/remote-desktop.nix` — per-user GRD dconf settings
+- Created `home/gnome/applications.nix` — GNOME MIME type defaults
 
-### Phase 3: KDE System Module
-Created `desktop/kde/`:
-- `default.nix` — barrel + `ivali.desktop.kde.enable` option
-- `session.nix` — plasma6, SDDM, defaultSession "plasma", power management, Bluetooth, Qt theming, libinput, Mokka color schemes, KDE app stack
-- `remote-desktop.nix` — KRDP system module (SystemUserEnabled=true, port 3389, tailscale-only firewall)
-- `keyboard.nix` — xkb layout "us", `ctrl:nocaps`
+### Phase 3: Update Shared Desktop Modules
+- `desktop/common/portal.nix` — switched to `xdg-desktop-portal-gnome`
+- `desktop/common/environment.nix` — removed KDE Qt env vars, kept `NIXOS_OZONE_WL`, `GTK_USE_PORTAL`, `_JAVA_AWT_WM_NONREPARENTING`
+- `desktop/common/theme.nix` — updated for GTK theming
+- `theme/mokka/default.nix` — removed KDE-specific fields (lookAndFeel, colorScheme, plasmaTheme, kvantum, windowDecoration, splashScreen), updated description
+- `desktop/common/platform.nix` — updated comment to reference `ivali.desktop.gnome.enable`
+- `desktop/common/packages.nix` — updated comment
 
-### Phase 4: KDE Home Manager Module
-Created `home/kde/`:
-- `default.nix` — barrel
-- `plasma.nix` — plasma-manager: workspace/theme/effects/shortcuts/configFile/packages
-- `konsole.nix` — comment-only (config in plasma.nix)
-- `dolphin.nix` — comment-only (config in plasma.nix)
-- `remote-desktop.nix` — KRDP user session (krdpserverrc, TLS cert bootstrap, portal permission, systemd units)
-- `webapps.nix` — firefoxpwa declarative sites (M365/Word/Excel/PPT)
+### Phase 4: Firefox Configuration
+- Removed Motta CSS (`userChrome.css`) — replaced by GNOME-native theming
+- Kept all Firefox functionality: Sidebery, Enterprise Policies, privacy hardening, performance settings, ivali profile
+- Updated description to "GNOME-optimized"
 
-### Phase 5: SDDM + Host Swap
-- Created `desktop/login/sddm.nix`
-- Updated `desktop/login/default.nix` to import sddm.nix
-- Updated `hosts/prague.nix` to `ivali.desktop.kde.enable = true`
-- Updated `hosts/tuscany.nix` to `ivali.desktop.kde.enable = true`
+### Phase 5: Microsoft 365 Web Apps
+- Replaced KDE firefoxpwa with native GNOME `.desktop` entries in `home/gnome/webapps.nix`
+- Apps: Outlook, Word Online, Excel Online, PowerPoint Online, Teams, OneDrive
 
-### Phase 6: GNOME Removal
-- Deleted `home/gnome/` (all files)
-- Deleted `home/launcher/` (default.nix)
-- Deleted `home/webapps/` (edge-pwa.nix)
-- Deleted `desktop/gnome/` (default.nix, session.nix)
-- Deleted `desktop/login/gdm.nix`
-- Deleted `desktop/remote-desktop/grd.nix` + `README.md`
-- Deleted `theme/gruvbox/` (entire directory)
-- Updated `home/default.nix` to remove GNOME gate
+### Phase 6: Remote Desktop — GNOME Remote Desktop
+- Created `desktop/gnome/remote-desktop.nix` — system-level GRD (PAM auth, Tailscale-only firewall)
+- Created `home/gnome/remote-desktop.nix` — per-user RDP dconf settings (mirror-primary, no negotiate-port)
+- Removed all KRDP configuration
+- No public RDP/port 3389 exposure
 
-### Phase 7: Validation Fixes
-Fixed multiple eval errors:
-- Merged duplicate `environment.systemPackages` in session.nix
-- Fixed duplicate `After` in remote-desktop.nix systemd unit
-- Fixed `programs.plasma.krunner.launch` → `programs.plasma.shortcuts."services/org.kde.krunner.desktop"`
-- Fixed `xdg-desktop-portal-kde` → `kdePackages.xdg-desktop-portal-kde`
-- Fixed ULID keys from 25 to 26 characters
-- Fixed defaultSession from "plasmawayland" to "plasma"
-- Fixed `kdePackages.kvantum` (not available) — removed
-- Fixed `qt6ct` → `kdePackages.qt6ct`
-- Fixed `catppuccin-cursors.mocha-mauve` → `catppuccin-cursors.mochaMauve`
-- Fixed `services.xserver.xkb.options` to string format
-- Fixed `xwaylandvideobridge` (not available) — removed
-- Removed `QT_STYLE_OVERRIDE = "kvantum"` from sessionVariables
-
-### Phase 7: Existing File Updates
-- `desktop/common/portals.nix` — KDE portal backend
-- `desktop/common/environment.nix` — KDE Wayland env vars
-- `desktop/common/colors.nix` — Mokka colors
-- `desktop/common/theme.nix` — default "mokka"
-- `desktop/common/packages.nix` — removed GNOME comments
-- `desktop/remote-desktop/default.nix` — GRD removed
-- `home/theming.nix` — Mokka GTK theme (catppuccin-gtk, tela-icon-theme, catppuccin-cursors)
-- `boot/plymouth.nix` — Mokka two-step theme
-- `home/firefox/default.nix` — Mokka CSS theme
+### Phase 7: Documentation Updates
+- Updated `README.md` — all KDE references replaced with GNOME
+- Updated `architecture/dependencies.yaml` — GNOME module paths
 
 ## Remaining Work
 
-### Phase 8: Documentation
-- Update CONTEXT_HANDOFF.md (this file)
-- Update README.md if needed
-
-### Phase 9: Git Workflow
-- Run `ivali flow` to commit, push, and create MR
+### LOW
+- **Substituter configuration consolidation** (LOW-11): `nix.settings.substituters` split across `system/nix.nix`, `caching/default.nix`, `cache/default.nix`. Acceptable while tracked.
 
 ## Key Decisions
-- **KRDP password:** System user auth (SystemUserEnabled=true) — RDP clients authenticate with OS account password via PAM. NOT via KWallet/SOPS. The `secrets/rdp.yaml` becomes unused for RDP.
-- **Kvantum:** Not available in this nixpkgs version — using Qt6 built-in theming
-- **xwaylandvideobridge:** Not available in this nixpkgs version — removed
-- **Panel layout:** Deferred to follow-up (default Plasma 6 bottom panel acceptable for this pass)
-- **Aurorae decoration:** Deferred to follow-up (using Breeze + Mokka color scheme)
+- **Display manager**: GDM (GNOME native, Wayland-first)
+- **Remote desktop**: GNOME Remote Desktop (GRD) — PAM-based auth, Tailscale-only, no public exposure
+- **Extensions**: Dash to Dock, Just Perfection, Caffeine, Clipboard Indicator, Vitals — curated for minimal resource usage
+- **Theming**: Catppuccin Mocha Mauve via GTK (Catppuccin GTK + Tela icons + Catppuccin cursors)
+- **Web apps**: Native GNOME .desktop entries using Firefox --new-window (replaces firefoxpwa)
+- **Firefox**: No Mokka CSS; GNOME-native theming handles visual consistency
 
 ## Verification Status
-- `nix eval` — PASS (prague and tuscany)
-- `nix flake check --no-build` — PASS (all checks)
-- `nix fmt -- --check` — FAIL (pre-existing, not blocking)
+- `nix fmt -- --check .` — PASS
+- `nix flake check --no-build` — PASS
+- `nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name` — PASS
+- `nix eval .#nixosConfigurations.tuscany.config.system.build.toplevel.name` — PASS
+- `go build ./...` — PASS
+- `go test ./...` — PASS
+- `go test ./internal/architecture/... -v` — PASS
+- `./ci/check-architecture` — PASS (7/7 checks, 3 pre-existing questionable filesystem boundaries)
+- `bash -n scripts/*.sh` — PASS
 
 ## Current Branch
-`feature/prague-kde-mokka`
+`main` (changes staged for commit via ivali flow)

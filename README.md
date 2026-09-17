@@ -16,7 +16,7 @@ Reproducible. Secure. Observable. Testable. Recoverable. Operable.
 **Primary host:** `prague`
 **Primary user:** `ivali`
 **Operating system:** NixOS 26.11
-**Desktop:** KDE Plasma / Wayland
+**Desktop:** GNOME / Wayland
 **Architecture:** `x86_64-linux`
 **Control plane:** Go
 **Infrastructure model:** Declarative NixOS + Home Manager + GitOps + SRE principles
@@ -31,7 +31,7 @@ Reproducible. Secure. Observable. Testable. Recoverable. Operable.
 * [Technology Stack](#technology-stack)
 * [Repository Structure](#repository-structure)
 * [NixOS Architecture](#nixos-architecture)
-* [KDE Desktop Architecture](#kde-desktop-architecture)
+* [GNOME Desktop Architecture](#gnome-desktop-architecture)
 * [Linux and System Architecture](#linux-and-system-architecture)
 * [Control Plane](#control-plane)
 * [GitOps and Deployment](#gitops-and-deployment)
@@ -71,7 +71,7 @@ Everything that should be reproducible is represented as code:
 * Tailscale networking
 * SSH
 * secrets integration
-* KDE Plasma desktop
+* GNOME desktop
 * Wayland session
 * audio and Bluetooth
 * applications
@@ -269,7 +269,7 @@ The system follows this architectural model:
                     │              │               │
                     │       Linux / systemd       │
                     │              │               │
-                    │      KDE / Wayland          │
+                    │      GNOME / Wayland        │
                     └──────────────┬───────────────┘
                                    │
                                    ▼
@@ -293,10 +293,10 @@ The fundamental invariant is:
 | Configuration       | Nix                                             |
 | Reproducibility     | Nix Flakes                                      |
 | User configuration  | Home Manager                                    |
-| Desktop             | KDE Plasma                                      |
+| Desktop             | GNOME                                       |
 | Display             | Wayland                                         |
-| Login               | SDDM                                            |
-| Window system       | KWin                                            |
+| Login               | GDM                                             |
+| Window system       | Mutter                                          |
 | Audio               | PipeWire / WirePlumber                          |
 | Networking          | NetworkManager                                  |
 | DNS                 | systemd-resolved / configured DNS filtering     |
@@ -337,7 +337,7 @@ The repository is organized by **architectural domain**, not merely by technolog
 ├── security/              # Firewall, SOPS, AppArmor, hardening
 ├── ssh/                   # SSH server/client configuration
 │
-├── desktop/               # KDE Plasma / Wayland desktop
+├── desktop/               # GNOME / Wayland desktop
 ├── home/                  # Home Manager configuration
 ├── developer/             # Development environments
 ├── packages/              # Package sets
@@ -436,17 +436,17 @@ nix fmt
 
 ---
 
-# KDE Desktop Architecture
+# GNOME Desktop Architecture
 
-KDE Plasma is treated as a **first-class infrastructure domain**, not simply a collection of GUI packages.
+GNOME is treated as a **first-class infrastructure domain**, not simply a collection of GUI packages.
 
 The desktop platform includes:
 
 ```text
-KDE Plasma
-├── KWin
+GNOME
+├── Mutter
 ├── Wayland
-├── SDDM
+├── GDM
 ├── XDG portals
 ├── PipeWire
 ├── WirePlumber
@@ -460,7 +460,7 @@ KDE Plasma
 └── Application integration
 ```
 
-The current desktop direction is a polished KDE Plasma environment with the **Garuda Mokka** visual design direction.
+The current desktop direction is a polished GNOME environment with the **Garuda Mokka** visual design direction.
 
 The desktop configuration should remain:
 
@@ -503,7 +503,7 @@ Desktop infrastructure includes special attention to:
 * suspend/resume
 * power management
 * GPU acceleration
-* KDE application integration
+* GNOME application integration
 * browser integration
 * remote GUI access
 
@@ -1097,16 +1097,16 @@ AI agents must understand four major engineering domains:
 * boot
 * troubleshooting
 
-### KDE
+### GNOME
 
-* Plasma
-* KWin
+* GNOME Shell
+* Mutter
 * Wayland
-* SDDM
+* GDM
 * portals
 * PipeWire
 * WirePlumber
-* KDE configuration
+* GNOME configuration
 * desktop performance
 * application integration
 
@@ -1492,10 +1492,10 @@ Major areas of ongoing development include:
 * stronger NixOS test coverage
 * automated generation validation
 
-### KDE
+### GNOME
 
-* polished KDE Plasma environment
-* Garuda Mokka-inspired visual system
+* polished GNOME environment
+* Catppuccin Mocha Mauve visual system
 * Wayland-first configuration
 * PipeWire/WirePlumber reliability
 * display and suspend reliability

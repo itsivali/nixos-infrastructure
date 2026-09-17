@@ -25,7 +25,7 @@ pkgs.testers.nixosTest {
     services.xserver.enable = false;
     services.openssh.enable = false;
 
-    fleet.gitops.repo = "https://gitlab.com/willisivali/nixos-infrastructure";
+    fleet.gitops.repo = "git@gitlab.com:willisivali/nixos-infrastructure.git";
     fleet.gitops.branch = "main";
     fleet.deploymentHealth.enable = true;
     fleet.gitopsReconciler.enable = true;

@@ -46,8 +46,8 @@
       repoPath = "/home/ivali/nixos-infrastructure";
     };
 
-    # Desktop environment: GNOME (Wayland), replaced XFCE (X11) desktop.
-    ivali.desktop.gnome.enable = true;
+    # Desktop environment: KDE Plasma 6 (Wayland/SDDM).
+    ivali.desktop.kde.enable = true;
     fleet.gitopsReconciler.enable = true;
     fleet.deploymentHealth.enable = true;
     fleet.deploymentHealth.enableRollback = true;

@@ -25,6 +25,13 @@
       # Route file dialogs through the XDG portal (GTK backend) regardless
       # of the active desktop environment.
       GTK_USE_PORTAL = "1";
+
+      # KDE Wayland: ensure Electron/GTK apps use the correct Wayland backend
+      NIXOS_OZONE_WL = "1";
+
+      # Prefer Wayland for Qt apps under KDE
+      QT_QPA_PLATFORM = "wayland";
+      QT_WAYLAND_DISABLE_WINDOWDECORATION = "1";
     };
   };
 }

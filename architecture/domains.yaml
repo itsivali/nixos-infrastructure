@@ -1,1441 +1,421 @@
 # Architecture Manifest: Domain Definitions
-
-#
-
-# This file is an EXECUTABLE ARCHITECTURE CONTRACT.
-
-#
-
-# It defines:
-
-# - domain ownership
-
-# - filesystem boundaries
-
-# - public interfaces
-
-# - internal implementation paths
-
-# - dependency direction
-
-# - architectural level
-
-# - state ownership
-
-# - verification expectations
-
-#
-
-# Architecture invariant:
-
-#
-
-# Hosts compose capabilities.
-
-# Domains own capabilities.
-
-# Services expose contracts.
-
-# Infrastructure adapters implement those contracts.
-
-#
-
-# Dependency direction:
-
-#
-
-# Level 0 → Level 1 → Level 2 → Level 3 → Level 4
-
-#
-
-# A higher-level domain MAY depend on a lower-level domain.
-
-# A lower-level domain MUST NOT depend on a higher-level domain.
-
-#
-
-# Exceptions MUST be explicitly declared in:
-
-#
-
-# architecture/exceptions.yaml
-
-#
-
-# The architecture linter MUST treat this file as authoritative for
-
-# domain ownership and dependency boundaries.
-
-#
-
-# -------------------------------------------------------------------
-
-# DOMAIN SCHEMA
-
-# -------------------------------------------------------------------
-
-#
-
-# name:
-
-# Canonical domain identifier.
-
-#
-
-# level:
-
-# Architectural level.
-
-# 0 = foundational/core
-
-# 1 = platform/shared infrastructure
-
-# 2 = functional capability
-
-# 3 = runtime/operational services
-
-# 4 = host composition
-
-#
-
-# kind:
-
-# Domain classification.
-
-#
-
-# paths:
-
-# Filesystem paths owned exclusively by the domain.
-
-#
-
-# public:
-
-# Public entry points exposed to other domains.
-
-#
-
-# internal:
-
-# Implementation paths owned by the domain and not directly imported
-
-# by external domains.
-
-#
-
-# allowed_dependencies:
-
-# Domains that this domain may depend upon.
-
-#
-
-# forbidden_dependencies:
-
-# Explicitly prohibited domains.
-
-#
-
-# state_owner:
-
-# Whether this domain is permitted to own persistent/runtime state.
-
-#
-
-# verification:
-
-# Architectural and functional verification expected for changes.
-
-#
-
-# -------------------------------------------------------------------
+# Each domain declares its paths, public interface, and dependency rules.
+# Level indicates the dependency hierarchy (0=core, 4=host composition).
 
 domains:
-
-# =================================================================
-
-# LEVEL 0 — CORE
-
-# =================================================================
-
-#
-
-# Foundational NixOS primitives.
-
-#
-
-# Core domains have no domain dependencies.
-
-# They must remain independently understandable and reusable.
-
-#
-
-core.system:
-level: 0
-kind: core
-
-```
-paths:
-  - system/
-
-public:
-  - system/default.nix
-
-internal:
-  - system/nix.nix
-  - system/users.nix
-  - system/state.nix
-
-allowed_dependencies: []
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - duplicate-state-ownership
-```
-
-core.i18n:
-level: 0
-kind: core
-
-```
-paths:
-  - i18n/
-
-public:
-  - i18n/default.nix
-
-internal:
-  - i18n/locale.nix
-
-allowed_dependencies: []
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: false
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-```
-
-core.storage:
-level: 0
-kind: core
-
-```
-paths:
-  - storage/
-
-public:
-  - storage/default.nix
-
-internal:
-  - storage/btrfs.nix
-  - storage/tmpfs.nix
-
-allowed_dependencies: []
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - filesystem-boundary
-  - duplicate-state-ownership
-```
-
-core.boot:
-level: 0
-kind: core
-
-```
-paths:
-  - boot/
-
-public:
-  - boot/default.nix
-
-internal:
-  - boot/kernel.nix
-  - boot/loader.nix
-  - boot/sysctl.nix
-  - boot/tpm.nix
-  - boot/zram.nix
-  - boot/plymouth.nix
-  - boot/resilience.nix
-
-allowed_dependencies:
-  - shared.theme
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - boot-evaluation
-```
-
-# =================================================================
-
-# LEVEL 1 — PLATFORM
-
-# =================================================================
-
-#
-
-# Shared operating-system capabilities.
-
-#
-
-# These domains may depend on Level 0 only, plus explicitly approved
-
-# same-level shared contracts.
-
-#
-
-platform.networking:
-level: 1
-kind: platform
-
-```
-paths:
-  - networking/
-
-public:
-  - networking/default.nix
-
-internal:
-  - networking/networkmanager.nix
-  - networking/time.nix
-
-allowed_dependencies:
-  - core.*
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - network-configuration
-  - service-state-ownership
-```
-
-platform.security:
-level: 1
-kind: platform
-
-```
-paths:
-  - security/
-
-public:
-  - security/default.nix
-
-internal:
-  - security/apparmor.nix
-  - security/audit.nix
-  - security/fail2ban.nix
-  - security/firewall.nix
-  - security/hardening.nix
-  - security/packages.nix
-  - security/scanning.nix
-  - security/sops.nix
-  - security/sudo.nix
-  - security/tailscale.nix
-  - security/usb.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.networking
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - security-policy
-  - secret-boundary
-  - service-state-ownership
-```
-
-platform.ssh:
-level: 1
-kind: platform
-
-```
-paths:
-  - ssh/
-
-public:
-  - ssh/default.nix
-
-internal:
-  - ssh/client.nix
-  - ssh/daemon.nix
-  - ssh/options.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.networking
-  - platform.security
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - ssh-policy
-  - security-policy
-```
-
-# =================================================================
-
-# LEVEL 1 — SHARED RESOURCES
-
-# =================================================================
-
-shared.theme:
-level: 1
-kind: shared
-
-```
-paths:
-  - theme/
-
-public:
-  - theme/default.nix
-
-internal:
-  - theme/garuda-mokka/
-  - theme/garuda-mokka/colors.nix
-  - theme/garuda-mokka/cursor.nix
-  - theme/garuda-mokka/fonts.nix
-  - theme/garuda-mokka/gtk.nix
-  - theme/garuda-mokka/icons.nix
-  - theme/garuda-mokka/plymouth.nix
-  - theme/garuda-mokka/qt.nix
-  - theme/garuda-mokka/terminal.nix
-
-allowed_dependencies: []
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: false
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - theme-integrity
-```
-
-shared.packages:
-level: 1
-kind: shared
-
-```
-paths:
-  - packages/
-
-public:
-  - packages/system/default.nix
-  - packages/cli/default.nix
-  - packages/desktop/default.nix
-  - packages/user/default.nix
-
-internal: []
-
-allowed_dependencies:
-  - shared.theme
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: false
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - package-integrity
-```
-
-shared.scripts:
-level: 1
-kind: shared
-
-```
-paths:
-  - scripts/
-
-public:
-  - scripts/
-
-internal: []
-
-allowed_dependencies: []
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: false
-
-verification:
-  - shell-syntax
-  - architecture-boundary
-```
-
-shared.secrets:
-level: 1
-kind: shared
-
-```
-paths:
-  - secrets/
-
-public:
-  - secrets/
-
-internal: []
-
-allowed_dependencies: []
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - secret-boundary
-  - architecture-boundary
-  - secret-leak-scan
-```
-
-shared.wallpapers:
-level: 1
-kind: shared
-
-```
-paths:
-  - wallpapers/
-
-public:
-  - wallpapers/
-
-internal: []
-
-allowed_dependencies: []
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: false
-
-verification:
-  - architecture-boundary
-```
-
-# =================================================================
-
-# LEVEL 2 — FUNCTIONAL DOMAINS
-
-# =================================================================
-
-functional.desktop:
-level: 2
-kind: functional
-
-```
-paths:
-  - desktop/
-
-public:
-  - desktop/default.nix
-
-internal:
-  - desktop/common/
-  - desktop/kde/
-  - desktop/login/
-  - desktop/portals/
-  - desktop/audio/
-  - desktop/display/
-  - desktop/remote/
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.theme
-  - shared.wallpapers
-  - shared.packages
-
-forbidden_dependencies:
-  - runtime.*
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - desktop-integrity
-  - audio-integrity
-  - portal-integrity
-  - display-integrity
-  - remote-access-security
-```
-
-functional.home:
-level: 2
-kind: functional
-
-```
-paths:
-  - home/
-
-public:
-  - home/default.nix
-  - home/ivali.nix
-
-internal:
-  - home/firefox/
-  - home/kde/
-  - home/shell/
-  - home/git/
-  - home/editors/
-  - home/environment/
-  - home/identity/
-  - home/fonts.nix
-  - home/theming.nix
-  - home/services/
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.theme
-  - shared.wallpapers
-  - shared.packages
-
-forbidden_dependencies:
-  - runtime.*
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - home-manager-evaluation
-  - identity-integrity
-```
-
-functional.developer:
-level: 2
-kind: functional
-
-```
-paths:
-  - developer/
-
-public:
-  - developer/default.nix
-
-internal:
-  - developer/go.nix
-  - developer/node.nix
-  - developer/python.nix
-  - developer/kotlin.nix
-  - developer/nix.nix
-  - developer/devops.nix
-  - developer/databases.nix
-  - developer/aliases.nix
-  - developer/shell.nix
-  - developer/openhands.nix
-  - developer/kilocode.nix
-  - developer/antigravity.nix
-  - developer/languages.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.packages
-
-forbidden_dependencies:
-  - runtime.*
-
-state_owner: false
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - development-toolchain
-```
-
-functional.cloud:
-level: 2
-kind: functional
-
-```
-paths:
-  - cloud/
-
-public:
-  - cloud/default.nix
-
-internal:
-  - cloud/options.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.packages
-
-forbidden_dependencies:
-  - runtime.*
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - secret-boundary
-```
-
-functional.virtualization:
-level: 2
-kind: functional
-
-```
-paths:
-  - virtualization/
-
-public:
-  - virtualization/default.nix
-
-internal:
-  - virtualization/docker.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-
-forbidden_dependencies:
-  - runtime.*
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - container-security
-  - service-state-ownership
-```
-
-# =================================================================
-
-# LEVEL 3 — RUNTIME / OPERATIONAL SERVICES
-
-# =================================================================
-
-#
-
-# Runtime domains provide operational capabilities.
-
-#
-
-# Important invariant:
-
-#
-
-# Runtime services MAY consume platform and functional contracts.
-
-# Observability MAY observe runtime state.
-
-# Observability MUST NOT become the owner of runtime state.
-
-#
-
-runtime.services:
-level: 3
-kind: runtime
-
-```
-paths:
-  - services/
-
-public:
-  - services/default.nix
-
-internal:
-  - services/msmtp/
-  - services/nginx/
-  - services/postgres/
-  - services/redis/
-  - services/web-ui/
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.*
-  - functional.home
-
-forbidden_dependencies: []
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - service-state-ownership
-  - secret-boundary
-  - runtime-health
-```
-
-runtime.observability:
-level: 3
-kind: runtime
-
-```
-paths:
-  - observability/
-
-public:
-  - observability/default.nix
-
-internal:
-  - observability/alertmanager.nix
-  - observability/alerting.nix
-  - observability/alloy.nix
-  - observability/dashboards.nix
-  - observability/falco.nix
-  - observability/grafana.nix
-  - observability/health-endpoint.nix
-  - observability/journald.nix
-  - observability/lite.nix
-  - observability/loki.nix
-  - observability/nixos-exporter.nix
-  - observability/otel.nix
-  - observability/packages.nix
-  - observability/prometheus.nix
-  - observability/retention.nix
-  - observability/slo.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.scripts
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: false
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - observability-consumer-boundary
-  - alerting-integrity
-  - telemetry-integrity
-```
-
-runtime.automation:
-level: 3
-kind: runtime
-
-```
-paths:
-  - automation/
-
-public:
-  - automation/default.nix
-
-internal:
-  - automation/gitops-reconciler.nix
-  - automation/channel-bump.nix
-  - automation/common.nix
-  - automation/options.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.scripts
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - automation-safety
-  - deployment-integrity
-```
-
-runtime.ci:
-level: 3
-kind: runtime
-
-```
-paths:
-  - ci/
-
-public:
-  - ci/default.nix
-
-internal:
-  - ci/gitlab-runner.nix
-  - ci/ci-deploy.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.scripts
-  - shared.secrets
-  - runtime.automation
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - ci-integrity
-  - secret-boundary
-```
-
-runtime.recovery:
-level: 3
-kind: runtime
-
-```
-paths:
-  - recovery/
-
-public:
-  - recovery/default.nix
-
-internal:
-  - recovery/deployment-health.nix
-  - recovery/rollback.nix
-  - recovery/backup.nix
-
-allowed_dependencies:
-  - core.*
-  - platform.*
-  - shared.scripts
-  - shared.secrets
-  - runtime.automation
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - backup-integrity
-  - rollback-integrity
-  - recovery-integrity
-  - deployment-health
-```
-
-# -----------------------------------------------------------------
-
-# CACHE DOMAIN
-
-#
-
-# `cache/` and `caching/` MUST NOT both remain architectural
-
-# domains unless they have materially different ownership semantics.
-
-#
-
-# Until that distinction is formally documented, the canonical
-
-# domain is runtime.cache.
-
-# -----------------------------------------------------------------
-
-runtime.cache:
-level: 3
-kind: runtime
-
-```
-paths:
-  - cache/
-
-public:
-  - cache/default.nix
-
-internal: []
-
-allowed_dependencies:
-  - core.*
-
-forbidden_dependencies:
-  - "*"
-
-state_owner: true
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - service-state-ownership
-```
-
-# =================================================================
-
-# LEVEL 4 — HOST COMPOSITION
-
-# =================================================================
-
-#
-
-# Hosts are composition roots.
-
-#
-
-# They may depend on every lower-level domain.
-
-#
-
-# Lower-level domains MUST NOT depend on host composition.
-
-#
-
-# Hosts contain composition decisions, not reusable domain logic.
-
-#
-
-hosts:
-level: 4
-kind: composition
-
-```
-paths:
-  - hosts/
-  - lib/host-templates/
-
-public:
-  - hosts/hosts.nix
-  - hosts/prague.nix
-  - hosts/tuscany.nix
-  - hosts/testvm.nix
-  - lib/host-templates/laptop.nix
-
-internal:
-  - hosts/default.nix
-  - hosts/hardware-configuration.nix
-  - hosts/prague/hardware-configuration.nix
-
-allowed_dependencies:
-  - "*"
-
-forbidden_dependencies: []
-
-state_owner: false
-
-verification:
-  - nix-evaluation
-  - architecture-boundary
-  - host-composition
-  - duplicate-state-ownership
-```
-
-# ===================================================================
-
-# GLOBAL ARCHITECTURE INVARIANTS
-
-# ===================================================================
-
-#
-
-# These rules apply to every domain.
-
-#
-
-architecture_invariants:
-
-dependency_direction:
-description: >
-Dependencies must flow from higher architectural levels toward
-lower architectural levels. Lower-level domains must never
-depend on higher-level domains.
-rule: >
-dependency.level <= consumer.level
-
-public_interface_only:
-description: >
-Cross-domain imports must target a declared public interface.
-Direct access to another domain's internal implementation is
-prohibited.
-rule: >
-cross_domain_imports_must_target_public_paths
-
-filesystem_ownership:
-description: >
-Every repository path must have at most one architectural owner.
-Overlapping domain ownership is prohibited.
-rule: >
-exactly_one_owner_per_declared_path
-
-no_undeclared_domains:
-description: >
-A path belonging to a domain must not be treated as an
-architectural dependency of another domain unless that dependency
-is declared here or explicitly excepted.
-rule: >
-all_dependencies_must_be_declared
-
-state_ownership:
-description: >
-Persistent or authoritative runtime state must have exactly one
-owner. Other domains may consume that state through a declared
-contract but must not independently create competing state.
-rule: >
-one_state_path_one_owner
-
-observability_is_consumer:
-description: >
-Observability collects, transforms, stores, and exposes telemetry
-about other domains. It does not own the operational state of
-those domains.
-rule: >
-observability_must_not_own_external_service_state
-
-host_composition:
-description: >
-Hosts compose domains and select capabilities. Reusable business,
-platform, or runtime logic must not be implemented directly inside
-host composition files.
-rule: >
-hosts_are_composition_roots
-
-shared_is_not_a_dumping_ground:
-description: >
-Shared domains exist only for genuinely reusable capabilities.
-Moving code into shared/ merely to bypass a dependency restriction
-is prohibited.
-rule: >
-shared_domains_require_reuse_justification
-
-exceptions_are_explicit:
-description: >
-Architectural exceptions must never be encoded by weakening this
-manifest. They must be declared and justified separately.
-rule: >
-exceptions_must_be_declared_in_architecture_exceptions
-
-no_wildcard_escape:
-description: >
-A wildcard dependency declaration must not be used by lower-level
-domains to bypass architecture boundaries.
-rule: >
-wildcard_dependencies_allowed_only_for_composition_roots
-
-# ===================================================================
-
-# DOMAIN OWNERSHIP RULES
-
-# ===================================================================
-
-ownership:
-
-path_overlap:
-severity: error
-rule: >
-No two domains may claim the same filesystem path.
-
-public_overlap:
-severity: error
-rule: >
-A public interface may belong to exactly one domain.
-
-internal_escape:
-severity: error
-rule: >
-External domains must not import another domain's internal paths.
-
-orphan_paths:
-severity: warning
-rule: >
-Architectural paths should be assigned to a domain. Unowned
-architectural code requires explicit classification.
-
-# ===================================================================
-
-# DEPENDENCY RULES
-
-# ===================================================================
-
-dependencies:
-
-level_order:
-severity: error
-rule: >
-A domain may depend only on domains at a lower level or explicitly
-approved same-level shared contracts.
-
-undeclared:
-severity: error
-rule: >
-Every cross-domain dependency must match an allowed dependency.
-
-forbidden:
-severity: error
-rule: >
-A dependency matching a forbidden pattern is always rejected.
-
-internal_import:
-severity: error
-rule: >
-Cross-domain imports into internal paths are prohibited.
-
-circular:
-severity: error
-rule: >
-The domain dependency graph must be acyclic.
-
-exception_required:
-severity: error
-rule: >
-Any intentional violation requires an entry in
-architecture/exceptions.yaml.
-
-# ===================================================================
-
-# STATE RULES
-
-# ===================================================================
-
-state:
-
-single_owner:
-severity: error
-rule: >
-Each authoritative state path has exactly one owner.
-
-no_shadow_state:
-severity: error
-rule: >
-A consumer must not create a second authoritative copy of state
-already owned by another domain without an explicit replication
-contract.
-
-observability_read_only:
-severity: error
-rule: >
-Telemetry systems may observe service state but must not become
-authoritative owners of that state.
-
-recovery_authority:
-severity: error
-rule: >
-Recovery may restore or manipulate another domain's state only
-through an explicitly defined recovery contract. Recovery does not
-permanently own that service state.
-
-# ===================================================================
-
-# VERIFICATION CONTRACT
-
-# ===================================================================
-
-verification:
-
-manifest:
-required:
-- schema-validation
-- duplicate-domain-detection
-- duplicate-path-detection
-- duplicate-public-interface-detection
-
-architecture:
-required:
-- forbidden-imports
-- circular-dependencies
-- filesystem-boundaries
-- duplicate-ownership
-- declared-dependencies
-- internal-api-boundaries
-- service-state-ownership
-
-changes:
-rule: >
-Any change to a domain must execute the verification gates
-declared by that domain and all mandatory repository-wide gates.
-
-mandatory_repository_gates:
-- format
-- architecture-tests
-- architecture-linter
-- language-tests
-- static-analysis
-- nix-evaluation
-
-deployment:
-rule: >
-Successful local verification does not constitute deployment.
-Deployment must continue through Ivali Flow and the repository's
-CI/GitOps/deployment gates.
-
-# ===================================================================
-
-# CHANGE CONTROL
-
-# ===================================================================
-
-change_control:
-
-domain_creation:
-requires:
-- unique_domain_name
-- unique_paths
-- explicit_level
-- explicit_dependencies
-- public_interface
-- state_ownership_decision
-- verification_contract
-
-domain_removal:
-requires:
-- dependency_graph_update
-- ownership_reconciliation
-- architecture_tests
-- documentation_update
-
-dependency_change:
-requires:
-- architecture_review
-- dependency_graph_update
-- architecture_tests
-- architecture_linter
-
-public_interface_change:
-requires:
-- consumer_inventory
-- compatibility_review
-- affected_domain_tests
-- architecture_tests
-
-state_owner_change:
-requires:
-- explicit_migration_plan
-- backup_or_recovery_plan
-- rollback_plan
-- state_ownership_verification
-
-exception_change:
-requires:
-- architecture/exceptions.yaml
-- written_justification
-- owner
-- expiry_or_review_date
-- verification_coverage
-
-# ===================================================================
-
-# MIGRATION / TRANSITION RULES
-
-# ===================================================================
-
-#
-
-# Architecture manifests describe the intended enforceable structure.
-
-# During migrations, temporary discrepancies may exist.
-
-#
-
-# Such discrepancies must be represented explicitly rather than silently
-
-# tolerated.
-
-#
-
-migration:
-
-legacy_paths:
-rule: >
-Legacy paths must either be assigned to an existing domain or
-explicitly classified as migration-only.
-
-transitional_dependencies:
-rule: >
-Temporary dependency violations require an architecture exception.
-
-migration_tracking:
-required_documents:
-- ARCHITECTURE_AUDIT.md
-- ARCHITECTURE_PROGRESS.md
-
-completion:
-rule: >
-A migration is complete only when implementation, manifest,
-dependency graph, tests, and documentation agree.
-
-# ===================================================================
-
-# CANONICAL DOMAIN HIERARCHY
-
-# ===================================================================
-
-hierarchy:
-
-level_0:
-- core.system
-- core.i18n
-- core.storage
-- core.boot
-
-level_1:
-- platform.networking
-- platform.security
-- platform.ssh
-- shared.theme
-- shared.packages
-- shared.scripts
-- shared.secrets
-- shared.wallpapers
-
-level_2:
-- functional.desktop
-- functional.home
-- functional.developer
-- functional.cloud
-- functional.virtualization
-
-level_3:
-- runtime.services
-- runtime.observability
-- runtime.automation
-- runtime.ci
-- runtime.recovery
-- runtime.cache
-
-level_4:
-- hosts
-
+  # ── LEVEL 0: Core ──────────────────────────────────────────────
+  core.system:
+    level: 0
+    paths:
+      - system/
+    public:
+      - system/default.nix
+    internal:
+      - system/nix.nix
+      - system/users.nix
+      - system/state.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  core.i18n:
+    level: 0
+    paths:
+      - i18n/
+    public:
+      - i18n/default.nix
+    internal:
+      - i18n/locale.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  core.storage:
+    level: 0
+    paths:
+      - storage/
+    public:
+      - storage/default.nix
+    internal:
+      - storage/btrfs.nix
+      - storage/tmpfs.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  core.boot:
+    level: 0
+    paths:
+      - boot/
+    public:
+      - boot/default.nix
+    internal:
+      - boot/kernel.nix
+      - boot/loader.nix
+      - boot/sysctl.nix
+      - boot/tpm.nix
+      - boot/zram.nix
+      - boot/plymouth.nix
+      - boot/resilience.nix
+    allowed_dependencies:
+      - shared.theme
+    forbidden_dependencies: ["*"]
+
+  # ── LEVEL 1: Platform ──────────────────────────────────────────
+  platform.networking:
+    level: 1
+    paths:
+      - networking/
+    public:
+      - networking/default.nix
+    internal:
+      - networking/networkmanager.nix
+      - networking/time.nix
+    allowed_dependencies:
+      - core.*
+    forbidden_dependencies: ["*"]
+
+  platform.security:
+    level: 1
+    paths:
+      - security/
+    public:
+      - security/default.nix
+    internal:
+      - security/apparmor.nix
+      - security/audit.nix
+      - security/fail2ban.nix
+      - security/firewall.nix
+      - security/hardening.nix
+      - security/packages.nix
+      - security/scanning.nix
+      - security/sops.nix
+      - security/sudo.nix
+      - security/tailscale.nix
+      - security/usb.nix
+    allowed_dependencies:
+      - core.*
+      - platform.networking
+    forbidden_dependencies: ["*"]
+
+  platform.ssh:
+    level: 1
+    paths:
+      - ssh/
+    public:
+      - ssh/default.nix
+    internal:
+      - ssh/client.nix
+      - ssh/daemon.nix
+      - ssh/options.nix
+    allowed_dependencies:
+      - core.*
+      - platform.networking
+      - platform.security
+    forbidden_dependencies: ["*"]
+
+  shared.theme:
+    level: 1
+    paths:
+      - theme/
+    public:
+      - theme/gruvbox/default.nix
+    internal:
+      - theme/gruvbox/colors.nix
+      - theme/gruvbox/cursor.nix
+      - theme/gruvbox/fonts.nix
+      - theme/gruvbox/gtk.nix
+      - theme/gruvbox/icons.nix
+      - theme/gruvbox/plymouth.nix
+      - theme/gruvbox/qt.nix
+      - theme/gruvbox/terminal.nix
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  shared.packages:
+    level: 1
+    paths:
+      - packages/
+    public:
+      - packages/system/default.nix
+      - packages/cli/default.nix
+      - packages/desktop/default.nix
+      - packages/user/default.nix
+    internal:
+      - packages/gnome-shell-gruvbox-theme/default.nix
+      - packages/panel-collapse/default.nix
+    allowed_dependencies:
+      - shared.theme
+    forbidden_dependencies: ["*"]
+
+  shared.scripts:
+    level: 1
+    paths:
+      - scripts/
+    public:
+      - scripts/
+    internal: []
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  shared.secrets:
+    level: 1
+    paths:
+      - secrets/
+    public:
+      - secrets/
+    internal: []
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  shared.wallpapers:
+    level: 1
+    paths:
+      - wallpapers/
+    public:
+      - wallpapers/
+    internal: []
+    allowed_dependencies: []
+    forbidden_dependencies: ["*"]
+
+  # ── LEVEL 2: Functional Domains ────────────────────────────────
+  functional.desktop:
+    level: 2
+    paths:
+      - desktop/
+    public:
+      - desktop/default.nix
+    internal:
+      - desktop/common/
+      - desktop/gnome/
+      - desktop/login/
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.theme
+      - shared.wallpapers
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.home:
+    level: 2
+    paths:
+      - home/
+    public:
+      - home/default.nix
+      - home/ivali.nix
+    internal:
+      - home/firefox/
+      - home/gnome/
+      - home/shell/
+      - home/git/
+      - home/editors/
+      - home/environment/
+      - home/terminal/
+      - home/identity/
+      - home/fonts.nix
+      - home/theming.nix
+      - home/services/
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.theme
+      - shared.wallpapers
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.developer:
+    level: 2
+    paths:
+      - developer/
+    public:
+      - developer/default.nix
+    internal:
+      - developer/go.nix
+      - developer/node.nix
+      - developer/python.nix
+      - developer/kotlin.nix
+      - developer/nix.nix
+      - developer/devops.nix
+      - developer/databases.nix
+      - developer/aliases.nix
+      - developer/shell.nix
+      - developer/openhands.nix
+      - developer/freebuff.nix
+      - developer/languages.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.cloud:
+    level: 2
+    paths:
+      - cloud/
+    public:
+      - cloud/default.nix
+    internal:
+      - cloud/options.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.packages
+    forbidden_dependencies:
+      - runtime.*
+
+  functional.virtualization:
+    level: 2
+    paths:
+      - virtualization/
+    public:
+      - virtualization/default.nix
+    internal:
+      - virtualization/docker.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+    forbidden_dependencies:
+      - runtime.*
+
+  # ── LEVEL 3: Runtime Services ──────────────────────────────────
+  runtime.services:
+    level: 3
+    paths:
+      - services/
+    public:
+      - services/default.nix
+    internal:
+      - services/msmtp/
+      - services/nginx/
+      - services/postgres/
+      - services/redis/
+      - services/web-ui/
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.*
+      - functional.home
+    forbidden_dependencies: []
+
+  runtime.observability:
+    level: 3
+    paths:
+      - observability/
+    public:
+      - observability/default.nix
+    internal:
+      - observability/alertmanager.nix
+      - observability/alerting.nix
+      - observability/alloy.nix
+      - observability/dashboards.nix
+      - observability/falco.nix
+      - observability/grafana.nix
+      - observability/health-endpoint.nix
+      - observability/journald.nix
+      - observability/lite.nix
+      - observability/loki.nix
+      - observability/nixos-exporter.nix
+      - observability/otel.nix
+      - observability/packages.nix
+      - observability/prometheus.nix
+      - observability/retention.nix
+      - observability/slo.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+    forbidden_dependencies: []
+
+  runtime.automation:
+    level: 3
+    paths:
+      - automation/
+    public:
+      - automation/default.nix
+    internal:
+      - automation/gitops-reconciler.nix
+      - automation/channel-bump.nix
+      - automation/common.nix
+      - automation/options.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+    forbidden_dependencies: []
+
+  runtime.ci:
+    level: 3
+    paths:
+      - ci/
+    public:
+      - ci/default.nix
+    internal:
+      - ci/gitlab-runner.nix
+      - ci/ci-deploy.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+      - shared.secrets
+      - runtime.automation
+    forbidden_dependencies: []
+
+  runtime.recovery:
+    level: 3
+    paths:
+      - recovery/
+    public:
+      - recovery/default.nix
+    internal:
+      - recovery/deployment-health.nix
+      - recovery/rollback.nix
+      - recovery/backup.nix
+    allowed_dependencies:
+      - core.*
+      - platform.*
+      - shared.scripts
+      - shared.secrets
+      - runtime.automation
+    forbidden_dependencies: []
+
+  runtime.cache:
+    level: 3
+    paths:
+      - cache/
+    public:
+      - cache/default.nix
+    internal: []
+    allowed_dependencies:
+      - core.*
+    forbidden_dependencies: ["*"]
+
+  runtime.caching:
+    level: 3
+    paths:
+      - caching/
+    public:
+      - caching/default.nix
+    internal: []
+    allowed_dependencies:
+      - core.*
+    forbidden_dependencies: ["*"]
+
+  # ── LEVEL 4: Host Composition ──────────────────────────────────
+  hosts:
+    level: 4
+    paths:
+      - hosts/
+      - lib/host-templates/
+    public:
+      - hosts/hosts.nix
+      - hosts/prague.nix
+      - hosts/tuscany.nix
+      - hosts/testvm.nix
+      - lib/host-templates/laptop.nix
+    internal:
+      - hosts/default.nix
+      - hosts/hardware-configuration.nix
+      - hosts/prague/hardware-configuration.nix
+    allowed_dependencies: ["*"]
+    forbidden_dependencies: []

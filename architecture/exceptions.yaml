@@ -1,1441 +1,159 @@
-# Architecture Manifest: Exception Registry
-
-#
-
-# PURPOSE
-
-# -------
-
-# This manifest is the authoritative registry for architecture exceptions.
-
-#
-
-# An exception permits a specific architectural deviation that would otherwise
-
-# fail architecture validation.
-
-#
-
-# An exception is NOT a general permission to violate architecture rules.
-
-# It is:
-
-#
-
-# - narrowly scoped;
-
-# - explicitly owned;
-
-# - justified by evidence;
-
-# - risk-assessed;
-
-# - protected by compensating controls;
-
-# - independently verifiable;
-
-# - reviewed on a defined schedule;
-
-# - removed when the underlying dependency is eliminated.
-
-#
-
-# IMPORTANT
-
-# ---------
-
-# Normal, architecture-compliant dependencies MUST NOT be represented here.
-
-#
-
-# Examples:
-
-#
-
-# core.boot -> shared.theme
-
-#
-
-# is not automatically an exception if domains.yaml explicitly permits it.
-
-#
-
-# Conversely:
-
-#
-
-# runtime.ci -> runtime.automation state
-
-#
-
-# MAY require an exception when CI directly mutates automation-owned state.
-
-#
-
-# An exception MUST NEVER be used to conceal:
-
-#
-
-# - an undeclared dependency;
-
-# - an incorrect state owner;
-
-# - an invalid filesystem boundary;
-
-# - a missing public interface;
-
-# - a forbidden dependency;
-
-# - a circular dependency;
-
-# - an expired migration;
-
-# - an implementation that simply has not been documented.
-
-#
-
-# Architecture validation MUST fail closed for invalid, expired, ownerless,
-
-# malformed, or unverified exceptions.
-
-manifest:
-schema_version: "3.0"
-kind: architecture_exception_registry
-authoritative: true
-
-purpose:
-- exception_management
-- architecture_enforcement
-- risk_tracking
-- migration_tracking
-- ownership_tracking
-- review_tracking
-
-governing_documents:
-domain_model: architecture/domains.yaml
-dependency_graph: architecture/dependencies.yaml
-architecture: ARCHITECTURE.md
-audit: ARCHITECTURE_AUDIT.md
-progress: ARCHITECTURE_PROGRESS.md
-stabilization: STABILIZATION.md
-migration_readiness: MIGRATION-READINESS.md
-engineering_contract: ENGINEERING.md
-ai_contract: AGENTS.md
-delivery_flow: IVALi_FLOW.md
-
-# ---------------------------------------------------------------------------
-
-# EXCEPTION CLASSIFICATION
-
-# ---------------------------------------------------------------------------
-
-exception_classes:
-
-hierarchy_violation:
-description: >
-Dependency crosses the architectural hierarchy in a direction that is
-not normally permitted.
-default_risk: high
-
-state_ownership:
-description: >
-A component accesses or mutates persistent state owned by another domain.
-default_risk: critical
-
-filesystem_boundary:
-description: >
-A component directly accesses another domain's filesystem-owned state.
-default_risk: high
-
-public_interface_bypass:
-description: >
-A component consumes another domain's implementation rather than its
-declared public interface.
-default_risk: high
-
-option_namespace:
-description: >
-A component reads configuration options owned by another domain without
-an explicitly declared public configuration contract.
-default_risk: medium
-
-implementation_coupling:
-description: >
-A component depends directly on another component's implementation
-rather than an explicit contract.
-default_risk: medium
-
-legacy_migration:
-description: >
-A dependency is retained temporarily while the repository migrates from
-an older architecture.
-default_risk: medium
-
-security_boundary:
-description: >
-A dependency crosses a security boundary requiring explicit approval.
-default_risk: critical
-
-# ---------------------------------------------------------------------------
-
-# LIFECYCLE
-
-# ---------------------------------------------------------------------------
-
-lifecycle:
-
-proposed:
-meaning: >
-Exception has been identified but has not yet been approved.
-enforcement: >
-MUST NOT permit the dependency to pass architecture gates.
-
-active:
-meaning: >
-Exception is approved, owned, within review period, and currently
-required by the implementation.
-enforcement: >
-Dependency may pass only within the exact scope of the exception.
-
-transitional:
-meaning: >
-Exception is intentionally retained during an approved migration.
-enforcement: >
-MUST have a migration target and explicit exit condition.
-
-needs_resolution:
-meaning: >
-Existing exception requires architectural remediation or ownership
-clarification.
-enforcement: >
-May pass only according to the stabilization policy; MUST remain visible
-as technical debt.
-
-needs_contract:
-meaning: >
-Existing dependency requires replacement with an explicit service,
-option, or public API contract.
-enforcement: >
-MUST have a migration target and exit condition.
-
-expired:
-meaning: >
-Review period has passed without renewal or closure.
-enforcement: >
-MUST fail architecture validation.
-
-rejected:
-meaning: >
-Exception was explicitly rejected.
-enforcement: >
-MUST fail architecture validation if the dependency still exists.
-
-resolved:
-meaning: >
-Underlying architectural violation has been removed.
-enforcement: >
-Exception remains for historical traceability but no longer grants
-permission to the dependency.
-
-# ---------------------------------------------------------------------------
-
-# RISK LEVELS
-
-# ---------------------------------------------------------------------------
-
-risk_levels:
-
-low:
-description: >
-Limited architectural impact and no persistent-state or security impact.
-
-medium:
-description: >
-Meaningful coupling or maintainability impact but limited operational
-or security consequences.
-
-high:
-description: >
-Significant boundary, reliability, deployment, or recovery impact.
-
-critical:
-description: >
-State ownership, secret handling, security boundary, destructive
-operation, or recovery integrity is affected.
-
-# ---------------------------------------------------------------------------
-
-# REQUIRED EXCEPTION FIELDS
-
-# ---------------------------------------------------------------------------
-
-required_fields:
-
-* id
-* class
-* source
-* target
-* reason
-* owner
-* risk
-* status
-* review
-* scope
-* controls
-* verification
-
-conditional_fields:
-migration:
-required_when:
-- status: transitional
-- status: needs_resolution
-- status: needs_contract
-
-security:
-required_when:
-- class: security_boundary
-- risk: critical
-
-# ---------------------------------------------------------------------------
-
-# EXCEPTIONS
-
-# ---------------------------------------------------------------------------
+# Architecture Manifest: Documented Exceptions
+# Every cross-domain dependency that is allowed despite violating strict rules.
+# Each exception must have a reason, owner, and review date.
 
 exceptions:
-
-# -------------------------------------------------------------------------
-
-# EXC-002
-
-# -------------------------------------------------------------------------
-
-* id: EXC-002
-  class: implementation_coupling
-
-  source: runtime.observability/lite.nix
-  target: shared.scripts/notify.sh
-
-  dependency:
-  type: builtins_read_file
-  direction: observability -> shared.scripts
-  interface: implementation
-  access: read
-
-  reason: >
-  The observability-lite timer needs to emit alerts when system health
-  degrades. It currently consumes notify.sh through builtins.readFile,
-  creating a build-time dependency on the script implementation instead
-  of consuming a stable notification service contract.
-
-  owner: observability
-
-  risk: medium
-
-  status: active
-
-  scope:
-  permitted_operations:
-  - read
-  - build_time_embedding
-  prohibited_operations:
-  - modify_target
-  - redefine_notification_policy
-  - create_notification_state
-
-  controls:
-
-  * notify.sh remains owned by shared.scripts
-  * observability does not modify notification implementation
-  * dependency remains read-only
-  * notification credentials remain outside the script dependency
-  * architecture dependency remains explicitly recorded
-
-  migration:
-  target: runtime.services.notification
-  strategy: >
-  Replace direct script embedding with the notification service contract.
-  exit_condition: >
-  Observability emits notification events through an explicit service
-  interface without embedding notify.sh implementation.
-  priority: high
-
-  review: 2026-11-01
-
-  verification:
-
-  * architecture-validation
-  * dependency-validation
-  * observability-validation
-  * notification-contract-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-003
-
-# -------------------------------------------------------------------------
-
-* id: EXC-003
-  class: state_ownership
-
-  source: runtime.ci
-  target: /var/lib/gitops
-
-  dependency:
-  type: filesystem_access
-  access: read_write
-  target_owner: runtime.automation
-
-  reason: >
-  The GitLab runner requires access to the local GitOps worktree used by
-  the deployment and reconciliation system. The current implementation
-  allows CI to access state owned by runtime.automation.
-
-  owner: ci
-
-  risk: critical
-
-  status: needs_resolution
-
-  scope:
-  permitted_operations:
-  - read
-  - required_ci_write
-  prohibited_operations:
-  - redefine_gitops_state
-  - create_competing_gitops_state
-  - bypass_reconciliation_policy
-  - mutate_unrelated_runtime_state
-
-  controls:
-
-  * access is restricted to the GitOps worktree
-  * automation remains the logical state owner
-  * CI MUST NOT create competing authoritative state
-  * access MUST be covered by filesystem permissions
-  * access MUST remain observable
-  * exception MUST remain explicitly referenced by dependency manifest
-
-  migration:
-  target: runtime.automation.public_api
-  strategy: >
-  Formalize the GitOps worktree as runtime.automation-owned state and
-  expose required CI operations through a controlled public contract.
-  state_directory:
-  preferred: systemd StateDirectory
-  owner: runtime.automation
-  exit_condition: >
-  CI no longer directly owns or arbitrarily mutates automation state,
-  or ownership is explicitly transferred and reflected consistently
-  across domains.yaml, dependencies.yaml, recovery, backup, and
-  observability.
-  priority: critical
-
-  review: 2026-09-30
-
-  verification:
-
-  * architecture-validation
-  * filesystem-ownership
-  * service-state-ownership
-  * systemd-state-directory-validation
-  * ci-validation
-  * recovery-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-004
-
-# -------------------------------------------------------------------------
-
-* id: EXC-004
-  class: filesystem_boundary
-
-  source: runtime.recovery
-  target: /var/lib/gitops
-
-  dependency:
-  type: filesystem_access
-  access: read
-  target_owner: runtime.automation
-
-  reason: >
-  Deployment health checks read the GitOps worktree to compare repository
-  state with the deployed system generation.
-
-  owner: recovery
-
-  risk: high
-
-  status: needs_resolution
-
-  scope:
-  permitted_operations:
-  - read
-  - health_validation
-  prohibited_operations:
-  - write
-  - delete
-  - checkout
-  - pull
-  - mutate_git_history
-  - modify_gitops_state
-
-  controls:
-
-  * access is strictly read-only
-  * recovery cannot mutate GitOps state
-  * deployment health remains observational
-  * runtime.automation remains the state owner
-
-  migration:
-  target: runtime.automation.health_contract
-  strategy: >
-  Expose repository/deployment reconciliation status through a stable
-  automation health contract.
-  exit_condition: >
-  Recovery obtains required deployment state without directly reading
-  automation-owned filesystem state.
-  priority: high
-
-  review: 2026-09-30
-
-  verification:
-
-  * architecture-validation
-  * filesystem-ownership
-  * recovery-validation
-  * read-only-access-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-006
-
-# -------------------------------------------------------------------------
-
-* id: EXC-006
-  class: public_interface_bypass
-
-  source: internal/commands/status.go
-  target: /var/lib/observability/state.json
-
-  dependency:
-  type: filesystem_access
-  access: read
-  target_owner: runtime.observability
-
-  reason: >
-  The ivali CLI reads observability state directly to display operational
-  status. The dependency currently bypasses an explicit service contract.
-
-  owner: runtime.observability
-
-  risk: high
-
-  status: needs_contract
-
-  scope:
-  permitted_operations:
-  - read
-  - status_display
-  prohibited_operations:
-  - write
-  - state_repair
-  - state_redefinition
-
-  controls:
-
-  * access is read-only
-  * CLI does not become the owner of observability state
-  * observability remains authoritative
-  * state schema changes require compatibility review
-
-  migration:
-  target: internal.services
-  strategy: >
-  Expose observability status through an explicit service contract,
-  preferably using the existing internal/services architecture.
-  candidate_contract:
-  service: SystemHealthChecker
-  alternative: PrometheusMetrics
-  exit_condition: >
-  status.go no longer reads /var/lib/observability/state.json directly.
-  priority: high
-
-  review: 2026-11-01
-
-  verification:
-
-  * go-test
-  * service-contract-validation
-  * architecture-validation
-  * filesystem-ownership
-
-# -------------------------------------------------------------------------
-
-# EXC-008
-
-# -------------------------------------------------------------------------
-
-* id: EXC-008
-  class: option_namespace
-
-  source: runtime.recovery/deployment-health.nix
-  target: runtime.automation/fleet.gitops
-
-  dependency:
-  type: option_namespace
-  option: fleet.gitops
-  access: read
-  interface: configuration
-
-  reason: >
-  Deployment health validation consumes GitOps repository and branch
-  configuration owned by runtime.automation.
-
-  owner: recovery
-
-  risk: medium
-
-  status: active
-
-  scope:
-  permitted_operations:
-  - read
-  prohibited_operations:
-  - write
-  - redefine_option
-  - override_automation_policy
-
-  controls:
-
-  * fleet.gitops remains owned by runtime.automation
-  * recovery receives configuration read-only
-  * option must remain explicitly public
-  * option schema changes require consumer review
-
-  migration:
-  target: runtime.automation.public_configuration
-  exit_condition: >
-  fleet.gitops is explicitly documented as a stable public configuration
-  contract or replaced with a narrower deployment-status contract.
-
-  review: 2026-11-01
-
-  verification:
-
-  * architecture-validation
-  * nix-evaluation
-  * recovery-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-009
-
-# -------------------------------------------------------------------------
-
-* id: EXC-009
-  class: option_namespace
-
-  source: runtime.ci/gitlab-runner.nix
-  target: runtime.automation/fleet.gitops
-
-  dependency:
-  type: option_namespace
-  option: fleet.gitops
-  access: read
-  interface: configuration
-
-  reason: >
-  The GitLab runner consumes GitOps repository and branch configuration
-  required to configure CI reconciliation jobs.
-
-  owner: ci
-
-  risk: medium
-
-  status: active
-
-  scope:
-  permitted_operations:
-  - read
-  prohibited_operations:
-  - write
-  - redefine_option
-  - override_automation_policy
-
-  controls:
-
-  * fleet.gitops remains owned by runtime.automation
-  * CI consumes configuration read-only
-  * option namespace remains explicitly declared
-  * configuration changes require CI regression validation
-
-  migration:
-  target: runtime.automation.public_configuration
-  exit_condition: >
-  CI consumes a stable public GitOps configuration contract.
-
-  review: 2026-11-01
-
-  verification:
-
-  * architecture-validation
-  * nix-evaluation
-  * ci-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-010
-
-# -------------------------------------------------------------------------
-
-#
-
-# IMPORTANT:
-
-# This is intentionally classified as resolved/non-exceptional.
-
-#
-
-# core.boot -> shared.theme is permitted by the refined domain architecture
-
-# because shared.theme is explicitly exposed as a public presentation
-
-# contract. Therefore it should NOT remain an active architecture
-
-# exception merely because it crosses domain boundaries.
-
-* id: EXC-010
-  class: hierarchy_violation
-
-  source: core.boot
-  target: shared.theme
-
-  dependency:
-  type: nix_import
-  access: read
-  interface: public
-
-  reason: >
-  Historical exception created for boot Plymouth theme consumption.
-  The refined architecture explicitly permits this dependency as a
-  public presentation contract.
-
-  owner: boot
-
-  risk: low
-
-  status: resolved
-
-  scope:
-  permitted_operations:
-  - public_theme_consumption
-
-  resolution:
-  classification: normal_dependency
-  action: >
-  Remove this dependency from the active exception set. It belongs in
-  architecture/dependencies.yaml as an allowed dependency.
-  reason: >
-  An architecture-compliant dependency must not remain represented as
-  an exception.
-
-  review: 2026-09-30
-
-  verification:
-
-  * architecture-validation
-  * dependency-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-011
-
-# -------------------------------------------------------------------------
-
-* id: EXC-011
-  class: state_ownership
-
-  source: runtime.ci/gitlab-runner-reconcile.service
-  target: /var/lib/gitops
-
-  dependency:
-  type: service_state
-  access: creates_and_manages
-  target_owner: runtime.automation
-
-  reason: >
-  The CI reconciliation service currently creates and manages the GitOps
-  worktree at /var/lib/gitops while runtime.automation also consumes and
-  activates that worktree.
-
-  owner: ci
-
-  risk: critical
-
-  status: active
-
-  scope:
-  permitted_operations:
-  - create_worktree
-  - update_worktree
-  - read_worktree
-  prohibited_operations:
-  - create_competing_authoritative_state
-  - redefine_reconciliation_state
-  - bypass_deployment_health
-  - bypass_rollback_policy
-
-  state_contract:
-  logical_owner: runtime.automation
-  operational_consumer: runtime.ci
-  filesystem_path: /var/lib/gitops
-
-  invariant: >
-  There MUST be exactly one logical owner of GitOps state even if
-  multiple services require filesystem access.
-
-  controls:
-
-  * runtime.automation remains logical state owner
-  * CI access is explicitly scoped
-  * GitOps operations remain observable
-  * recovery must be able to restore state
-  * backup policy must account for required state
-  * state transitions must not be duplicated
-  * exception is explicitly referenced by dependencies.yaml
-
-  migration:
-  target: runtime.automation
-  strategy: >
-  Formalize /var/lib/gitops as automation-owned StateDirectory and
-  expose controlled operations to CI.
-  exit_condition: >
-  CI no longer independently manages authoritative GitOps state.
-  priority: critical
-
-  review: 2026-10-15
-
-  verification:
-
-  * architecture-validation
-  * service-state-ownership
-  * systemd-state-directory-validation
-  * ci-validation
-  * recovery-validation
-  * backup-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-012
-
-# -------------------------------------------------------------------------
-
-* id: EXC-012
-  class: filesystem_boundary
-
-  source: runtime.observability/nixos-exporter.nix
-  target: /var/lib/deployment-health
-
-  dependency:
-  type: filesystem_access
-  access: read
-  target_owner: runtime.recovery
-
-  reason: >
-  The NixOS exporter consumes deployment-health results and exposes them
-  as Prometheus metrics.
-
-  owner: runtime.observability
-
-  risk: medium
-
-  status: active
-
-  scope:
-  permitted_operations:
-  - read
-  - metric_export
-  prohibited_operations:
-  - write
-  - delete
-  - repair
-  - alter_health_state
-
-  controls:
-
-  * read-only access
-  * recovery remains state owner
-  * exporter cannot alter deployment-health state
-  * metrics are derived observations only
-
-  migration:
-  target: runtime.recovery.health_contract
-  strategy: >
-  Prefer a stable recovery health/metrics contract over direct
-  filesystem coupling where practical.
-  exit_condition: >
-  Observability consumes deployment health through an explicit
-  contract or the filesystem is formally declared as the public
-  read-only interface.
-
-  review: 2027-02-01
-
-  verification:
-
-  * architecture-validation
-  * filesystem-ownership
-  * observability-validation
-  * recovery-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-013
-
-# -------------------------------------------------------------------------
-
-* id: EXC-013
-  class: filesystem_boundary
-
-  source: runtime.services/web-ui/default.nix
-  target: /var/lib/observability
-
-  dependency:
-  type: filesystem_access
-  access: read
-  target_owner: runtime.observability
-
-  reason: >
-  The operations web UI consumes observability state to present system
-  health information.
-
-  owner: runtime.services
-
-  risk: medium
-
-  status: active
-
-  scope:
-  permitted_operations:
-  - read
-  - health_display
-  prohibited_operations:
-  - write
-  - delete
-  - alter_observability_state
-
-  controls:
-
-  * read-only access
-  * observability remains authoritative
-  * UI cannot modify monitoring state
-  * displayed values remain observational
-
-  migration:
-  target: runtime.observability.public_api
-  strategy: >
-  Provide a stable health/status API or service contract for web UI
-  consumers.
-  exit_condition: >
-  Web UI no longer requires direct filesystem access to observability
-  state.
-  priority: medium
-
-  review: 2027-02-01
-
-  verification:
-
-  * architecture-validation
-  * filesystem-ownership
-  * web-ui-validation
-  * observability-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-014
-
-# -------------------------------------------------------------------------
-
-* id: EXC-014
-  class: filesystem_boundary
-
-  source: runtime.services/web-ui/default.nix
-  target: /var/lib/tailscale-metrics
-
-  dependency:
-  type: filesystem_access
-  access: read
-  target_owner: platform.networking
-
-  reason: >
-  The operations web UI consumes Tailscale/network metrics to display
-  network status.
-
-  owner: runtime.services
-
-  risk: medium
-
-  status: active
-
-  scope:
-  permitted_operations:
-  - read
-  - status_display
-  prohibited_operations:
-  - write
-  - modify_tailscale_configuration
-  - alter_network_policy
-
-  controls:
-
-  * read-only access
-  * networking remains authoritative
-  * UI cannot modify Tailscale state
-  * network policy remains outside the UI
-
-  migration:
-  target: platform.networking.public_metrics_contract
-  strategy: >
-  Expose network status through an explicit metrics/status contract.
-  exit_condition: >
-  Web UI consumes Tailscale status without directly reading
-  networking-owned filesystem state.
-  priority: medium
-
-  review: 2027-02-01
-
-  verification:
-
-  * architecture-validation
-  * filesystem-ownership
-  * networking-validation
-  * web-ui-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-015
-
-# -------------------------------------------------------------------------
-
-* id: EXC-015
-  class: hierarchy_violation
-
-  source: hosts/prague.nix
-  target: /var/lib/observability
-
-  dependency:
-  type: filesystem_access
-  access: write
-  target_owner: runtime.observability
-
-  reason: >
-  Host composition enables observability features whose runtime state is
-  stored under the observability-owned filesystem hierarchy.
-
-  owner: hosts
-
-  risk: high
-
-  status: needs_resolution
-
-  scope:
-  permitted_operations:
-  - host_composition
-  - capability_enablement
-  prohibited_operations:
-  - direct_runtime_state_ownership
-  - direct_observability_state_mutation
-
-  architectural_interpretation: >
-  Host composition itself is valid. Direct host ownership of runtime
-  observability state is not. The host should compose the observability
-  capability while runtime.observability retains state ownership.
-
-  controls:
-
-  * host remains a composition layer
-  * runtime.observability owns its state
-  * host configuration must not become a second state owner
-
-  migration:
-  target: runtime.observability
-  strategy: >
-  Separate host capability enablement from runtime state ownership.
-  exit_condition: >
-  prague.nix composes observability without directly owning or managing
-  /var/lib/observability state.
-  priority: high
-
-  review: 2026-10-15
-
-  verification:
-
-  * architecture-validation
-  * host-composition-validation
-  * filesystem-ownership
-  * observability-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-016
-
-# -------------------------------------------------------------------------
-
-* id: EXC-016
-  class: filesystem_boundary
-
-  source: runtime.ci/gitlab-runner.nix
-  target: /var/lib/gitops
-
-  dependency:
-  type: filesystem_access
-  access: read
-  target_owner: runtime.automation
-
-  reason: >
-  GitLab runner health logic reads the GitOps worktree to verify current
-  deployment state.
-
-  owner: ci
-
-  risk: medium
-
-  status: needs_resolution
-
-  scope:
-  permitted_operations:
-  - read
-  - health_validation
-  prohibited_operations:
-  - write
-  - delete
-  - mutate_gitops_state
-
-  controls:
-
-  * read-only access
-  * automation remains state owner
-  * CI health logic cannot repair GitOps state
-  * dependency remains explicitly tracked
-
-  migration:
-  target: runtime.automation.health_contract
-  strategy: >
-  Replace direct filesystem inspection with an explicit deployment or
-  reconciliation health contract.
-  exit_condition: >
-  CI obtains GitOps health information without direct filesystem access.
-  priority: medium
-
-  review: 2026-10-15
-
-  verification:
-
-  * architecture-validation
-  * filesystem-ownership
-  * ci-validation
-
-# -------------------------------------------------------------------------
-
-# EXC-017
-
-# -------------------------------------------------------------------------
-
-* id: EXC-017
-  class: filesystem_boundary
-
-  source: runtime.recovery/deployment-health.nix
-  target: /var/lib/gitops
-
-  dependency:
-  type: filesystem_access
-  access: read
-  target_owner: runtime.automation
-
-  reason: >
-  Deployment health validation reads the GitOps worktree to determine
-  whether the deployed system corresponds to the expected repository
-  revision.
-
-  owner: recovery
-
-  risk: high
-
-  status: needs_resolution
-
-  scope:
-  permitted_operations:
-  - read
-  - deployment_validation
-  prohibited_operations:
-  - write
-  - delete
-  - checkout
-  - pull
-  - mutate_gitops_state
-
-  controls:
-
-  * strictly read-only
-  * automation remains state owner
-  * health checking cannot repair deployment state
-  * deployment-health results remain recovery-owned
-
-  migration:
-  target: runtime.automation.deployment_status_contract
-  strategy: >
-  Provide deployment revision and reconciliation status through an
-  explicit automation contract.
-  exit_condition: >
-  recovery no longer reads the GitOps worktree directly.
-  priority: high
-
-  review: 2026-10-15
-
-  verification:
-
-  * architecture-validation
-  * filesystem-ownership
-  * recovery-validation
-  * deployment-health-validation
-
-# ---------------------------------------------------------------------------
-
-# GLOBAL EXCEPTION RULES
-
-# ---------------------------------------------------------------------------
-
-rules:
-
-narrow_scope:
-rule: >
-An exception applies only to the exact source, target, operation,
-interface, and filesystem path declared in the exception.
-enforcement: hard
-
-no_wildcards:
-rule: >
-Exceptions MUST NOT use wildcard source or target permissions.
-enforcement: hard
-
-no_transitive_permission:
-rule: >
-An exception granted to one component MUST NOT authorize its callers,
-dependencies, sibling services, or parent domain to perform the same
-operation.
-enforcement: hard
-
-no_architecture_by_exception:
-rule: >
-Exceptions MUST NOT be used to permanently replace the architecture.
-Repeated exceptions indicate that the architecture or public contract
-requires redesign.
-enforcement: hard
-
-single_state_owner:
-rule: >
-An exception MUST NOT create a second logical owner for persistent state.
-enforcement: hard
-
-read_only_observer:
-rule: >
-Monitoring, dashboards, status commands, health checks, and metrics
-exporters MUST remain read-only observers unless explicitly designated
-as the state owner.
-enforcement: hard
-
-expiration:
-rule: >
-An exception without a current review date MUST fail validation.
-enforcement: hard
-
-owner_required:
-rule: >
-Every active exception MUST have a responsible domain owner.
-enforcement: hard
-
-evidence_required:
-rule: >
-Every exception MUST be supported by repository evidence. An exception
-cannot exist solely because a document claims it exists.
-enforcement: hard
-
-dependency_registry_alignment:
-rule: >
-Every exception MUST correspond to an actual dependency recorded in
-architecture/dependencies.yaml.
-enforcement: hard
-
-domain_registry_alignment:
-rule: >
-Source and target domains MUST exist in architecture/domains.yaml unless
-the target is an explicitly registered filesystem/resource interface.
-enforcement: hard
-
-security:
-rule: >
-Exceptions MUST NOT silently weaken authentication, authorization,
-secret handling, host isolation, firewall policy, or encryption.
-enforcement: hard
-
-# ---------------------------------------------------------------------------
-
-# REVIEW POLICY
-
-# ---------------------------------------------------------------------------
-
-review_policy:
-
-active:
-default_review_period_days: 90
-
-high_risk:
-default_review_period_days: 60
-
-critical:
-default_review_period_days: 30
-
-transitional:
-default_review_period_days: 30
-
-overdue:
-action:
-- fail_architecture_validation
-- flag_for_remediation
-- block_exception_renewal_without_evidence
-
-review_evidence:
-required:
-- current_dependency_exists
-- dependency_still_required
-- owner_confirmed
-- risk_reassessed
-- controls_verified
-- migration_status_updated
-
-# ---------------------------------------------------------------------------
-
-# VALIDATION CONTRACT
-
-# ---------------------------------------------------------------------------
-
-validation:
-
-schema:
-- manifest-schema
-- required-field-validation
-- enum-validation
-- date-validation
-
-identity:
-- unique_exception_ids
-- unique_source_target_scope
-- valid_domain_references
-
-dependency_alignment:
-- dependency_exists
-- dependency_matches_source
-- dependency_matches_target
-- dependency_type_matches
-- dependency_scope_matches
-
-lifecycle:
-- status_valid
-- active_has_current_review
-- transitional_has_migration
-- needs_resolution_has_migration
-- needs_contract_has_migration
-- expired_exceptions_fail
-
-ownership:
-- owner_exists
-- single_state_owner
-- filesystem_owner_valid
-
-risk:
-- critical_requires_controls
-- high_requires_controls
-- security_boundary_requires_security_review
-
-architecture:
-- hierarchy_validation
-- public_interface_validation
-- filesystem_boundary_validation
-- state_ownership_validation
-- forbidden_dependency_validation
-
-migration:
-- target_defined
-- exit_condition_defined
-- migration_status_current
-
-repository:
-- source_exists
-- target_exists
-- stale_entry_detection
-- orphan_exception_detection
-
-# ---------------------------------------------------------------------------
-
-# CHANGE CONTROL
-
-# ---------------------------------------------------------------------------
-
-change_control:
-
-create:
-requires:
-- repository_evidence
-- dependency_entry
-- affected_domain_analysis
-- risk_assessment
-- compensating_controls
-- owner
-- review_date
-
-renew:
-requires:
-- evidence_dependency_still_exists
-- evidence_dependency_still_required
-- updated_risk_assessment
-- verified_controls
-- updated_migration_status
-
-resolve:
-requires:
-- implementation_verification
-- dependency_removed_or_reclassified
-- architecture_validation
-- dependency_manifest_update
-
-modify_scope:
-requires:
-- new_risk_assessment
-- new_verification
-- architecture_review
-
-transfer_owner:
-requires:
-- explicit_owner_acceptance
-- risk_review
-- migration_review
-
-# ---------------------------------------------------------------------------
-
-# ARCHITECTURAL PRINCIPLE
-
-# ---------------------------------------------------------------------------
-
-principle:
-statement: >
-Exceptions are temporary, explicit architectural debt or narrowly scoped
-compatibility mechanisms. They are not an alternative dependency system.
-
-acceptance_condition: >
-The repository is architecturally compliant only when every exception is
-known, scoped, owned, justified, verified, reviewable, and either actively
-required or demonstrably migrating toward removal.
-
-fail_closed: true
-
+  - id: EXC-002
+    source: runtime.observability/lite.nix
+    target: shared.scripts/notify.sh
+    reason: >
+      Observability lite timer needs to send alerts when system health
+      degrades. Uses builtins.readFile to embed notify.sh at build time
+      rather than runtime reference, creating a compile-time dependency.
+    owner: observability
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-003
+    source: runtime.ci
+    target: /var/lib/gitops
+    reason: >
+      GitLab runner reconciler needs a local git worktree to run CI jobs.
+      This is the canonical gitops worktree path. The ci domain creates
+      and manages this directory, but recovery reads it for health checks.
+      Should be formalized with StateDirectory ownership.
+    owner: ci
+    review: 2026-09-01
+    status: needs_resolution
+
+  - id: EXC-004
+    source: runtime.recovery
+    target: /var/lib/gitops
+    reason: >
+      Deployment health checker reads the gitops worktree to verify the
+      current system generation matches the repo HEAD. Read-only access.
+    owner: recovery
+    review: 2026-09-01
+    status: needs_resolution
+
+  - id: EXC-006
+    source: internal/commands/status.go
+    target: /var/lib/observability/state.json
+    reason: >
+      The ivali CLI reads observability state to display system status
+      in the TUI dashboard. Read-only access with no declared contract.
+    owner: observability
+    review: 2026-11-01
+    status: needs_contract
+
+  - id: EXC-008
+    source: runtime.recovery/deployment-health.nix
+    target: runtime.automation/fleet.gitops
+    reason: >
+      Deployment health checker reads gitops repo/branch configuration
+      to verify the correct repository is deployed. Cross-domain option
+      read through the NixOS module system.
+    owner: recovery
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-009
+    source: runtime.ci/gitlab-runner.nix
+    target: runtime.automation/fleet.gitops
+    reason: >
+      GitLab runner needs the gitops repo URL and branch to configure
+      CI jobs. Cross-domain option read through the NixOS module system.
+    owner: ci
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-010
+    source: core.boot
+    target: shared.theme
+    reason: >
+      Boot/plymouth.nix imports the Gruvbox Plymouth theme from shared.theme
+      to configure the boot splash screen. This is a legitimate build-time
+      dependency where the boot domain consumes the theme domain's public
+      theme definition.
+    owner: boot
+    review: 2026-11-01
+    status: active
+
+  - id: EXC-011
+    source: runtime.ci/gitlab-runner-reconcile.service
+    target: /var/lib/gitops
+    reason: >
+      GitLab runner reconcile service creates and manages the gitops worktree
+      at /var/lib/gitops so CI jobs can run against the local repo. The
+      gitops-reconciler (runtime.automation) also uses this path as its
+      StateDirectory. Both services legitimately need read/write access.
+      CI creates the worktree; automation pulls and activates from it.
+    owner: ci
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-012
+    source: observability/nixos-exporter.nix
+    target: /var/lib/deployment-health
+    reason: >
+      The NixOS exporter reads deployment health results to expose them as
+      Prometheus metrics. This is a legitimate read-only cross-domain access
+      where observability consumes health check data from the recovery domain.
+    owner: observability
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-013
+    source: services/web-ui/default.nix
+    target: /var/lib/observability
+    reason: >
+      The operations web UI needs read access to observability state to display
+      system health information. This is a legitimate read-only cross-domain
+      access where the web UI consumes observability data.
+    owner: services
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-014
+    source: services/web-ui/default.nix
+    target: /var/lib/tailscale-metrics
+    reason: >
+      The operations web UI needs read access to tailscale metrics to display
+      network status information. This is a legitimate read-only cross-domain
+      access where the web UI consumes security domain metrics.
+    owner: services
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-015
+    source: hosts/prague.nix
+    target: /var/lib/observability
+    reason: >
+      Host configuration enables observability features that write to
+      /var/lib/observability. This is a legitimate host composition pattern
+      where the host enables features from the observability domain.
+    owner: hosts
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-016
+    source: ci/gitlab-runner.nix
+    target: /var/lib/gitops
+    reason: >
+      GitLab runner health service needs access to the gitops worktree to
+      verify the current deployment state. This is a legitimate read-only
+      cross-domain access where CI consumes automation domain data.
+    owner: ci
+    review: 2027-02-01
+    status: active
+
+  - id: EXC-017
+    source: recovery/deployment-health.nix
+    target: /var/lib/gitops
+    reason: >
+      Deployment health checker reads the gitops worktree to verify the
+      current system generation matches the repo HEAD. This is a legitimate
+      read-only cross-domain access where recovery consumes automation data.
+    owner: recovery
+    review: 2027-02-01
+    status: active

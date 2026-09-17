@@ -1,13 +1,13 @@
 ##############################################################################
 #
-# Firefox — Heavy Customization (privacy / perf / Gruvbox UI)
+# Firefox — Heavy Customization (privacy / perf / Mokka UI)
 #
 # Purpose
 # -------
 # Declarative Firefox managed by Home Manager:
 #   * Arkenfox-lite privacy/telemetry hardening (logins preserved)
 #   * Performance: Webrender + VAAPI + HTTP/3
-#   * Gruvbox-dark, compact UI via userChrome.css
+#   * Mokka-dark, compact UI via userChrome.css
 #   * Declarative extensions (Sidebery)
 #   * Native sidebar (always-visible) + Sidebery tab tree
 #   * Profile lives as a plain directory (/home/ivali/.mozilla/firefox/ivali)
@@ -22,7 +22,7 @@
 { config, lib, pkgs, ... }:
 
 let
-  theme = import ../../theme/gruvbox;
+  theme = import ../../theme/mokka/firefox.nix;
   t = theme.colors;
 
   # Default-open bootstrap for the Sidebery tab tree (see
@@ -333,22 +333,22 @@ in
         "sidebar.backupState" = ''{"command":"_3c078156-979c-498b-8990-85f7987dd929_-sidebar-action","panelOpen":false,"launcherVisible":true,"launcherExpanded":false}'';
       };
 
-      # Compact, Gruvbox-dark UI. The native sidebar hosts Sidebery (tab
+      # Compact, Mokka-dark UI. The native sidebar hosts Sidebery (tab
       # tree); Firefox hides its own horizontal strip when the sidebar tab
       # tree is active.
       userChrome = ''
-        /* Gruvbox-dark compact Firefox */
+        /* Mokka-dark compact Firefox */
         :root {
-          --gruvbox-bg: ${t.bg};
-          --gruvbox-fg: ${t.fg};
-          --gruvbox-orange: ${t.orange};
-          --gruvbox-bgSoft: ${t.bgSoft};
+          --mokka-bg: ${t.bg};
+          --mokka-fg: ${t.fg};
+          --mokka-accent: ${t.orange};
+          --mokka-bgSoft: ${t.bgSoft};
         }
 
         /* Slim, dark urlbar / menus */
         #nav-bar {
-          background: var(--gruvbox-bg) !important;
-          border-bottom: 1px solid var(--gruvbox-orange) !important;
+          background: var(--mokka-bg) !important;
+          border-bottom: 1px solid var(--mokka-accent) !important;
         }
 
         #urlbar,
@@ -357,28 +357,28 @@ in
         }
 
         #urlbar-background {
-          background: var(--gruvbox-bgSoft) !important;
-          border: 1px solid var(--gruvbox-orange) !important;
+          background: var(--mokka-bgSoft) !important;
+          border: 1px solid var(--mokka-accent) !important;
         }
 
         menupopup,
         panel {
-          background: var(--gruvbox-bg) !important;
-          color: var(--gruvbox-fg) !important;
+          background: var(--mokka-bg) !important;
+          color: var(--mokka-fg) !important;
         }
 
         /* Compact findbar */
         findbar {
-          background: var(--gruvbox-bg) !important;
-          color: var(--gruvbox-fg) !important;
+          background: var(--mokka-bg) !important;
+          color: var(--mokka-fg) !important;
         }
 
         /* Launcher rail — collapsed by default (expand-on-hover). A thin
          * vertical strip shows extension icons; hovering the rail expands
          * the full Sidebery panel with tab tree (favicons + pinning). */
         #sidebar-main {
-          background: var(--gruvbox-bg) !important;
-          border-right: 1px solid var(--gruvbox-orange) !important;
+          background: var(--mokka-bg) !important;
+          border-right: 1px solid var(--mokka-accent) !important;
           min-width: 32px !important;
           max-width: 32px !important;
           transition: min-width 0.2s ease, max-width 0.2s ease !important;
@@ -390,11 +390,11 @@ in
         }
         #sidebar-main > .sidebar-launcher-icon:hover {
           opacity: 1;
-          background: var(--gruvbox-bgSoft) !important;
+          background: var(--mokka-bgSoft) !important;
         }
         #sidebar-main > .sidebar-launcher-icon[active="true"] {
           opacity: 1;
-          border-left: 2px solid var(--gruvbox-orange) !important;
+          border-left: 2px solid var(--mokka-accent) !important;
         }
 
         /* No splitter needed between rail and panel */

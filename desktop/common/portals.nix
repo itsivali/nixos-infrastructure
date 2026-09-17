@@ -22,13 +22,14 @@
     xdg.portal = {
       enable = true;
 
-      # GNOME portal backend provides screen sharing, screenshots, and
+      # KDE portal backend provides screen sharing, screenshots, and
       # camera/microphone access through PipeWire on Wayland.
-      extraPortals = [ pkgs.xdg-desktop-portal-gnome ];
+      extraPortals = [ pkgs.kdePackages.xdg-desktop-portal-kde ];
 
       config.common = {
-        # GTK-native file chooser for portal file dialogs (the GNOME backend
-        # would otherwise render its own Switcheroo dialog for non-GNOME apps).
+        # GTK-native file chooser for portal file dialogs (the KDE backend
+        # renders its own file dialog; the GTK override provides a GTK-native
+        # file chooser for Electron/GTK apps).
         "org.freedesktop.impl.portal.FileChooser" = "gtk";
       };
     };

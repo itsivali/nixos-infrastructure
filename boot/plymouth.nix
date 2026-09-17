@@ -4,14 +4,14 @@
 #
 # Purpose
 # -------
-# Graphical boot splash screen using a Gruvbox-themed two-step theme: Gruvbox
-# background, accent-orange progress bar, reusing the upstream spinner
+# Graphical boot splash screen using a Mokka-themed two-step theme: Mokka
+# background, accent-purple progress bar, reusing the upstream spinner
 # animation frames (recolored by the two-step module's foreground color).
-# Colors derive from theme/gruvbox/plymouth.nix.
+# Colors derive from theme/mokka/plymouth.nix.
 #
 # Ownership
 # ---------
-# boot.plymouth, theme.gruvbox.plymouth
+# boot.plymouth, theme.mokka.plymouth
 #
 # Does NOT Own
 # ------------
@@ -24,29 +24,29 @@
 { config, lib, pkgs, ... }:
 
 let
-  ply = import ../theme/gruvbox/plymouth.nix { colors = (import ../theme/gruvbox/default.nix).colors; };
+  ply = import ../theme/mokka/plymouth.nix;
 
-  # Gruvbox two-step theme. The two-step module renders a progress bar whose
+  # Mokka two-step theme. The two-step module renders a progress bar whose
   # colors come from this file; the animation frames are the upstream
   # spinner PNGs (recolored to plymouth.theme.foreground by the module).
-  gruvboxTheme = pkgs.runCommand "plymouth-theme-gruvbox" { } ''
-    mkdir -p $out/share/plymouth/themes/gruvbox
-    cd $out/share/plymouth/themes/gruvbox
+  mokkaTheme = pkgs.runCommand "plymouth-theme-mokka" { } ''
+    mkdir -p $out/share/plymouth/themes/mokka
+    cd $out/share/plymouth/themes/mokka
 
     cp -r ${pkgs.plymouth}/share/plymouth/themes/spinner/animation-*.png .
     cp ${pkgs.plymouth}/share/plymouth/themes/spinner/bullet.png .
     cp ${pkgs.plymouth}/share/plymouth/themes/spinner/entry.png .
 
-    cat > gruvbox.plymouth <<EOF
+    cat > mokka.plymouth <<EOF
     [Plymouth Theme]
-    Name=Gruvbox
-    Description=Gruvbox Dark boot splash
+    Name=Mokka
+    Description=Mokka (Catppuccin Mocha Mauve) boot splash
     ModuleName=two-step
 
     [two-step]
     Font=Cantarell 12
     TitleFont=Cantarell Light 30
-    ImageDir=$out/share/plymouth/themes/gruvbox
+    ImageDir=$out/share/plymouth/themes/mokka
     DialogHorizontalAlignment=.5
     DialogVerticalAlignment=.382
     TitleHorizontalAlignment=.5
@@ -59,7 +59,7 @@ let
     TransitionDuration=0.0
     BackgroundStartColor=0x${lib.removePrefix "#" ply.background}
     BackgroundEndColor=0x${lib.removePrefix "#" ply.background}
-    ProgressBarBackgroundColor=0x3c3836
+    ProgressBarBackgroundColor=0x313244
     ProgressBarForegroundColor=0x${lib.removePrefix "#" ply.accent}
     MessageBelowAnimation=true
 
@@ -77,7 +77,7 @@ in
 {
   boot.plymouth = {
     enable = true;
-    theme = "gruvbox";
-    themePackages = [ gruvboxTheme ];
+    theme = "mokka";
+    themePackages = [ mokkaTheme ];
   };
 }

@@ -25,10 +25,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    plasma-manager = {
+      url = "github:nix-community/plasma-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
+    };
+
   };
 
   outputs =
-    inputs@{ self, nixpkgs, home-manager, sops-nix, ... }:
+    inputs@{ self, nixpkgs, home-manager, sops-nix, plasma-manager, ... }:
     let
       system = "x86_64-linux";
       lib = nixpkgs.lib;
@@ -103,6 +109,10 @@
                     hostName = hostSpec.hostName;
                     username = hostSpec.userName or defaultUsername;
                   };
+
+                  sharedModules = [
+                    plasma-manager.homeModules.plasma-manager
+                  ];
 
                   users.${hostSpec.userName or defaultUsername} = import ./home/ivali.nix;
                   backupFileExtension = "hm-backup";

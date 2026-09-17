@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Theme — Gruvbox Plymouth
+# Theme — Mokka Plymouth
 #
 # Purpose
 # -------
@@ -9,10 +9,8 @@
 #
 ##############################################################################
 
-{ colors }:
-
 {
-  background = colors.bg;
-  foreground = colors.fg;
-  accent = colors.orange;
+  background = "1e1e2e";
+  foreground = "cdd6f4";
+  accent = "cba6f7"; # Mauve
 }

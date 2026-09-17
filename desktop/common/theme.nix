@@ -19,7 +19,7 @@
   options.ivali.desktop.common.theme = {
     name = lib.mkOption {
       type = lib.types.str;
-      default = "gruvbox";
+      default = "mokka";
       description = "Active desktop design-system theme";
     };
   };

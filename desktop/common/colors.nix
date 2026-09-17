@@ -16,16 +16,24 @@
 { lib, ... }:
 
 let
-  gruvbox = import ../../theme/gruvbox/default.nix;
-  colors = gruvbox.colors;
+  mokka = import ../../theme/mokka/colors.nix;
 in
 {
-  options.ivali.desktop.common.colors = lib.mapAttrs
-    (name: _:
-      lib.mkOption {
-        type = lib.types.str;
-        default = colors.${name};
-        description = "Gruvbox Dark color: ${name}";
-      })
-    colors;
+  options.ivali.desktop.common.colors = {
+    background = lib.mkOption {
+      type = lib.types.str;
+      default = "30,30,46";
+      description = "Mokka base background color (RGB)";
+    };
+    foreground = lib.mkOption {
+      type = lib.types.str;
+      default = "205,214,244";
+      description = "Mokka base foreground color (RGB)";
+    };
+    accent = lib.mkOption {
+      type = lib.types.str;
+      default = "203,166,247";
+      description = "Mokka Mauve accent color (RGB)";
+    };
+  };
 }

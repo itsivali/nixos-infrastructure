@@ -21,7 +21,7 @@
 #
 # Usage
 # -----
-#   ivali.desktop.gnome.enable = true;   # sets ivali.desktop.enable = true
+#   ivali.desktop.kde.enable = true;   # sets ivali.desktop.enable = true
 #
 ##############################################################################
 

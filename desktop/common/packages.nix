@@ -6,7 +6,7 @@
 # -------
 # System packages shared by every desktop host, regardless of environment.
 # Environment-specific packages (app stack, power, ...) live with their
-# environment in desktop/kde/* or desktop/gnome/*.
+# environment in desktop/gnome/*.
 #
 # Ownership
 # ---------

@@ -14,7 +14,7 @@
 
 let
   hostConfig = hostSpec.config or { };
-  kdeEnabled = hostConfig.ivali.desktop.kde.enable or false;
+  gnomeEnabled = hostConfig.ivali.desktop.gnome.enable or false;
 in
 {
   imports = [
@@ -24,7 +24,8 @@ in
     ./theming.nix
     ./firefox
   ]
-  ++ (if kdeEnabled then [ ./kde ./audio ./cloud ] else [ ])
+  ++ [ ./audio ./cloud ]
+  ++ (if gnomeEnabled then [ ./gnome ] else [ ])
   ++ [
     ./shell
     ./git

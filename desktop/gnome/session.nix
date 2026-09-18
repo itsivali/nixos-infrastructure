@@ -96,9 +96,9 @@
       mutter
       gnome-control-center
       nautilus
-      gnome-terminal
+      gnome-console
+      gnome-text-editor
       gnome-disk-utility
-      gnome-screenshot
     ];
 
     # ── Exclude unnecessary GNOME packages ───────────────────────

@@ -4,20 +4,24 @@
 #
 # Purpose
 # -------
-# GTK, font, cursor, and icon configuration shared across all desktops.
-# Always follows the Mokka design system (single source of truth in
-# theme/mokka), and drives the GTK theme + accent color so GTK4
-# and libadwaita apps render in Mokka.
+# GTK and font configuration shared across all desktops.
+# Uses GNOME/Adwaita defaults for theme, icons, and cursor.
+# Single source of truth for GTK appearance and font settings.
 #
 # Ownership
 # ---------
-# gtk.font, gtk.theme, gtk.iconTheme, gtk.cursorTheme,
-# dconf.settings."org/gnome/desktop/interface",
-# home.sessionVariables (XCURSOR_*).
+# gtk.enable, gtk.font, gtk.gtk3.extraConfig,
+# dconf.settings."org/gnome/desktop/interface"
+#
+# Does NOT Own
+# ------------
+# - Cursor/icon theme (GNOME/Adwaita defaults — no override needed)
+# - XCURSOR_* environment variables (removed — GNOME handles this natively)
+# - Per-desktop dconf overrides (home/gnome/desktop.nix owns those)
 #
 ##############################################################################
 
-{ config, lib, pkgs, ... }:
+{ config, lib, ... }:
 
 {
   gtk = {
@@ -28,31 +32,12 @@
       size = 10;
     };
 
-    theme = {
-      name = "Catppuccin-Mocha-Standard-Mauve-Dark";
-      package = pkgs.catppuccin-gtk.override {
-        variant = "mocha";
-        accents = [ "mauve" ];
-        size = "standard";
-      };
-    };
-
-    iconTheme = {
-      name = "Tela-circle-dracula-dark";
-      package = pkgs.tela-icon-theme;
-    };
-
-    cursorTheme = {
-      name = "Catppuccin-Mocha-Mauve-Cursors";
-      package = pkgs.catppuccin-cursors.mochaMauve;
-    };
+    # No gtk.theme, gtk.iconTheme, or gtk.cursorTheme overrides.
+    # GTK defaults to Adwaita-dark when color-scheme = "prefer-dark".
+    # GNOME handles cursor and icon themes natively via dconf.
 
     gtk3.extraConfig = {
       "gtk-application-prefer-dark-theme" = 1;
-    };
-
-    gtk4.extraConfig = {
-      "gtk-theme-name" = "Catppuccin-Mocha-Standard-Mauve-Dark";
     };
   };
 
@@ -61,11 +46,5 @@
     accent-color = "mauve";
     font-antialiasing = "rgba";
     font-hinting = "full";
-    cursor-size = 24;
-  };
-
-  home.sessionVariables = {
-    XCURSOR_THEME = "Catppuccin-Mocha-Mauve-Cursors";
-    XCURSOR_SIZE = "24";
   };
 }

@@ -156,6 +156,12 @@ in
       # on the LAN (WiFi/Ethernet) but stays closed on the Tailscale
       # overlay and any public-facing interface.
       #
+      # Architectural note: prague is a laptop with NetworkManager-managed
+      # LAN interfaces (en*, wlp*). There is no WAN-facing interface, so
+      # "all except tailscale0" is equivalent to "LAN-only" for this host.
+      # If a cloud or multi-interface host uses this module, replace the
+      # exclusion list with explicit interface names.
+      #
       # EGRESS FILTERING — real nftables enforcement
       ############################################################
       #

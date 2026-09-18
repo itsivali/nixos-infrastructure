@@ -38,5 +38,17 @@
     enableCompletion = true;
     autosuggestion.enable = true;
     syntaxHighlighting.enable = true;
+
+    initContent = ''
+      # Auto-attach tmux on interactive SSH sessions.
+      # Only triggers when:
+      #   - SSH_TTY is set (interactive SSH, not scp/sftp/automation)
+      #   - Not already inside tmux
+      #   - Shell is interactive
+      # Non-interactive SSH commands (ssh host 'cmd') are unaffected.
+      if [[ -n "$SSH_TTY" && -z "$TMUX" && -o interactive ]]; then
+          exec tmux new-session -A -s maintenance
+      fi
+    '';
   };
 }

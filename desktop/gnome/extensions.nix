@@ -24,6 +24,7 @@ let
     caffeine
     clipboard-indicator
     vitals
+    tiling-assistant
   ];
 in
 {

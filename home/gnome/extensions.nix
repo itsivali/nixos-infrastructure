@@ -23,6 +23,7 @@ let
     caffeine
     clipboard-indicator
     vitals
+    tiling-assistant
   ];
 in
 {
@@ -85,6 +86,11 @@ in
       show-fan = false;
       use-fahrenheit = false;
       hide-system-monitor = true;
+    };
+
+    "org/gnome/shell/extensions/tiling-assistant" = {
+      enable-tiling-popup = true;
+      enable-edge-tiling = true;
     };
   };
 }

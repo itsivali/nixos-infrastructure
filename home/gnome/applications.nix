@@ -28,6 +28,10 @@
     # Documents
     "application/pdf" = "org.gnome.Evince.desktop";
 
+    # Markdown → Apostrophe
+    "text/markdown" = "org.gnome.gitlab.somas.Apostrophe.desktop";
+    "text/x-markdown" = "org.gnome.gitlab.somas.Apostrophe.desktop";
+
     # Text
     "text/plain" = "org.gnome.TextEditor.desktop";
     "text/csv" = "org.gnome.TextEditor.desktop";

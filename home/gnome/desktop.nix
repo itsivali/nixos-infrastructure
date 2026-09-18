@@ -25,15 +25,13 @@
 
   dconf.settings = {
     # ── Interface ────────────────────────────────────────────────
+    # GNOME/Adwaita defaults for cursor, icons, and GTK theme.
+    # color-scheme = prefer-dark makes Adwaita use its dark variant.
     "org/gnome/desktop/interface" = {
       color-scheme = "prefer-dark";
       accent-color = "mauve";
       font-antialiasing = "rgba";
       font-hinting = "full";
-      cursor-size = 24;
-      cursor-theme = "Catppuccin-Mocha-Mauve-Cursors";
-      icon-theme = "Tela-circle-dracula-dark";
-      gtk-theme = "Catppuccin-Mocha-Standard-Mauve-Dark";
     };
 
     # ── Window manager preferences ───────────────────────────────
@@ -50,10 +48,16 @@
     "org/gnome/shell" = {
       disable-user-enabled-extensions = false;
       favorite-apps = [
-        "org.gnome.Nautilus.desktop"
-        "org.gnome.Terminal.desktop"
         "firefox.desktop"
-        "org.gnome.Evolution.desktop"
+        "org.gnome.Nautilus.desktop"
+        "LocalSend.desktop"
+        "dev.zed.Zed.desktop"
+        "writer.desktop"
+        "notion-app-enhanced.desktop"
+        "org.gnome.TextEditor.desktop"
+        "org.gnome.gitlab.somas.Apostrophe.desktop"
+        "obsidian.desktop"
+        "Zoom.desktop"
       ];
     };
 

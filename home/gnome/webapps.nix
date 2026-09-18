@@ -1,43 +1,80 @@
 ##############################################################################
 #
-# Home Manager — Microsoft 365 Web Apps (GNOME .desktop entries)
+# Home Manager — Microsoft 365 Web Apps (Edge PWA desktop entries)
 #
 # Purpose
 # -------
-# User-level Microsoft 365 web applications as standalone .desktop entries
-# using Firefox --new-window. These appear in GNOME Search and can be
-# launched as standalone windows (no address bar, clean title bar).
+# Pre-seeded Microsoft 365 web applications as standalone .desktop entries
+# using Microsoft Edge in app mode. These appear in GNOME Search immediately
+# and can be launched as standalone windows (no address bar, clean title bar).
 #
-# Replaces the KDE firefoxpwa approach with native GNOME .desktop entries.
+# Edge's native PWA mechanism will refine these entries on first install:
+# correct icons, window classes, and session persistence are handled by Edge
+# when the user installs each PWA through the Edge UI (edge://apps).
 #
 # Ownership
 # ---------
-# home.file, xdg.desktopEntries
+# xdg.desktopEntries
 #
 ##############################################################################
 
-{ config, lib, ... }:
+{ lib, pkgs, ... }:
 
 let
-  # Firefox base command with --new-window for a native app feel.
-  # Each entry opens a single URL; --class allows per-app icon/window grouping.
-  mkWebApp = name: url: {
-    name = name;
-    exec = "firefox --class=${name} --new-window ${url}";
-    icon = "firefox";
+  # Microsoft 365 icon — shared across pre-seeded entries.
+  # Edge's PWA install mechanism replaces this with application-specific icons
+  # when the user installs each PWA through Edge.
+  ms365Icon = pkgs.fetchurl {
+    url = "https://teams.microsoft.com/favicon/prod/favicon-192x192.png";
+    sha256 = "afcb5e1148c1af6438c5ad1a118a7d31e1ff119b70965a0576e766ad828c5f70";
+  };
+
+  # Edge app-mode launch helper.
+  # Each entry opens a single URL in Edge's app mode (no address bar).
+  # StartupWMClass separates each PWA in GNOME's task switcher.
+  mkEdgePWA = name: url: wmClass: {
+    inherit name;
+    exec = "microsoft-edge --app=${url} --profile-directory=Default";
+    icon = ms365Icon;
     terminal = false;
     type = "Application";
-    categories = [ "GNOME" "Network" "WebBrowser" ];
+    categories = [ "GNOME" "Network" ];
     startupNotify = true;
+    settings = {
+      StartupWMClass = wmClass;
+    };
   };
 in
 {
   xdg.desktopEntries = {
-    "outlook" = mkWebApp "Outlook" "https://outlook.live.com";
-    "word-online" = mkWebApp "WordOnline" "https://word.office.com";
-    "excel-online" = mkWebApp "ExcelOnline" "https://excel.office.com";
-    "powerpoint-online" = mkWebApp "PowerPointOnline" "https://powerpoint.office.com";
-    "teams" = mkWebApp "Teams" "https://teams.microsoft.com";
-    "onedrive" = mkWebApp "OneDrive" "https://onedrive.live.com";
+    "ms365-outlook" = mkEdgePWA
+      "Outlook"
+      "https://outlook.office.com"
+      "microsoft-edge";
+
+    "ms365-word" = mkEdgePWA
+      "Word"
+      "https://www.office.com/launch/word"
+      "microsoft-edge";
+
+    "ms365-excel" = mkEdgePWA
+      "Excel"
+      "https://www.office.com/launch/excel"
+      "microsoft-edge";
+
+    "ms365-powerpoint" = mkEdgePWA
+      "PowerPoint"
+      "https://www.office.com/launch/powerpoint"
+      "microsoft-edge";
+
+    "ms365-teams" = mkEdgePWA
+      "Teams"
+      "https://teams.microsoft.com"
+      "microsoft-edge";
+
+    "ms365-onedrive" = mkEdgePWA
+      "OneDrive"
+      "https://onedrive.live.com"
+      "microsoft-edge";
   };
 }

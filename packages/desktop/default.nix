@@ -40,6 +40,7 @@ with pkgs; [
   libreoffice-fresh
   obsidian
   notion-app-enhanced
+  apostrophe
 
   # Media
   mpv

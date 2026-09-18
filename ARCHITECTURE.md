@@ -2847,7 +2847,7 @@ Prague
 ```
 
 LocalSend is Tailscale-only: it listens and transfers exclusively over
-tailscale0. LAN and public interfaces explicitly refuse TCP/UDP 53317, so
+tailscale0. LAN and public interfaces explicitly drop TCP/UDP 53317, so
 LocalSend never transits the local network.
 
 ---

@@ -117,7 +117,7 @@ in
         # Public Internet — Inbound
         ##########################################################
 
-        # LocalSend (TCP+UDP 53317) is opened ONLY on tailscale0 and refused
+        # LocalSend (TCP+UDP 53317) is opened ONLY on tailscale0 and dropped
         # explicitly everywhere else (see interfaces."tailscale0" and
         # extraInputRules below). It is intentionally NOT in the global
         # allowedTCPPorts/allowedUDPPorts so it never opens on the LAN or the
@@ -146,12 +146,14 @@ in
           allowedUDPPorts = [ 53317 ];
         };
 
-        # Explicit refusal off the tailnet. Belt-and-suspenders on top of the
-        # default-drop policy: rejection makes LAN/public peers get a clear
-        # refusal instead of a silent timeout.
+        # Explicit drop off the tailnet. Belt-and-suspenders on top of the
+        # default-drop policy, and it documents the intent in the rendered
+        # ruleset. (nft rejects cannot express a tcp/udp scoped refusal
+        # reliably in an inet-family chain without meta nfproto guards, so
+        # explicit drops are used for clarity and consistency.)
         extraInputRules = ''
-          iifname != "tailscale0" tcp dport 53317 reject with tcp reset
-          iifname != "tailscale0" udp dport 53317 reject
+          iifname != "tailscale0" tcp dport 53317 drop
+          iifname != "tailscale0" udp dport 53317 drop
         '';
 
         ##########################################################
@@ -172,7 +174,7 @@ in
       ############################################################
       # LocalSend uses TCP+UDP 53317 for file transfer and discovery.
       # Ingress is opened ONLY on tailscale0 (see interfaces."tailscale0"
-      # and extraInputRules in networking.firewall above) and refused
+      # and extraInputRules in networking.firewall above) and dropped
       # everywhere else. The OUTPUT hook below drops LocalSend traffic
       # leaving any non-Tailscale interface, which also stops LAN discovery
       # broadcasts. Tailscale is therefore the only interface LocalSend can

@@ -117,11 +117,11 @@ in
         # Public Internet — Inbound
         ##########################################################
 
-        # LocalSend is NOT in the global allowedTCPPorts/allowedUDPPorts
-        # because it should not be exposed on every interface (especially
-        # not on tailscale0 or the public internet). Instead, LocalSend
-        # is opened via a custom nftables rule below that restricts it
-        # to non-Tailscale interfaces (LAN and loopback).
+        # LocalSend (TCP+UDP 53317) is opened ONLY on tailscale0 and refused
+        # explicitly everywhere else (see interfaces."tailscale0" and
+        # extraInputRules below). It is intentionally NOT in the global
+        # allowedTCPPorts/allowedUDPPorts so it never opens on the LAN or the
+        # public internet — Tailscale is the only path for file transfers.
 
         allowedTCPPorts = [ ];
 
@@ -134,6 +134,25 @@ in
             # STUN
             3478
           ];
+
+        ##########################################################
+        # LocalSend — Tailscale-only (never LAN / public)
+        ##########################################################
+
+        # LocalSend (TCP+UDP 53317) is opened ONLY on tailscale0, so file
+        # transfers and discovery are reachable exclusively over the tailnet.
+        interfaces."tailscale0" = {
+          allowedTCPPorts = [ 53317 ];
+          allowedUDPPorts = [ 53317 ];
+        };
+
+        # Explicit refusal off the tailnet. Belt-and-suspenders on top of the
+        # default-drop policy: rejection makes LAN/public peers get a clear
+        # refusal instead of a silent timeout.
+        extraInputRules = ''
+          iifname != "tailscale0" tcp dport 53317 reject with tcp reset
+          iifname != "tailscale0" udp dport 53317 reject
+        '';
 
         ##########################################################
         # Logging
@@ -149,18 +168,18 @@ in
       };
 
       ############################################################
-      # LOCALSEND — LAN-only (not on tailscale0 or public internet)
+      # LOCALSEND — Tailscale-only (never on LAN / public interfaces)
       ############################################################
-      # LocalSend uses TCP+UDP 53317 for file transfer. These rules
-      # allow it on every interface EXCEPT tailscale0, so it works
-      # on the LAN (WiFi/Ethernet) but stays closed on the Tailscale
-      # overlay and any public-facing interface.
+      # LocalSend uses TCP+UDP 53317 for file transfer and discovery.
+      # Ingress is opened ONLY on tailscale0 (see interfaces."tailscale0"
+      # and extraInputRules in networking.firewall above) and refused
+      # everywhere else. The OUTPUT hook below drops LocalSend traffic
+      # leaving any non-Tailscale interface, which also stops LAN discovery
+      # broadcasts. Tailscale is therefore the only interface LocalSend can
+      # use in either direction — sending, receiving, and peer discovery.
       #
-      # Architectural note: prague is a laptop with NetworkManager-managed
-      # LAN interfaces (en*, wlp*). There is no WAN-facing interface, so
-      # "all except tailscale0" is equivalent to "LAN-only" for this host.
-      # If a cloud or multi-interface host uses this module, replace the
-      # exclusion list with explicit interface names.
+      # The outbound enforcement is a real nftables OUTPUT hook chain, so it
+      # stays active even when egress filtering (enableEgressFiltering) is off.
       #
       # EGRESS FILTERING — real nftables enforcement
       ############################################################
@@ -181,13 +200,16 @@ in
       ############################################################
 
       nftables.ruleset = lib.mkMerge [
-        # LocalSend — always active regardless of egress filtering
+        # LocalSend — always active regardless of egress filtering.
+        # Drops outbound LocalSend (dport 53317) on every interface except
+        # tailscale0, so LocalSend can only ever transit the Tailscale
+        # overlay (sending AND discovery broadcasts).
         ''
-          table inet nixos {
-            chain input {
-              # LocalSend: allow on non-Tailscale interfaces only
-              iifname != "tailscale0" tcp dport 53317 accept comment "LocalSend TCP"
-              iifname != "tailscale0" udp dport 53317 accept comment "LocalSend UDP"
+          table inet ivali-localsend {
+            chain output {
+              type filter hook output priority filter; policy accept;
+              oifname != "tailscale0" tcp dport 53317 drop comment "LocalSend must use Tailscale TCP"
+              oifname != "tailscale0" udp dport 53317 drop comment "LocalSend must use Tailscale UDP"
             }
           }
         ''

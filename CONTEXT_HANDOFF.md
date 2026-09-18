@@ -29,7 +29,7 @@ GNOME Shell
 + curated GNOME extensions
 + curated productivity applications
 + Microsoft Edge PWAs for Microsoft 365
-+ LAN-first LocalSend
++ Tailscale-only LocalSend
 + Tailscale-secured remote administration
 + permanent Prague exit-node capability
 + automatic tmux SSH maintenance sessions

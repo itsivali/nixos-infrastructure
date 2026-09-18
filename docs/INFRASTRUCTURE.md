@@ -845,7 +845,7 @@ Potential exposed services include:
 | ----- | -------- | ----------------------------------------- |
 | 41641 | UDP      | Tailscale WireGuard                       |
 | 3478  | UDP      | STUN where required                       |
-| 53317 | TCP/UDP  | LocalSend where required                  |
+| 53317 | TCP/UDP  | LocalSend — Tailscale-only (not LAN)        |
 | 53    | TCP/UDP  | Blocky, restricted to intended interfaces |
 
 Actual ports must be verified against current Nix configuration.

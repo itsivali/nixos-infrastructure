@@ -1091,12 +1091,12 @@ The network is divided into logical planes.
                    │
        ┌───────────┼───────────┐
        ▼           ▼           ▼
- Management      Egress       LAN
-    Plane         Plane      Services
-       │           │           │
-       ▼           ▼           ▼
-  SSH / RDP     Exit Node    LocalSend
-  Tailscale      Internet
+Management      Egress       Tailnet
+     Plane         Plane      Services
+        │           │           │
+        ▼           ▼           ▼
+   SSH / RDP     Exit Node    LocalSend
+   Tailscale      Internet
 ```
 
 ---
@@ -1127,13 +1127,12 @@ Controls:
 
 ## 16.3 LAN-service plane
 
-Contains LAN-oriented applications such as:
+The LAN-service plane is intentionally empty: the workstation's previously
+LAN-oriented application (LocalSend) is now scoped to the tailnet only,
+so no application today is reachable over the LAN.
 
-```text
-LocalSend
-```
-
-LAN services MUST NOT automatically become tailnet or WAN services.
+LAN services MUST NOT automatically become tailnet or WAN services, and
+conversely tailnet-scoped services MUST NOT fall back to LAN transit.
 
 ---
 
@@ -2103,7 +2102,7 @@ phone
  → Prague exit node
  → Internet
 
-LAN
+Tailscale
  → LocalSend
  → file transfer
 
@@ -2840,14 +2839,16 @@ The target system is:
 ```text
 Phone
   │
-  │ local LAN
+  │ Tailscale
   ▼
 Prague
   │
   └── LocalSend :53317
 ```
 
-LocalSend is LAN-oriented and is not automatically a Tailscale service.
+LocalSend is Tailscale-only: it listens and transfers exclusively over
+tailscale0. LAN and public interfaces explicitly refuse TCP/UDP 53317, so
+LocalSend never transits the local network.
 
 ---
 

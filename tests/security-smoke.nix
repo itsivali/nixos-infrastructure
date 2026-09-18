@@ -27,37 +27,83 @@
 pkgs.testers.nixosTest {
   name = "security-smoke";
 
-  nodes.machine = { ... }: {
-    imports = [
-      ../boot
-      ../networking
-      ../security/apparmor.nix
-      ../security/fail2ban.nix
-      ../security/firewall.nix
-      ../security/hardening.nix
-      ../security/sudo.nix
-    ];
+  nodes.machine = { config, lib, ... }:
+    let
+      # What nftables actually loads: the custom ruleset plus every declared
+      # table (the firewall emits the "nixos-fw" table via extraInputRules and
+      # the per-interface LocalSend rules; this module emits the outbound
+      # enforcement via nftables.ruleset).
+      nftRuntime =
+        config.networking.nftables.ruleset
+        + builtins.concatStringsSep "\n" (lib.mapAttrsToList (_: t: t.content) config.networking.nftables.tables);
+    in
+    {
+      imports = [
+        ../boot
+        ../networking
+        ../security/apparmor.nix
+        ../security/fail2ban.nix
+        ../security/firewall.nix
+        ../security/hardening.nix
+        ../security/sudo.nix
+      ];
 
-    networking.hostName = "security-smoke";
-    services.xserver.enable = false;
-    services.openssh.enable = false;
-    system.stateVersion = "26.11";
+      networking.hostName = "security-smoke";
+      services.xserver.enable = false;
+      services.openssh.enable = false;
+      system.stateVersion = "26.11";
 
-    # Strip the host's 8250 UART-disable params so the VM serial console
-    # (ttyS0) stays alive for the NixOS test driver.
-    ivali.boot.disableSerialPorts = false;
+      # Strip the host's 8250 UART-disable params so the VM serial console
+      # (ttyS0) stays alive for the NixOS test driver.
+      ivali.boot.disableSerialPorts = false;
 
-    security.apparmor.enable = true;
+      security.apparmor.enable = true;
 
-    ivali.security.fail2ban = {
-      enable = true;
+      # Exercise the repository firewall module (nftables backend) so the
+      # LocalSend Tailscale-only assertions below describe the actual module
+      # behavior, not the stock NixOS firewall.
+      ivali.security.firewall.enable = true;
+
+      ivali.security.fail2ban = {
+        enable = true;
+      };
+
+      # LocalSend must be Tailscale-only: inbound opened ONLY on tailscale0,
+      # refused every other interface, and outbound (send + discovery) dropped
+      # off the tailnet. These eval-time assertions guard the architecture that
+      # LocalSend never transits the LAN or a public interface.
+      assertions = [
+        {
+          assertion = builtins.match ".*iifname tailscale0 tcp dport.*53317.*accept.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend TCP must be allowed inbound only on tailscale0";
+        }
+        {
+          assertion = builtins.match ".*iifname tailscale0 udp dport.*53317.*accept.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend UDP must be allowed inbound only on tailscale0";
+        }
+        {
+          assertion = builtins.match ".*iifname != \"tailscale0\" tcp dport 53317 reject.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend TCP must be refused off the tailnet";
+        }
+        {
+          assertion = builtins.match ".*iifname != \"tailscale0\" udp dport 53317 reject.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend UDP must be refused off the tailnet";
+        }
+        {
+          assertion = builtins.match ".*oifname != \"tailscale0\" tcp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend outbound TCP must be dropped off the tailnet";
+        }
+        {
+          assertion = builtins.match ".*oifname != \"tailscale0\" udp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend outbound UDP must be dropped off the tailnet";
+        }
+      ];
+
+      users.users.testuser = {
+        isNormalUser = true;
+        extraGroups = [ "wheel" ];
+      };
     };
-
-    users.users.testuser = {
-      isNormalUser = true;
-      extraGroups = [ "wheel" ];
-    };
-  };
 
   testScript = ''
     machine.wait_for_unit("multi-user.target")

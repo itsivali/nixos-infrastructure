@@ -6,640 +6,1038 @@
 > **Primary User:** `ivali`
 > **Timezone:** `Africa/Nairobi`
 > **Engineering Model:** Test-Driven Development + Domain-Driven Architecture + GitOps
+> **Document Type:** Normative Engineering Standard
 > **Status:** Production Engineering Standard
+
+---
+
+# Table of Contents
+
+1. [Purpose](#1-purpose)
+2. [Document Authority and Scope](#2-document-authority-and-scope)
+3. [Normative Language](#3-normative-language)
+4. [Engineering Principles](#4-engineering-principles)
+5. [Engineering Priority Model](#5-engineering-priority-model)
+6. [Repository Operating Model](#6-repository-operating-model)
+7. [Change Risk Classification](#7-change-risk-classification)
+8. [Engineering Lifecycle](#8-engineering-lifecycle)
+9. [Repository Discovery Before Change](#9-repository-discovery-before-change)
+10. [Test-Driven Development](#10-test-driven-development)
+11. [RED Phase](#11-red-phase)
+12. [GREEN Phase](#12-green-phase)
+13. [REFACTOR Phase](#13-refactor-phase)
+14. [Regression-First Bug Fixing](#14-regression-first-bug-fixing)
+15. [Test Architecture](#15-test-architecture)
+16. [Verification Integrity](#16-verification-integrity)
+17. [Architecture Compliance](#17-architecture-compliance)
+18. [Nix/NixOS Engineering Standards](#18-nixnixos-engineering-standards)
+19. [Home Manager Standards](#19-home-manager-standards)
+20. [Go Engineering Standards](#20-go-engineering-standards)
+21. [Shell Engineering Standards](#21-shell-engineering-standards)
+22. [Systemd Engineering Standards](#22-systemd-engineering-standards)
+23. [Security Engineering Standards](#23-security-engineering-standards)
+24. [Secrets Engineering](#24-secrets-engineering)
+25. [Network Engineering](#25-network-engineering)
+26. [Tailscale and Remote Access](#26-tailscale-and-remote-access)
+27. [Observability Engineering](#27-observability-engineering)
+28. [Reliability Engineering](#28-reliability-engineering)
+29. [Backup and Recovery Engineering](#29-backup-and-recovery-engineering)
+30. [GitOps and Deployment Engineering](#30-gitops-and-deployment-engineering)
+31. [CI/CD Engineering](#31-cicd-engineering)
+32. [Supply-Chain and Dependency Management](#32-supply-chain-and-dependency-management)
+33. [Performance Engineering](#33-performance-engineering)
+34. [Documentation Engineering](#34-documentation-engineering)
+35. [Git and Change Management](#35-git-and-change-management)
+36. [AI/LLM Engineering Contract](#36-aillm-engineering-contract)
+37. [AI Session Workflow](#37-ai-session-workflow)
+38. [AI Change Restrictions](#38-ai-change-restrictions)
+39. [Emergency Changes](#39-emergency-changes)
+40. [Refactoring Standards](#40-refactoring-standards)
+41. [Dead Code and Deprecation](#41-dead-code-and-deprecation)
+42. [TODO and Temporary Work](#42-todo-and-temporary-work)
+43. [Engineering Decision Records](#43-engineering-decision-records)
+44. [Definition of Done](#44-definition-of-done)
+45. [Engineering Review Checklist](#45-engineering-review-checklist)
+46. [Final Engineering Contract](#46-final-engineering-contract)
 
 ---
 
 # 1. Purpose
 
-This document defines the engineering standards, architectural rules, development methodology, testing requirements, security principles, deployment model, and AI/LLM operating rules for the `nixos-infrastructure` repository.
+This document defines how engineering work is performed in the
+`nixos-infrastructure` repository.
 
-It is a **normative engineering document**.
+It governs:
 
-The rules in this document apply to:
+* development methodology;
+* testing;
+* verification;
+* implementation quality;
+* architecture-aware development;
+* security engineering;
+* reliability engineering;
+* NixOS/Home Manager development;
+* Go development;
+* shell scripting;
+* systemd services;
+* networking;
+* secrets;
+* observability;
+* backup and recovery;
+* GitOps;
+* CI/CD;
+* dependency management;
+* documentation;
+* Git workflow;
+* AI/LLM-assisted engineering.
 
-* human contributors
-* AI/LLM agents
-* automation
-* scripts
-* NixOS modules
-* Home Manager modules
-* Go applications
-* infrastructure services
-* CI/CD
-* GitOps reconciliation
-* security configuration
-* observability
-* recovery systems
-* documentation that defines system behavior
+The objective is not merely to make the repository compile.
 
-The objective is not simply to make the repository work.
-
-The objective is to make it:
-
-* correct
-* testable
-* reproducible
-* secure
-* observable
-* recoverable
-* maintainable
-* architecturally coherent
-* understandable by both humans and AI agents
-
----
-
-# 2. Core Engineering Philosophy
-
-The repository follows these principles:
-
-1. **Test before implementation.**
-2. **Understand before modifying.**
-3. **Prefer explicit behavior over magic.**
-4. **Prefer simple designs over unnecessary abstraction.**
-5. **Keep domain ownership explicit.**
-6. **Make security and reliability properties executable through tests where possible.**
-7. **Make infrastructure reproducible.**
-8. **Make failures observable.**
-9. **Preserve existing working behavior.**
-10. **Never claim verification that was not actually performed.**
-11. **Do not implement speculative functionality.**
-12. **Treat Git as the historical record of engineering decisions.**
-13. **Treat documentation as part of the system contract.**
-14. **Design for another engineer—or another LLM—to continue the work without hidden context.**
-
----
-
-# 3. Engineering Priority Order
-
-When engineering concerns conflict, use this priority order:
+The objective is to produce infrastructure that is:
 
 ```text
-1. Security
-2. Data integrity
-3. Reliability
-4. Correctness
-5. Architectural integrity
-6. Reproducibility
-7. Maintainability
-8. Observability
-9. Performance
-10. Convenience
+Correct
+Secure
+Reproducible
+Testable
+Observable
+Recoverable
+Maintainable
+Architecturally coherent
+Operationally predictable
 ```
-
-A lower-priority concern must not compromise a higher-priority concern without an explicit architectural decision.
 
 ---
 
-# 4. Source-of-Truth Hierarchy
+# 2. Document Authority and Scope
 
-When information conflicts, use the following order:
+`ENGINEERING.md` is the normative authority for **how engineering work is
+performed**.
+
+It does not replace the other architectural control documents.
+
+The repository uses the following separation:
 
 ```text
-1. Actual repository state
-2. Executable tests
-3. Architecture manifests and enforcement
-4. CI configuration and gates
-5. Current implementation
-6. Engineering standards
-7. Architecture documentation
-8. CONTEXT_HANDOFF.md
-9. Other documentation
-10. Previous LLM assumptions
+ARCHITECTURE.md
+    ↓
+What the system is supposed to be
+
+architecture/*.yaml
+    ↓
+Machine-readable architectural policy
+
+ARCHITECTURE_AUDIT.md
+    ↓
+Where the repository currently conforms or deviates
+
+ARCHITECTURE_PROGRESS.md
+    ↓
+How remaining architectural gaps are being closed
+
+ENGINEERING.md
+    ↓
+How engineering work is performed
+
+IVALi_FLOW.md
+    ↓
+How changes are developed, reviewed, merged and delivered
 ```
 
-The current repository state always takes precedence over an LLM's memory.
+When these documents appear to conflict:
 
-AI agents must inspect the repository rather than assuming that previous conversation context is still accurate.
+1. `ARCHITECTURE.md` governs architectural intent.
+2. `architecture/*.yaml` governs machine-readable architecture policy.
+3. `ENGINEERING.md` governs engineering method and quality.
+4. `IVALi_FLOW.md` governs repository delivery workflow.
+5. Audit and progress documents describe current state and migration.
 
----
-
-# 5. AI/LLM Engineering Contract
-
-AI agents are first-class engineering participants but are not authoritative over the repository.
-
-An AI agent must:
-
-* inspect before changing
-* understand before implementing
-* follow TDD
-* preserve existing work
-* respect architecture boundaries
-* run verification
-* report actual results
-* update documentation when required
-* maintain handoff continuity
-* avoid destructive Git operations
-* avoid speculative changes
-* avoid silently expanding scope
-
-An AI agent must **not**:
-
-* fabricate test results
-* claim a command was run when it was not
-* claim a build passed without verification
-* rewrite unrelated files
-* delete existing functionality without justification
-* weaken tests to make implementation pass
-* modify architecture merely to accommodate an easier implementation
-* introduce dependencies without justification
-* commit directly to `main`
-* discard user changes
-* perform destructive Git operations without explicit authorization
-
-The repository is the authority.
-
-The LLM is an implementation assistant.
+No AI agent may resolve such a conflict by silently choosing whichever document
+is more convenient.
 
 ---
 
-# 6. Mandatory Test-Driven Development
+# 3. Normative Language
 
-## 6.1 TDD Is the Default Development Method
+The following words are normative.
 
-All new production functionality must follow:
+## MUST
+
+Absolute requirement.
+
+## MUST NOT
+
+Prohibited behavior.
+
+## SHOULD
+
+Strong recommendation. Deviations require justification.
+
+## SHOULD NOT
+
+Strongly discouraged. Deviations require justification.
+
+## MAY
+
+Permitted but optional.
+
+## CURRENTLY
+
+Describes present repository behavior.
+
+## TARGET
+
+Describes intended future behavior.
+
+## EXAMPLE
+
+Illustrative only.
+
+---
+
+# 4. Engineering Principles
+
+The repository follows these principles.
+
+## 4.1 Understand before changing
+
+Do not modify infrastructure that has not been understood.
+
+---
+
+## 4.2 Test before implementing behavior
+
+Behavior-changing production code follows verification-first development and,
+where practical:
 
 ```text
 RED → GREEN → REFACTOR
 ```
 
-The required development cycle is:
+---
+
+## 4.3 Prefer explicit behavior
+
+Prefer:
+
+```text
+explicit configuration
+explicit ownership
+explicit dependencies
+explicit failure handling
+explicit security boundaries
+```
+
+over hidden or magical behavior.
+
+---
+
+## 4.4 Prefer the simplest correct design
+
+Do not introduce abstraction, dependencies, services, frameworks, or layers
+without a demonstrated need.
+
+---
+
+## 4.5 Preserve working behavior
+
+Existing functionality must not be removed merely because a new implementation
+appears cleaner.
+
+Before replacing working behavior:
+
+```text
+understand
+→ test
+→ migrate
+→ verify
+→ remove
+```
+
+---
+
+## 4.6 Make important properties executable
+
+Where practical, important requirements should become:
+
+* tests;
+* assertions;
+* schemas;
+* linters;
+* CI gates;
+* runtime health checks.
+
+---
+
+## 4.7 Never fabricate evidence
+
+An engineer or AI agent MUST NOT claim that something was:
+
+* built;
+* tested;
+* deployed;
+* restored;
+* verified;
+* scanned;
+* observed;
+
+unless it actually was.
+
+---
+
+## 4.8 Make failures visible
+
+Failures must remain failures.
+
+Do not suppress them merely to make:
+
+```text
+tests green
+CI green
+systemd healthy
+```
+
+---
+
+## 4.9 Treat Git as engineering history
+
+Changes should be:
+
+* attributable;
+* reviewable;
+* focused;
+* traceable.
+
+---
+
+## 4.10 Design for continuity
+
+Another engineer or AI agent must be able to continue from the repository
+without relying on hidden conversational context.
+
+---
+
+# 5. Engineering Priority Model
+
+Engineering concerns are prioritized as follows:
+
+```text
+1. Security and safety
+2. Data integrity
+3. Recoverability
+4. Reliability / availability
+5. Correctness
+6. Architectural integrity
+7. Reproducibility
+8. Maintainability
+9. Observability
+10. Performance
+11. Convenience
+12. Cosmetic preference
+```
+
+A lower-priority concern MUST NOT compromise a higher-priority concern without
+an explicit decision.
+
+---
+
+# 6. Repository Operating Model
+
+The repository is a declarative infrastructure system.
+
+The preferred model is:
+
+```text
+Source
+  ↓
+Tests
+  ↓
+Architecture validation
+  ↓
+Build
+  ↓
+Review
+  ↓
+Merge
+  ↓
+GitOps
+  ↓
+Deployment
+  ↓
+Health
+  ↓
+Observation
+  ↓
+Recovery when necessary
+```
+
+The repository SHOULD remain usable at every stage of migration.
+
+---
+
+# 7. Change Risk Classification
+
+Every material change should be classified.
+
+## R0 — Documentation / formatting
+
+Examples:
+
+* documentation wording;
+* formatting;
+* comments.
+
+## R1 — Low-risk code/configuration
+
+Examples:
+
+* isolated refactor;
+* non-critical developer tooling;
+* harmless cleanup.
+
+## R2 — Operational change
+
+Examples:
+
+* service configuration;
+* network rule;
+* package replacement;
+* user environment changes.
+
+## R3 — High-risk infrastructure change
+
+Examples:
+
+* firewall;
+* SSH;
+* Tailscale;
+* boot;
+* secrets;
+* systemd privilege;
+* GitOps;
+* deployment;
+* storage;
+* recovery.
+
+## R4 — Critical infrastructure change
+
+Examples:
+
+* root/deployment authority;
+* encryption/recovery keys;
+* irreversible storage changes;
+* boot/recovery chain;
+* broad trust-boundary changes.
+
+R3/R4 changes require stronger verification, smaller scopes, and explicit
+rollback procedures.
+
+---
+
+# 8. Engineering Lifecycle
+
+Material work follows:
+
+```text
+DISCOVER
+   ↓
+CLASSIFY
+   ↓
+DEFINE
+   ↓
+TEST
+   ↓
+IMPLEMENT
+   ↓
+VERIFY
+   ↓
+REFACTOR
+   ↓
+REVERIFY
+   ↓
+DOCUMENT
+   ↓
+REVIEW
+   ↓
+DELIVER
+```
+
+For architectural work:
+
+```text
+ARCHITECTURE
+   ↓
+AUDIT
+   ↓
+PLAN
+   ↓
+MIGRATE
+   ↓
+ENFORCE
+```
+
+---
+
+# 9. Repository Discovery Before Change
+
+Before modifying an unfamiliar area:
+
+```bash
+pwd
+git status --short --branch
+git branch --show-current
+git log -10 --oneline --decorate
+```
+
+Inspect:
+
+```text
+relevant module
+relevant tests
+architecture manifest
+exceptions
+ADRs
+documentation
+consumers
+```
+
+Search before creating:
+
+```bash
+rg -n '<capability-or-symbol>' .
+```
+
+The default assumption is:
+
+> The capability may already exist somewhere.
+
+---
+
+# 10. Test-Driven Development
+
+TDD is the default method for new production behavior.
+
+The preferred cycle is:
 
 ```text
 Requirement
-    ↓
-Behavior / Acceptance Criterion
-    ↓
-Write Test
-    ↓
-Run Test
-    ↓
-Confirm Expected Failure
-    ↓
-Implement Minimum Code
-    ↓
-Run Test
-    ↓
-Confirm Success
-    ↓
-Refactor
-    ↓
-Run Tests Again
-```
-
-**Production implementation must not precede its corresponding test.**
-
----
-
-# 7. The RED Phase
-
-The first step of implementation is writing a test.
-
-The test must describe the behavior that is required.
-
-Example:
-
-```text
-Given a valid deployment request
-When the deployment service executes it
-Then the deployment is successful
-And the resulting generation is recorded
-```
-
-The test must then be executed.
-
-The expected result is failure.
-
-The failure must occur because the required behavior does not yet exist.
-
-This establishes that the test actually protects the new behavior.
-
-## 7.1 Red Means Actually Red
-
-It is insufficient to merely write a test.
-
-The developer or AI agent must establish:
-
-```text
-Test exists
-    ↓
-Test runs
-    ↓
-Test fails
-    ↓
-Failure is understood
-```
-
-Only then should implementation begin.
-
-An AI agent must not claim TDD compliance if it wrote the test after the implementation or never demonstrated the initial failure.
-
----
-
-# 8. The GREEN Phase
-
-Once the test is demonstrably failing, implement the **minimum amount of production code required to make it pass**.
-
-Do not prematurely implement:
-
-* speculative features
-* unused abstractions
-* future requirements
-* unnecessary interfaces
-* unrelated refactors
-* additional behavior that has no test
-
-The objective is:
-
-> Make the failing test pass with the smallest correct implementation.
-
----
-
-# 9. The REFACTOR Phase
-
-Once the test is green:
-
-* improve naming
-* remove duplication
-* simplify control flow
-* improve interfaces
-* improve package boundaries
-* improve error handling
-* improve maintainability
-* remove accidental complexity
-
-Tests must remain green during refactoring.
-
-Refactoring must not change externally observable behavior unless that behavior is intentionally being changed through a new TDD cycle.
-
----
-
-# 10. One Behavior at a Time
-
-Development should proceed in small behavioral increments.
-
-Preferred:
-
-```text
-Test: notification sends successfully
-→ implementation
-→ green
-
-Test: notification failure is reported
-→ implementation
-→ green
-
-Test: transient notification failure retries
-→ implementation
-→ green
-```
-
-Avoid:
-
-```text
-Build entire notification system
-→ write hundreds of tests afterward
-```
-
-Small cycles provide:
-
-* clearer failures
-* smaller diffs
-* easier reviews
-* easier rollback
-* better AI reasoning
-* better architectural discipline
-
----
-
-# 11. Tests Are the Behavioral Specification
-
-Tests are not merely coverage mechanisms.
-
-They are executable specifications.
-
-Tests should describe:
-
-* what the system does
-* what the system must not do
-* how errors behave
-* how security boundaries behave
-* how state transitions occur
-* how services interact
-* what configuration produces
-* what happens during recovery
-
-Prefer behavioral assertions over implementation-specific assertions.
-
----
-
-# 12. Regression-First Bug Fixing
-
-Every reproducible bug must become a regression test whenever practical.
-
-Required workflow:
-
-```text
-Reproduce bug
-    ↓
-Write regression test
-    ↓
+   ↓
+Acceptance criterion
+   ↓
+Test
+   ↓
 Run test
-    ↓
-Confirm failure
-    ↓
-Fix implementation
-    ↓
-Confirm test passes
-    ↓
+   ↓
+RED
+   ↓
+Minimum implementation
+   ↓
+GREEN
+   ↓
+REFACTOR
+   ↓
+Full verification
+```
+
+The test must express externally meaningful behavior.
+
+---
+
+# 11. RED Phase
+
+The RED phase requires:
+
+```text
+test exists
++
+test executes
++
+test fails
++
+failure is understood
+```
+
+The failure should occur because the required behavior does not yet exist.
+
+A test that passes before implementation does not establish the intended TDD
+cycle unless the passing test is explicitly a characterization test.
+
+---
+
+# 12. GREEN Phase
+
+Implement only what is needed to satisfy the requirement.
+
+Do not prematurely add:
+
+* speculative abstraction;
+* future features;
+* unused interfaces;
+* unrelated refactors;
+* unrequested optimization.
+
+The smallest correct implementation is preferred.
+
+---
+
+# 13. REFACTOR Phase
+
+Once behavior is GREEN:
+
+* simplify;
+* rename;
+* remove duplication;
+* improve boundaries;
+* improve error handling;
+* reduce accidental complexity.
+
+Tests MUST remain green.
+
+If behavior changes intentionally, begin a new development cycle with new
+verification.
+
+---
+
+# 14. Regression-First Bug Fixing
+
+Every reproducible bug SHOULD become a regression test.
+
+Preferred flow:
+
+```text
+Reproduce
+   ↓
+Write regression test
+   ↓
+RED
+   ↓
+Fix
+   ↓
+GREEN
+   ↓
 Refactor
-    ↓
-Run relevant suite
+   ↓
+Full verification
 ```
 
-This prevents the same bug from silently returning.
+A bug is not considered fully fixed if the original failure mode cannot be
+reproduced and protected against where practical.
 
 ---
 
-# 13. Test Modification Rules
+# 15. Test Architecture
 
-Tests are part of the system specification.
-
-Therefore, modifying a test requires justification.
-
-A test may be changed when:
-
-* requirements intentionally changed
-* the existing test is incorrect
-* an obsolete contract has been intentionally removed
-* architecture has intentionally changed
-* the original test encoded an invalid assumption
-
-An AI agent must never modify a test simply because the implementation cannot currently satisfy it.
-
-When changing an existing behavioral contract, document:
+Testing must occur at multiple levels.
 
 ```text
-Previous behavior:
-...
-
-New behavior:
-...
-
-Reason:
-...
-
-Affected tests:
-...
+                 E2E
+                  ▲
+            Integration
+                  ▲
+                Module
+                  ▲
+                 Unit
 ```
 
 ---
 
-# 14. Test Pyramid
-
-Testing should operate at multiple levels.
-
-```text
-             E2E
-              ▲
-         Integration
-              ▲
-            Unit
-```
-
-## Unit Tests
+## 15.1 Unit tests
 
 Use for:
 
-* business logic
-* validation
-* parsers
-* services
-* state transitions
-* error handling
-* configuration logic
-* security decisions
+* pure logic;
+* validation;
+* parsing;
+* state transitions;
+* security decisions;
+* error handling.
 
-## Integration Tests
+---
 
-Use when behavior crosses boundaries:
+## 15.2 Module / configuration tests
 
-* filesystem
-* PostgreSQL
-* Git
-* Nix
-* system commands
-* APIs
-* persistence
-* service boundaries
+Use for:
 
-Do not replace meaningful integration behavior with excessive mocking.
+* Nix options;
+* defaults;
+* assertions;
+* generated configuration;
+* service definitions;
+* disabled behavior;
+* enabled behavior.
 
-## End-to-End Tests
+---
 
-Use for critical user workflows.
+## 15.3 Integration tests
 
-Example:
+Use when crossing:
+
+* filesystem;
+* systemd;
+* Nix;
+* Git;
+* APIs;
+* databases;
+* external services;
+* operating-system boundaries.
+
+Do not replace meaningful integration behavior with unrealistic mocking.
+
+---
+
+## 15.4 End-to-end tests
+
+Use for important user and operator workflows.
+
+Examples:
 
 ```text
-CLI
- ↓
-Application
- ↓
-Service
- ↓
-Repository / Platform
- ↓
-Observable Result
+Phone
+ → Tailscale
+ → Prague
+ → SSH
+
+Phone
+ → Prague exit node
+ → Internet
+
+LAN
+ → LocalSend
+ → file transfer
+
+Git change
+ → CI
+ → deployment
+ → health
+ → acceptance / rollback
 ```
 
 ---
 
-# 15. Go Engineering Standards
+## 15.5 Negative tests
 
-Go code must follow idiomatic Go practices.
+Security-sensitive functionality MUST test forbidden behavior.
 
-## 15.1 Package Ownership
+Examples:
 
-Every package must have a clear responsibility.
+```text
+unauthorized user → denied
+unauthorized device → denied
+forbidden port → denied
+unauthorized secret → denied
+privilege escalation → denied
+invalid deployment → denied
+forbidden filesystem access → denied
+```
 
-Avoid packages that become miscellaneous utility collections.
+---
 
-## 15.2 Interfaces
+# 16. Verification Integrity
 
-Use interfaces where they provide meaningful:
+Verification results must be truthful.
 
-* abstraction
-* testability
-* dependency inversion
-* architectural boundaries
+Allowed:
 
-Do not create interfaces merely because Go permits them.
+```text
+PASS
+FAIL
+NOT RUN
+BLOCKED
+NOT APPLICABLE
+UNVERIFIED
+```
 
-## 15.3 Error Handling
+Never transform:
 
-Errors must be:
+```text
+FAIL
+```
 
-* checked
-* contextualized
-* actionable
+into:
 
-Prefer:
+```text
+PASS
+```
+
+using:
+
+```bash
+|| true
+```
+
+or an equivalent mechanism when the failed command is part of the actual
+assertion.
+
+A command may be intentionally allowed to fail only when its failure is itself
+part of the expected test behavior and the test explicitly asserts that
+condition.
+
+---
+
+# 17. Architecture Compliance
+
+All engineering changes MUST respect:
+
+```text
+ARCHITECTURE.md
+architecture/*.yaml
+active exceptions
+```
+
+Before creating a new module, service, package, or capability:
+
+```text
+Search existing implementation
+        ↓
+Identify current owner
+        ↓
+Check architecture
+        ↓
+Determine whether extension is possible
+```
+
+Architecture violations require either:
+
+```text
+remediation
+```
+
+or:
+
+```text
+explicit exception
+```
+
+---
+
+# 18. Nix/NixOS Engineering Standards
+
+NixOS configuration MUST remain:
+
+* declarative;
+* reproducible;
+* composable;
+* explicit;
+* testable.
+
+---
+
+## 18.1 Module ownership
+
+A module should represent one coherent capability.
+
+Avoid giant modules that combine unrelated concerns.
+
+---
+
+## 18.2 Options
+
+Prefer typed options.
+
+A feature SHOULD expose:
+
+```text
+enable
+configuration
+defaults
+assertions
+```
+
+where appropriate.
+
+---
+
+## 18.3 Defaults
+
+Defaults MUST be predictable.
+
+Dangerous capabilities SHOULD default to disabled.
+
+Host-specific architectural invariants MAY intentionally be enabled by default
+within a specific host profile.
+
+Example:
+
+```text
+Prague:
+    Tailscale = required
+    Exit Node = required
+```
+
+This must not imply that all hosts inherit those capabilities.
+
+---
+
+## 18.4 Assertions
+
+Use Nix assertions for invalid combinations.
+
+Example classes:
+
+```text
+feature requires dependency
+host requires hardware declaration
+option combinations are incompatible
+security mode requires authentication
+```
+
+---
+
+## 18.5 Reproducibility
+
+Avoid unnecessary dependency on:
+
+* environment variables;
+* undeclared filesystem state;
+* mutable downloads;
+* manual operator state;
+* host-specific hidden assumptions.
+
+---
+
+## 18.6 Evaluation safety
+
+Nix evaluation should be deterministic.
+
+Avoid:
+
+```nix
+builtins.getEnv
+```
+
+and similar mechanisms unless there is a deliberate and documented reason.
+
+---
+
+# 19. Home Manager Standards
+
+Home Manager configuration MUST:
+
+* remain declarative;
+* respect host boundaries;
+* avoid duplicate ownership;
+* avoid hidden imperative installation;
+* preserve user state where required;
+* integrate with system configuration through explicit interfaces.
+
+User configuration must not silently become a second system-configuration
+authority.
+
+---
+
+# 20. Go Engineering Standards
+
+Go code must remain idiomatic and maintainable.
+
+---
+
+## 20.1 Package ownership
+
+Each package must have a coherent responsibility.
+
+Avoid miscellaneous "utils" packages that become uncontrolled dependency
+centers.
+
+---
+
+## 20.2 Interfaces
+
+Use interfaces where they provide:
+
+* meaningful abstraction;
+* testability;
+* dependency inversion;
+* architecture boundaries.
+
+Do not create interfaces purely because an abstraction seems theoretically
+clean.
+
+---
+
+## 20.3 Error handling
+
+Errors MUST be checked.
+
+Provide contextual errors where useful:
 
 ```go
 return fmt.Errorf("deploy generation %s: %w", generation, err)
 ```
 
+Do not silently discard errors.
+
+---
+
+## 20.4 Context
+
+Long-running and external operations SHOULD propagate `context.Context`.
+
+---
+
+## 20.5 Panics
+
+Panics MUST NOT be used for ordinary operational failure.
+
+Expected failure is represented as an error.
+
+---
+
+## 20.6 Command execution
+
+Avoid arbitrary shell execution.
+
+Prefer:
+
+```text
+validated input
+→ typed operation
+→ controlled adapter
+```
+
 over:
 
-```go
-return err
-```
-
-where additional context is meaningful.
-
-Never silently discard errors.
-
-## 15.4 Panics
-
-Panics are not acceptable for normal operational failures.
-
-Expected failures must return errors.
-
-## 15.5 Context
-
-Long-running operations and external calls should propagate `context.Context`.
-
-## 15.6 Go TDD
-
-New Go functionality follows:
-
 ```text
-Write *_test.go
-    ↓
-go test ./path/...
-    ↓
-Confirm failure
-    ↓
-Implement
-    ↓
-go test ./path/...
-    ↓
-Refactor
+HTTP/API input
+→ arbitrary command string
+→ shell
 ```
 
 ---
 
-# 16. Nix/NixOS Engineering Standards
+## 20.7 Go test discipline
 
-Nix configuration must remain declarative, reproducible, explicit, and composable.
-
-## 16.1 Module Ownership
-
-One module should represent one coherent capability.
-
-Examples:
+New Go behavior follows:
 
 ```text
-security/firewall
-security/fail2ban
-observability/prometheus
-desktop/gnome
-networking/tailscale
-```
-
-Avoid giant modules containing unrelated responsibilities.
-
-## 16.2 Configuration
-
-Prefer explicit options.
-
-Avoid hidden configuration magic.
-
-Where practical, features should be opt-in and have predictable defaults.
-
-Foundational system functionality may be enabled centrally where required by the platform architecture.
-
-## 16.3 Evaluation Safety
-
-Nix expressions must remain evaluatable independently wherever practical.
-
-Avoid unnecessary:
-
-* `builtins.getEnv`
-* dynamic filesystem assumptions
-* hidden host dependencies
-* imperative behavior
-* undeclared runtime dependencies
-
-## 16.4 Nix TDD
-
-Nix behavior must be tested before implementation where practical.
-
-Tests should cover:
-
-* option defaults
-* enabled behavior
-* disabled behavior
-* generated services
-* generated configuration
-* assertions
-* dependencies
-* security properties
-* evaluation
-
-Example:
-
-```text
-Test:
-feature is disabled by default
-    ↓
-Implement module
-    ↓
-Test passes
+*_test.go
+→ RED
+→ implementation
+→ GREEN
+→ refactor
 ```
 
 ---
 
-# 17. Home Manager Standards
+# 21. Shell Engineering Standards
 
-Home Manager configuration must:
+Scripts must be deliberate operational tools, not hidden configuration systems.
 
-* remain declarative
-* have clear ownership
-* avoid duplicate configuration
-* avoid imperative installation
-* remain reproducible
-* integrate with system-level configuration through explicit boundaries
-
-User-level behavior should not silently modify system-level behavior.
-
----
-
-# 18. Shell Script Standards
-
-Shell scripts must use:
+Where applicable:
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 ```
 
-unless there is a documented reason not to.
+Scripts MUST:
 
-Requirements:
-
-* quote variables
-* validate inputs
-* avoid `eval`
-* handle command failures
-* avoid accidental word splitting
-* use explicit paths where required
-* produce useful error messages
-* avoid leaking secrets
-* remain idempotent where practical
-
-Shell behavior should also be tested.
+* validate input;
+* quote variables;
+* check failures;
+* avoid `eval`;
+* avoid secret leakage;
+* use explicit dependencies;
+* behave idempotently where practical.
 
 At minimum:
 
@@ -647,296 +1045,590 @@ At minimum:
 bash -n script.sh
 ```
 
-For meaningful behavior, use executable tests rather than syntax checking alone.
+Meaningful operational behavior must also receive behavioral tests.
 
 ---
 
-# 19. Architecture Standards
+# 22. Systemd Engineering Standards
 
-Architecture must be explicit.
+Every persistent unit must have an owner and explicit lifecycle.
 
-The repository uses domain boundaries to prevent uncontrolled coupling.
-
-Each domain should define:
-
-* responsibility
-* ownership
-* public interface
-* dependencies
-* state ownership
-* filesystem ownership
-* security boundary
-
-Architecture rules should be executable whenever practical.
-
----
-
-# 20. Architecture TDD
-
-Architectural constraints should be expressed as tests.
-
-Examples:
+At minimum define as appropriate:
 
 ```text
-Test:
-deployment domain cannot directly depend on notification implementation.
+User
+Group
+ExecStart
+Restart
+Timeout
+Dependencies
+StateDirectory
+RuntimeDirectory
+Environment
+ReadWritePaths
 ```
 
+Security-sensitive services SHOULD use:
+
 ```text
-Test:
-only the deployment service owns deployment execution.
+NoNewPrivileges
+ProtectSystem
+ProtectHome
+PrivateTmp
+PrivateDevices
+RestrictAddressFamilies
+CapabilityBoundingSet
+SystemCallFilter
 ```
 
-```text
-Test:
-security secrets cannot be imported by presentation-layer packages.
-```
+Security controls must be validated against actual service requirements.
 
-Architecture tests prevent gradual architectural erosion.
-
-An architecture rule that is important enough to document should be considered for automated enforcement.
+Do not add hardening options blindly.
 
 ---
 
-# 21. Service Contract Standards
+# 23. Security Engineering Standards
 
-Services must have explicit responsibilities.
+Security must be designed into implementation.
 
-Current service architecture includes concepts such as:
-
-* NotificationService
-* BackupService
-* MetricsProvider
-* HealthChecker
-* PlatformService
-
-Each service must:
-
-* have a clear contract
-* own its responsibility
-* expose only required behavior
-* avoid leaking implementation details
-* be testable independently
-* have tests before implementation
-
-Consumers should depend on contracts rather than concrete implementations where appropriate.
-
----
-
-# 22. State Ownership
-
-Every persistent state must have a clearly identified owner.
-
-Examples:
+Every security-sensitive change must consider:
 
 ```text
-Deployment state → Deployment domain
-Backup state → Backup domain
-Health state → Health domain
-Notification state → Notification domain
-```
-
-Two unrelated domains must not silently become co-owners of the same state.
-
-Shared state requires an explicit contract.
-
----
-
-# 23. Filesystem Ownership
-
-Filesystem paths must have an identified owner.
-
-Do not allow multiple services to independently mutate the same state directory without an explicit contract.
-
-Path ownership should be documented and tested where practical.
-
----
-
-# 24. Security Engineering
-
-Security is a system property.
-
-Security controls must be:
-
-* explicit
-* testable
-* observable
-* least-privilege
-* reproducible
-
-## Secrets
-
-Secrets must never be committed as plaintext.
-
-Use:
-
-* SOPS
-* age
-* appropriate secret management
-* protected runtime access
-
-Never:
-
-* log secrets
-* echo secrets
-* place secrets in command arguments unnecessarily
-* embed credentials in source
-* commit generated secret material
-
----
-
-# 25. Systemd Hardening
-
-Services should use appropriate hardening where compatible with their function.
-
-Consider:
-
-```text
-DynamicUser=
-NoNewPrivileges=
-ProtectSystem=
-ProtectHome=
-PrivateTmp=
-PrivateDevices=
-RestrictAddressFamilies=
-RestrictNamespaces=
-CapabilityBoundingSet=
-```
-
-Hardening must be tested against actual service behavior.
-
-Security must not be assumed merely because a hardening option is present.
-
----
-
-# 26. Network Security
-
-Networking must follow least privilege.
-
-Firewall rules must have:
-
-* explicit ownership
-* documented purpose
-* minimal exposure
-* predictable interaction with Tailscale
-* test coverage where practical
-
-Port ownership must not be duplicated across unrelated modules.
-
----
-
-# 27. Tailscale Security
-
-Tailscale configuration must follow the repository security model.
-
-Requirements include:
-
-* explicit node roles
-* explicit access policy
-* least privilege
-* controlled SSH
-* explicit exit-node behavior
-* firewall integration
-* separation between personal, administrative, infrastructure, and quarantine roles where applicable
-
-Network access must not be granted merely because connectivity is convenient.
-
----
-
-# 28. Observability
-
-Every important operational component should provide appropriate:
-
-* logs
-* metrics
-* health state
-* failure information
-* diagnostic information
-
-A service that fails silently is not considered operationally complete.
-
-Observability should be designed alongside functionality rather than added only after failures occur.
-
----
-
-# 29. Health Checks
-
-Health checks must answer meaningful questions.
-
-Bad:
-
-```text
-Process exists
-```
-
-Better:
-
-```text
-Service is running
-AND
-required dependency is reachable
-AND
-expected state is valid
-AND
-critical operation can execute
-```
-
-Health checks should themselves be tested.
-
----
-
-# 30. Backup Engineering
-
-Backups must be treated as production functionality.
-
-Backup systems must define:
-
-* what is backed up
-* where it is stored
-* encryption
-* retention
-* verification
-* restoration procedure
-* failure handling
-* monitoring
-
-A backup that has never been restored or verified is not sufficient evidence of recoverability.
-
-Backup and restore workflows should have tests appropriate to their risk.
-
----
-
-# 31. Recovery Engineering
-
-Recovery is part of the architecture.
-
-Important recovery procedures must be:
-
-* documented
-* executable
-* tested
-* observable
-
-Examples:
-
-```text
-deployment rollback
-SOPS break-glass recovery
-backup restoration
-service recovery
-host recovery
-Git repository recovery
+asset
+threat
+trust boundary
+privilege
+exposure
+failure mode
+recovery
 ```
 
 ---
 
-# 32. Git Engineering Standards
+## 23.1 Least privilege
 
-`main` represents production-ready state.
+Prefer:
 
-Development should normally occur on feature branches.
+```text
+minimum user
+minimum capabilities
+minimum filesystem access
+minimum network access
+minimum secret scope
+```
 
-Preferred naming:
+---
+
+## 23.2 Authentication
+
+Authentication must be explicit.
+
+Do not rely on an undocumented assumption that:
+
+```text
+"it is inside the network, so it is trusted."
+```
+
+---
+
+## 23.3 Authorization
+
+Authorization must be distinct from authentication.
+
+A user being authenticated does not automatically imply broad authorization.
+
+---
+
+## 23.4 Privilege escalation
+
+Any path to root must be treated as a security boundary.
+
+Document:
+
+```text
+who may invoke it
+what they may invoke
+what inputs are allowed
+what output is produced
+```
+
+---
+
+# 24. Secrets Engineering
+
+Secrets MUST be treated as controlled assets.
+
+Preferred model:
+
+```text
+SOPS
++
+age
++
+explicit consumer scope
+```
+
+Secrets MUST NOT be stored as plaintext in:
+
+* Git;
+* Nix expressions;
+* Go source;
+* shell scripts;
+* documentation;
+* CI logs;
+* debug output.
+
+Secrets SHOULD be scoped by:
+
+```text
+host
+service
+purpose
+trust boundary
+```
+
+Every important secret SHOULD have:
+
+```text
+owner
+creation method
+rotation method
+revocation method
+recovery method
+compromise response
+```
+
+---
+
+# 25. Network Engineering
+
+Network configuration must have clear ownership.
+
+Every listening service should have:
+
+```text
+owner
+port
+protocol
+bind address
+purpose
+exposure scope
+authentication
+firewall policy
+```
+
+Firewall policy must be explicit.
+
+Avoid broad rules whose real meaning is:
+
+```text
+everything except interface X
+```
+
+when the intended policy is:
+
+```text
+LAN only
+Tailscale only
+management only
+```
+
+---
+
+# 26. Tailscale and Remote Access
+
+Tailscale is a security/networking boundary, not merely a connectivity tool.
+
+The repository's intended model includes:
+
+```text
+Prague
+ ├── Tailscale
+ ├── tag:infra
+ └── tag:exit-node
+
+Phone
+ └── tag:user
+```
+
+Prague has a deliberate architectural requirement:
+
+```text
+Tailscale MUST remain enabled.
+Prague MUST remain capable of operating as an exit node.
+```
+
+The current working Tailscale ACL is the baseline.
+
+Do not change the ACL merely to modernize syntax.
+
+Any policy migration requires:
+
+* syntax validation;
+* policy validation;
+* client testing;
+* rollback.
+
+---
+
+## 26.1 Prague gateway verification
+
+The gateway must be treated as one tested capability:
+
+```text
+Tailscale
++
+forwarding
++
+NAT
++
+firewall
++
+uplink
++
+DNS
++
+recovery
+```
+
+Required runtime workflows:
+
+```text
+Phone
+→ Tailscale
+→ Prague
+```
+
+and:
+
+```text
+Phone
+→ Tailscale
+→ Prague exit node
+→ Internet
+```
+
+These are separate tests.
+
+---
+
+# 27. Observability Engineering
+
+Important systems must expose enough information to answer:
+
+```text
+Is it working?
+Is it degraded?
+What failed?
+Why did it fail?
+What changed?
+How do I recover?
+```
+
+Observability should cover as appropriate:
+
+```text
+health
+metrics
+logs
+deployment state
+security events
+backup freshness
+gateway state
+rollback state
+```
+
+Observability must respect data classification.
+
+Do not log secrets.
+
+---
+
+# 28. Reliability Engineering
+
+Reliability is designed, not assumed.
+
+For every critical capability identify:
+
+```text
+failure mode
+detection
+retry
+timeout
+fallback
+recovery
+observability
+```
+
+Critical capabilities SHOULD have defined:
+
+```text
+SLO
+RPO
+RTO
+```
+
+where meaningful.
+
+---
+
+# 29. Backup and Recovery Engineering
+
+Backups are not complete merely because a backup command succeeds.
+
+A valid backup program should define:
+
+```text
+what
+where
+encryption
+retention
+verification
+restore procedure
+monitoring
+failure behavior
+```
+
+Recovery must be periodically verified where practical.
+
+Rollback is part of the deployment architecture.
+
+---
+
+# 30. GitOps and Deployment Engineering
+
+Deployment should follow:
+
+```text
+Change
+ ↓
+Tests
+ ↓
+Review
+ ↓
+CI
+ ↓
+Merge
+ ↓
+GitOps reconciliation
+ ↓
+Activation
+ ↓
+Health gate
+ ↓
+Acceptance
+```
+
+Failure:
+
+```text
+Health failure
+ ↓
+Rollback
+ ↓
+Verify
+ ↓
+Alert
+```
+
+---
+
+## 30.1 Deployment privilege
+
+GitOps MUST NOT become a general-purpose root shell.
+
+Preferred model:
+
+```text
+unprivileged reconciler
+        ↓
+validated deployment request
+        ↓
+narrow privileged activation
+        ↓
+root
+```
+
+---
+
+## 30.2 Deployment locking
+
+Concurrent deployment/rollback operations MUST be serialized.
+
+Use an authoritative lock rather than process-name heuristics.
+
+---
+
+## 30.3 Deployment exit codes
+
+Meaning MUST remain unambiguous:
+
+```text
+0 = success
+non-zero = failure
+```
+
+Do not redefine failure as success to make systemd or monitoring quieter.
+
+---
+
+# 31. CI/CD Engineering
+
+CI is a verification system.
+
+It must validate the repository rather than become a hidden deployment
+mechanism.
+
+CI SHOULD cover:
+
+```text
+formatting
+architecture
+security
+unit tests
+integration tests
+host evaluation
+host builds
+dependency checks
+secret scanning
+shell validation
+Go validation
+```
+
+---
+
+## 31.1 Host matrix
+
+All supported hosts must be evaluated appropriately.
+
+Do not validate only the host most commonly used by the developer.
+
+---
+
+## 31.2 CI failure integrity
+
+A failing required gate must fail CI.
+
+Do not conceal failures using:
+
+```text
+|| true
+```
+
+or equivalent unconditional success behavior.
+
+---
+
+# 32. Supply-Chain and Dependency Management
+
+Every important dependency introduces:
+
+```text
+security
+maintenance
+reproducibility
+operational
+license
+```
+
+considerations.
+
+Before adding a dependency:
+
+1. search for existing functionality;
+2. assess maintenance;
+3. assess security;
+4. assess transitive cost;
+5. assess reproducibility;
+6. document why it is needed.
+
+Nix inputs and other external dependencies should remain pinned/reviewable.
+
+Lockfile changes deserve deliberate review.
+
+---
+
+## 32.1 Source-to-deployment provenance
+
+Where practical, preserve:
+
+```text
+Commit SHA
+ ↓
+CI result
+ ↓
+Build
+ ↓
+Artifact
+ ↓
+Deployment
+ ↓
+Generation
+```
+
+A production system should be able to answer:
+
+> Which source revision produced this deployed state?
+
+---
+
+# 33. Performance Engineering
+
+Performance changes must be evidence-based.
+
+Preferred:
+
+```text
+Measure
+ ↓
+Identify bottleneck
+ ↓
+Test
+ ↓
+Change
+ ↓
+Measure
+ ↓
+Compare
+```
+
+Do not optimize based purely on intuition.
+
+Performance work must not compromise:
+
+```text
+security
+correctness
+reliability
+maintainability
+```
+
+---
+
+# 34. Documentation Engineering
+
+Documentation is part of the engineering system.
+
+Documentation MUST accurately describe behavior.
+
+Update documentation when:
+
+* architecture changes;
+* operational procedures change;
+* security assumptions change;
+* deployment behavior changes;
+* recovery behavior changes.
+
+Do not duplicate the same source of truth across multiple documents without
+a clear reason.
+
+---
+
+# 35. Git and Change Management
+
+`main` represents reviewed production-ready state.
+
+Development should normally occur on branches:
 
 ```text
 feature/<name>
@@ -947,762 +1639,623 @@ test/<name>
 docs/<name>
 ```
 
-Changes should move through review before reaching `main`.
+Changes should be:
 
-AI agents must not directly push unreviewed production changes to `main`.
+* focused;
+* reviewable;
+* attributable;
+* reversible where practical.
 
 ---
 
-# 33. Git Safety
+## 35.1 Preserve user work
 
-AI agents must never casually execute destructive operations such as:
+Before modifying:
+
+```bash
+git status --short
+git diff
+```
+
+Never overwrite unrelated changes.
+
+---
+
+## 35.2 Destructive Git operations
+
+Do not casually use:
 
 ```text
 git reset --hard
 git clean -fd
-git checkout -- .
 git restore .
+git checkout -- .
 ```
 
-unless explicitly authorized and the consequences are understood.
-
-Existing user changes must be preserved.
-
-Before significant modifications, inspect:
-
-```bash
-git status
-git diff
-git branch --show-current
-git log -n 10 --oneline
-```
+These require explicit authorization when there is any possibility of
+discarding existing work.
 
 ---
 
-# 34. Commit Standards
+## 35.3 Commit quality
 
-Commits should be:
+Commits should explain intent.
 
-* focused
-* understandable
-* atomic where practical
-* traceable to a purpose
-
-Commit authorship should use:
+Avoid commits that combine unrelated:
 
 ```text
-Willis Ivali <itsivali@outlook.com>
-```
-
-AI agents must not add:
-
-```text
-Co-authored-by:
-Generated by AI
-Created by ChatGPT
-Created by Claude
-```
-
-or similar attribution unless explicitly requested.
-
----
-
-# 35. CI/CD Contract
-
-CI validates the repository.
-
-GitOps performs deployment.
-
-The normal flow is:
-
-```text
-Developer
-   ↓
-Feature Branch
-   ↓
-TDD
-   ↓
-Tests
-   ↓
-Merge Request
-   ↓
-CI
-   ↓
-Review
-   ↓
-main
-   ↓
-GitOps Reconciliation
-   ↓
-Deployment
-```
-
-CI must not silently become a second deployment engine.
-
----
-
-# 36. CI Verification Order
-
-The preferred verification pipeline is:
-
-```text
-Lint
-  ↓
-Architecture
-  ↓
-Unit Tests
-  ↓
-Integration Tests
-  ↓
-Repository Checks
-  ↓
-Build
-```
-
-Deployment is handled by the GitOps mechanism.
-
----
-
-# 37. Required Verification
-
-Where applicable, run:
-
-```bash
-nix fmt -- --check
-```
-
-```bash
-nix flake check --no-build
-```
-
-```bash
-go build ./...
-```
-
-```bash
-go test ./...
-```
-
-```bash
-go vet ./...
-```
-
-```bash
-~/go/bin/golangci-lint run ./... --timeout=5m
-```
-
-```bash
-bash -n scripts/*.sh
-```
-
-```bash
-go test ./internal/architecture/... -v
-```
-
-```bash
-./ci/check-architecture
-```
-
-The exact verification set may vary according to the files changed.
-
----
-
-# 38. Verification Integrity
-
-Never report:
-
-```text
-Tests pass
-```
-
-unless the tests were actually run.
-
-Instead, report:
-
-```text
-go test ./...
-PASS
-```
-
-or:
-
-```text
-Not run — environment unavailable.
-```
-
-Never infer successful verification.
-
-Never fabricate:
-
-* command output
-* CI status
-* test results
-* build results
-* deployment results
-* security scan results
-
----
-
-# 39. Documentation Standards
-
-Documentation must describe the current system.
-
-Important documentation includes:
-
-* `README.md`
-* `AGENTS.md`
-* `ENGINEERING.md`
-* `CONTRIBUTING.md`
-* `ARCHITECTURE.md`
-* `ARCHITECTURE_AUDIT.md`
-* `ARCHITECTURE_PROGRESS.md`
-* `CONTEXT_HANDOFF.md`
-* `IVALi_FLOW.md`
-* OpenCode documentation
-
-Documentation must be updated when behavior or architecture changes materially.
-
----
-
-# 40. AI Documentation Continuity
-
-AI agents must leave enough information for another AI agent to continue.
-
-The handoff must record:
-
-* current objective
-* completed work
-* active work
-* tests performed
-* tests not performed
-* failures
-* blockers
-* architectural decisions
-* files changed
-* next recommended action
-
-`CONTEXT_HANDOFF.md` is the primary continuity mechanism between LLM sessions.
-
----
-
-# 41. OpenCode Integration
-
-OpenCode and other AI development tools must operate under the same repository rules.
-
-AI tooling must respect:
-
-* `AGENTS.md`
-* `ENGINEERING.md`
-* architecture manifests
-* TDD
-* security rules
-* Git workflow
-* verification requirements
-* handoff requirements
-
-AI tooling does not receive permission to bypass repository standards simply because it is automated.
-
----
-
-# 42. Dependency Management
-
-Dependencies must have a reason.
-
-Before introducing a dependency, consider:
-
-* security
-* maintenance
-* license
-* size
-* transitive dependencies
-* reproducibility
-* operational complexity
-* whether existing functionality already solves the problem
-
-Avoid dependencies for trivial functionality that can be implemented safely using the standard library.
-
----
-
-# 43. Performance
-
-Performance optimization must be evidence-driven.
-
-Do not optimize based on assumptions.
-
-Preferred sequence:
-
-```text
-Measure
- ↓
-Identify bottleneck
- ↓
-Write regression/performance test where appropriate
- ↓
-Change implementation
- ↓
-Measure again
-```
-
-Performance improvements must not compromise:
-
-* security
-* correctness
-* reliability
-* maintainability
-
-without explicit justification.
-
----
-
-# 44. Dead Code
-
-Dead code should not accumulate.
-
-Unused:
-
-* functions
-* packages
-* modules
-* configuration
-* scripts
-* dependencies
-* documentation
-
-should be removed when confidently identified.
-
-Do not remove code merely because an AI agent does not immediately understand its purpose.
-
-Investigate first.
-
----
-
-# 45. TODO and Placeholder Policy
-
-Do not introduce vague placeholders such as:
-
-```text
-TODO: implement later
-FIXME
-stub
-temporary hack
-```
-
-without a concrete reason.
-
-When deferred work is necessary, document:
-
-```text
-What:
-Why:
-Impact:
-Owner:
-Follow-up:
-```
-
-Do not allow temporary architecture to silently become permanent architecture.
-
----
-
-# 46. Refactoring Rules
-
-Refactoring should be driven by evidence.
-
-Before refactoring:
-
-1. Understand current behavior.
-2. Identify existing tests.
-3. Add missing tests using TDD.
-4. Confirm tests pass.
-5. Refactor.
-6. Confirm tests remain green.
-
-Large refactors should be broken into smaller verified steps.
-
-Avoid mixing:
-
-```text
-feature implementation
-+
-unrelated refactor
-+
-formatting changes
-+
+feature
+refactor
+security change
 dependency migration
+formatting
 ```
 
-unless there is a compelling reason.
+without necessity.
 
 ---
 
-# 47. Definition of Done
+# 36. AI/LLM Engineering Contract
 
-A feature is complete only when all applicable requirements are satisfied.
+AI agents are engineering contributors.
 
-### Requirements
+They are not architectural authorities.
 
-* [ ] Requirement is understood.
-* [ ] Acceptance criteria are defined.
-* [ ] Scope is clear.
+AI agents MUST:
 
-### TDD
-
-* [ ] Test was written first.
-* [ ] Test initially failed.
-* [ ] Failure was understood.
-* [ ] Minimum implementation was written.
-* [ ] Test passed.
-* [ ] Implementation was refactored where appropriate.
-* [ ] Relevant regression tests exist.
-
-### Architecture
-
-* [ ] Correct domain owns the functionality.
-* [ ] Dependencies respect architecture.
-* [ ] State ownership is explicit.
-* [ ] Architecture tests pass where applicable.
-
-### Security
-
-* [ ] Secrets are protected.
-* [ ] Permissions follow least privilege.
-* [ ] Security behavior is tested where applicable.
-* [ ] No sensitive data is unnecessarily logged.
-
-### Reliability
-
-* [ ] Failure behavior is defined.
-* [ ] Recovery behavior is defined where required.
-* [ ] Observability exists where required.
-
-### Verification
-
-* [ ] Relevant unit tests pass.
-* [ ] Relevant integration tests pass.
-* [ ] Relevant E2E tests pass.
-* [ ] Nix checks pass where applicable.
-* [ ] Go checks pass where applicable.
-* [ ] Architecture checks pass.
-* [ ] Shell validation passes where applicable.
-
-### Documentation
-
-* [ ] Documentation reflects the resulting behavior.
-* [ ] Architecture documentation is updated if required.
-* [ ] `CONTEXT_HANDOFF.md` is updated when session continuity requires it.
+* inspect before changing;
+* follow repository rules;
+* follow TDD;
+* preserve existing changes;
+* respect architecture;
+* run relevant verification;
+* report actual results;
+* document meaningful changes;
+* maintain session continuity.
 
 ---
 
-# 48. AI Session Workflow
+## 36.1 AI agents MUST NOT
 
-Every AI session should follow this lifecycle:
+AI agents MUST NOT:
+
+* fabricate verification;
+* fabricate runtime results;
+* invent files;
+* invent Nix options;
+* invent desktop IDs;
+* silently alter architecture policy;
+* weaken tests to obtain GREEN;
+* remove security controls without justification;
+* add arbitrary root execution;
+* add plaintext secrets;
+* bypass Git workflow;
+* discard user changes;
+* silently expand scope;
+* claim a deployment succeeded when it was not verified.
+
+---
+
+# 37. AI Session Workflow
+
+Every significant AI session should follow:
 
 ```text
 BOOTSTRAP
-    ↓
+   ↓
 INSPECT
-    ↓
+   ↓
 UNDERSTAND
-    ↓
+   ↓
+CLASSIFY RISK
+   ↓
 PLAN
-    ↓
-WRITE TEST
-    ↓
+   ↓
+WRITE VERIFICATION
+   ↓
 RED
-    ↓
+   ↓
 IMPLEMENT
-    ↓
+   ↓
 GREEN
-    ↓
+   ↓
 REFACTOR
-    ↓
+   ↓
 VERIFY
-    ↓
+   ↓
 DOCUMENT
-    ↓
+   ↓
 HANDOFF
 ```
 
-## Bootstrap
-
-Read the repository's governing documents before modifying code.
-
-At minimum:
+At bootstrap, read the relevant governing files, especially:
 
 ```text
 AGENTS.md
 ENGINEERING.md
-CONTRIBUTING.md
 ARCHITECTURE.md
 ARCHITECTURE_AUDIT.md
 ARCHITECTURE_PROGRESS.md
+CONTRIBUTING.md
 IVALi_FLOW.md
 README.md
 CONTEXT_HANDOFF.md
 ```
 
-## Inspect
-
-Inspect:
-
-```bash
-git status --short
-git branch --show-current
-git log -n 10 --oneline
-```
-
-Understand existing changes before touching files.
-
 ---
 
-# 49. AI Scope Control
+# 38. AI Change Restrictions
 
-An AI agent must not silently expand the task.
-
-If asked:
+An AI agent must not silently expand:
 
 ```text
-Implement notification retries.
+requested feature
 ```
 
-Do not automatically:
+into:
 
-* redesign the entire notification system
-* replace the logging framework
-* migrate databases
-* rewrite unrelated services
-* change the deployment architecture
+```text
+unrelated architecture migration
+dependency rewrite
+database migration
+security redesign
+platform replacement
+```
 
-unless those changes are necessary and justified.
+If broader work becomes necessary:
 
-If broader architectural work becomes necessary:
-
-1. identify it
-2. explain it
-3. isolate it
-4. obtain appropriate authorization
-
----
-
-# 50. AI Change Discipline
-
-Before modifying a file, understand:
-
-* why it exists
-* who owns it
-* what depends on it
-* what tests cover it
-* what architecture rules apply
-* whether another implementation already exists
-
-Search before creating.
-
-Reuse before duplicating.
-
-Extend before replacing.
-
-Delete only with evidence.
+```text
+identify
+→ isolate
+→ justify
+→ verify
+```
 
 ---
 
-# 51. Git Diff Review
+## 38.1 Search before creating
 
-Before considering work complete:
+Before creating a new:
 
-```bash
-git diff --stat
+* service;
+* module;
+* package;
+* helper;
+* script;
+* abstraction;
+
+search for existing implementations.
+
+---
+
+## 38.2 Reuse before duplicating
+
+Preferred order:
+
+```text
+reuse
+→ extend
+→ refactor
+→ replace
+→ create new
+```
+
+A new implementation requires justification when an existing capability is
+available.
+
+---
+
+## 38.3 AI verification truthfulness
+
+AI output must explicitly distinguish:
+
+```text
+EXECUTED
+```
+
+from:
+
+```text
+INFERRED
 ```
 
 and:
 
-```bash
-git diff
+```text
+UNVERIFIED
 ```
 
-Review for:
-
-* accidental changes
-* unrelated modifications
-* debugging code
-* secrets
-* generated files
-* weakened tests
-* architecture violations
-* formatting noise
-* unintended dependency changes
+An AI agent must never infer runtime success from a static build.
 
 ---
 
-# 52. TDD and AI: Non-Negotiable Rules
+# 39. Emergency Changes
 
-For AI-assisted development, the following rules are absolute unless an explicit exception applies:
+Emergency work is permitted when required to:
 
-```text
-DO NOT:
+* restore service;
+* preserve data;
+* prevent active security compromise;
+* recover access;
+* prevent imminent damage.
 
-implement first
-then write tests
-```
+Emergency work may temporarily bypass ordinary sequencing.
 
-```text
-DO:
+It MUST still:
 
-write test
-→ run test
-→ observe failure
-→ implement
-→ run test
-→ observe success
-→ refactor
-```
+1. minimize change scope;
+2. preserve evidence;
+3. document what changed;
+4. verify immediate outcome;
+5. create follow-up tests;
+6. perform architecture review afterward.
 
-AI agents must not:
-
-* fake a RED phase
-* fake a GREEN phase
-* modify tests to conceal implementation defects
-* remove assertions to make tests pass
-* reduce test coverage merely to simplify implementation
-* create meaningless tests
-* test private implementation details unnecessarily
-* claim a test was executed when it was not
+Emergency status is not permission for permanent process bypass.
 
 ---
 
-# 53. Exceptions to TDD
+# 40. Refactoring Standards
 
-TDD is the default for production behavior.
+Refactoring must be behavior-preserving unless the behavior change is
+intentional.
 
-Exceptions may include:
-
-* documentation-only changes
-* formatting
-* generated code
-* dependency metadata
-* emergency recovery
-* exploratory prototypes
-* unavoidable infrastructure bootstrapping
-
-Exceptions must be explicit.
-
-A prototype must not silently become production code without subsequently receiving proper tests.
-
----
-
-# 54. Engineering Decision Record
-
-Significant architectural decisions should record:
+Before refactoring:
 
 ```text
-Context:
-Decision:
-Alternatives:
-Reason:
-Consequences:
-```
-
-Decisions should favor:
-
-* security
-* correctness
-* simplicity
-* reproducibility
-* maintainability
-
----
-
-# 55. Repository Evolution
-
-The repository should evolve incrementally.
-
-Preferred:
-
-```text
-small change
+understand
 → test
+→ baseline
+→ refactor
 → verify
-→ merge
-→ observe
-→ next change
 ```
 
-Avoid giant unverified transformations.
+Large refactors should be split into smaller verified changes.
 
-The objective is to maintain a repository that remains understandable and recoverable at every stage.
+Avoid combining unrelated feature and refactor work.
 
 ---
 
-# 56. Final Engineering Contract
+# 41. Dead Code and Deprecation
 
-Every contributor and every AI agent working on this repository accepts the following principles:
+Dead code should be removed when confidently identified.
+
+Before removal verify:
+
+```text
+no consumers
+no dynamic references
+no generated dependency
+no documented required behavior
+```
+
+Deprecated functionality should have:
+
+```text
+reason
+replacement
+migration path
+removal condition
+```
+
+Do not let compatibility code become permanent without deliberate approval.
+
+---
+
+# 42. TODO and Temporary Work
+
+Temporary work must identify:
+
+```text
+What
+Why
+Risk
+Owner
+Follow-up
+Removal condition
+```
+
+Bad:
+
+```text
+TODO: fix later
+```
+
+Better:
+
+```text
+TODO:
+Replace temporary deployment compatibility layer with the deployment service
+after ARC-017 is complete.
+Owner: Automation
+Removal condition: all consumers migrated
+```
+
+---
+
+# 43. Engineering Decision Records
+
+Significant engineering decisions should be documented.
+
+Typical ADR subjects:
+
+```text
+architecture
+security
+deployment
+recovery
+networking
+major dependency choice
+data storage
+service-boundary changes
+```
+
+Decision records should contain:
+
+```text
+Context
+Decision
+Alternatives
+Reason
+Consequences
+Security implications
+Operational implications
+Migration implications
+```
+
+ADRs explain decisions.
+
+They do not replace current implementation documentation.
+
+---
+
+# 44. Definition of Done
+
+A material change is complete only when applicable criteria are satisfied.
+
+## Requirement
+
+* [ ] Requirement understood.
+* [ ] Scope defined.
+* [ ] Acceptance criteria defined.
+
+## Architecture
+
+* [ ] Correct domain identified.
+* [ ] Capability ownership is correct.
+* [ ] Dependencies are valid.
+* [ ] State ownership is valid.
+* [ ] Architecture policy remains satisfied.
+* [ ] Required manifests updated.
+
+## TDD
+
+* [ ] Test written first where applicable.
+* [ ] RED demonstrated where meaningful.
+* [ ] Failure understood.
+* [ ] Minimum implementation completed.
+* [ ] GREEN demonstrated.
+* [ ] Refactoring completed where useful.
+* [ ] Regression coverage exists.
+
+## Security
+
+* [ ] Least privilege considered.
+* [ ] Secret handling reviewed.
+* [ ] Network exposure reviewed.
+* [ ] Filesystem access reviewed.
+* [ ] Negative security behavior tested where appropriate.
+
+## Reliability
+
+* [ ] Failure behavior understood.
+* [ ] Recovery behavior defined where required.
+* [ ] Rollback considered.
+* [ ] Observability exists where required.
+
+## Verification
+
+* [ ] Relevant tests pass.
+* [ ] Relevant architecture tests pass.
+* [ ] Nix evaluation passes.
+* [ ] Build passes where required.
+* [ ] Runtime behavior verified where required.
+* [ ] No required verification was silently skipped.
+
+## Git
+
+* [ ] Existing user work preserved.
+* [ ] Diff reviewed.
+* [ ] No unrelated changes remain.
+* [ ] Change follows repository workflow.
+
+## Documentation
+
+* [ ] Documentation updated where behavior changed.
+* [ ] ADR updated where required.
+* [ ] Handoff updated where session continuity requires it.
+
+---
+
+# 45. Engineering Review Checklist
+
+Before merge, reviewers should ask:
+
+## Correctness
+
+```text
+Does it solve the actual problem?
+```
+
+## TDD
+
+```text
+Does the test prove the behavior?
+Was the failure understood?
+```
+
+## Architecture
+
+```text
+Is the ownership correct?
+Are dependencies correct?
+Did coupling increase?
+```
+
+## Security
+
+```text
+Did privilege increase?
+Did exposure increase?
+Were secrets handled correctly?
+```
+
+## Reliability
+
+```text
+What happens when it fails?
+Can the system recover?
+```
+
+## Observability
+
+```text
+Can an operator tell whether it works?
+Can they diagnose failure?
+```
+
+## Reproducibility
+
+```text
+Can another machine/CI runner reproduce the result?
+```
+
+## Maintainability
+
+```text
+Did this make the repository simpler or more complex?
+Is the complexity justified?
+```
+
+## AI safety
+
+```text
+Did the agent change only what was necessary?
+Were existing tests preserved?
+Was verification truthful?
+```
+
+---
+
+# 46. Final Engineering Contract
+
+Every contributor and every AI agent working on this repository operates under
+the following contract:
 
 > **Understand before changing.**
 
-> **Test before implementing.**
+> **Search before creating.**
 
-> **Make the test fail first.**
+> **Test before implementing behavior.**
 
-> **Implement the minimum required behavior.**
+> **Make the test fail first where meaningful.**
+
+> **Implement the minimum correct behavior.**
 
 > **Make the test pass.**
 
-> **Refactor while keeping tests green.**
+> **Refactor while preserving behavior.**
 
-> **Protect architectural boundaries.**
+> **Protect architecture.**
 
-> **Protect secrets and system state.**
+> **Protect secrets.**
 
-> **Verify actual behavior rather than assuming it.**
+> **Minimize privilege.**
+
+> **Make failures visible.**
+
+> **Verify actual runtime behavior.**
 
 > **Preserve existing work.**
 
-> **Document meaningful decisions.**
+> **Document important decisions.**
 
-> **Leave the repository in a state another engineer—or another LLM—can understand and continue.**
+> **Keep changes reversible where practical.**
 
-The fundamental development loop is:
+> **Never fabricate evidence.**
+
+> **Leave the repository understandable to the next engineer or AI agent.**
+
+The fundamental engineering loop is:
 
 ```text
-                 ┌───────────────┐
-                 │   Requirement │
-                 └───────┬───────┘
-                         ↓
-                 ┌───────────────┐
-                 │   Write Test  │
-                 └───────┬───────┘
-                         ↓
-                 ┌───────────────┐
-                 │      RED      │
-                 │ Test Fails    │
-                 └───────┬───────┘
-                         ↓
-                 ┌───────────────┐
-                 │ Implement     │
-                 │ Minimum Code  │
-                 └───────┬───────┘
-                         ↓
-                 ┌───────────────┐
-                 │     GREEN     │
-                 │ Test Passes   │
-                 └───────┬───────┘
-                         ↓
-                 ┌───────────────┐
-                 │   REFACTOR    │
-                 └───────┬───────┘
-                         ↓
-                 ┌───────────────┐
-                 │   VERIFY      │
-                 └───────┬───────┘
-                         ↓
-                 ┌───────────────┐
-                 │   DOCUMENT    │
-                 └───────┬───────┘
-                         ↓
-                    Next Behavior
+                    REQUIREMENT
+                         │
+                         ▼
+                  UNDERSTAND SYSTEM
+                         │
+                         ▼
+                  DEFINE BEHAVIOR
+                         │
+                         ▼
+                    WRITE TEST
+                         │
+                         ▼
+                       RED
+                         │
+                         ▼
+                 MINIMUM IMPLEMENTATION
+                         │
+                         ▼
+                      GREEN
+                         │
+                         ▼
+                     REFACTOR
+                         │
+                         ▼
+                    VERIFY
+                         │
+                         ▼
+                    DOCUMENT
+                         │
+                         ▼
+                      REVIEW
+                         │
+                         ▼
+                     DELIVER
+                         │
+                         ▼
+                     OBSERVE
+                         │
+                         ▼
+                   IMPROVE SAFELY
 ```
 
-**The repository is not considered engineered merely because the code works.**
+The repository is not considered engineered merely because:
 
-It is engineered when the behavior is specified, tested, reproducible, secure, observable, architecturally sound, and maintainable.
+```text
+it builds
+```
+
+It is engineered when:
+
+```text
+behavior is specified
++
+tests protect behavior
++
+architecture is respected
++
+security boundaries are explicit
++
+the result is reproducible
++
+failures are observable
++
+recovery is understood
++
+verification is truthful
++
+the change is maintainable
+```
 
 **Test first. Build second. Refactor third. Verify always.**
-

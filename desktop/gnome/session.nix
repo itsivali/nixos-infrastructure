@@ -95,6 +95,7 @@
       gnome-session
       mutter
       gnome-control-center
+      gnome-tweaks
       nautilus
       gnome-console
       gnome-text-editor

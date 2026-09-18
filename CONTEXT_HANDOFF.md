@@ -1,9 +1,8 @@
-````markdown
-# Context Handoff — GNOME Workstation Remediation
+# Context Handoff — GNOME Workstation Remediation & Integration
 
 ## 1. Mission
 
-Transform the existing NixOS GNOME workstation configuration into a **lean, polished, GNOME-native, reliable, declarative and workflow-focused desktop**.
+Bring the existing NixOS GNOME workstation implementation to a **polished, GNOME-native, reliable, declarative, secure, observable, and workflow-focused desktop** without unnecessarily redesigning the repository.
 
 Primary host:
 
@@ -17,7 +16,7 @@ Shared GNOME modules may also affect:
 tuscany
 ```
 
-but changes must remain appropriately scoped.
+but all changes must be correctly scoped so that Prague-specific behavior does not accidentally become global host behavior.
 
 The target desktop is:
 
@@ -31,14 +30,15 @@ GNOME Shell
 + curated productivity applications
 + Microsoft Edge PWAs for Microsoft 365
 + LAN-first LocalSend
-+ Tailscale-secured remote maintenance
-+ automatic tmux SSH sessions
++ Tailscale-secured remote administration
++ permanent Prague exit-node capability
++ automatic tmux SSH maintenance sessions
 + Apostrophe for Markdown
 ```
 
-The desktop must feel like **GNOME**, not a recreation of KDE, XFCE, Windows, or another desktop environment.
+The desktop must feel like **GNOME**, not like a recreation of KDE, XFCE, Windows, or another desktop environment.
 
-The philosophy is:
+The design philosophy is:
 
 ```text
 GNOME-native foundation
@@ -53,41 +53,164 @@ secure networking
 +
 persistent remote maintenance
 +
+explicit host capabilities
++
 minimal configuration duplication
++
+testable invariants
 ```
 
 ---
 
-# 2. Critical Context
+# 2. Critical Repository Context
 
-The repository has already undergone a KDE → GNOME migration.
+The repository has already undergone a:
 
-The current GNOME infrastructure exists and has previously passed static/build checks.
+```text
+KDE → GNOME
+```
 
-The current task is **not to rebuild GNOME from scratch**.
+migration.
+
+The current GNOME infrastructure exists and has previously passed static/build validation.
+
+This task is **not a GNOME rewrite**.
 
 It is a remediation and integration task covering:
 
 ```text
 visual consistency
 application identities
-Edge PWAs for Microsoft 365
+Microsoft 365 Edge PWAs
 LocalSend
-Tailscale performance
+Tailscale behavior/performance
 GNOME extensions
 favorites
 Markdown handling
 SSH/tmux
 desktop cleanup
+runtime verification
+security boundaries
 ```
 
 Do not flatten or redesign the repository architecture unnecessarily.
 
+Preserve working behavior unless a change is required by evidence.
+
 ---
 
-# 3. Repository Architecture
+# 3. Relationship to the Master Infrastructure Prompt
 
-The repository follows a modular NixOS/Home Manager design with automatic module importing.
+This workstation remediation is one workstream within the broader NixOS infrastructure remediation.
+
+All work must follow the master engineering rules:
+
+```text
+AUDIT
+↓
+define invariant
+↓
+RED
+write/improve verification
+↓
+GREEN
+minimum implementation
+↓
+REFACTOR
+remove obsolete/duplicate configuration
+↓
+VERIFY
+static + runtime validation
+```
+
+Do not jump directly into editing files.
+
+Do not treat:
+
+```bash
+nix eval
+```
+
+as proof that the desktop actually works.
+
+Configuration can evaluate successfully while still producing:
+
+```text
+wrong desktop IDs
+wrong icons
+broken MIME associations
+broken PWA identity
+blocked firewall traffic
+broken Tailscale routing
+broken SSH/tmux behavior
+broken GNOME extension behavior
+```
+
+Static correctness and runtime correctness must be treated separately.
+
+---
+
+# 4. Host Scoping Rules
+
+## Prague
+
+Prague is the primary target and has these deliberate capabilities:
+
+```text
+GNOME workstation
+Tailscale node
+Tailscale exit node
+remote administration endpoint
+GNOME Remote Desktop endpoint
+LocalSend endpoint
+GitOps/control-plane workstation
+```
+
+### Prague Tailscale requirement
+
+This is an architectural invariant:
+
+```text
+Tailscale MUST remain enabled on Prague.
+
+Prague MUST remain connected to the tailnet.
+
+Prague MUST advertise itself as an exit node.
+
+Prague MUST remain capable of routing approved client traffic
+to the Internet.
+
+Prague's exit-node capability must survive reboot and ordinary
+network transitions.
+```
+
+Do **not** disable Prague's exit-node capability merely to solve unrelated networking problems.
+
+Do **not** migrate the working Tailscale ACL as part of this GNOME task.
+
+The currently working ACL is the authoritative baseline.
+
+---
+
+## Tuscany
+
+Tuscany may reuse GNOME modules, but must not accidentally inherit Prague-specific capabilities such as:
+
+```text
+exit-node functionality
+Prague-specific network behavior
+Prague-specific hardware configuration
+Prague-only services
+Prague-only secrets
+```
+
+Changes that affect Tuscany must be intentional and justified.
+
+---
+
+# 5. Repository Architecture
+
+The repository uses modular NixOS/Home Manager configuration with automatic module discovery.
 
 Inspect first:
 
@@ -98,17 +221,17 @@ git branch --show-current
 git log -5 --oneline --decorate
 ```
 
-Inspect the module importer:
+Inspect automatic module discovery:
 
 ```bash
 sed -n '1,240p' lib/auto-imports.nix
 ```
 
-Respect the existing automatic-import conventions.
+Respect the existing auto-import conventions.
 
-Do not manually import modules that are already automatically discovered.
+Do not add manual imports for modules already discovered automatically.
 
-Read the repository's architectural guidance before modifying anything:
+Read relevant repository architectural guidance before modifying anything:
 
 ```text
 AGENTS.md
@@ -130,182 +253,35 @@ SUMMARY.md
 
 ---
 
-# 4. Engineering Method
+# 6. Engineering Classification Rules
 
-Use strict TDD/verification-driven development.
-
-For every significant subsystem:
+Every significant finding must be classified as one of:
 
 ```text
-AUDIT
-↓
-RED
-write/define the verification
-↓
-GREEN
-implement the minimum required change
-↓
-REFACTOR
-remove duplication/obsolete configuration
-↓
-VERIFY
-runtime + static validation
+CONFIRMED DEFECT
+DESIGN RISK
+INCOMPLETE IMPLEMENTATION
+ASSUMPTION / REQUIRES RUNTIME VERIFICATION
 ```
 
-Do not declare success simply because:
+Never present an assumption as a confirmed defect.
 
-```bash
-nix eval
-```
-
-passes.
-
-A configuration may evaluate while still having:
+For each meaningful change record:
 
 ```text
-broken desktop entries
-wrong icons
-bad MIME associations
-blocked firewall traffic
-DERP networking
-broken PWA identity
-unsafe SSH behavior
+reason
+expected behavior
+actual behavior
+risk
+test strategy
+rollback/recovery implications
 ```
-
-All relevant behavior must be tested.
 
 ---
 
-# 5. NON-NEGOTIABLE TARGET STATE
+# 7. PHASE 0 — Repository and Desktop Architecture Audit
 
-The final `prague` desktop must have:
-
-### Visual foundation
-
-```text
-GTK theme     → GNOME/Adwaita
-Icon theme    → GNOME/Adwaita/default
-Cursor        → GNOME/Adwaita/default
-```
-
-### Favorites
-
-Exactly:
-
-```text
-Firefox
-Nautilus
-LocalSend
-Zed
-LibreOffice
-Notion
-GNOME Text Editor
-Apostrophe
-Obsidian
-Zoom
-```
-
-in that order.
-
-The Microsoft 365 PWAs (Outlook, Word, Excel, PowerPoint, Teams, OneDrive) appear as
-independent launchers installed through Edge. They do not belong in the pinned Dock
-favorites unless explicitly added later by the user.
-
-### GNOME extensions
-
-Exactly this curated set unless a compatibility problem forces a documented adjustment:
-
-```text
-Dash to Dock
-Tiling Assistant
-Clipboard Indicator
-Caffeine
-Vitals
-Just Perfection
-```
-
-### Markdown
-
-```text
-Markdown → Apostrophe
-Plain text → GNOME Text Editor
-```
-
-### Screenshot
-
-```text
-GNOME built-in screenshot functionality
-```
-
-No separately installed screenshot application.
-
-### LocalSend
-
-```text
-same LAN
-↓
-LocalSend discovery
-↓
-TCP/UDP 53317
-```
-
-Do not unnecessarily expose LocalSend through Tailscale or the public internet.
-
-### Remote administration
-
-```text
-Phone
-↓
-Tailscale
-↓
-SSH
-↓
-interactive shell
-↓
-tmux "maintenance"
-```
-
-### Microsoft 365 PWAs
-
-```text
-Outlook
-Word
-Excel
-PowerPoint
-Teams
-OneDrive
-```
-
-Each must have:
-
-```text
-own name
-own desktop entry
-own application icon
-own launcher identity
-own window identity
-```
-
-and must not appear as generic Edge or generic browser.
-
-PWAs are installed and managed through Microsoft Edge's native PWA mechanism.
-Firefox remains the primary general-purpose browser and is unaffected.
-
----
-
-# 6. Explicit Phase-by-Phase Execution Plan
-
-Do the implementation in the following phases.
-
-Do not skip directly to editing files.
-
----
-
-# PHASE 0 — Repository and Architecture Audit
-
-## Objective
-
-Understand exactly what is currently active before changing anything.
+Before editing anything, build an inventory.
 
 Run:
 
@@ -315,7 +291,7 @@ git branch --show-current
 git log -5 --oneline --decorate
 ```
 
-Then inventory:
+Then:
 
 ```bash
 find . -type f | sort
@@ -337,7 +313,7 @@ rg -n -i \
   .
 ```
 
-Network audit:
+Networking audit:
 
 ```bash
 rg -n \
@@ -369,7 +345,7 @@ rg -n \
   .
 ```
 
-PWA residue audit — search for any remaining Firefox PWA configuration that must be removed:
+Firefox PWA audit:
 
 ```bash
 rg -n -i \
@@ -377,33 +353,23 @@ rg -n -i \
   .
 ```
 
-## Exit criteria
-
-Do not begin implementation until you can identify:
-
-```text
-current GNOME modules
-current package ownership
-current theme ownership
-current Edge installation (if any)
-current PWA configuration (Edge or Firefox-based)
-current LocalSend firewall implementation
-current Tailscale implementation
-current shell/SSH implementation
-current favorites
-current MIME configuration
-any residual firefoxpwa / PWAsForFirefox configuration to remove
-```
-
 ---
 
-# PHASE 1 — GNOME Visual System Cleanup
+# 8. PHASE 1 — GNOME Visual Baseline
 
 ## Objective
 
-Remove the old third-party cursor/icon system and restore GNOME-native visuals.
+Return the GNOME desktop to a consistent GNOME-native visual baseline.
 
-Remove all use of:
+Target:
+
+```text
+GTK theme   → GNOME/Adwaita
+icons       → GNOME/Adwaita/default
+cursor      → GNOME/Adwaita/default
+```
+
+Remove all remaining use of:
 
 ```text
 catppuccin-cursors.mochaMauve
@@ -422,36 +388,34 @@ Remove obsolete:
 
 ```text
 cursor packages
-cursor dconf overrides
+cursor-specific dconf overrides
 XCURSOR_THEME
 XCURSOR_SIZE
 manual cursor overrides
 ```
 
-where those settings only exist for the old Catppuccin cursor.
+where those settings only exist for the former Catppuccin cursor implementation.
 
-Remove Tela as the desktop-wide icon theme:
+Remove Tela as the system-wide GNOME icon theme:
 
 ```bash
 rg -n -i 'tela|icon-theme'
 ```
 
-Do not replace it with another third-party icon pack.
+Do not replace it with another third-party desktop-wide icon theme.
 
-The desired baseline is GNOME/Adwaita.
-
-Audit all overlapping configuration in:
+Audit overlapping ownership in:
 
 ```text
 desktop/common/theme.nix
 home/gnome/desktop.nix
 home/theming.nix
-environment variables
 dconf
-GTK settings
+environment variables
+GTK configuration
 ```
 
-There must be one intentional owner for:
+There must be one deliberate owner for:
 
 ```text
 GTK appearance
@@ -459,9 +423,9 @@ icon appearance
 cursor appearance
 ```
 
-## Exit criteria
+## Verification
 
-Verify after build/runtime:
+Run:
 
 ```bash
 gsettings get org.gnome.desktop.interface gtk-theme
@@ -470,17 +434,21 @@ gsettings get org.gnome.desktop.interface cursor-theme
 gsettings get org.gnome.desktop.interface cursor-size
 ```
 
-No Catppuccin cursor dependency remains.
+Exit criteria:
 
-No Tela desktop-wide icon dependency remains.
+```text
+no Catppuccin cursor configuration
+no Tela desktop-wide icon theme
+GNOME-native appearance is consistent
+```
 
 ---
 
-# PHASE 2 — GNOME Base Applications and Desktop Identity
+# 9. PHASE 2 — GNOME Application Foundation
 
 ## Objective
 
-Make the application layer internally consistent.
+Make the base application layer coherent and GNOME-native.
 
 Prefer:
 
@@ -490,15 +458,13 @@ Nautilus
 GNOME Text Editor
 ```
 
-as the basic GNOME application layer.
-
 Remove:
 
 ```text
 gnome-terminal
 ```
 
-if it is only being used as the terminal.
+if it exists solely as the terminal.
 
 Remove:
 
@@ -508,15 +474,15 @@ gnome-screenshot
 
 completely.
 
-Do not install another screenshot application.
+Do not install a replacement screenshot application.
 
-Preserve GNOME's built-in screenshot/keybinding functionality.
+Preserve GNOME's built-in screenshot functionality.
 
-Install/ensure:
+Ensure required applications are supplied through the repository's normal package ownership model:
 
 ```text
 Firefox
-microsoft-edge
+Microsoft Edge
 LocalSend
 Zed
 LibreOffice
@@ -526,15 +492,13 @@ Obsidian
 Zoom
 ```
 
-through the repository's established package ownership mechanism.
+Do not unnecessarily duplicate packages between NixOS and Home Manager.
 
-`microsoft-edge` is available in nixpkgs and must be declared in the appropriate NixOS
-or Home Manager package list for `prague`. Do not declare it for `tuscany` unless that
-host requires it.
+Scope Microsoft Edge appropriately to Prague unless Tuscany explicitly requires it.
 
-Do not duplicate packages between NixOS and Home Manager unnecessarily.
+---
 
-## Desktop ID rule
+# 10. Desktop Entry Identity
 
 Never assume:
 
@@ -542,160 +506,109 @@ Never assume:
 package name == desktop file ID
 ```
 
-Inspect actual desktop files:
+Inspect the actual desktop environment:
 
 ```bash
 find /run/current-system/sw/share/applications \
      -type f -name '*.desktop' | sort
 ```
 
-and relevant per-user locations:
+and:
 
 ```bash
 find ~/.local/share/applications \
      -type f -name '*.desktop' 2>/dev/null | sort
 ```
 
-Validate launchers with:
+Validate relevant entries:
 
 ```bash
-desktop-file-validate <file>
+desktop-file-validate <desktop-file>
 ```
 
-## Exit criteria
+All configured launcher references must point to real desktop entries.
 
-Every favorite and MIME handler points to an actual desktop entry.
-
-No stale references remain to:
-
-```text
-Evolution
-GNOME Terminal
-gnome-screenshot
-old KDE applications
-old firefoxpwa launchers
-old webapp launchers
-```
+Do not invent application IDs.
 
 ---
 
-# PHASE 3 — GNOME Favorites
+# 11. PHASE 3 — GNOME Favorites
 
-## Objective
-
-Set one exact favorite list.
-
-Target order:
+The required favorite list is exactly:
 
 ```text
-1. Firefox
-2. Nautilus
-3. LocalSend
-4. Zed
-5. LibreOffice
-6. Notion
-7. GNOME Text Editor
-8. Apostrophe
-9. Obsidian
-10. Zoom
+Firefox
+Nautilus
+LocalSend
+Zed
+LibreOffice
+Notion
+GNOME Text Editor
+Apostrophe
+Obsidian
+Zoom
 ```
 
-Implement through the repository's existing dconf/Home Manager architecture.
+in that order.
 
-Do not hard-code unverified desktop IDs.
+Microsoft 365 Edge PWAs:
 
-Discover each ID from the built desktop environment.
-
-Then configure:
-
-```nix
-favorite-apps = [
-  "<verified-firefox-id>"
-  "<verified-nautilus-id>"
-  "<verified-localsend-id>"
-  "<verified-zed-id>"
-  "<verified-libreoffice-id>"
-  "<verified-notion-id>"
-  "<verified-text-editor-id>"
-  "<verified-apostrophe-id>"
-  "<verified-obsidian-id>"
-  "<verified-zoom-id>"
-];
+```text
+Outlook
+Word
+Excel
+PowerPoint
+Teams
+OneDrive
 ```
 
-Do not include:
+must remain separate applications installed through Edge.
+
+They are **not** part of the pinned Dock favorites unless the user explicitly chooses to add them later.
+
+Do not pin:
 
 ```text
 Evolution
 GNOME Terminal
 GNOME Console
 Settings
-Evince
+PDF viewer
 GNOME Screenshot
 GNOME Software
-Microsoft Edge
+Microsoft Edge browser
 ```
 
-as favorites.
+Do not hard-code unverified `.desktop` IDs.
 
-Edge itself does not belong in the pinned Dock. The Microsoft 365 PWA launchers
-created by Edge are separate applications and may appear in the launcher naturally once
-installed, but they are not part of the declaratively pinned list.
-
-## Exit criteria
-
-Run:
+Verify with:
 
 ```bash
 gsettings get org.gnome.shell favorite-apps
 ```
 
-Verify the exact order.
-
 ---
 
-# PHASE 4 — Apostrophe and MIME Associations
+# 12. PHASE 4 — Apostrophe and MIME Handling
 
-## Objective
-
-Make Apostrophe the default Markdown reader/editor.
-
-Install:
+Target:
 
 ```text
-apostrophe
+Markdown → Apostrophe
+Plain text → GNOME Text Editor
 ```
 
-Find the actual desktop entry before configuring MIME associations.
-
-Configure:
+Configure the appropriate MIME associations:
 
 ```text
 text/markdown
 text/x-markdown
-```
-
-to open with Apostrophe.
-
-Configure:
-
-```text
 text/plain
 ```
 
-to open with GNOME Text Editor.
+Discover the actual desktop IDs first.
 
-Verify common Markdown extensions:
-
-```text
-.md
-.markdown
-.mkd
-```
-
-via the correct shared MIME type associations.
-
-Use:
+Verify:
 
 ```bash
 xdg-mime query default text/markdown
@@ -703,16 +616,7 @@ xdg-mime query default text/x-markdown
 xdg-mime query default text/plain
 ```
 
-Expected:
-
-```text
-Markdown → Apostrophe
-Plain text → GNOME Text Editor
-```
-
-## Exit criteria
-
-Double-clicking/launching:
+Test representative files:
 
 ```text
 README.md
@@ -720,208 +624,71 @@ architecture.md
 notes.markdown
 ```
 
-opens Apostrophe.
+Markdown must open in Apostrophe.
+
+Plain text must open in GNOME Text Editor.
 
 ---
 
-# PHASE 5 — Microsoft Edge PWA Architecture
+# 13. PHASE 5 — Microsoft Edge PWA Architecture
 
-## THIS PHASE CONTAINS A RESOLVED DESIGN DECISION
+## RESOLVED DESIGN DECISION
 
-Do not reopen the architecture decision unless Microsoft Edge is technically incapable of
-implementing it on the pinned nixpkgs revision.
+The Microsoft 365 PWA architecture is already decided.
 
-## Decision
+Do not reopen the decision unless the pinned nixpkgs Edge package is technically incapable of implementing the requirements.
 
-Use **Microsoft Edge's native PWA support** as the Microsoft 365 web-application mechanism.
+## Browser roles
 
-Edge on Linux ships a first-class PWA runtime. Installing a web application through Edge:
+### Firefox
+
+Firefox remains the:
 
 ```text
-edge://apps → Install site as app
+primary general-purpose browser
 ```
 
-or via the address bar's install icon generates:
+Preserve all existing:
 
 ```text
-a proper .desktop entry in ~/.local/share/applications/
-a separate application window class
-application-specific icons fetched from the site manifest
-an entry in the GNOME application launcher
+profile data
+bookmarks
+extensions
+Sidebery
+enterprise policies
+privacy settings
+performance settings
+Firefox persistence
 ```
 
-This is the correct architecture because:
+Do not modify Firefox simply to support Microsoft 365 application launching.
+
+### Microsoft Edge
+
+Microsoft Edge is the:
 
 ```text
-Edge PWA support is native — no third-party runtime extension required
-Microsoft 365 sites publish valid web app manifests that Edge consumes directly
-Each installed PWA receives its own process, window class, and desktop identity
-Icon assets are taken from the site manifest automatically
-The mechanism is stable, maintained, and supported by Microsoft
+Microsoft 365 PWA runtime
 ```
 
-Firefox remains the primary general-purpose browser for all non-Microsoft-365 activity.
-
-Do NOT use:
+It exists specifically to host:
 
 ```text
-PWAsForFirefox / firefoxpwa
-programs.firefoxpwa
-firefox --new-window URL
-generic Firefox .desktop wrappers
-```
-
-for the Microsoft 365 PWAs.
-
-Do NOT use:
-
-```text
-microsoft-edge --app=URL
-```
-
-bare wrapper scripts as the final architecture, for the same reason Firefox wrappers were
-rejected: a wrapper does not create an independent application identity and does not
-persist session, icon, or window-class identity in the same way a properly installed
-Edge PWA does.
-
-The correct installation path is Edge's built-in PWA install mechanism, which may be
-triggered through the Edge UI or, where Edge supports it, via command-line pre-seeding.
-
-## Required applications
-
-```text
-Outlook    → https://outlook.office.com
-Word       → https://www.office.com/launch/word
-Excel      → https://www.office.com/launch/excel
-PowerPoint → https://www.office.com/launch/powerpoint
-Teams      → https://teams.microsoft.com
-OneDrive   → https://onedrive.live.com
+Outlook
+Word
+Excel
+PowerPoint
+Teams
+OneDrive
 ```
 
 ---
 
-## PHASE 5A — Verify Edge Availability
+# 14. Edge PWA Requirements
 
-Before writing PWA configuration, confirm the Edge package builds and installs cleanly.
+The implementation must result in six distinct applications.
 
-```bash
-nix build nixpkgs#microsoft-edge --no-link
-```
-
-Or inspect the pinned nixpkgs for the attribute:
-
-```bash
-nix eval --raw nixpkgs#microsoft-edge.version
-```
-
-Confirm:
-
-```text
-microsoft-edge package present in pinned nixpkgs
-version is a stable channel release
-package builds or is available via binary cache
-```
-
-Do not proceed to PWA installation steps until Edge is confirmed available.
-
----
-
-## PHASE 5B — Edge Profile and PWA Data Strategy
-
-Edge PWA installation state lives in the Edge profile directory:
-
-```text
-~/.config/microsoft-edge/Default/Web Applications/
-```
-
-Desktop entries for installed PWAs are written to:
-
-```text
-~/.local/share/applications/
-```
-
-Icon assets are stored under:
-
-```text
-~/.config/microsoft-edge/Default/Web Applications/<app-id>/
-```
-
-Determine the declarative strategy:
-
-**Option A — First-boot provisioning script**
-
-Provide an activation script or Home Manager `activation` block that:
-
-```text
-detects whether the six PWAs are already installed
-if not, opens Edge to the install URL with a flag that triggers install
-records installation state to avoid re-running
-```
-
-**Option B — Pre-seeded desktop entries with managed icon assets**
-
-Use `xdg.desktopEntries` in Home Manager to declare the six PWA launchers explicitly,
-with icon assets sourced from the Microsoft CDN or bundled in the repository.
-
-Each entry uses the correct Edge app-mode invocation:
-
-```text
-Exec=microsoft-edge --app=<URL> --profile-directory=Default
-StartupWMClass=<correct-wm-class>
-Icon=<path-to-app-icon>
-```
-
-The `StartupWMClass` must match the class Edge assigns when the app runs. Inspect this
-at runtime:
-
-```bash
-xprop WM_CLASS
-```
-
-while the PWA window is open.
-
-**Option C — Hybrid**
-
-Pre-seed `xdg.desktopEntries` for immediate launcher availability, and allow Edge to
-overwrite/refine the entries on first PWA install through its own mechanism.
-
-Choose the option that best fits the repository's existing Home Manager activation
-patterns. Document the chosen approach in this file before implementing it.
-
----
-
-## PHASE 5C — Single-PWA Smoke Test
-
-Before declaring all six Office applications ready, implement and verify exactly one.
-
-Use Outlook as the test case.
-
-Verify:
-
-```text
-Edge launches the site in app-window mode
-desktop entry exists and is valid
-correct application name shown
-correct icon shown (not generic Edge icon)
-separate launcher identity in GNOME
-separate task-switcher identity
-window does not appear as "Microsoft Edge"
-session persists between launches
-```
-
-Run:
-
-```bash
-desktop-file-validate ~/.local/share/applications/<outlook-entry>.desktop
-```
-
-Do not proceed to all six applications until the single-PWA test passes.
-
----
-
-## PHASE 5D — Required PWA Implementation
-
-Implement all six:
+Required applications:
 
 ```text
 Outlook
@@ -935,37 +702,141 @@ OneDrive
 Each must have:
 
 ```text
-unique application identifier
+unique application identity
+unique launcher identity
 unique desktop entry
-correct application name
-correct application icon (not the Edge browser icon)
-correct launch target URL
-appropriate StartupWMClass
+correct application-specific icon
+correct site
+separate window/task-switcher identity
 ```
 
-Prefer icons sourced from each application's published web app manifest.
+The six applications must not appear as:
 
-Microsoft publishes high-quality SVG and PNG icon assets for all Office 365 applications.
-Locate and reference the correct asset for each.
+```text
+Microsoft Edge
+generic browser
+generic Edge app
+generic browser icon
+```
+
+---
+
+# 15. Edge PWA Installation Strategy
+
+Use Edge's native PWA architecture.
 
 Do not use:
 
 ```text
-the Edge browser icon (microsoft-edge.svg or equivalent)
-a generic browser icon
-a placeholder icon
+PWAsForFirefox
+firefoxpwa
+programs.firefoxpwa
+Firefox wrapper scripts
+firefox --new-window URL
 ```
 
-for any PWA entry.
+Do not use bare:
+
+```text
+microsoft-edge --app=URL
+```
+
+as the final architecture merely to simulate independent applications.
+
+The final architecture must preserve genuine application identity.
+
+First verify Edge availability in the pinned nixpkgs:
+
+```bash
+nix eval --raw nixpkgs#microsoft-edge.version
+```
+
+and/or:
+
+```bash
+nix build nixpkgs#microsoft-edge --no-link
+```
+
+If the pinned nixpkgs revision lacks a functioning Edge package, update the appropriate pinned dependency rather than reverting to the rejected Firefox PWA architecture.
 
 ---
 
-## PHASE 5E — PWA Desktop Entry Validation
+# 16. PWA Application Set
 
-For every PWA:
+Required target URLs:
 
 ```text
-Outlook
+Outlook    → https://outlook.office.com
+Word       → https://www.office.com/launch/word
+Excel      → https://www.office.com/launch/excel
+PowerPoint → https://www.office.com/launch/powerpoint
+Teams      → https://teams.microsoft.com
+OneDrive   → https://onedrive.live.com
+```
+
+Verify the actual installed application URLs if Edge redirects them.
+
+Do not hard-code incorrect URLs merely because they are common examples.
+
+---
+
+# 17. PWA Implementation Method
+
+Choose the implementation that best fits the repository's architecture and the pinned Edge version.
+
+Acceptable direction:
+
+```text
+native Edge PWA installation
++
+Home Manager activation/provisioning
+and/or
+managed desktop entries
++
+verified icons
++
+verified StartupWMClass
+```
+
+Possible implementation approaches:
+
+```text
+Option A
+Edge-native provisioning during first activation
+
+Option B
+declarative xdg.desktopEntries with correct Edge application invocation
+
+Option C
+hybrid Edge-native installation + declarative launcher management
+```
+
+The selected approach must be documented in the implementation before it is finalized.
+
+Do not implement all six applications at once.
+
+---
+
+# 18. PWA RED/GREEN Strategy
+
+Use Outlook as the initial proving case.
+
+First create the verification.
+
+Expected:
+
+```text
+Outlook launches
+correct site loads
+Outlook has its own launcher
+Outlook has its own icon
+Outlook has its own window identity
+Outlook does not appear as generic Edge
+```
+
+Only after Outlook passes should the implementation be generalized to:
+
+```text
 Word
 Excel
 PowerPoint
@@ -973,7 +844,11 @@ Teams
 OneDrive
 ```
 
-inspect the desktop entry:
+---
+
+# 19. PWA Desktop Entry Validation
+
+For each installed PWA inspect:
 
 ```text
 Name=
@@ -985,92 +860,90 @@ StartupWMClass=
 Run:
 
 ```bash
-desktop-file-validate <desktop-file>
+desktop-file-validate <desktop-entry>
 ```
 
-The GNOME launcher must show:
+Validate that:
 
 ```text
-Outlook icon
-Word icon
-Excel icon
-PowerPoint icon
-Teams icon
-OneDrive icon
+Outlook → Outlook icon
+Word → Word icon
+Excel → Excel icon
+PowerPoint → PowerPoint icon
+Teams → Teams icon
+OneDrive → OneDrive icon
 ```
 
-and not:
+Do not use the Edge browser icon as a substitute.
 
-```text
-Edge icon
-generic browser icon
-```
+Where Edge generates the desktop entry, inspect the actual generated entry instead of creating a competing duplicate.
+
+Avoid duplicate launchers.
 
 ---
 
-## PHASE 5F — PWA Runtime Validation
+# 20. PWA Runtime Validation
 
-Launch every PWA.
+Launch every PWA individually.
 
 Verify:
 
 ```text
-correct application title in title bar
-correct icon in task bar and task switcher
-separate application identity from Edge browser
-separate application identity from other PWAs
-correct site loads
-session and login state persist
-no "Microsoft Edge" label in launcher or task switcher
+correct application name
+correct site
+correct icon
+correct launcher identity
+correct task-switcher identity
+separate Edge browser identity
+session persistence
+authentication persistence
 ```
 
-Do not declare PWA work complete solely because a `.desktop` file exists.
+Do not declare the PWA work complete because `.desktop` files merely exist.
 
 ---
 
-# PHASE 6 — LocalSend Networking
+# 21. PHASE 6 — LocalSend
 
 ## Objective
 
-Restore reliable LAN LocalSend while preserving firewall boundaries.
-
-Current problematic pattern:
+Provide reliable:
 
 ```text
-iifname != "tailscale0"
-tcp dport 53317 accept
-
-iifname != "tailscale0"
-udp dport 53317 accept
+Phone ↔ Prague
 ```
 
-This is not the desired model because it does not mean "LAN".
+LocalSend communication on the local network without unnecessarily exposing the service through Tailscale or the public Internet.
 
-## Required architecture
+Desired model:
 
 ```text
-Wi-Fi/Ethernet
-      ↓
+LAN
+ ↓
 LocalSend
-      ↓
+ ↓
 TCP/UDP 53317
 ```
 
-Tailscale should primarily provide:
-
-```text
-SSH
-RDP
-remote administration
-```
-
-not LocalSend discovery.
+Do not make LocalSend a Tailscale service merely for convenience.
 
 ---
 
-## PHASE 6A — Discover Interfaces
+# 22. LocalSend Firewall Architecture
 
-Run:
+The previous broad pattern:
+
+```text
+iifname != "tailscale0"
+```
+
+must not be interpreted as:
+
+```text
+LAN only
+```
+
+Audit the actual interfaces:
 
 ```bash
 ip -br link
@@ -1078,74 +951,114 @@ nmcli device status
 ip -br addr
 ```
 
-Identify the actual LAN interface(s).
+Then implement interface/network-scoped firewall behavior.
 
-Do not hard-code an interface name until it is confirmed against the host architecture.
+LocalSend should be reachable on the intended LAN interfaces only.
 
----
-
-## PHASE 6B — Replace Broad Firewall Rules
-
-Replace:
-
-```text
-"everything except tailscale0"
-```
-
-with explicit interface-scoped LocalSend handling.
-
-LocalSend should not become publicly reachable simply because the interface is not named `tailscale0`.
-
-Preserve the rest of the firewall security model.
+Do not expose TCP/UDP 53317 broadly to arbitrary WAN interfaces.
 
 ---
 
-## PHASE 6C — Runtime Test
+# 23. LocalSend Runtime Test
 
-Verify:
+Inspect:
 
 ```bash
 ss -lntup | grep 53317 || true
 ```
 
-Inspect:
+and:
 
 ```bash
 sudo nft list ruleset
 ```
 
-Then test:
+Then test actual:
 
 ```text
 Phone → Prague
 Prague → Phone
 ```
 
-while both devices are on the same Wi-Fi/LAN.
+on the same LAN.
 
 Verify:
 
 ```text
-discovery works
-send works
-receive works
+discovery
+sending
+receiving
+```
+
+all work.
+
+---
+
+# 24. PHASE 7 — Tailscale Architecture and Performance
+
+## Important
+
+The current working Tailscale ACL has been deliberately restored after an unsuccessful policy experiment.
+
+**Do not alter the ACL as part of this task.**
+
+The working policy remains authoritative.
+
+The relevant design is:
+
+```text
+Phone
+  │
+  │ tag:user / existing ACL
+  ▼
+Tailscale
+  │
+  ▼
+Prague
+  │
+  ├── Tailscale access
+  └── exit-node routing
+          │
+          ▼
+       Internet
 ```
 
 ---
 
-# PHASE 7 — Tailscale Performance and Routing
+# 25. Prague Exit-Node Invariants
 
-## Objective
+The following must remain true:
 
-Diagnose why enabling Tailscale on the phone makes networking slow.
+```text
+Tailscale enabled
+tailscaled active
+tailscale0 available
+authentication persistent
+Prague advertises exit-node capability
+IP forwarding enabled
+IPv6 forwarding enabled where required
+NAT correct
+firewall forwarding correct
+network recovery works
+```
 
-Do not assume the problem is GNOME.
-
-Do not immediately alter MTU, routes, firewall rules or exit-node settings without evidence.
+Do not "fix" Tailscale performance by removing Prague's exit-node role.
 
 ---
 
-## PHASE 7A — Direct Connectivity Test
+# 26. Tailscale Diagnostic Process
+
+Separate:
+
+```text
+ordinary Tailscale connectivity
+```
+
+from:
+
+```text
+exit-node Internet routing
+```
 
 Run:
 
@@ -1154,7 +1067,7 @@ tailscale status
 tailscale netcheck
 ```
 
-Then:
+and:
 
 ```bash
 tailscale ping <phone-device>
@@ -1169,98 +1082,74 @@ direct
 or:
 
 ```text
-DERP/relay
+DERP / relay
 ```
 
-Document the result.
+Do not guess.
 
 ---
 
-## PHASE 7B — Separate Normal Tailscale from Exit Node
+# 27. Exit-Node Test Separation
 
-Test the phone with:
+Test first:
 
 ```text
+Phone
 Tailscale ON
 Exit Node = None
 ```
 
-Expected maintenance path:
+Verify:
+
+```text
+Tailscale connectivity
+SSH to Prague
+normal Tailscale latency
+```
+
+Then separately:
 
 ```text
 Phone
-↓
-Tailscale
-↓
-Prague
+Tailscale ON
+Exit Node = Prague
 ```
 
-Then separately test:
+Verify:
 
 ```text
-Phone
-↓
-Prague exit node
-↓
-Internet
+Internet traffic routes through Prague
+external public IP corresponds to Prague's egress path
+DNS works
+web browsing works
 ```
 
-Do not use exit-node performance as proof that ordinary device-to-device Tailscale is slow.
+Do not attribute exit-node performance to ordinary Tailscale networking without evidence.
 
 ---
 
-## PHASE 7C — Investigate Observed Cause
+# 28. Tailscale Runtime Recovery
 
-If the path is relayed or degraded, investigate evidence for:
+Test:
 
 ```text
-NAT
-UDP reachability
-router behavior
-MTU
-IPv4/IPv6 path
-DNS
-firewall
-exit-node routing
+cold boot
+reboot
+Wi-Fi reconnect
+mobile hotspot transition
+temporary network outage
+sleep/resume
+NetworkManager restart
+tailscaled restart
 ```
 
-Use:
-
-```bash
-ip route
-ip -6 route
-tailscale netcheck
-tailscale status
-tailscale ping <phone>
-```
-
-Do not make unrelated changes simply because they are common Tailscale tuning suggestions.
+Prague must recover its Tailscale gateway role without manual intervention under normal failure conditions.
 
 ---
 
-## PHASE 7D — Preserve Exit-Node Capability
+# 29. PHASE 8 — GNOME Extensions
 
-If Prague currently advertises itself as an exit node and that is part of the architecture, preserve it.
-
-Do not remove:
-
-```text
-advertise exit node
-```
-
-solely to mask the performance issue.
-
-Fix the observed network problem instead.
-
----
-
-# PHASE 8 — GNOME Workflow Extensions
-
-## Objective
-
-Keep GNOME feature-rich without extension bloat.
-
-Final extension set:
+Final curated extension set:
 
 ```text
 Dash to Dock
@@ -1271,24 +1160,24 @@ Vitals
 Just Perfection
 ```
 
-Keep existing compatible extensions.
+Do not introduce unnecessary extensions.
 
-Add Tiling Assistant.
-
-Do not introduce:
+Do not add:
 
 ```text
 Blur My Shell
-multiple docks
-multiple launchers
-multiple clipboard managers
-multiple tiling systems
+additional docks
+additional launchers
+additional clipboard managers
+additional tiling systems
 desktop widget frameworks
 ```
 
-unless evidence shows a specific required function cannot otherwise be achieved.
+unless a concrete, tested requirement demands them.
 
-Each extension must have a clear role:
+The desktop must remain visibly and behaviorally GNOME-native.
+
+Each extension must have a defined role:
 
 ```text
 Dash to Dock
@@ -1298,82 +1187,93 @@ Tiling Assistant
 → window organization
 
 Clipboard Indicator
-→ clipboard history
+→ clipboard workflow
 
 Caffeine
-→ temporary suspend inhibition
+→ suspend inhibition
 
 Vitals
-→ resource visibility
+→ system visibility
 
 Just Perfection
-→ GNOME shell cleanup
+→ GNOME Shell cleanup/customization
 ```
-
-The desktop must remain recognizably GNOME.
 
 ---
 
-# PHASE 9 — SSH + tmux Maintenance Environment
+# 30. PHASE 9 — SSH + tmux Maintenance
 
 ## Objective
 
-Make phone-based SSH maintenance persistent and resilient.
-
-Use the existing shell architecture.
-
-Prefer a modular file such as:
+Provide reliable phone-based maintenance:
 
 ```text
-home/shell/tmux.nix
+Phone
+ ↓
+Tailscale
+ ↓
+SSH
+ ↓
+tmux
+ ↓
+maintenance
 ```
 
-if compatible with the repository's automatic module discovery.
+Use the repository's existing shell architecture.
+
+Do not scatter SSH startup logic across unrelated shell modules.
 
 ---
 
-## tmux configuration
+# 31. tmux Requirements
 
-Enable:
+Enable/configure:
 
 ```text
 mouse
 large history
-minimal escape delay
-stable terminal type
+reasonable escape timing
+stable terminal
 window numbering
 pane numbering
-persistent sessions
+persistent maintenance session
 ```
 
-Use a stable maintenance session name:
+Required session name:
 
 ```text
 maintenance
 ```
 
----
+Interactive SSH should attach/create:
 
-## Automatic SSH behavior
-
-Interactive SSH sessions should automatically execute:
-
-```text
+```bash
 tmux new-session -A -s maintenance
 ```
 
-or the equivalent implementation.
+or an equivalent implementation.
 
-The condition MUST distinguish:
+---
+
+# 32. Interactive SSH Safety
+
+Automatic tmux behavior must apply only to:
 
 ```text
-interactive SSH
+interactive SSH sessions
 ```
 
-from:
+It must NOT break:
 
 ```text
-non-interactive SSH
+ssh host command
+scp
+sftp
+automation
+CI
+Git operations
+Nix commands
+scripts
 ```
 
 Use logic conceptually equivalent to:
@@ -1384,32 +1284,27 @@ if [[ -n "$SSH_TTY" && -z "$TMUX" && -o interactive ]]; then
 fi
 ```
 
-Integrate it with the repository's actual shell framework instead of blindly appending shell code.
+Integrate this with the actual shell framework.
+
+Do not simply append duplicate shell startup logic.
 
 ---
 
-## Required safety behavior
+# 33. SSH/tmux Tests
 
-This must NOT break:
-
-```text
-ssh host command
-scp
-sftp
-automation
-CI
-scripts
-Nix commands
-Git operations
-```
-
-Test both:
+Test:
 
 ```bash
 ssh ivali@prague
 ```
 
-and:
+Expected:
+
+```text
+interactive shell → maintenance tmux
+```
+
+Then:
 
 ```bash
 ssh ivali@prague 'echo hello'
@@ -1418,18 +1313,17 @@ ssh ivali@prague 'echo hello'
 Expected:
 
 ```text
-interactive SSH
-→ tmux
-
-non-interactive SSH
-→ command executes normally
+command runs normally
+no interactive tmux session created
 ```
+
+Also verify network interruption/reconnection does not destroy the maintenance workflow unnecessarily.
 
 ---
 
-# PHASE 10 — GNOME Remote Desktop Review
+# 34. PHASE 10 — GNOME Remote Desktop
 
-The existing intended architecture is:
+Preserve the existing intended architecture:
 
 ```text
 GNOME Remote Desktop
@@ -1438,33 +1332,31 @@ PAM authentication
 +
 Tailscale-only access
 +
-no public RDP exposure
+no public 3389
 ```
-
-Preserve it.
 
 Do not reintroduce:
 
 ```text
 KRDP
 KDE remote desktop
-public 3389
+public RDP
 ```
 
-Audit:
+Audit for residue:
 
 ```bash
 rg -n -i \
   'krdp|plasma.*remote|remote.*plasma|3389|xdg-desktop-portal-kde'
 ```
 
-Do not open public RDP simply because phone remote desktop is being tested.
+Do not open public RDP just to solve testing problems.
 
 ---
 
-# PHASE 11 — Firefox Persistence Review
+# 35. PHASE 11 — Firefox Preservation
 
-Before touching Firefox profile configuration, read:
+Before touching Firefox configuration, read:
 
 ```text
 FIREFOX-PERSISTENCE.md
@@ -1474,26 +1366,41 @@ Preserve:
 
 ```text
 Firefox profile
-cookies
 bookmarks
+cookies
 extensions
-preferences
-privacy settings
 Sidebery
 enterprise policies
-performance configuration
+privacy configuration
+performance settings
+profile persistence
 ```
 
-The Edge PWA architecture must not affect Firefox's profile or configuration in any way.
-Firefox and Edge are independent browsers serving distinct roles.
+Do not use Firefox as the Microsoft 365 PWA runtime.
 
-Do not perform destructive profile resets on either browser.
+Remove obsolete Firefox PWA configuration only after confirming:
+
+```text
+Edge is the designated PWA runtime
+Firefox profile remains intact
+no existing non-PWA Firefox functionality depends on the removed configuration
+```
+
+Search for:
+
+```bash
+rg -n -i \
+  'firefoxpwa|pwasforfirefox|programs\.firefoxpwa|firefox.*pwa|pwa.*firefox' \
+  .
+```
+
+No residual Microsoft 365 Firefox PWA implementation should remain.
 
 ---
 
-# PHASE 12 — Cross-System Desktop Identity Audit
+# 36. PHASE 12 — Cross-System Desktop Identity Audit
 
-Build an inventory of actual desktop entries:
+Inventory:
 
 ```bash
 find /run/current-system/sw/share/applications \
@@ -1501,7 +1408,7 @@ find /run/current-system/sw/share/applications \
      -print | sort
 ```
 
-Check user entries:
+and:
 
 ```bash
 find ~/.local/share/applications \
@@ -1513,22 +1420,28 @@ Cross-check against:
 
 ```text
 GNOME favorites
-MIME defaults
-Edge PWA desktop entries
-custom launcher entries
+MIME associations
+Edge PWAs
+custom launchers
+package declarations
 ```
 
-Everything referenced must actually exist.
+Every launcher reference must point to a real entry.
 
-Validate all relevant `.desktop` files.
+No stale references may remain for:
 
-No stale application references may remain.
-
-No residual `firefoxpwa`-generated desktop entries may remain.
+```text
+Evolution
+GNOME Terminal
+gnome-screenshot
+old KDE applications
+Firefox PWA launchers
+old webapps
+```
 
 ---
 
-# PHASE 13 — KDE Contamination Audit
+# 37. PHASE 13 — KDE Residue Audit
 
 Search:
 
@@ -1537,46 +1450,45 @@ rg -n -i \
   'plasma|plasma6|kwin|kde|plasma-manager|krdp|sddm'
 ```
 
-Do not automatically delete all matches.
-
-Classify each as:
+Classify each hit:
 
 ```text
-active
-shared
+active configuration
+shared dependency
 historical documentation
-unused migration artifact
+obsolete migration artifact
 ```
 
-Remove only active obsolete configuration.
+Remove only obsolete active configuration.
 
-The `prague` runtime desktop must remain GNOME-only.
+The runtime desktop must remain GNOME-only.
 
 ---
 
-# PHASE 14 — Repository Refactor and Cleanup
+# 38. PHASE 14 — Cleanup
 
-After functional changes pass, remove obsolete configuration rather than leaving it layered underneath the new implementation.
+After behavior is correct, remove obsolete implementations instead of layering the new architecture over dead configuration.
 
-Audit for:
+Search for:
 
 ```text
 Catppuccin cursor
-Tela icon theme
+Tela
 gnome-screenshot
 gnome-terminal
 Evolution favorite
-firefoxpwa / PWAsForFirefox packages and modules
-programs.firefoxpwa configuration
+firefoxpwa
+PWAsForFirefox
+programs.firefoxpwa
 fake Firefox webapps
-stale KDE references
-duplicate MIME handlers
-duplicate package ownership
+stale KDE modules
+duplicate MIME mappings
+duplicate packages
 broad LocalSend firewall rules
-obsolete shell startup
+obsolete tmux/shell startup code
 ```
 
-Run:
+Use:
 
 ```bash
 rg -n -i \
@@ -1584,17 +1496,17 @@ rg -n -i \
   .
 ```
 
-Review every hit.
+Review every remaining match.
 
-Do not leave dead configuration merely because it does not currently cause a build error.
+Nothing should remain solely because "it still builds."
 
 ---
 
-# PHASE 15 — Documentation
+# 39. PHASE 15 — Documentation
 
-Update repository documentation to reflect the new state.
+Update only the appropriate existing documentation owners.
 
-Documentation must describe:
+Documentation must describe the actual implemented system:
 
 ```text
 GNOME desktop architecture
@@ -1602,11 +1514,12 @@ Adwaita visual baseline
 GNOME extension set
 favorite application order
 Markdown → Apostrophe
-Firefox as primary browser (general use)
-Microsoft Edge as PWA runtime (Microsoft 365)
-Edge PWA architecture for Outlook, Word, Excel, PowerPoint, Teams, OneDrive
-LocalSend LAN architecture
-Tailscale architecture
+Firefox as primary browser
+Microsoft Edge as Microsoft 365 PWA runtime
+Edge PWA architecture
+LocalSend LAN-only design
+Tailscale remote administration
+Prague permanent exit-node role
 tmux maintenance architecture
 GNOME Remote Desktop
 ```
@@ -1614,21 +1527,21 @@ GNOME Remote Desktop
 Remove obsolete descriptions of:
 
 ```text
-Catppuccin cursors
+Catppuccin cursor
 Tela desktop-wide icons
-Firefox PWA / PWAsForFirefox / firefoxpwa
-fake Firefox web apps
+Firefox PWAs
+PWAsForFirefox
+firefoxpwa
+Firefox webapp wrappers
 KDE
 KRDP
 ```
 
-where those mechanisms have been removed.
-
-Do not create duplicate documentation if an existing document already owns the topic.
+Do not create duplicate documentation where an existing document already owns the subject.
 
 ---
 
-# PHASE 16 — Static Validation
+# 40. PHASE 16 — Static Validation
 
 Run:
 
@@ -1649,14 +1562,14 @@ nix eval \
   .#nixosConfigurations.prague.config.system.build.toplevel.name
 ```
 
-and, where affected:
+Where affected:
 
 ```bash
 nix eval \
   .#nixosConfigurations.tuscany.config.system.build.toplevel.name
 ```
 
-Then perform the repository-standard dry build.
+Then the repository-standard build/dry-build.
 
 At minimum:
 
@@ -1666,11 +1579,11 @@ nix build \
   --no-link
 ```
 
-Use repository-specific build aliases where they exist.
+Use the repository's own deployment/build aliases when appropriate.
 
 ---
 
-# PHASE 17 — Existing Repository Test Suite
+# 41. PHASE 17 — Existing Test Suite
 
 Run:
 
@@ -1682,11 +1595,11 @@ go test ./internal/architecture/... -v
 bash -n scripts/*.sh
 ```
 
-Do not claim prior validation remains valid until these checks are rerun after the changes.
+Do not assume historical results remain valid after modifications.
 
 ---
 
-# PHASE 18 — Runtime GNOME Validation
+# 42. PHASE 18 — GNOME Runtime Validation
 
 After activation:
 
@@ -1704,19 +1617,19 @@ Wayland
 
 where supported.
 
-Check:
+Verify enabled extensions:
 
 ```bash
 gnome-extensions list --enabled
 ```
 
-Check favorites:
+Verify favorites:
 
 ```bash
 gsettings get org.gnome.shell favorite-apps
 ```
 
-Check visuals:
+Verify visual state:
 
 ```bash
 gsettings get org.gnome.desktop.interface gtk-theme
@@ -1727,7 +1640,7 @@ gsettings get org.gnome.desktop.interface cursor-size
 
 ---
 
-# PHASE 19 — MIME Validation
+# 43. PHASE 19 — MIME Validation
 
 Run:
 
@@ -1739,7 +1652,9 @@ xdg-mime query default inode/directory
 xdg-mime query default application/pdf
 ```
 
-Verify:
+Verify intended associations.
+
+Especially:
 
 ```text
 Markdown → Apostrophe
@@ -1751,7 +1666,7 @@ where configured.
 
 ---
 
-# PHASE 20 — LocalSend Runtime Validation
+# 44. PHASE 20 — LocalSend Runtime Validation
 
 Run:
 
@@ -1765,27 +1680,13 @@ Inspect:
 sudo nft list ruleset
 ```
 
-Check:
+Then test actual phone ↔ Prague operation on the same LAN.
 
-```bash
-nmcli device status
-ip -br addr
-```
-
-Then perform actual:
-
-```text
-Phone → Prague
-Prague → Phone
-```
-
-over the same LAN.
-
-LocalSend is not complete until both discovery and transfer work.
+Do not claim success without verifying discovery and transfer.
 
 ---
 
-# PHASE 21 — Tailscale Runtime Validation
+# 45. PHASE 21 — Tailscale Runtime Validation
 
 Run:
 
@@ -1800,37 +1701,35 @@ Then:
 tailscale ping <phone-device>
 ```
 
-Document:
+Record whether the path is:
 
 ```text
-direct
+DIRECT
 ```
 
 or:
 
 ```text
-DERP
+DERP / RELAY
 ```
 
-Then test:
+Then independently validate:
 
 ```text
-Phone
-↓
-Tailscale
-↓
-Prague
-↓
-SSH
+phone → Tailscale → Prague
 ```
 
-with exit node disabled.
+and:
 
-Then test exit-node mode independently.
+```text
+phone → Prague exit node → Internet
+```
+
+Do not alter the ACL to make the test easier.
 
 ---
 
-# PHASE 22 — SSH/tmux Validation
+# 46. PHASE 22 — SSH/tmux Runtime Validation
 
 From the phone:
 
@@ -1842,31 +1741,28 @@ Verify:
 
 ```text
 interactive shell
-↓
-tmux
-↓
-maintenance
+→ maintenance tmux session
 ```
 
-Disconnect the network.
-
-Reconnect.
-
-Verify the same tmux session remains alive.
-
-Then:
+Then test:
 
 ```bash
 ssh ivali@prague 'echo hello'
 ```
 
-Verify no interactive tmux session is created.
+Verify:
+
+```text
+non-interactive command
+→ normal execution
+→ no unwanted tmux attach
+```
 
 ---
 
-# PHASE 23 — PWA Runtime Validation
+# 47. PHASE 23 — Edge PWA Runtime Validation
 
-Launch all six:
+Launch:
 
 ```text
 Outlook
@@ -1877,32 +1773,24 @@ Teams
 OneDrive
 ```
 
-For each verify:
+For every application verify:
 
 ```text
-correct application-specific icon
-correct application name (not "Microsoft Edge")
-correct desktop entry
-correct site loads
-separate application identity
-correct task switching
-no generic Edge browser identity
-no generic browser icon
+correct title
+correct icon
+correct launcher identity
+correct window identity
+correct site
+not generic Edge
+not generic browser
+session persistence
 ```
 
-Inspect generated `.desktop` entries.
-
-Run:
-
-```bash
-desktop-file-validate
-```
-
-on each.
+Validate all relevant desktop files.
 
 ---
 
-# PHASE 24 — Final Visual Validation
+# 48. PHASE 24 — Final Visual Validation
 
 Open:
 
@@ -1922,48 +1810,36 @@ Zoom
 Verify:
 
 ```text
-native-looking GNOME icons
-consistent cursor
-no missing icons
-no generic fallback icons
-no Catppuccin cursor
-no Tela-wide icon theme
+consistent GNOME/Adwaita visual identity
+correct icons
+correct cursor
+no missing assets
 ```
 
-Open each PWA:
+Then launch all six Microsoft 365 PWAs and verify:
 
 ```text
-Outlook
-Word
-Excel
-PowerPoint
-Teams
-OneDrive
-```
-
-Verify:
-
-```text
-application-specific icon visible in launcher
-application-specific icon visible in task switcher
-no generic Edge icon
-no generic browser icon
+application-specific icons
+separate application identities
+correct launcher names
 ```
 
 ---
 
-# PHASE 25 — Final Security Review
+# 49. PHASE 25 — Security Review
 
-Check that changes did not accidentally create:
+Ensure the desktop remediation has not accidentally introduced:
 
 ```text
 public SSH
 public RDP
 public LocalSend
 unnecessary WAN ports
-broad firewall exceptions
-disabled Tailscale security
+broad firewall rules
+weakened Tailscale policy
 weakened authentication
+exposed browser services
+unnecessary privileged launchers
 ```
 
 Inspect:
@@ -1975,11 +1851,11 @@ sudo ss -lnup
 tailscale status
 ```
 
-Only intended services should be reachable.
+Every exposed service must have an intentional reason.
 
 ---
 
-# PHASE 26 — Final Repository Quality Gate
+# 50. PHASE 26 — Final Repository Quality Gate
 
 Run:
 
@@ -1989,7 +1865,7 @@ git status --short
 git diff --stat
 ```
 
-Then perform the final obsolete-configuration audit:
+Then:
 
 ```bash
 rg -n -i \
@@ -2009,305 +1885,76 @@ Every remaining match must have an intentional purpose.
 
 ---
 
-# 7. Edge PWA Decision — Final Architectural Record
+# 51. Required Validation Classification
 
-This decision is resolved and should not be reopened during implementation without a
-concrete incompatibility in the available `microsoft-edge` nixpkgs package.
-
-## Primary solution
+Every final validation item must be classified as:
 
 ```text
-Firefox (primary browser — general use)
-+
-Microsoft Edge (PWA runtime — Microsoft 365 only)
-+
-Edge native PWA install mechanism
-+
-declarative Home Manager desktop entries
+STATICALLY VERIFIED
+RUNTIME VERIFIED
+REQUIRES USER/HARDWARE VERIFICATION
 ```
 
-## Browser role separation
+Examples:
 
 ```text
-Firefox
-→ primary browser
-→ general web browsing
-→ bookmarks, extensions, privacy configuration
-→ Sidebery, enterprise policies, all existing profile state
+Nix module evaluates
+→ STATICALLY VERIFIED
+
+Desktop entry validates
+→ STATICALLY VERIFIED
+
+GNOME favorite list observed
+→ RUNTIME VERIFIED
+
+Phone actually receives a LocalSend file
+→ RUNTIME VERIFIED
+
+Phone routes Internet traffic through Prague
+→ RUNTIME VERIFIED
+
+Actual Wi-Fi sleep/resume behavior on physical hardware
+→ REQUIRES USER/HARDWARE VERIFICATION
+```
+
+Never invent runtime results.
+
+---
+
+# 52. Final Architecture
+
+The target Prague workstation is:
+
+```text
+                              PRAGUE
+                                 │
+                             GNOME/Wayland
+                                 │
+              ┌──────────────────┼──────────────────┐
+              │                  │                  │
+          Visual Layer       Applications       Remote Ops
+              │                  │                  │
+          Adwaita          Firefox              Tailscale
+          GNOME icons      Edge                  SSH
+          GNOME cursor     Microsoft 365         tmux
+                           PWAs                  Gnome RDP
+              │
+       ┌──────┴───────┐
+       │              │
+    Extensions     Favorites
+       │              │
+ Dash to Dock      Firefox
+ Tiling Assistant  Nautilus
+ Clipboard         LocalSend
+ Caffeine          Zed
+ Vitals            LibreOffice
+ Just Perfection   Notion
+                   Text Editor
+                   Apostrophe
+                   Obsidian
+                   Zoom
 
 Microsoft Edge
-→ Microsoft 365 PWA runtime only
-→ Outlook, Word, Excel, PowerPoint, Teams, OneDrive
-→ separate browser profile, no overlap with Firefox
-```
-
-The two browsers coexist without interference. Firefox profile state is preserved as-is.
-
-## Why Edge over Firefox PWAs?
-
-Microsoft Edge ships native PWA support on Linux. No third-party runtime extension
-is required. Edge reads the web app manifests published by Microsoft 365 applications
-and installs them as first-class desktop applications with correct icons, window classes,
-and application identities.
-
-Firefox does not implement native manifest-based PWA installation on Linux. The
-previously considered `PWAsForFirefox` extension added this capability as a third-party
-runtime, but introduced complexity, a separate binary (`firefoxpwa`), Home Manager module
-surface area, and a dependency on upstream extension maintenance. Edge's native
-implementation is simpler, better supported, and the natural fit for Microsoft 365 apps.
-
-## Why not Firefox wrapper scripts?
-
-Do not use:
-
-```text
-firefox --new-window URL
-```
-
-because that creates another Firefox window, not an independent application identity.
-
-The same reasoning applies to bare `microsoft-edge --app=URL` wrappers: the goal is true
-application identity separation, not browser window cosmetics.
-
-## Why not GNOME Web?
-
-GNOME Web (Epiphany) can create web application launchers but is not the right fit for
-Microsoft 365. Edge is the better-tested, Microsoft-supported runtime for these
-applications and provides more reliable session handling, notification support, and
-compatibility with Microsoft's authentication stack.
-
-## What if Edge is unavailable in the pinned nixpkgs?
-
-Unpin and update nixpkgs to a revision that includes a working `microsoft-edge` package.
-
-Do not fall back to `PWAsForFirefox` or Firefox wrappers.
-
-The architectural invariant is:
-
-```text
-native browser PWA runtime
-+
-unique per-application desktop identities
-+
-application-specific icons
-+
-declarative NixOS/Home Manager configuration
-```
-
----
-
-# 8. Existing Verification Baseline
-
-Previously passing checks included:
-
-```text
-nix fmt -- --check .
-nix flake check --no-build
-nix eval .#nixosConfigurations.prague.config.system.build.toplevel.name
-nix eval .#nixosConfigurations.tuscany.config.system.build.toplevel.name
-go build ./...
-go test ./...
-go test ./internal/architecture/... -v
-./ci/check-architecture
-bash -n scripts/*.sh
-```
-
-Architecture validation previously reported:
-
-```text
-7/7 checks passed
-```
-
-with three pre-existing questionable filesystem boundaries.
-
-These are historical results.
-
-Rerun them after implementation before claiming success.
-
----
-
-# 9. Existing Completed Work
-
-The following work has already been completed and should be preserved unless the remediation requires a correction.
-
-## KDE removal
-
-Removed:
-
-```text
-desktop/kde/
-home/kde/
-desktop/login/sddm.nix
-plasma-manager input
-KDE shared modules
-KDE portal backend
-KDE-specific environment variables
-KRDP
-```
-
-## GNOME infrastructure
-
-Created:
-
-```text
-desktop/gnome/default.nix
-desktop/gnome/session.nix
-desktop/gnome/extensions.nix
-desktop/gnome/remote-desktop.nix
-
-desktop/login/gdm.nix
-
-home/gnome/default.nix
-home/gnome/desktop.nix
-home/gnome/extensions.nix
-home/gnome/keyboard.nix
-home/gnome/webapps.nix
-home/gnome/remote-desktop.nix
-home/gnome/applications.nix
-```
-
-## Shared desktop modules
-
-Updated:
-
-```text
-desktop/common/portal.nix
-desktop/common/environment.nix
-desktop/common/theme.nix
-desktop/common/platform.nix
-desktop/common/packages.nix
-```
-
-## Firefox
-
-Removed Motta Firefox CSS.
-
-Preserved existing:
-
-```text
-Sidebery
-Enterprise Policies
-privacy hardening
-performance settings
-Firefox profile/persistence
-```
-
-## Remote desktop
-
-Current intended model:
-
-```text
-GNOME Remote Desktop
-+
-PAM
-+
-Tailscale-only
-+
-no public 3389
-```
-
-## Documentation
-
-Existing GNOME architecture documentation was already updated from the KDE implementation.
-
-Do not undo those completed architectural changes.
-
-Note: any previously written `home/gnome/webapps.nix` configuration using `firefoxpwa`
-or `programs.firefoxpwa` must now be replaced with the Edge PWA approach. That file's
-new role is either Edge PWA desktop entry declarations or it is removed if Edge's own
-install mechanism generates the entries without declarative assistance.
-
----
-
-# 10. Current Repository Issue Not in Scope
-
-Existing low-priority issue:
-
-```text
-LOW-11
-```
-
-Substituter configuration remains split across:
-
-```text
-system/nix.nix
-caching/default.nix
-cache/default.nix
-```
-
-This can remain tracked.
-
-Do not expand this desktop remediation into an unrelated cache architecture rewrite.
-
----
-
-# 11. Forbidden Changes
-
-Do not:
-
-```text
-reintroduce KDE
-reintroduce SDDM
-reintroduce KRDP
-reintroduce Catppuccin cursors
-reintroduce Tela as GNOME-wide icon theme
-install a separate screenshot application
-use PWAsForFirefox / firefoxpwa for Microsoft 365 apps
-use programs.firefoxpwa
-use firefox --new-window URL as a PWA substitute
-use Firefox wrapper scripts for Office applications
-assign Edge browser icon to Office PWAs
-assign generic browser icon to Office PWAs
-switch Firefox to handle Microsoft 365 PWAs
-remove Firefox or damage its profile
-open LocalSend broadly to the WAN
-open SSH publicly
-remove Tailscale security merely to fix connectivity
-route phone internet through Prague unnecessarily
-install Wine
-install a VM
-add unnecessary GNOME extensions
-flatten repository modules
-duplicate package ownership
-invent unsupported Nix/Home Manager options
-invent desktop IDs
-destroy Firefox profile state
-destroy Edge profile state
-modify unrelated hosts without justification
-```
-
----
-
-# 12. Final Target Architecture
-
-The final workstation should conceptually be:
-
-```text
-                           PRAGUE
-                              │
-                            GNOME
-                              │
-                 ┌────────────┴────────────┐
-                 │                         │
-              Adwaita                  Workflow
-                 │                         │
-          icons + cursor            Dash to Dock
-          GTK defaults              Tiling Assistant
-                                    Clipboard Indicator
-                                    Caffeine
-                                    Vitals
-                                    Just Perfection
-
-                       Applications
-                              │
- ┌─────────┬─────────┬───────┼─────────┬──────────┐
- │         │         │       │         │          │
-Firefox  Nautilus LocalSend Zed   LibreOffice   Notion
- │
- │ (general browsing)
- │
-Microsoft Edge (PWA runtime — not in Dock)
- │
  ├── Outlook
  ├── Word
  ├── Excel
@@ -2315,195 +1962,203 @@ Microsoft Edge (PWA runtime — not in Dock)
  ├── Teams
  └── OneDrive
 
-GNOME Text Editor
-Apostrophe
-Obsidian
-Zoom
-
-Markdown
-   ↓
-Apostrophe
-
-LAN
-   ↓
-LocalSend
-
-Tailscale
-   ↓
-SSH / GNOME Remote Desktop
-   ↓
-tmux
-   ↓
-maintenance
-```
-
-The final desktop should exhibit:
-
-```text
-GNOME-native visuals
-+
-minimal extension overhead
-+
-correct application identities
-+
-Edge-native Microsoft 365 PWAs
-+
-Firefox as independent primary browser
-+
-Adwaita icons/cursor
-+
-LAN-first LocalSend
-+
-diagnosed Tailscale connectivity
-+
-persistent tmux maintenance
-+
-Markdown → Apostrophe
-+
-declarative reproducibility
+Network
+ ├── LAN → LocalSend
+ ├── Tailscale → administration
+ └── Prague → permanent exit node
+                 │
+                 ▼
+              Internet
 ```
 
 ---
 
-# 13. Final Deliverable Requirements
+# 53. Final Success Definition
 
-At completion, report:
-
-## Changed files
-
-For each changed file:
+The task is complete only when all of the following are true:
 
 ```text
-path
-purpose
-key change
-```
+Prague boots into GNOME/Wayland through GDM.
 
-## Removed configuration
+GNOME uses its native visual baseline.
 
-Explicitly identify any removed:
+No Catppuccin cursor implementation remains.
 
-```text
-Catppuccin cursors
-Tela icons
-gnome-screenshot
-gnome-terminal
-stale favorites
-firefoxpwa / PWAsForFirefox packages and modules
-programs.firefoxpwa configuration
-fake Firefox webapps
-stale KDE references
-duplicate MIME handlers
-broad LocalSend firewall rules
-obsolete shell code
-```
-
-## Added configuration
-
-Explicitly identify:
-
-```text
-microsoft-edge package
-Apostrophe
-Tiling Assistant
-new favorites
-Edge PWA desktop entries (Outlook, Word, Excel, PowerPoint, Teams, OneDrive)
-LocalSend firewall architecture
-tmux
-GNOME-native visual baseline
-```
-
-## Test results
-
-Report the actual result of:
-
-```text
-nix fmt
-nix flake check
-nix eval
-nix build/dry-build
-Go tests
-architecture tests
-GNOME runtime checks
-MIME checks
-LocalSend checks
-Tailscale checks
-SSH/tmux checks
-Edge PWA checks
-desktop-entry checks
-```
-
-Do not claim any test passed unless it was actually run.
-
-## Remaining issues
-
-For every unresolved issue provide:
-
-```text
-problem
-evidence
-what was attempted
-why it remains unresolved
-exact next diagnostic/action
-```
-
-Never fabricate hardware, Wi-Fi, phone, PWA or network results that cannot be observed from the implementation environment.
-
----
-
-# 14. Final Success Definition
-
-This task is complete only when the following statement is true:
-
-```text
-prague boots into GNOME Wayland through GDM.
-
-GNOME uses its native visual defaults.
-
-No Catppuccin cursor configuration remains.
-
-No Tela desktop-wide icon theme remains.
+No Tela desktop-wide icon implementation remains.
 
 The separate screenshot package is gone.
 
-The GNOME dock contains exactly the ten requested applications.
+The GNOME Dock contains exactly the requested ten applications.
 
 Markdown opens in Apostrophe.
 
 Plain text opens in GNOME Text Editor.
 
-LocalSend works between phone and Prague on the same LAN.
+LocalSend works over the local LAN.
 
-LocalSend is not unnecessarily exposed through the public network.
+LocalSend is not unnecessarily exposed through Tailscale/WAN paths.
 
-Tailscale provides secure remote access.
+Tailscale remains enabled on Prague.
 
-Tailscale connectivity has been diagnosed as direct or relayed, rather than guessed.
+Prague remains an exit node.
 
-Exit-node behavior is treated separately from ordinary Tailscale connectivity.
+The existing working Tailscale ACL remains intact.
 
-Interactive SSH sessions automatically enter the persistent "maintenance" tmux session.
+Tailscale connectivity has been empirically diagnosed.
 
-Non-interactive SSH commands remain unaffected.
+Exit-node routing has been tested separately from ordinary Tailscale connectivity.
 
-Firefox remains the primary general-purpose browser, with its profile and
-configuration intact and unmodified.
+The phone can use Prague as its exit node.
 
-Microsoft 365 web applications (Outlook, Word, Excel, PowerPoint, Teams, OneDrive)
-are installed as PWAs through Microsoft Edge's native PWA mechanism.
+Interactive SSH sessions automatically enter the "maintenance" tmux session.
 
-Each PWA has its own application identity and application-specific icon.
+Non-interactive SSH remains unaffected.
 
-No PWAsForFirefox / firefoxpwa configuration remains anywhere in the repository.
+GNOME Remote Desktop remains Tailscale-protected and not publicly exposed.
 
-The entire configuration is declarative and reproducible.
+Firefox remains the primary general-purpose browser and its profile remains intact.
 
-Static validation passes.
+Microsoft Edge is the dedicated Microsoft 365 PWA runtime.
 
-Runtime validation passes where the environment permits direct testing.
+Outlook, Word, Excel, PowerPoint, Teams and OneDrive exist as distinct applications.
+
+Each Microsoft 365 PWA has its own icon and application identity.
+
+No Firefox PWA/PWAsForFirefox/firefoxpwa implementation remains.
+
+No stale KDE configuration remains active.
+
+The configuration remains declarative.
+
+Host scoping is correct.
+
+Static checks pass.
+
+Relevant runtime checks pass.
+
+Unverifiable hardware-dependent items are explicitly identified.
 
 The repository remains architecturally coherent.
 ```
 
-Leave the repository ready for review, commit, merge, and deployment through the existing `ivali` workflow.
-````
+---
+
+# 54. Final Deliverable
+
+At completion, provide:
+
+## Changed Files
+
+For every changed file:
+
+```text
+path
+purpose
+key change
+host scope
+```
+
+## Removed Configuration
+
+Explicitly identify removed:
+
+```text
+Catppuccin cursor
+Tela icon theme
+gnome-screenshot
+gnome-terminal
+Evolution favorites/references
+firefoxpwa
+PWAsForFirefox
+programs.firefoxpwa
+fake Firefox webapps
+obsolete KDE configuration
+duplicate MIME handlers
+broad LocalSend firewall rules
+obsolete shell startup code
+```
+
+## Added Configuration
+
+Explicitly identify:
+
+```text
+Microsoft Edge
+Apostrophe
+Tiling Assistant
+favorites
+Edge PWA architecture
+LocalSend firewall behavior
+tmux maintenance behavior
+GNOME-native visual defaults
+```
+
+## Test Results
+
+Report actual outcomes for:
+
+```text
+Nix formatting
+flake validation
+host evaluation
+host build
+Go tests
+architecture checks
+GNOME runtime
+MIME associations
+LocalSend
+Tailscale
+SSH/tmux
+Edge PWAs
+desktop entry validation
+```
+
+## Remaining Risks
+
+For every unresolved issue:
+
+```text
+problem
+evidence
+impact
+what was attempted
+why unresolved
+next diagnostic/action
+```
+
+Never claim a runtime behavior was verified when it was not actually observed.
+
+---
+
+# 55. Operating Principle
+
+Do not optimize for the number of Nix files changed.
+
+Optimize for:
+
+```text
+correctness
+security
+clarity
+reproducibility
+least privilege
+observability
+recoverability
+GNOME-native user experience
+```
+
+The final workstation should be **boring in the best possible way**:
+
+```text
+GNOME behaves like GNOME.
+Applications identify themselves correctly.
+The phone reaches Prague securely.
+Prague remains the trusted exit gateway.
+LocalSend works on the LAN.
+SSH drops into persistent maintenance.
+Microsoft 365 applications behave like separate desktop apps.
+The configuration remains declarative.
+The system is tested rather than assumed.
+```
+
+That is the definition of done.

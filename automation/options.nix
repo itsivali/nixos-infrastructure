@@ -37,7 +37,7 @@ with lib;
       repo = mkOption {
         type = types.str;
         default = "";
-        example = "https://gitlab.com/willisivali/nixos-infrastructure";
+        example = "git@gitlab.com:willisivali/nixos-infrastructure.git";
         description = ''
           Git repository used for GitOps reconciliation.
         '';

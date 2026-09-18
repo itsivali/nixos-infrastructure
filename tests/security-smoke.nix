@@ -69,7 +69,7 @@ pkgs.testers.nixosTest {
       };
 
       # LocalSend must be Tailscale-only: inbound opened ONLY on tailscale0,
-      # refused every other interface, and outbound (send + discovery) dropped
+      # dropped everywhere else, and outbound (send + discovery) dropped
       # off the tailnet. These eval-time assertions guard the architecture that
       # LocalSend never transits the LAN or a public interface.
       assertions = [
@@ -82,12 +82,12 @@ pkgs.testers.nixosTest {
           message = "LocalSend UDP must be allowed inbound only on tailscale0";
         }
         {
-          assertion = builtins.match ".*iifname != \"tailscale0\" tcp dport 53317 reject.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend TCP must be refused off the tailnet";
+          assertion = builtins.match ".*iifname != \"tailscale0\" tcp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend TCP must be dropped off the tailnet";
         }
         {
-          assertion = builtins.match ".*iifname != \"tailscale0\" udp dport 53317 reject.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend UDP must be refused off the tailnet";
+          assertion = builtins.match ".*iifname != \"tailscale0\" udp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
+          message = "LocalSend UDP must be dropped off the tailnet";
         }
         {
           assertion = builtins.match ".*oifname != \"tailscale0\" tcp dport 53317 drop.*" (builtins.toString nftRuntime) != null;

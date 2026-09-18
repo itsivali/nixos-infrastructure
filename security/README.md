@@ -63,7 +63,7 @@ Apply via: `tailscale up --reset` (requires admin auth key)
 ## Firewall Architecture
 
 - **Default policy**: Drop all inbound, allow all outbound
-- **LocalSend**: TCP+UDP 53317 on tailscale0 only; refused inbound and dropped outbound on LAN/public interfaces
+- **LocalSend**: TCP+UDP 53317 on tailscale0 only; dropped in and out on LAN/public interfaces
 - **Egress filtering**: Optional default-deny outbound on non-Tailscale interfaces
 - **Logging**: Disabled (incompatible with `security.lockKernelModules`)
 

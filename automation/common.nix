@@ -11,7 +11,7 @@
 {
   fleet = {
     gitops = {
-      repo = "https://gitlab.com/willisivali/nixos-infrastructure";
+      repo = "git@gitlab.com:willisivali/nixos-infrastructure.git";
       branch = "main";
     };
 

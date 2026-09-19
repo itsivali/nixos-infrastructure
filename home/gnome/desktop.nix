@@ -51,7 +51,6 @@
         "firefox.desktop"
         "org.gnome.Nautilus.desktop"
         "org.gnome.Console.desktop"
-        "LocalSend.desktop"
         "dev.zed.Zed.desktop"
         "writer.desktop"
         "notion-app-enhanced.desktop"

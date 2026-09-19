@@ -60,6 +60,28 @@
     # firewall only opens port 53 on tailscale0).
     ivali.services.blocky.enable = true;
 
+    # Syncthing continuous file synchronization (NixOS module)
+    services.syncthing = {
+      enable = true;
+      user = "ivali";
+      guiAddress = "100.81.219.121:8384"; # Tailscale IP for Syncthing Monitor
+      configDir = "/home/ivali/.config/syncthing";
+      dataDir = "/home/ivali/.local/share/syncthing";
+      settings.options = {
+        listenAddresses = [ "tcp://0.0.0.0:22000" "tcp://[::]:22000" ];
+      };
+      openDefaultPorts = true;
+    };
+
+    # Firewall: allow Syncthing on Tailscale interface
+    networking.firewall.interfaces.tailscale0 = {
+      allowedTCPPorts = [ 22000 8384 ];
+      allowedUDPPorts = [ 22000 ];
+    };
+
+    # KDE Connect daemon for GSConnect
+    programs.kdeconnect.enable = true;
+
     # Self-healing: run the deployment health check and automatically roll
     # back on a genuine service regression (parity with hosts/tuscany.nix).
     # deploymentHealth.enable is already set by the laptop template because

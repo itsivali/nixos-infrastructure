@@ -91,6 +91,16 @@ with lib;
         '';
       };
 
+      gracePeriod = mkOption {
+        type = types.int;
+        default = 30;
+        description = ''
+          Seconds to wait after nixos-rebuild switch for services to settle
+          before running the post-deployment health gate. Increase on slow
+          hardware or for services with long startup times.
+        '';
+      };
+
     };
 
     ############################################################

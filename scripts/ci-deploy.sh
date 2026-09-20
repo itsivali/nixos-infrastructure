@@ -11,11 +11,12 @@ set -Eeuo pipefail
 LOCK_FILE="/run/deploy.lock"
 LOCK_MAX_AGE=1800  # 30 min — if lock is older, assume crash and remove
 HOST="${HOST_NAME:-prague}"
-REPO_DIR="${REPO_DIR:-/home/ivali/nixos-infrastructure}"
+REPO_DIR="${GITOPS_WORKTREE:-/var/lib/gitops}"
+SCRIPTS_DIR="${REPO_DIR}/scripts"
 
-NOTIFY="${REPO_DIR}/scripts/notify.sh"
-HEALTH="${REPO_DIR}/scripts/deployment-health.sh"
-ROLLBACK="${REPO_DIR}/scripts/rollback.sh"
+NOTIFY="${SCRIPTS_DIR}/notify.sh"
+HEALTH="${SCRIPTS_DIR}/deployment-health.sh"
+ROLLBACK="${SCRIPTS_DIR}/rollback.sh"
 GITOPTS=(--flake ".#${HOST}" --show-trace)
 
 log() { echo "[$(date -Iseconds)] $*"; }
@@ -177,7 +178,8 @@ fi
 ###########################################################################
 
 log "Waiting for services to settle..."
-sleep 30
+GRACE="${GITOPS_GRACE_PERIOD:-30}"
+sleep "$GRACE"
 
 health_passed=false
 health_output=""

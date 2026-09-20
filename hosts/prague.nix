@@ -67,10 +67,79 @@
       guiAddress = "100.81.219.121:8384"; # Tailscale IP for Syncthing Monitor
       configDir = "/home/ivali/.config/syncthing";
       dataDir = "/home/ivali/.local/share/syncthing";
-      settings.options = {
-        listenAddresses = [ "tcp://0.0.0.0:22000" "tcp://[::]:22000" ];
+      settings = {
+        gui = {
+          user = "ivali";
+          tls = true;
+        };
+        options = {
+          listenAddresses = [ "tcp://0.0.0.0:22000" "tcp://[::]:22000" ];
+          relaysEnabled = false;
+          natEnabled = false;
+          urAccepted = -1;
+          crashReportingEnabled = false;
+        };
+        devices = {
+          prague = {
+            id = "6PKMANY-OTR2CWK-2LXDTI2-E2OWDWG-2M44NF7-Y4LA43M-25AWSW7-SYQJAQJ";
+            address = "dynamic";
+            compression = "metadata";
+          };
+          phone = {
+            id = "ETCBCIH-HQXJV6Z-MZQUVQ6-NT54JVJ-T6276GV-ISNGDKG-HE63NI6-6S3DNQO";
+            address = "dynamic";
+            compression = "metadata";
+          };
+        };
+        folders = {
+          documents = {
+            path = "/home/ivali/Documents";
+            type = "sendreceive";
+            rescanIntervalS = 3600;
+            fsWatcherEnabled = true;
+            devices = [ "prague" "phone" ];
+            versioning = {
+              type = "simple";
+              keep = 5;
+            };
+          };
+          sync = {
+            path = "/home/ivali/Sync";
+            type = "sendreceive";
+            rescanIntervalS = 3600;
+            fsWatcherEnabled = true;
+            devices = [ "prague" "phone" ];
+            versioning = {
+              type = "simple";
+              keep = 5;
+            };
+          };
+          nixos-config = {
+            path = "/home/ivali/nixos-infrastructure";
+            type = "sendreceive";
+            rescanIntervalS = 3600;
+            fsWatcherEnabled = true;
+            versioning = {
+              type = "simple";
+              keep = 10;
+            };
+            ignorePatterns = [
+              ".git/"
+              "result"
+              "result-*"
+              "*.qcow2"
+              "*.img"
+              "*.iso"
+              "node_modules/"
+              ".direnv/"
+              "go.sum"
+            ];
+          };
+        };
       };
       openDefaultPorts = true;
+      overrideFolders = false;
+      overrideDevices = false;
     };
 
     # Firewall: allow Syncthing on Tailscale interface

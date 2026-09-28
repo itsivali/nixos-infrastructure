@@ -1,0 +1,9 @@
+.git/
+result
+result-*
+*.qcow2
+*.img
+*.iso
+node_modules/
+.direnv/
+go.sum

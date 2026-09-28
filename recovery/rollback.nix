@@ -38,11 +38,11 @@ in
         iputils
         inetutils
         systemd
-        procps
         git
         nix
         nixos-rebuild
         findutils
+        util-linux # flock (deploy lock serialization)
         # Include the system bin so the `sendmail` symlink (programs.msmtp)
         # resolves when notify.sh runs from this service.
         "/run/current-system/sw/bin"
@@ -69,14 +69,21 @@ in
         # Wait for services to settle after the triggering health failure
         sleep 30
 
-        # Guard: skip rollback if a nixos-rebuild is still running (e.g. the
-        # deploy that triggered this service hasn't finished yet). Running
-        # nixos-rebuild switch --rollback concurrently with another
-        # nixos-rebuild switch corrupts the system profile.
-        if pgrep -x nixos-rebuild >/dev/null 2>&1; then
-          echo "nixos-rebuild is running — skipping rollback"
+        # Guard: skip rollback if another deployment is still running (e.g. the
+        # gitops-reconcile.sh that triggered this service hasn't finished yet).
+        # Running nixos-rebuild switch --rollback concurrently with another
+        # nixos-rebuild switch corrupts the system profile. Use flock on the
+        # shared deploy lock (same lock used by gitops-reconcile.sh and
+        # ci-deploy.sh) rather than pgrep, which is fragile against process
+        # renaming and does not cover all concurrent mutation paths.
+        exec 9>/run/deploy.lock
+        if ! flock -n 9; then
+          echo "Another deployment is in progress — skipping rollback"
           exit 0
         fi
+        # Keep the lock held for the rest of this script to prevent a new
+        # reconcile from starting while we roll back.
+        # (fd 9 stays open until the script exits.)
 
         # Run health check in observer mode; suppress stderr to avoid noisy
         # curl/nix warnings being treated as errors by the rebuild script.

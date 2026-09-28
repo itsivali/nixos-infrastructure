@@ -46,7 +46,6 @@ with pkgs; [
   mpv
 
   # Utilities
-  localsend
   mission-center
   xdg-utils
 ]

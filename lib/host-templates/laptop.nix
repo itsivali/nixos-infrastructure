@@ -51,6 +51,11 @@ in
         mode = "0400";
       };
       gitlab_token = { sopsFile = ../../secrets/gitlab.yaml; };
+      syncthing_gui_password = {
+        sopsFile = ../../secrets/syncthing.yaml;
+        owner = userName;
+        mode = "0400";
+      };
     } // lib.optionalAttrs hasBitwarden {
       bitwarden_clientid = {
         sopsFile = ../../secrets/bitwarden.yaml;
@@ -270,6 +275,12 @@ in
   # FAIL2BAN (brute-force protection)
   ############################################################################
   ivali.security.fail2ban.enable = true;
+
+  ############################################################################
+  # SYNCTHING — password from SOPS
+  ############################################################################
+  services.syncthing.guiPasswordFile = lib.mkIf config.services.syncthing.enable
+    config.sops.secrets.syncthing_gui_password.path;
 
   ############################################################################
   # AI CODING AGENTS

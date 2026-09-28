@@ -30,9 +30,8 @@ pkgs.testers.nixosTest {
   nodes.machine = { config, lib, ... }:
     let
       # What nftables actually loads: the custom ruleset plus every declared
-      # table (the firewall emits the "nixos-fw" table via extraInputRules and
-      # the per-interface LocalSend rules; this module emits the outbound
-      # enforcement via nftables.ruleset).
+      # table (the firewall emits the "nixos-fw" table via extraInputRules;
+      # this module emits the outbound enforcement via nftables.ruleset).
       nftRuntime =
         config.networking.nftables.ruleset
         + builtins.concatStringsSep "\n" (lib.mapAttrsToList (_: t: t.content) config.networking.nftables.tables);
@@ -60,7 +59,7 @@ pkgs.testers.nixosTest {
       security.apparmor.enable = true;
 
       # Exercise the repository firewall module (nftables backend) so the
-      # LocalSend Tailscale-only assertions below describe the actual module
+      # default-deny assertions below describe the actual module
       # behavior, not the stock NixOS firewall.
       ivali.security.firewall.enable = true;
 
@@ -68,34 +67,36 @@ pkgs.testers.nixosTest {
         enable = true;
       };
 
-      # LocalSend must be Tailscale-only: inbound opened ONLY on tailscale0,
-      # dropped everywhere else, and outbound (send + discovery) dropped
-      # off the tailnet. These eval-time assertions guard the architecture that
-      # LocalSend never transits the LAN or a public interface.
+      # The security firewall module owns a default-deny ingress policy and
+      # deliberately opens no inbound TCP port on any interface. Per-service
+      # exposure is declared by the host spec, scoped to tailscale0 where
+      # applicable — it is not granted here.
+      #
+      # History: these assertions previously pinned LocalSend (port 53317)
+      # Tailscale-only rules. LocalSend was removed from security/firewall.nix
+      # in 33ca011 (replaced by GSConnect + Syncthing + Taildrop) but these
+      # assertions were left behind, which made `nix flake check` permanently
+      # red. They now assert the default-deny contract the module actually
+      # owns, plus a guard that the removed LocalSend rules stay removed.
       assertions = [
         {
-          assertion = builtins.match ".*iifname tailscale0 tcp dport.*53317.*accept.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend TCP must be allowed inbound only on tailscale0";
+          assertion = config.networking.firewall.allowedTCPPorts == [ ];
+          message = "The security firewall must not open any inbound TCP port on any interface";
         }
         {
-          assertion = builtins.match ".*iifname tailscale0 udp dport.*53317.*accept.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend UDP must be allowed inbound only on tailscale0";
+          assertion = config.networking.firewall.allowedUDPPorts == [ 41641 ];
+          message = "The security firewall must open only the Tailscale WireGuard UDP port (41641) globally";
         }
         {
-          assertion = builtins.match ".*iifname != \"tailscale0\" tcp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend TCP must be dropped off the tailnet";
+          # security/firewall.nix sets trustedInterfaces = [ ]; the effective
+          # value also carries nixpkgs' own "lo" default, so assert that no
+          # real (non-loopback) interface has been trusted.
+          assertion = builtins.all (i: i == "lo") config.networking.firewall.trustedInterfaces;
+          message = "The security firewall must trust no interface beyond loopback";
         }
         {
-          assertion = builtins.match ".*iifname != \"tailscale0\" udp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend UDP must be dropped off the tailnet";
-        }
-        {
-          assertion = builtins.match ".*oifname != \"tailscale0\" tcp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend outbound TCP must be dropped off the tailnet";
-        }
-        {
-          assertion = builtins.match ".*oifname != \"tailscale0\" udp dport 53317 drop.*" (builtins.toString nftRuntime) != null;
-          message = "LocalSend outbound UDP must be dropped off the tailnet";
+          assertion = !lib.hasInfix "53317" nftRuntime;
+          message = "LocalSend (53317) was removed in 33ca011 and must not reappear in the nftables ruleset";
         }
       ];
 

@@ -117,12 +117,6 @@ in
         # Public Internet — Inbound
         ##########################################################
 
-        # LocalSend (TCP+UDP 53317) is opened ONLY on tailscale0 and dropped
-        # explicitly everywhere else (see interfaces."tailscale0" and
-        # extraInputRules below). It is intentionally NOT in the global
-        # allowedTCPPorts/allowedUDPPorts so it never opens on the LAN or the
-        # public internet — Tailscale is the only path for file transfers.
-
         allowedTCPPorts = [ ];
 
         allowedUDPPorts =
@@ -134,27 +128,6 @@ in
             # STUN
             3478
           ];
-
-        ##########################################################
-        # LocalSend — Tailscale-only (never LAN / public)
-        ##########################################################
-
-        # LocalSend (TCP+UDP 53317) is opened ONLY on tailscale0, so file
-        # transfers and discovery are reachable exclusively over the tailnet.
-        interfaces."tailscale0" = {
-          allowedTCPPorts = [ 53317 ];
-          allowedUDPPorts = [ 53317 ];
-        };
-
-        # Explicit drop off the tailnet. Belt-and-suspenders on top of the
-        # default-drop policy, and it documents the intent in the rendered
-        # ruleset. (nft rejects cannot express a tcp/udp scoped refusal
-        # reliably in an inet-family chain without meta nfproto guards, so
-        # explicit drops are used for clarity and consistency.)
-        extraInputRules = ''
-          iifname != "tailscale0" tcp dport 53317 drop
-          iifname != "tailscale0" udp dport 53317 drop
-        '';
 
         ##########################################################
         # Logging
@@ -169,52 +142,7 @@ in
         logRefusedPackets = false;
       };
 
-      ############################################################
-      # LOCALSEND — Tailscale-only (never on LAN / public interfaces)
-      ############################################################
-      # LocalSend uses TCP+UDP 53317 for file transfer and discovery.
-      # Ingress is opened ONLY on tailscale0 (see interfaces."tailscale0"
-      # and extraInputRules in networking.firewall above) and dropped
-      # everywhere else. The OUTPUT hook below drops LocalSend traffic
-      # leaving any non-Tailscale interface, which also stops LAN discovery
-      # broadcasts. Tailscale is therefore the only interface LocalSend can
-      # use in either direction — sending, receiving, and peer discovery.
-      #
-      # The outbound enforcement is a real nftables OUTPUT hook chain, so it
-      # stays active even when egress filtering (enableEgressFiltering) is off.
-      #
-      # EGRESS FILTERING — real nftables enforcement
-      ############################################################
-      #
-      # enableEgressFiltering is OFF by default. When enabled, a default-deny
-      # outbound policy is installed on the NON-Tailscale interfaces. Tailscale
-      # (tailscale0) is always trusted: egress filtering must never break the
-      # zero-trust overlay, exit-node forwarding, or MagicDNS.
-      #
-      # The allowed set is a curated static baseline of system-critical hosts
-      # (Nix, GitLab, Git, DNS, time) plus any user-supplied domains. Domains
-      # are resolved at runtime by egress-refresh.service and reloaded into
-      # the nftables ruleset, so the baseline is not frozen at build time.
-      #
-      # Exit-node forwarding is preserved: when this host advertises an exit
-      # node, the forward chain is left unrestricted (the NixOS firewall
-      # already handles this via checkReversePath).
-      ############################################################
-
       nftables.ruleset = lib.mkMerge [
-        # LocalSend — always active regardless of egress filtering.
-        # Drops outbound LocalSend (dport 53317) on every interface except
-        # tailscale0, so LocalSend can only ever transit the Tailscale
-        # overlay (sending AND discovery broadcasts).
-        ''
-          table inet ivali-localsend {
-            chain output {
-              type filter hook output priority filter; policy accept;
-              oifname != "tailscale0" tcp dport 53317 drop comment "LocalSend must use Tailscale TCP"
-              oifname != "tailscale0" udp dport 53317 drop comment "LocalSend must use Tailscale UDP"
-            }
-          }
-        ''
 
         # Egress filtering — enabled via ivali.security.firewall.enableEgressFiltering
         (lib.mkIf cfg.enableEgressFiltering ''

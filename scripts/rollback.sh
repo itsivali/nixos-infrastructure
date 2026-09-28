@@ -15,12 +15,18 @@
 #
 # All other rollback paths MUST call this script; they must not invoke
 # nixos-rebuild --rollback themselves.
+#
+# Environment:
+#   GITOPS_WORKTREE  — path to the GitOps checkout (default: /var/lib/gitops)
+#   HOST_NAME        — override hostname detection
+#   COOLDOWN_SECONDS — minimum seconds between rollbacks (default: 900)
 
 set -Eeuo pipefail
 
-REPO_DIR="/home/ivali/nixos-infrastructure"
-NOTIFY="${REPO_DIR}/scripts/notify.sh"
-HEALTH="${REPO_DIR}/scripts/deployment-health.sh"
+REPO_DIR="${GITOPS_WORKTREE:-/var/lib/gitops}"
+SCRIPTS_DIR="${REPO_DIR}/scripts"
+NOTIFY="${SCRIPTS_DIR}/notify.sh"
+HEALTH="${SCRIPTS_DIR}/deployment-health.sh"
 IVALI="$(command -v ivali 2>/dev/null || echo "${REPO_DIR}/result/bin/ivali")"
 
 HOST="${HOST_NAME:-$(hostname)}"
@@ -136,19 +142,26 @@ fi
 sleep 10  # let services settle
 
 health_passed=false
-if [[ -x "$IVALI" ]]; then
-  log "Using ivali doctor for health check..."
-  if "$IVALI" doctor > /dev/null 2>&1; then
+health_output=""
+
+if [[ -x "$HEALTH" ]]; then
+  log "Using runtime service health check (deployment-health.sh)..."
+  if health_output="$("$HEALTH" 2>&1)"; then
     health_passed=true
   fi
-elif [[ -x "$HEALTH" ]]; then
-  log "Using legacy deployment-health.sh..."
-  if "$HEALTH"; then
+elif [[ -x "$IVALI" ]]; then
+  log "Using ivali doctor for health check..."
+  if health_output="$("$IVALI" doctor 2>&1)"; then
     health_passed=true
   fi
 else
   log "No health check tool available — skipping health gate."
   health_passed=true
+fi
+
+if ! "$health_passed"; then
+  log "Post-rollback health check output:"
+  log "${health_output}"
 fi
 
 if "$health_passed"; then

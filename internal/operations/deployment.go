@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/itsivali/nixos-infrastructure/internal/nixutil"
 )
 
 // fileLock provides a simple file-based lock for deployment serialization.
@@ -328,23 +330,7 @@ func (d *deploymentService) auditDeployment(ctx context.Context, record *Deploym
 }
 
 func (d *deploymentService) getCurrentGeneration(ctx context.Context) int {
-	out, err := exec.CommandContext(ctx, "nix-env", "--list-generations",
-		"--profile", "/nix/var/nix/profiles/system").CombinedOutput()
-	if err != nil {
-		return 0
-	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	for _, line := range lines {
-		if strings.Contains(line, "*") {
-			fields := strings.Fields(line)
-			if len(fields) > 0 {
-				var gen int
-				_, _ = fmt.Sscanf(fields[0], "%d", &gen)
-				return gen
-			}
-		}
-	}
-	return 0
+	return nixutil.CurrentGeneration()
 }
 
 func (d *deploymentService) getCurrentCommit(ctx context.Context) string {

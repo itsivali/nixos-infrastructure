@@ -157,6 +157,9 @@
     # both features.secrets and features.gitlabRunner are true.
     fleet.deploymentHealth.enableRollback = true;
 
+    # Docker container runtime
+    ivali.docker.enable = true;
+
     # DevOps tooling - enable only what you need
     ivali.devops.enable = true;
     ivali.devops.terraform.enable = true;

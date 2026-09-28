@@ -2162,3 +2162,156 @@ The system is tested rather than assumed.
 ```
 
 That is the definition of done.
+
+---
+
+# Session Handoff — Syncthing GUI Credentials & Firewall Hardening
+
+Recorded: 2026-09-28 · Branch merged to `main` at `951aca0` · Host: prague
+
+## 1. What Changed
+
+| # | Change | MR | State |
+|---|---|---|---|
+| 1 | Stale LocalSend firewall assertions replaced with default-deny guards | !87 | MERGED |
+| 2 | Docker container runtime enabled on prague | !88 | MERGED |
+| 3 | Syncthing GUI credentials via SOPS + tailnet-only firewall | !89 | MERGED |
+
+All three pipelines green. MR !89: 13/13 jobs success.
+
+## 2. Syncthing Credential Source of Truth
+
+The declarative chain, which now carries the requested credentials:
+
+```text
+GUI username:  ivali
+  ← services.syncthing.settings.gui.user        (hosts/prague.nix)
+
+GUI password:  (rotated to the operator-specified value)
+  ← secrets/syncthing.yaml
+  ← sops.secrets.syncthing_gui_password   owner ivali, mode 0400
+  ← /run/secrets/syncthing_gui_password
+  ← services.syncthing.guiPasswordFile
+  ← syncthing-init.service
+      mkpasswd -m bcrypt --stdin  →  PATCH /rest/config/gui {"password": "<bcrypt>"}
+```
+
+`syncthing-init.service` re-applies username, TLS, and the bcrypt-hashed password
+on every boot, so the GUI cannot drift from the repository.
+
+`.sops.yaml` requires no change: its `secrets/.*\.yaml$` creation rule already maps
+`secrets/syncthing.yaml` to recipient `age1ps5ptf…s7h`, the same key used by every
+other secret in the repository.
+
+## 3. Firewall
+
+`openDefaultPorts` was `true`, which opened `22000/tcp` and `22000 + 21027/udp` on
+**every** interface. Now `false`. The `tailscale0` block is the sole inbound path:
+
+```text
+tailscale0   TCP 22 53 80 443 3389 8384 22000
+             UDP 53 22000
+global       TCP 22
+             UDP 3478 5353 41641
+```
+
+The phone syncs over the tailnet, so this is a tightening, not a capability removal.
+
+## 4. Critical Operational Note
+
+`syncthing-init.service` is `Type=oneshot` with `RemainAfterExit=true`.
+
+> **A `systemctl daemon-reload` alone will NOT re-run it.**
+> The new password is not applied until `systemctl restart syncthing-init.service`.
+
+### Post-activation verification (not yet performed)
+
+```bash
+systemctl restart syncthing-init.service
+
+# positive control — must return 200
+curl -s -o /dev/null -w '%{http_code}\n' -u 'ivali:<pw>' -k \
+  https://100.81.219.121:8384/rest/system/status
+
+# negative control — the previous password must return 401
+curl -s -o /dev/null -w '%{http_code}\n' -u 'ivali:<old-pw>' -k \
+  https://100.81.219.121:8384/rest/system/status
+
+# confirm the hash is bcrypt and the user is ivali
+curl -s -u 'ivali:<pw>' -k https://100.81.219.121:8384/rest/config/gui \
+  | jq '{user, tlsEnabled, hash: (.password[0:4])}'
+
+# secret file must be 4 bytes, 0400
+stat -c '%s %a %U' /run/secrets/syncthing_gui_password
+
+# 22000 must appear only under tailscale0
+nft list ruleset | grep -n 22000
+```
+
+**This has not been executed.** It requires the GitOps reconciler to activate a
+generation containing `951aca0`. Runtime health is therefore UNVERIFIED.
+
+## 5. Dead Code / Drift Found (Not Fixed)
+
+Recorded rather than silently expanded into scope.
+
+| Finding | Detail |
+|---|---|
+| `dataDir` is a no-op | `services.syncthing.dataDir` is set to `/home/ivali/.local/share/syncthing`, but the module passes `--data=${databaseDir}`, which defaults to `configDir`. That directory has never existed. Either drop the option or set `databaseDir` deliberately. |
+| `listenAddresses` binds all interfaces | `tcp://0.0.0.0:22000` remains. The firewall is now the sole control point, which is correct, but binding is broader than necessary. |
+| `overrideFolders` / `overrideDevices` are `false` | GUI-side folder and device edits are never reconciled. A folder deleted in the GUI silently reappears on the next `syncthing-init` run. This is the main declarative-drift surface. |
+| `guiAddress` hardcodes a tailnet IP | `100.81.219.121:8384`. If the tailnet IP changes, GUI binding breaks **and** `merge-syncthing-config` blocks indefinitely in its `xmllint`/curl retry loop. A `unix://` socket plus reverse proxy is the resilient alternative. |
+| No `services/syncthing/` domain module | Config is inline in `hosts/prague.nix`, unlike nginx/postgres/redis/blocky which use `ivali.services.<name>.enable`. Extracting one would let eval assertions live with the capability. |
+| `services/blocky/` missing from architecture model | `architecture/domains.yaml` `runtime.services.internal` omits it. Pre-existing gap, unrelated to syncthing. |
+| Syncthing is undocumented | Before MR !87, syncthing appeared in **zero** documentation files. `security/README.md` was corrected as part of the LocalSend fix; `MODULES.md`, `ARCHITECTURE.md`, and `docs/*` still do not describe it. |
+| `.stfolder/` and `.stignore` untracked | Runtime artifacts of the `nixos-config` sync folder. Not gitignored, so `git status` always shows them. |
+
+## 6. Security Notes
+
+- The GUI password is a 4-character dictionary word, at the operator's explicit
+  instruction. Exposure is bounded: the GUI binds to the tailnet address and
+  `8384` is opened on `tailscale0` only. Anyone on the tailnet who guesses it
+  gains Syncthing's REST API, which grants filesystem control. Recommend rotating
+  to a passphrase as follow-up.
+- No plaintext secret exists in the repository. The `secrets/syncthing.yaml` diff is
+  ciphertext-only (`data`, `mac`, `lastmodified`). `gitleaks` passed in CI.
+- The value was passed to `sops set` via a temporary file under `/tmp/opencode`,
+  which was deleted. The old password remains in git history as ciphertext only.
+
+## 7. Repository State
+
+```text
+branch:   main, identical to origin/main
+HEAD:     951aca0 Merge branch 'security/syncthing-gui-credentials' into 'main'
+tree:     clean, except untracked .stfolder/ and .stignore (syncthing runtime artifacts)
+```
+
+Gates verified locally before each push: `nix fmt --check`, `nix flake check --no-build`,
+`nix eval .#nixosConfigurations.prague…toplevel.name`, `go build`, `go vet`,
+`go test -race -count=1`, `check-architecture`.
+
+## 8. Next Exact Action
+
+1. Confirm the GitOps reconciler has activated a generation containing `951aca0`.
+2. `systemctl restart syncthing-init.service` — required, see §4.
+3. Run the verification block in §4 and confirm 200 / 401 / bcrypt / 4 bytes.
+4. Confirm the phone still syncs `documents` and `sync` over the tailnet.
+5. Optional follow-ups from §5, in priority order: rotate the GUI password to a
+   passphrase; add a `services/syncthing/` module with eval assertions; document
+   syncthing in `MODULES.md` and `ARCHITECTURE.md`.
+
+## 9. Relevant Documents
+
+For the next agent continuing this work:
+
+```text
+AGENTS.md                  AI operating contract — mandatory
+IVALI_FLOW.md              Git lifecycle; CI failure handling
+secrets/syncthing.yaml     GUI password (SOPS ciphertext)
+lib/host-templates/laptop.nix:54-58    secret declaration
+lib/host-templates/laptop.nix:282-283  guiPasswordFile wiring
+hosts/prague.nix:63-155     syncthing service + firewall
+security/README.md         port inventory (corrected in !87)
+tests/security-smoke.nix   firewall default-deny assertions (corrected in !87)
+architecture/domains.yaml  domain ownership model
+```

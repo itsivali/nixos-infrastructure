@@ -137,12 +137,17 @@
           };
         };
       };
-      openDefaultPorts = true;
+      # Do NOT enable openDefaultPorts: it opens 22000/tcp and 22000+21027/udp
+      # on every interface, which would expose the sync data port to the LAN
+      # and the public internet. Syncthing is reachable over the tailnet only.
+      openDefaultPorts = false;
       overrideFolders = false;
       overrideDevices = false;
     };
 
-    # Firewall: allow Syncthing on Tailscale interface
+    # Firewall: the sole inbound path for Syncthing is the tailnet interface.
+    # Without this the GUI (8384) and the data port (22000) are unreachable
+    # from any peer, including the phone on the tailnet.
     networking.firewall.interfaces.tailscale0 = {
       allowedTCPPorts = [ 22000 8384 ];
       allowedUDPPorts = [ 22000 ];

@@ -26,7 +26,7 @@ in
   users.users.${username} = {
     isNormalUser = true;
     description = "Willis Ivali";
-    extraGroups = [ "wheel" "networkmanager" "video" "audio" ];
+    extraGroups = [ "wheel" "networkmanager" "video" "audio" "docker" ];
 
     openssh.authorizedKeys.keys = [
       gitlabSshKey

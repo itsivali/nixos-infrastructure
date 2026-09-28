@@ -66,6 +66,7 @@
         "vhost_net"
         "vhost_vsock"
         "overlay" #needed for docker
+        "bridge" #needed for docker
       ];
 
       # Blacklist broken kernel modules at boot to prevent device-probe

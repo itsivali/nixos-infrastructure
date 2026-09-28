@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: nixos-config
+created: 2026-09-19T22:55:09+03:00

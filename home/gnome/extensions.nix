@@ -24,6 +24,7 @@ let
     clipboard-indicator
     vitals
     tiling-assistant
+    gsconnect
   ];
 in
 {
@@ -91,6 +92,13 @@ in
     "org/gnome/shell/extensions/tiling-assistant" = {
       enable-tiling-popup = true;
       enable-edge-tiling = true;
+    };
+
+    "org/gnome/shell/extensions/gsconnect" = {
+      auto-connect = true;
+      auto-reconnect = true;
+      notification-priority = "normal";
+      enable-indicator = true;
     };
   };
 }

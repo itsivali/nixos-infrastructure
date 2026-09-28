@@ -25,6 +25,7 @@ let
     clipboard-indicator
     vitals
     tiling-assistant
+    gsconnect
   ];
 in
 {

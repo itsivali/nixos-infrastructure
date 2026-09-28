@@ -8,7 +8,7 @@ This directory contains all NixOS security modules for the nixos-infrastructure 
 |--------|---------|-------|
 | `audit.nix` | auditd rules for privilege escalation, identity changes, SSH config, kernel modules | `ivali.security.audit` |
 | `apparmor.nix` | Mandatory Access Control profiles | `ivali.security.apparmor` |
-| `firewall.nix` | nftables firewall, egress filtering, LocalSend Tailscale-only rules | `ivali.security.firewall` |
+| `firewall.nix` | nftables firewall, default-deny ingress, egress filtering | `ivali.security.firewall` |
 | `hardening.nix` | Kernel protection, PAM, coredump, Polkit hardening | `ivali.security.hardening` |
 | `packages.nix` | Security utility packages | `ivali.security.packages` |
 | `sudo.nix` | Sudo hardening and configuration | `ivali.security.sudo` |
@@ -25,10 +25,9 @@ This directory contains all NixOS security modules for the nixos-infrastructure 
 | 80/tcp | TCP | IN | tailscale0 only | Grafana (Nginx reverse proxy) |
 | 3478/udp | UDP | IN | All | STUN (Tailscale exit node) |
 | 41641/udp | UDP | IN | All | Tailscale WireGuard |
-| 53317/tcp | TCP | IN | tailscale0 only | LocalSend file transfer |
-| 53317/udp | UDP | IN | tailscale0 only | LocalSend discovery |
-| 53317/tcp | TCP | OUT | tailscale0 only | LocalSend transfers |
-| 53317/udp | UDP | OUT | tailscale0 only | LocalSend discovery |
+| 22000/tcp | TCP | IN | tailscale0 only | Syncthing data sync |
+| 22000/udp | UDP | IN | tailscale0 only | Syncthing local discovery |
+| 8384/tcp | TCP | IN | tailscale0 only | Syncthing web GUI |
 
 ## Audit Rules
 
@@ -63,7 +62,8 @@ Apply via: `tailscale up --reset` (requires admin auth key)
 ## Firewall Architecture
 
 - **Default policy**: Drop all inbound, allow all outbound
-- **LocalSend**: TCP+UDP 53317 on tailscale0 only; dropped in and out on LAN/public interfaces
+- **Default-deny ingress**: the module opens no inbound TCP port on any interface; per-service exposure is declared by the host spec and scoped to `tailscale0` where applicable
+- **Syncthing**: TCP 22000/8384 on tailscale0 only (replaced LocalSend in `33ca011`; LocalSend's 53317 rules were removed and must not return)
 - **Egress filtering**: Optional default-deny outbound on non-Tailscale interfaces
 - **Logging**: Disabled (incompatible with `security.lockKernelModules`)
 

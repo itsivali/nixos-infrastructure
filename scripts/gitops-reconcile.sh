@@ -99,6 +99,54 @@ retry() {
   done
 }
 
+# Write structured deployment state to /var/lib/deployment/last-deploy.json
+# so the Go ivali CLI (ivali status, ivali deploy status) can read it.
+# This bridges the shell script deployment path to the Go state model.
+# Arguments: state commit_sha [error_message]
+write_deploy_state() {
+  local state="$1"
+  local commit_sha="${2:-}"
+  local error_msg="${3:-}"
+  local deploy_id
+  deploy_id="$(date +%Y%m%d-%H%M%S)-${HOST}"
+  local gen
+  gen="$(readlink /nix/var/nix/profiles/system 2>/dev/null | sed -E 's/.*system-([0-9]+)-link.*/\1/' || echo 0)"
+  local duration=$(( SECONDS - GLOBAL_START ))
+
+  local state_dir="/var/lib/deployment"
+  mkdir -p "$state_dir/history" 2>/dev/null || return 0
+
+  # Build JSON with jq if available, else use printf
+  if command -v jq >/dev/null 2>&1; then
+    jq -n \
+      --arg id "$deploy_id" \
+      --arg sha "$commit_sha" \
+      --arg state "$state" \
+      --arg error "$error_msg" \
+      --arg gen "$gen" \
+      --arg actor "gitops-reconciler" \
+      --arg source "gitops" \
+      --arg ts "$(date -Iseconds)" \
+      --arg branch "$BRANCH" \
+      --argjson duration "$duration" \
+      '{
+        id: $id,
+        commit_sha: $sha,
+        state: $state,
+        error: $error,
+        generation: ($gen | tonumber),
+        actor: $actor,
+        source: $source,
+        timestamp: $ts,
+        branch: $branch,
+        duration: ($duration | tostring) + "s"
+      }' > "$state_dir/last-deploy.json" 2>/dev/null || true
+    cp "$state_dir/last-deploy.json" "$state_dir/history/${deploy_id}.json" 2>/dev/null || true
+    # Keep only last 50 history entries
+    ls -t "$state_dir"/history/*.json 2>/dev/null | tail -n +51 | xargs rm -f 2>/dev/null || true
+  fi
+}
+
 ###########################################################################
 # Lock — stale detection + mutual exclusion
 ###########################################################################
@@ -374,7 +422,8 @@ step_ok
 ###########################################################################
 
 step "Waiting for services to settle..."
-sleep 30
+GRACE="${GITOPS_GRACE_PERIOD:-30}"
+sleep "$GRACE"
 step_ok "Grace period complete"
 
 ###########################################################################
@@ -407,6 +456,7 @@ if ! "$health_passed"; then
   log "${health_output}"
   notify "🚨 Health check FAILED on ${HOST} — rolling back"
   notify_desktop "GitOps deploy failed" "${HOST} → ${SHORT_SHA}: health check failed, rolling back" critical dialog-error
+  write_deploy_state "failed" "$SHORT_SHA" "health check failed"
   log "Initiating rollback..."
   "$ROLLBACK"
   step_fail
@@ -439,5 +489,7 @@ ${CHANGELOG}
 Files touched
 ─────────────
 ${CHANGED_FILES}"
+
+write_deploy_state "complete" "$SHORT_SHA"
 
 log "Reconciliation complete (${TOTAL_ELAPSED}s)."

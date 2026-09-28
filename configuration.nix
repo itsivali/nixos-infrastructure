@@ -76,5 +76,4 @@ in
   ]
   # ── Auto-discovered domain modules ──────────────────────────────────────
   ++ domainModules;
-
 }

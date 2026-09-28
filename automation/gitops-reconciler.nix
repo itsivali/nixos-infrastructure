@@ -128,6 +128,9 @@ in
         # Optional: pick a lighter check (all checks are VM-based).
         # CANARY_CHECK = "automation-smoke";
 
+        # Seconds to wait after activation for services to settle.
+        GITOPS_GRACE_PERIOD = builtins.toString cfg.gracePeriod;
+
         # The reconciler runs as the operator user (ivali), who owns the
         # passphrase-less deploy key, so OpenSSH accepts it for git
         # fetch/pull over git@gitlab.com. The nixos-rebuild switch step
@@ -192,7 +195,9 @@ in
 
         # Treat a notified failure (exit 1) as success so a failed deploy
         # (already reported via notify.sh) never blocks `nixos-rebuild
-        # switch` with exit 4.
+        # switch` with exit 4. The timer keeps firing regardless; failure
+        # visibility is provided by the state file the reconciler writes
+        # (last-deploy.json with state=failed) and by the email notifications.
         SuccessExitStatus = "1";
       };
     };

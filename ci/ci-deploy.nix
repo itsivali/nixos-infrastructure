@@ -46,6 +46,18 @@ in
       path = with pkgs; [
         bash
         coreutils
+        curl
+        git
+        gnugrep
+        gnused
+        gawk
+        dnsutils
+        tailscale
+        iputils
+        inetutils
+        systemd
+        procps
+        findutils
         nix
         nixos-rebuild
         util-linux
@@ -53,7 +65,13 @@ in
 
       environment = {
         HOST_NAME = config.networking.hostName;
-        REPO_DIR = "/home/ivali/nixos-infrastructure";
+        GITOPS_WORKTREE = "/var/lib/gitops";
+        # CI deploys should gate on runtime service health (like the
+        # reconciler). Use STRICT_HEALTH=true so connectivity failures
+        # are real failures, matching gitops-reconcile.sh behavior.
+        STRICT_HEALTH = "true";
+        # Grace period after activation — match the reconciler's setting.
+        GITOPS_GRACE_PERIOD = builtins.toString config.fleet.gitopsReconciler.gracePeriod;
       };
 
       serviceConfig = {

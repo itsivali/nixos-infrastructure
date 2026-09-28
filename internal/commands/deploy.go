@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/itsivali/nixos-infrastructure/internal/app"
+	"github.com/itsivali/nixos-infrastructure/internal/nixutil"
 	"github.com/itsivali/nixos-infrastructure/internal/operations"
 )
 
@@ -69,17 +70,8 @@ Shows real-time progress for each stage with icons and timing.`,
 			}
 
 			// Current generation
-			if out, err := gitRun(repoDir, "nix-env", "--list-generations", "--profile", "/nix/var/nix/profiles/system"); err == nil {
-				lines := strings.Split(strings.TrimSpace(out), "\n")
-				for _, line := range lines {
-					if strings.Contains(line, "*") {
-						fields := strings.Fields(line)
-						if len(fields) > 0 {
-							f.stepInfo(fmt.Sprintf("Generation: %s (current)", f.term.Code(fields[0])))
-							break
-						}
-					}
-				}
+			if gen := nixutil.CurrentGeneration(); gen > 0 {
+				f.stepInfo(fmt.Sprintf("Generation: %d (current)", gen))
 			}
 
 			// Host
@@ -149,17 +141,8 @@ Shows real-time progress for each stage with icons and timing.`,
 
 			// Get new generation
 			newGen := ""
-			if out, err := gitRun(repoDir, "nix-env", "--list-generations", "--profile", "/nix/var/nix/profiles/system"); err == nil {
-				lines := strings.Split(strings.TrimSpace(out), "\n")
-				for _, line := range lines {
-					if strings.Contains(line, "*") {
-						fields := strings.Fields(line)
-						if len(fields) > 0 {
-							newGen = fields[0]
-							break
-						}
-					}
-				}
+			if gen := nixutil.CurrentGeneration(); gen > 0 {
+				newGen = fmt.Sprintf("%d", gen)
 			}
 
 			// Get new commit

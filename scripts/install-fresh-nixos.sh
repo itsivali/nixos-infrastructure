@@ -5,42 +5,52 @@
 # infrastructure flake. Designed to run on a new NixOS system (as your normal
 # user with sudo). The script:
 #
-#   1. Enables the nix-command/flakes experimental features
-#   2. Installs git, age, and sops into your user profile (the repo's NixOS
-#      config also ships them system-wide after the first switch)
-#   3. Clones the infrastructure repo and detects hardware
-#   4. Copies your SOPS age key from your old system and guarantees the
-#      ~/.config/sops/age/keys.txt path exists
-#   5. Registers the host in the flake, validates, and deploys
-#   6. Generates SSH keys and reports next steps
+#   1. Pre-flight checks (disk, network, NixOS version)
+#   2. Enable nix-command + flakes (user config + export)
+#   3. Generate SSH key FIRST (before any GitLab interaction)
+#   4. Prompt user to add SSH key to GitLab
+#   5. Clone repo (now works with fresh SSH key)
+#   6. Detect hardware
+#   7. Age key setup:
+#      - --migrate: copy from --age-key-file / AGE_KEY env / interactive paste
+#      - --fresh: generate new age key, create .sops.yaml entries, warn re-encrypt needed
+#   8. Register host spec
+#   9. Validate flake + syntax
+#   10. nixos-rebuild switch
+#   11. Post-switch: validate SOPS, final SSH key setup
 #
 # Usage:
 #   The repo is private, so it cannot be fetched over plain HTTPS/raw on a
-#   fresh system. Save this script to a USB stick, generate an SSH key, add
-#   it to GitLab (https://gitlab.com/-/user_settings/ssh_keys), then run:
+#   fresh system. Save this script to a USB stick, then run:
 #
-#     ssh-keygen -t ed25519 -C "itsivali@outlook.com" -f ~/.ssh/id_ed25519 -N ""
-#     bash install-fresh-nixos.sh
+#   For fresh install (new age key):
+#     bash install-fresh-nixos.sh --fresh
 #
-#   The clone defaults to SSH (git@gitlab.com:...) which requires the key to
-#   be registered with GitLab BEFORE this script runs (the repo clone happens
-#   before SSH key generation).
+#   For migrating from existing system (existing age key):
+#     bash install-fresh-nixos.sh --migrate --age-key-file /path/to/keys.txt
+#
+#   The script will generate an SSH key, prompt you to add it to GitLab,
+#   then clone the repo and continue.
 #
 # Flags:
-#   --host NAME          Host name (default: current hostname)
-#   --user NAME          Username (default: current user)
-#   --desktop gnome     Desktop environment (default: gnome)
-#   --repo-url URL       Git clone URL (default: git@gitlab.com:... over SSH)
-#   --push-url URL       Git push URL
-#   --branch BRANCH      Git branch (default: main)
-#   --age-key-file PATH  Path to an existing age key file to copy
-#   --ssh-email EMAIL    Email for SSH key comment (default: itsivali@outlook.com)
-#   --yes, -y            Non-interactive mode
-#   --tailnet-domain     Tailscale domain (default: codlet-trench.ts.net)
-#   --ssh-keys KEYS      Comma-separated SSH public keys
-#   --no-ssh-keys        Skip SSH key generation
-#   --features LIST      Comma-separated features (default: secrets,bitwarden,gitlab-runner,tailscale,tailscale-exit-node,ssh)
-#   --help, -h           Show this help
+#   --host NAME              Host name (default: current hostname)
+#   --user NAME              Username (default: current user)
+#   --desktop gnome          Desktop environment (default: gnome)
+#   --repo-url URL           Git clone URL (default: git@gitlab.com:... over SSH)
+#   --push-url URL           Git push URL
+#   --branch BRANCH          Git branch (default: main)
+#   --age-key-file PATH      Path to an existing age key file (migrate mode)
+#   --ssh-email EMAIL        Email for SSH key comment (default: itsivali@outlook.com)
+#   --yes, -y                Non-interactive mode
+#   --tailnet-domain         Tailscale domain (default: codlet-trench.ts.net)
+#   --ssh-keys KEYS          Comma-separated SSH public keys
+#   --no-ssh-keys            Skip SSH key generation
+#   --features LIST          Comma-separated features (default: secrets,bitwarden,gitlab-runner,tailscale,tailscale-exit-node,ssh)
+#   --migrate                Use existing age key (default mode)
+#   --fresh                  Generate new age key (fresh install mode)
+#   --no-secrets             Disable SOPS secrets for initial bootstrap
+#   --no-rebuild             Stop before nixos-rebuild (for CI/testing)
+#   --help, -h               Show this help
 set -euo pipefail
 
 # ── Defaults ─────────────────────────────────────────────────────────────────
@@ -62,6 +72,11 @@ SSH_KEYS="${SSH_KEYS:-}"
 AGE_KEY_FILE="${AGE_KEY_FILE:-}"
 SSH_EMAIL="${SSH_EMAIL:-itsivali@outlook.com}"
 NO_SSH_KEYS="${NO_SSH_KEYS:-false}"
+MODE="${MODE:-migrate}"  # migrate | fresh
+NO_SECRETS="${NO_SECRETS:-false}"
+NO_REBUILD="${NO_REBUILD:-false}"
+RE_ENCRYPT="${RE_ENCRYPT:-false}"
+OLD_AGE_KEY_FILE="${OLD_AGE_KEY_FILE:-}"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -79,24 +94,40 @@ while [[ $# -gt 0 ]]; do
     --ssh-keys)        SSH_KEYS="$2";  shift 2 ;;
     --no-ssh-keys)     NO_SSH_KEYS="true"; shift ;;
     --features)        FEATURES="$2";  shift 2 ;;
+    --migrate)         MODE="migrate"; shift ;;
+    --fresh)           MODE="fresh";   shift ;;
+    --no-secrets)      NO_SECRETS="true"; shift ;;
+    --no-rebuild)      NO_REBUILD="true"; shift ;;
+    --re-encrypt)      RE_ENCRYPT="true"; shift ;;
+    --old-age-key-file) OLD_AGE_KEY_FILE="$2"; shift 2 ;;
     --help|-h)
       echo "Usage: install-fresh-nixos.sh [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --host NAME          Host name (default: current hostname)"
-      echo "  --user NAME          Username (default: current user)"
-      echo "  --desktop TYPE       Desktop: gnome (default)"
-      echo "  --repo-url URL       Git clone URL (default: SSH git@gitlab.com:...)"
-      echo "  --push-url URL       Git push URL"
-      echo "  --branch BRANCH      Git branch (default: main)"
-      echo "  --age-key-file PATH  Path to an existing age key file to copy"
-      echo "  --ssh-email EMAIL    Email for SSH key comment"
-      echo "  --yes, -y            Non-interactive mode"
-      echo "  --tailnet-domain     Tailscale domain"
-      echo "  --ssh-keys KEYS      Comma-separated SSH public keys"
-      echo "  --no-ssh-keys        Skip SSH key generation"
-      echo "  --features LIST      Comma-separated feature flags"
-      echo "  --help, -h           Show this help"
+      echo "  --host NAME              Host name (default: current hostname)"
+      echo "  --user NAME              Username (default: current user)"
+      echo "  --desktop TYPE           Desktop: gnome (default)"
+      echo "  --repo-url URL           Git clone URL (default: SSH git@gitlab.com:...)"
+      echo "  --push-url URL           Git push URL"
+      echo "  --branch BRANCH          Git branch (default: main)"
+      echo "  --age-key-file PATH      Path to an existing age key file (migrate mode)"
+      echo "  --ssh-email EMAIL        Email for SSH key comment"
+      echo "  --yes, -y                Non-interactive mode"
+      echo "  --tailnet-domain         Tailscale domain"
+      echo "  --ssh-keys KEYS          Comma-separated SSH public keys"
+      echo "  --no-ssh-keys            Skip SSH key generation"
+      echo "  --features LIST          Comma-separated feature flags"
+      echo "  --migrate                Use existing age key (default mode)"
+      echo "  --fresh                  Generate new age key (fresh install mode)"
+      echo "  --no-secrets             Disable SOPS secrets for initial bootstrap"
+      echo "  --no-rebuild             Stop before nixos-rebuild (for CI/testing)"
+      echo "  --re-encrypt             Re-encrypt all secrets with new key (requires --old-age-key-file)"
+      echo "  --old-age-key-file PATH  Path to OLD age key for re-encryption (use with --re-encrypt)"
+      echo "  --help, -h               Show this help"
+      echo ""
+      echo "Modes:"
+      echo "  --migrate (default)      Copy existing age key from --age-key-file, AGE_KEY env, or interactive paste"
+      echo "  --fresh                  Generate new age key, create placeholder secrets, warn about re-encryption"
       exit 0
       ;;
     *) echo "Unknown option: $1"; exit 1 ;;
@@ -114,13 +145,13 @@ else
   C_GREEN=''; C_YELLOW=''; C_RED=''; C_MAGENTA=''
 fi
 
-TOTAL_STEPS=17
+TOTAL_STEPS=14
 STEP_NUM=0
 
 banner() {
   printf '%s\n' "${C_CYAN}"
   cat <<'BANNER'
-╔══════════════════════════════════════════════════════════╗
+╔═══════════════════════════════════════════════════════════╗
 ║        NixOS + GNOME · Infrastructure Bootstrap         ║
 ╚══════════════════════════════════════════════════════════╝
 BANNER
@@ -151,7 +182,39 @@ require_nixos() {
   log "Running on NixOS as a regular user with sudo access"
 }
 
-# ── Step 2: Detect or prompt for host/user ──────────────────────────────────
+# ── Step 2: Pre-flight checks ────────────────────────────────────────────────
+preflight_checks() {
+  section "Pre-flight checks"
+
+  # Check disk space (need at least 5GB free)
+  local avail_kb
+  avail_kb=$(df --output=avail "$HOME" | tail -1)
+  local avail_gb=$((avail_kb / 1024 / 1024))
+  if [[ "$avail_gb" -lt 5 ]]; then
+    warn "Low disk space: ${avail_gb}GB available (need 5GB+)"
+  else
+    log "Disk space: ${avail_gb}GB available"
+  fi
+
+  # Check internet connectivity
+  if ping -c 1 -W 2 8.8.8.8 >/dev/null 2>&1; then
+    log "Internet connectivity: OK"
+  else
+    warn "No internet connectivity — some steps may fail"
+  fi
+
+  # Check NixOS version
+  local nixos_ver
+  nixos_ver=$(grep '^VERSION_ID=' /etc/os-release | cut -d= -f2 | tr -d '"')
+  log "NixOS version: ${nixos_ver}"
+
+  # Check if running on expected architecture
+  local arch
+  arch=$(uname -m)
+  log "Architecture: ${arch}"
+}
+
+# ── Step 3: Detect or prompt for host/user ──────────────────────────────────
 detect_identity() {
   section "Identifying host"
   if [[ -z "$HOST" ]]; then
@@ -188,6 +251,57 @@ enable_nix_features() {
 
   export NIX_CONFIG="experimental-features = nix-command flakes"
   log "Experimental features active for this session and future ones"
+}
+
+# ── Step 5: Generate SSH key FIRST (before any GitLab interaction) ───────────
+generate_ssh_key_early() {
+  section "Generating SSH key (required for GitLab clone)"
+  if [[ "$NO_SSH_KEYS" == "true" ]]; then
+    log "Skipping SSH key generation (--no-ssh-keys)"
+    return
+  fi
+
+  local key="$HOME/.ssh/id_ed25519"
+
+  mkdir -p "$HOME/.ssh"
+  chmod 700 "$HOME/.ssh"
+
+  if [[ -f "$key" ]]; then
+    log "SSH key already exists: ${key}"
+  else
+    ssh-keygen -t ed25519 -C "$SSH_EMAIL" -f "$key" -N "" || {
+      warn "SSH key generation failed — check: ssh-keygen available?"
+      return
+    }
+    log "SSH key generated: ${key}"
+  fi
+
+  # Display public key for user to add to GitLab
+  printf '\n%s│%s  %s┌────────────────────────────────────────┐%s\n' "${C_CYAN}" "${C_RESET}" "${C_MAGENTA}" "${C_RESET}"
+  printf '%s│%s  %s│  SSH Public Key (add to GitLab)        │%s\n' "${C_CYAN}" "${C_RESET}" "${C_MAGENTA}" "${C_RESET}"
+  printf '%s│%s  %s└────────────────────────────────────────┘%s\n' "${C_CYAN}" "${C_RESET}" "${C_MAGENTA}" "${C_RESET}"
+  printf '%s│%s  %s\n' "${C_CYAN}" "${C_RESET}" "$(cat "${key}.pub")"
+  printf '%s│%s\n' "${C_CYAN}" "${C_RESET}"
+}
+
+# ── Step 6: Prompt user to add SSH key to GitLab ────────────────────────────
+prompt_gitlab_ssh_key() {
+  section "Waiting for SSH key to be added to GitLab"
+  if [[ "$REPO_URL" != git@* && "$REPO_URL" != ssh://* ]]; then
+    log "Using non-SSH repo URL — skipping GitLab SSH key prompt"
+    return
+  fi
+
+  if [[ "$YES" == "true" ]]; then
+    note "Non-interactive mode — assuming SSH key is already added to GitLab"
+    return
+  fi
+
+  note "Add the SSH key above to GitLab:"
+  note "  https://gitlab.com/-/user_settings/ssh_keys"
+  printf '\n'
+  read -p "  Press ENTER after adding the key to GitLab (or Ctrl+C to abort): "
+  log "Continuing with repo clone..."
 }
 
 # ── Step 4: Install git, age, sops (bootstrap prerequisites) ────────────────
@@ -227,7 +341,7 @@ install_tools() {
   command -v sops >/dev/null 2>&1 || warn "sops not found — secret re-encryption step will be skipped"
 }
 
-# ── Step 5: Clone or update repo ─────────────────────────────────────────────
+# ── Step 7: Clone or update repo ─────────────────────────────────────────────
 clone_or_update_repo() {
   section "Fetching infrastructure repo"
   note "$REPO_URL"
@@ -277,12 +391,42 @@ detect_hardware() {
   log "Hardware config written to $dst"
 }
 
-# ── Step 7: Install SOPS age key (copied from existing system) ──────────────
+# ── Step 9: Install SOPS age key ──────────────────────────────────────────────
 setup_age_key() {
   section "Installing SOPS age key"
   local key_dir="$HOME/.config/sops/age"
   local key_file="$key_dir/keys.txt"
 
+  if [[ "$MODE" == "fresh" ]]; then
+    # --fresh mode: generate new age key
+    note "Mode: --fresh (generating new age key)"
+    if [[ -f "$key_file" ]] && grep -q 'AGE-SECRET-KEY-' "$key_file"; then
+      note "Age key already present at $key_file — leaving it untouched"
+    else
+      command -v age-keygen >/dev/null 2>&1 || die "age-keygen not found — install age first (run install_tools)"
+      mkdir -p "$key_dir"
+      age-keygen > "$key_file" || die "Failed to generate age key"
+      chmod 700 "$key_dir"
+      chmod 600 "$key_file"
+      log "New age key generated at $key_file"
+    fi
+    
+    # Register the new key in .sops.yaml
+    register_sops_key
+    
+    # Warn about re-encryption
+    warn "══════════════════════════════════════════════════════════════"
+    warn "FRESH MODE: New age key generated — secrets are NOT encrypted for this key!"
+    warn "You MUST re-encrypt secrets from a machine with the old key:"
+    warn "  1. Add this key's public key to .sops.yaml (done above)"
+    warn "  2. From old machine: sops -e -i secrets/*.yaml"
+    warn "  3. Push changes, then rebuild on this machine"
+    warn "══════════════════════════════════════════════════════════════"
+    return
+  fi
+
+  # --migrate mode (default): copy existing age key
+  note "Mode: --migrate (using existing age key)"
   # Priority: --age-key-file > $AGE_KEY env > interactive paste. The age key
   # is the SAME key used on your existing system — do not generate a new one
   # or existing secrets cannot be decrypted.
@@ -328,6 +472,53 @@ setup_age_key() {
   else
     warn "File does not look like a valid age key — check content"
   fi
+}
+
+# ── Re-encrypt secrets with new age key ──────────────────────────────────────
+re_encrypt_secrets() {
+  [[ "$RE_ENCRYPT" == "true" ]] || return
+  section "Re-encrypting secrets with new age key"
+
+  [[ -n "$OLD_AGE_KEY_FILE" ]] || die "--re-encrypt requires --old-age-key-file"
+  [[ -f "$OLD_AGE_KEY_FILE" ]] || die "Old age key file not found: $OLD_AGE_KEY_FILE"
+
+  command -v sops >/dev/null 2>&1 || die "sops not found — install sops first"
+
+  # Both keys must be in .sops.yaml for re-encryption to work
+  local new_key_file="$HOME/.config/sops/age/keys.txt"
+  [[ -f "$new_key_file" ]] || die "New age key not found at $new_key_file"
+
+  # Create a temporary sops.yaml with both keys
+  local sops_yaml="$REPO_DIR/.sops.yaml"
+  [[ -f "$sops_yaml" ]] || die ".sops.yaml not found in repo"
+
+  note "Re-encrypting all secrets in secrets/..."
+  cd "$REPO_DIR"
+
+  # Export both keys for sops
+  export SOPS_AGE_KEY_FILE="$OLD_AGE_KEY_FILE"
+  export SOPS_AGE_RECIPIENTS_FILE="$new_key_file"
+
+  # Re-encrypt all secret files
+  local secret_files
+  secret_files=$(find secrets -name "*.yaml" -type f 2>/dev/null | head -20)
+  if [[ -z "$secret_files" ]]; then
+    warn "No secret files found in secrets/"
+    return
+  fi
+
+  for secret in $secret_files; do
+    note "Re-encrypting $secret"
+    if sops -e -i "$secret"; then
+      log "Re-encrypted: $secret"
+    else
+      warn "Failed to re-encrypt: $secret (may not be encrypted yet)"
+    fi
+  done
+
+  unset SOPS_AGE_KEY_FILE
+  unset SOPS_AGE_RECIPIENTS_FILE
+  log "Re-encryption complete"
 }
 
 # Register the installed age key's public key in .sops.yaml so sops-nix can
@@ -382,7 +573,7 @@ register_sops_key() {
   fi
 }
 
-# ── Step 8: Register host ────────────────────────────────────────────────────
+# ── Step 10: Register host ────────────────────────────────────────────────────
 # NOTE: This host spec template must stay in sync with
 # internal/commands/bootstrap_host.go:generateHostSpec().
 register_host() {
@@ -402,6 +593,14 @@ register_host() {
     *,no-tailscale-exit-node,*) f_exitnode="false" ;;
     *,no-ssh,*)                 f_ssh="false" ;;
   esac
+
+  # Override secrets flag based on --no-secrets or fresh mode
+  if [[ "$NO_SECRETS" == "true" || "$MODE" == "fresh" ]]; then
+    f_secrets="false"
+    if [[ "$MODE" == "fresh" ]]; then
+      note "Fresh mode: disabling secrets for initial bootstrap (will enable after re-encryption)"
+    fi
+  fi
 
   # Parse optional SSH keys
   local keys_block=""
@@ -619,46 +818,6 @@ validate_sops() {
   fi
 }
 
-# ── Step 15: Generate SSH keys ───────────────────────────────────────────────
-generate_ssh_keys() {
-  section "Setting up SSH keys"
-  if [[ "$NO_SSH_KEYS" == "true" ]]; then
-    log "Skipping SSH key generation (--no-ssh-keys)"
-    return
-  fi
-
-  local key="$HOME/.ssh/id_ed25519"
-
-  mkdir -p "$HOME/.ssh"
-  chmod 700 "$HOME/.ssh"
-
-  if [[ -f "$key" ]]; then
-    log "SSH key already exists: ${key}"
-  else
-    ssh-keygen -t ed25519 -C "$SSH_EMAIL" -f "$key" -N "" || {
-      warn "SSH key generation failed — check: ssh-keygen available?"
-      return
-    }
-    log "SSH key generated: ${key}"
-  fi
-
-  # Start ssh-agent if necessary
-  if [[ -z "${SSH_AUTH_SOCK:-}" ]]; then
-    eval "$(ssh-agent -s)" >/dev/null 2>&1 || true
-  fi
-  ssh-add "$key" >/dev/null 2>&1 || true
-
-  printf '\n%s│%s  %s┌────────────────────────────────────────┐%s\n' "${C_CYAN}" "${C_RESET}" "${C_MAGENTA}" "${C_RESET}"
-  printf '%s│%s  %s│  SSH Public Key                          │%s\n' "${C_CYAN}" "${C_RESET}" "${C_MAGENTA}" "${C_RESET}"
-  printf '%s│%s  %s└────────────────────────────────────────┘%s\n' "${C_CYAN}" "${C_RESET}" "${C_MAGENTA}" "${C_RESET}"
-  printf '%s│%s  %s\n' "${C_CYAN}" "${C_RESET}" "$(cat "${key}.pub")"
-  printf '%s│%s\n' "${C_CYAN}" "${C_RESET}"
-  note "Add this key to:"
-  note "  GitHub: https://github.com/settings/ssh/new"
-  note "  GitLab: https://gitlab.com/-/user_settings/ssh_keys"
-  log "SSH key setup complete"
-}
-
 # ── Post-install ─────────────────────────────────────────────────────────────
 post_install() {
   printf '\n%s╔══════════════════════════════════════════════════════════╗%s\n' "${C_GREEN}${C_BOLD}" "${C_RESET}"
@@ -673,7 +832,18 @@ post_install() {
   if [[ "$USER_NAME" != "$(whoami)" ]]; then
     warn "Host user '${USER_NAME}' differs from the current user '$(whoami)'."
     warn "After the switch creates '${USER_NAME}', copy the age key into their home:"
-    warn "  sudo install -Dm0600 $HOME/.config/sops/age/keys.txt /home/${USER_NAME}/.config/sops/age/keys.txt"
+    warn "  sudo install -Dm0600 \$HOME/.config/sops/age/keys.txt /home/${USER_NAME}/.config/sops/age/keys.txt"
+    printf '\n'
+  fi
+
+  if [[ "$MODE" == "fresh" ]]; then
+    warn "══════════════════════════════════════════════════════════════"
+    warn "FRESH MODE: Remember to re-encrypt secrets from your old machine:"
+    warn "  1. Add this host's public key to .sops.yaml (already done)"
+    warn "  2. From old machine: sops -e -i secrets/*.yaml"
+    warn "  3. Push changes, then rebuild on this machine"
+    warn "  4. Enable secrets in host spec: secrets = true"
+    warn "══════════════════════════════════════════════════════════════"
     printf '\n'
   fi
 
@@ -693,32 +863,28 @@ post_install() {
        super + enter             # launch the terminal
        super + b                 # launch the browser
 
-  5. Add your SSH public key to GitHub and GitLab:
-       GitHub: https://github.com/settings/ssh/new
-       GitLab: https://gitlab.com/-/user_settings/ssh_keys
-
-  6. Test SSH connections:
+  5. Test SSH connections:
        ssh -T git@github.com
        ssh -T git@gitlab.com
 
-  7. Verify formatting and architecture before first commit:
+  6. Verify formatting and architecture before first commit:
        cd "$REPO_DIR"
        nix fmt                                        # format all .nix files
        go build -o /tmp/check-architecture-bin ./cmd/check-architecture/
        /tmp/check-architecture-bin                    # architecture lint
 
-  8. Rebuild after changes:
+  7. Rebuild after changes:
        make rebuild
        # or: ./scripts/rebuild.sh
 
-  9. Commit and push (GitLab is the source of truth):
+  8. Commit and push (GitLab is the source of truth):
        cd "$REPO_DIR"
        git status
        git add .sops.yaml hosts/${HOST}.nix hosts/${HOST}/hardware-configuration.nix secrets/hosts/${HOST}.yaml
        git commit -m "chore: add host configuration for $HOST"
        git push origin main
 
-  10. Use the ivali CLI for ongoing management:
+  9. Use the ivali CLI for ongoing management:
        ivali status           # system overview
        ivali deploy           # guided deployment flow
        ivali bootstrap host   # add another host
@@ -730,22 +896,30 @@ EOF
 main() {
   banner
   require_nixos
+  preflight_checks
   detect_identity
   enable_nix_features
   install_tools
+  generate_ssh_key_early
+  prompt_gitlab_ssh_key
   clone_or_update_repo
   detect_hardware
   setup_age_key
+  re_encrypt_secrets
   register_host
   validate_registry_syntax
-  optimize_btrfs
-  install_format_hook
   validate_flake
   check_nix_format
   check_architecture
+
+  if [[ "$NO_REBUILD" == "true" ]]; then
+    note "Stopping before nixos-rebuild (--no-rebuild)"
+    post_install
+    return
+  fi
+
   switch_system
   validate_sops
-  generate_ssh_keys
   post_install
 }
 

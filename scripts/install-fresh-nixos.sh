@@ -476,7 +476,7 @@ setup_age_key() {
 
 # ── Re-encrypt secrets with new age key ──────────────────────────────────────
 re_encrypt_secrets() {
-  [[ "$RE_ENCRYPT" == "true" ]] || return
+  [[ "$RE_ENCRYPT" == "true" ]] || return 0
   section "Re-encrypting secrets with new age key"
 
   [[ -n "$OLD_AGE_KEY_FILE" ]] || die "--re-encrypt requires --old-age-key-file"

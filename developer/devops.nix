@@ -58,7 +58,6 @@ in
 
       # ── Infrastructure as Code ──────────────────────────────────────────
     ] ++ lib.optionals cfg.terraform.enable [
-      terraform
       opentofu
       terraform-ls
 

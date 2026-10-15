@@ -36,10 +36,11 @@ let
   # Append tag:exit-node when exit-node advertising is enabled.
   effectiveTags =
     cfg.tags
-    ++ lib.optional (
-      cfg.advertiseExitNode
-      && !(builtins.elem "tag:exit-node" cfg.tags)
-    ) "tag:exit-node";
+    ++ lib.optional
+      (
+        cfg.advertiseExitNode
+        && !(builtins.elem "tag:exit-node" cfg.tags)
+      ) "tag:exit-node";
 
   advertisedTags = lib.concatStringsSep "," effectiveTags;
 

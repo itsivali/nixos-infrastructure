@@ -59,16 +59,25 @@
         "amdgpu"
       ];
 
+
       kernelModules = [
         "kvm-amd"
         "tun"
+
+        # Tailscale nftables routing support. These must be loaded
+        # before security.lockKernelModules disables module loading.
+        "nft_chain_nat"
+        "nft_nat"
+        "nft_masq"
+
         "vhost"
         "vhost_net"
         "vhost_vsock"
-        "overlay" #needed for docker
-        "bridge" #needed for docker
+        "overlay" # needed for docker
+        "bridge" # needed for docker
         "exfat"
       ];
+
 
       # Blacklist broken kernel modules at boot to prevent device-probe
       # timeouts. The Lenovo BIOS exposes a TPM2 ACPI table (MSFT0101)

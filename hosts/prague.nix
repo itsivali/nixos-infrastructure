@@ -1,3 +1,4 @@
+
 ##############################################################################
 #
 # Prague — Host Spec
@@ -15,16 +16,28 @@
   hostName = "prague";
   userName = "ivali";
   repoPath = "/home/ivali/nixos-infrastructure";
-  # tag:personal + tag:exit-node come from the laptop template. tag:infra is
-  # added here so prague is a valid destination for the tailnet ACL rules that
-  # allow SSH from tag:admin/tag:user/tag:personal sources (permits phone access).
-  tags = [ "tag:personal" "tag:infra" ];
+
+  # Tailnet identity and authorization.
+  # tag:personal and tag:exit-node are supplied by the laptop template.
+  # tag:infra is added here for infrastructure access and ACL compatibility.
+  tags = [
+    "tag:personal"
+    "tag:infra"
+  ];
+
   tailnetDomain = "codlet-trench.ts.net";
-  gitlabRunnerTags = [ "nixos" "prague" "self-hosted" ];
+  gitlabRunnerTags = [
+    "nixos"
+    "prague"
+    "self-hosted"
+  ];
+
   sshAuthorizedKeys = [
     "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCnLKiK4YHXCXTgVdStJZanUuZeKoc8uYBbRiNVTzS68uGCklMVmlrExpLE7e58hGP7JJhYvpCB27ysf7xoU41lNVdj6ZUXtNbBMxsraA3LctBVcBVaAuZd0qntzrcicvKKzDYP+O1PA293GU6xSXIWxFo+n+1GSYGZXreFZai0XlQidrHcobRb5YKD5gTU7DMeuRRvajt6KyKo10dzVDpFJsqDwCjY2NtIXJdhfpmXa0kWTg6XywyHUBvQE+o71UR55rAvlWpUWXnA09Pq3OgnyMYFJw0nF8093KU4KWqIyRPTEhCxxjiPn2xMlBiS//lXgmcLasXrJPJu+zZHpGFeeOUpnkgvFnpRPKyoMzlGeb4bA77QxuivEKwtIGQBO0xSWdINDw5eZ6SO4kEkFn+ShqxMpSop1nVo5HvQwxL5n5FBbSTXMtMjwwFhiN/JXUQllGKGF77LHX14se5qxUoekO8h/H1JA/snLQSOkbP9j75I09n6aZy4OUDBSO480xDiXQbUYrvVkizSb0UyrRWYUec7qTO9MTyGqBOmAVArk6GfvnpDSfBeGdTKgfjImR2j021ktb1wN3OTGHL5RwnSJoEcTesv3HI+6Q7XGnuZ24guIirqLkpI/wJQbYcpaWS7niee9wAZxt81iBe+y9wp8YgpS3liahTWhYaTy7gKsw== ShellFish@iPhone-03062026"
   ];
+
   sopsKeyPath = "/home/ivali/.config/sops/age/keys.txt";
+
   features = {
     secrets = true;
     bitwarden = true;
@@ -33,96 +46,153 @@
     tailscaleExitNode = true;
     ssh = true;
   };
+
   config = {
-    # Firewall: nftables-based default-deny ingress (security/firewall.nix).
-    # MUST stay enabled — with it off, NixOS falls back to the default
-    # iptables firewall, whose rules require xt_pkttype, which cannot load
-    # once security.lockKernelModules pins kernel.modules_disabled to 1.
+    ##########################################################################
+    # SECURITY AND NETWORKING
+    ##########################################################################
+
+    # Required hardened nftables firewall.
+    # Do not disable: the host locks kernel module loading, so falling back
+    # to an iptables configuration that needs unavailable modules is unsafe.
     ivali.security.firewall.enable = true;
 
-    # Desktop environment: GNOME (Wayland/GDM), replacing KDE Plasma 6.
-    ivali.desktop.gnome.enable = true;
-    # Remote desktop (RDP) over Tailscale: opens 3389 on tailscale0 only.
+    # Remote desktop is intended to be reachable through Tailscale only.
     ivali.desktop.remote-desktop.enable = true;
+
+    ##########################################################################
+    # DESKTOP
+    ##########################################################################
+
+    # GNOME on Wayland with GDM.
+    ivali.desktop.gnome.enable = true;
+
+    # Developer tools.
     ivali.kilocode.enable = true;
     ivali.antigravity.enable = true;
 
-    # Alertmanager recipient — must be the owner's Outlook mailbox (the same
-    # address msmtp authenticates as). Explicit here so it survives future
-    # laptop-template option changes.
+    ##########################################################################
+    # OBSERVABILITY
+    ##########################################################################
+
+    # Alertmanager notification recipient.
     ivali.observability.alertmanager.emailTo = "itsivali@outlook.com";
 
-    # Log aggregation: Loki + Alloy collect systemd journal errors for Grafana.
+    # Local log collection.
     ivali.observability.loki.enable = true;
     ivali.observability.alloy.enable = true;
 
-    # DNS proxy + ad-blocker for the tailnet (binds all interfaces, but the
-    # firewall only opens port 53 on tailscale0).
+    ##########################################################################
+    # TAILNET DNS
+    ##########################################################################
+
+    # Blocky provides DNS filtering for tailnet clients.
+    # Confirm the effective firewall permits DNS only through tailscale0.
     ivali.services.blocky.enable = true;
 
-    # Syncthing continuous file synchronization (NixOS module)
+    ##########################################################################
+    # SYNCTHING
+    ##########################################################################
+
     services.syncthing = {
       enable = true;
       user = "ivali";
-      guiAddress = "100.81.219.121:8384"; # Tailscale IP for Syncthing Monitor
+      group = "syncthing";
+
+      # Avoid binding to a hard-coded Tailscale address, which may change
+      # and may not exist yet when Syncthing starts.
+      #
+      # IMPORTANT: the effective firewall must restrict access to port 8384
+      # to tailscale0 before this wildcard binding is activated.
+      guiAddress = "0.0.0.0:8384";
+
+      # Preserve existing Syncthing state and data locations.
       configDir = "/home/ivali/.config/syncthing";
       dataDir = "/home/ivali/.local/share/syncthing";
+
+      # Never automatically open Syncthing ports on all interfaces.
+      openDefaultPorts = false;
+
+      # Preserve local devices and folders not declared here.
+      overrideFolders = false;
+      overrideDevices = false;
+
       settings = {
         gui = {
           user = "ivali";
           tls = true;
         };
+
         options = {
-          listenAddresses = [ "tcp://0.0.0.0:22000" "tcp://[::]:22000" ];
+          listenAddresses = [
+            "tcp://0.0.0.0:22000"
+            "quic://0.0.0.0:22000"
+          ];
+
           relaysEnabled = false;
           natEnabled = false;
           urAccepted = -1;
           crashReportingEnabled = false;
         };
+
         devices = {
           prague = {
             id = "6PKMANY-OTR2CWK-2LXDTI2-E2OWDWG-2M44NF7-Y4LA43M-25AWSW7-SYQJAQJ";
             address = "dynamic";
             compression = "metadata";
           };
+
           phone = {
-            id = "BMSAYQK-EH6NRFR-GNJ2RPO-NNTTNWU-NDF56CZ-7D7FCL5-LDVRPMM-F35OIQW";
+            id = "GPR4LQE-Y2ZKYZQ-FE32FUC-IW2ZAF2-XM3F6MH-YZIKRZP-AIAWACX-TPZ5CA6";
             address = "dynamic";
             compression = "metadata";
           };
         };
+
         folders = {
           documents = {
             path = "/home/ivali/Documents";
             type = "sendreceive";
             rescanIntervalS = 3600;
             fsWatcherEnabled = true;
-            devices = [ "prague" "phone" ];
+            devices = [
+              "prague"
+              "phone"
+            ];
+
             versioning = {
               type = "simple";
               keep = 5;
             };
           };
+
           sync = {
             path = "/home/ivali/Sync";
             type = "sendreceive";
             rescanIntervalS = 3600;
             fsWatcherEnabled = true;
-            devices = [ "prague" "phone" ];
+            devices = [
+              "prague"
+              "phone"
+            ];
+
             versioning = {
               type = "simple";
               keep = 5;
             };
           };
+
           nixos-config = {
             path = "/home/ivali/nixos-infrastructure";
             type = "sendreceive";
             rescanIntervalS = 3600;
             fsWatcherEnabled = true;
+
             versioning = {
               type = "simple";
               keep = 10;
             };
+
             ignorePatterns = [
               ".git/"
               "result"
@@ -137,35 +207,42 @@
           };
         };
       };
-      # Do NOT enable openDefaultPorts: it opens 22000/tcp and 22000+21027/udp
-      # on every interface, which would expose the sync data port to the LAN
-      # and the public internet. Syncthing is reachable over the tailnet only.
-      openDefaultPorts = false;
-      overrideFolders = false;
-      overrideDevices = false;
     };
 
-    # Firewall: the sole inbound path for Syncthing is the tailnet interface.
-    # Without this the GUI (8384) and the data port (22000) are unreachable
-    # from any peer, including the phone on the tailnet.
+    # Restrict Syncthing ingress to the Tailscale interface.
+    # Keep openDefaultPorts disabled above.
     networking.firewall.interfaces.tailscale0 = {
-      allowedTCPPorts = [ 22000 8384 ];
-      allowedUDPPorts = [ 22000 ];
+      allowedTCPPorts = [
+        22000
+        8384
+      ];
+
+      allowedUDPPorts = [
+        22000
+      ];
     };
 
-    # KDE Connect daemon for GSConnect
+    ##########################################################################
+    # DESKTOP INTEGRATION
+    ##########################################################################
+
+    # KDE Connect support for GSConnect.
     programs.kdeconnect.enable = true;
 
-    # Self-healing: run the deployment health check and automatically roll
-    # back on a genuine service regression (parity with hosts/tuscany.nix).
-    # deploymentHealth.enable is already set by the laptop template because
-    # both features.secrets and features.gitlabRunner are true.
+    ##########################################################################
+    # DEPLOYMENT HEALTH
+    ##########################################################################
+
+    # The laptop template enables deployment health monitoring when the
+    # required features are enabled. Enable automatic rollback on regressions.
     fleet.deploymentHealth.enableRollback = true;
 
-    # Docker container runtime
+    ##########################################################################
+    # CONTAINERS AND DEVOPS
+    ##########################################################################
+
     ivali.docker.enable = true;
 
-    # DevOps tooling - enable only what you need
     ivali.devops.enable = true;
     ivali.devops.terraform.enable = true;
     ivali.devops.kubernetes.enable = true;

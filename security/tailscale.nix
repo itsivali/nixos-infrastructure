@@ -4,8 +4,8 @@
 #
 # Purpose
 # -------
-# Configures the Tailscale zero-trust networking daemon with optional exit
-# node advertising, MagicDNS, Tailscale SSH, key expiry monitoring, and
+# Configures Tailscale zero-trust networking with optional exit-node
+# advertising, MagicDNS, Tailscale SSH, key-expiry monitoring, and
 # Prometheus metrics collection.
 #
 # Ownership
@@ -15,10 +15,12 @@
 # Responsibilities
 # ----------------
 # - Enable and configure Tailscale with auth key, tags, and routing features
-# - Manage exit node routing (IP forwarding sysctl)
-# - Monitor key expiry via daily systemd timer
-# - Export Prometheus metrics (connection status, key expiry, MagicDNS)
-# - Validate tag format at build time via assertions
+# - Manage exit-node routing through kernel IP forwarding
+# - Configure tailscaled systemd resilience and firewall backend selection
+# - Monitor key expiry through a daily systemd timer
+# - Optionally monitor MagicDNS resolution
+# - Export connection, peer, key-expiry, and exit-node metrics
+# - Validate advertised tag formats at evaluation time
 #
 ##############################################################################
 
@@ -27,25 +29,49 @@
 let
   cfg = config.ivali.tailscale;
 
-  # Build the final tag list: always include the configured tags,
-  # and append tag:exit-node automatically when advertising as an exit node.
+  tailscaleBin = "${pkgs.tailscale}/bin/tailscale";
+  jqBin = "${pkgs.jq}/bin/jq";
+  hostBin = "${pkgs.host}/bin/host";
+
+  # Append tag:exit-node when exit-node advertising is enabled.
   effectiveTags =
     cfg.tags
-    ++ lib.optional (cfg.advertiseExitNode && !(builtins.elem "tag:exit-node" cfg.tags))
-      "tag:exit-node";
+    ++ lib.optional (
+      cfg.advertiseExitNode
+      && !(builtins.elem "tag:exit-node" cfg.tags)
+    ) "tag:exit-node";
 
   advertisedTags = lib.concatStringsSep "," effectiveTags;
 
-  # Validate tag format: must start with "tag:" and contain only alphanumeric, hyphens, underscores
+  # Tags must start with "tag:" and contain a non-empty suffix
+  # consisting only of alphanumeric characters, hyphens, or underscores.
   validateTag = tag:
     let
-      prefix = builtins.substring 0 4 tag;
-      rest = builtins.substring 4 (builtins.stringLength tag - 4) tag;
-      validChars = lib.all (c: builtins.match "[a-zA-Z0-9_-]" c != null) (lib.stringToCharacters rest);
+      validPrefix = lib.hasPrefix "tag:" tag;
+      rest =
+        if validPrefix
+        then builtins.substring 4 (builtins.stringLength tag - 4) tag
+        else "";
+      validChars =
+        lib.all
+          (character:
+            builtins.match "[a-zA-Z0-9_-]" character != null
+          )
+          (lib.stringToCharacters rest);
     in
-    prefix == "tag:" && builtins.stringLength rest > 0 && validChars;
+    validPrefix
+    && builtins.stringLength rest > 0
+    && validChars;
 
   invalidTags = lib.filter (tag: !validateTag tag) cfg.tags;
+
+  tailscaleEnabled = cfg.enable;
+
+  metricsIntervalValid = cfg.metricsExportInterval >= 15;
+  keyWarningDaysValid = cfg.keyExpiryWarningDays >= 0;
+
+  metricsDirectory = "/var/lib/tailscale-metrics";
+  metricsFile = "${metricsDirectory}/metrics.prom";
 
 in
 {
@@ -56,22 +82,30 @@ in
       type = lib.types.nullOr lib.types.str;
       default = null;
       description = ''
-        File containing a reusable Tailscale auth key.
+        File containing a Tailscale authentication key.
         Typically provided through sops-nix.
+
+        The file must be readable by the Tailscale service and must not
+        be committed in plaintext to the repository.
       '';
     };
 
     tags = lib.mkOption {
       type = lib.types.listOf lib.types.str;
       default = [ "tag:admin" ];
-      example = [ "tag:admin" "tag:infra" "tag:personal" ];
+      example = [
+        "tag:admin"
+        "tag:infra"
+        "tag:personal"
+      ];
       description = ''
-        Tailscale ACL tags to advertise on this node.
+        Tailscale ACL tags advertised by this node.
+
         Tags must start with "tag:" and contain only alphanumeric
         characters, hyphens, and underscores.
 
-        When advertiseExitNode is true, tag:exit-node is automatically
-        appended unless already present.
+        When advertiseExitNode is enabled, tag:exit-node is appended
+        automatically unless it is already present.
       '';
     };
 
@@ -79,13 +113,11 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Allow Tailscale to manage DNS (MagicDNS split-DNS).
+        Allow Tailscale to manage DNS integration for MagicDNS.
 
-        When enabled, Tailscale registers its MagicDNS resolver
-        (100.100.100.100) with systemd-resolved for the tailnet domain only,
-        so `<host>.<tailnetDomain>` names resolve without overriding the
-        system's global DNS. Safe to leave on; do not use the custom
-        tailscale-split-dns service, which fights Tailscale and never applies.
+        When enabled, Tailscale manages the appropriate DNS configuration
+        for the tailnet. Avoid introducing a competing custom split-DNS
+        service that repeatedly overwrites Tailscale-managed settings.
       '';
     };
 
@@ -93,11 +125,11 @@ in
       type = lib.types.bool;
       default = false;
       description = ''
-        Enable periodic MagicDNS health checks via systemd timer.
-        When enabled, a timer resolves the host's own MagicDNS name and
-        reports failures. Disabled by default because tailscale-metrics
-        already monitors MagicDNS status continuously, and the timer can
-        produce false failures during transient Tailscale restarts.
+        Enable periodic MagicDNS health checks.
+
+        The check resolves this machine's own Tailscale DNS name.
+        It is disabled by default to avoid false alarms during transient
+        network or Tailscale restarts.
       '';
     };
 
@@ -105,9 +137,10 @@ in
       type = lib.types.int;
       default = 60;
       description = ''
-        Seconds between Tailscale metrics collections. The metrics exporter
-        runs as a proper systemd service with a while-loop that writes to
-        a Prometheus text file, served by a lightweight socat HTTP listener.
+        Interval in seconds between Tailscale metrics collections.
+
+        Values below 15 seconds are rejected to avoid unnecessary
+        background activity on resource-constrained machines.
       '';
     };
 
@@ -115,7 +148,7 @@ in
       type = lib.types.bool;
       default = false;
       description = ''
-        Accept routes advertised by other nodes.
+        Accept routes advertised by other Tailscale nodes.
       '';
     };
 
@@ -123,8 +156,10 @@ in
       type = lib.types.bool;
       default = true;
       description = ''
-        Advertise this machine as an exit node.
-        Automatically adds tag:exit-node to the advertised tags.
+        Advertise this machine as a Tailscale exit node.
+
+        Enables IPv4 and IPv6 forwarding and automatically appends
+        tag:exit-node to the advertised tags.
       '';
     };
 
@@ -132,14 +167,12 @@ in
       type = lib.types.bool;
       default = false;
       description = ''
-        Enable Tailscale's built-in SSH server.
-        When enabled, Tailscale intercepts all port-22 traffic from the
-        tailnet and authenticates via its own SSH ACL rules — bypassing
-        sshd and authorized_keys entirely.
+        Enable Tailscale SSH.
 
-        Leave disabled if you want regular sshd to handle SSH connections
-        (e.g. Shellfish or any client using traditional key auth).
-        Enable only if you want the Tailscale admin console SSH feature.
+        When disabled, normal OpenSSH handles SSH connections using
+        authorized_keys and the configured sshd policy.
+
+        Enable only when Tailscale SSH ACL-based access is intended.
       '';
     };
 
@@ -148,7 +181,7 @@ in
       default = null;
       example = "codlet-trench.ts.net";
       description = ''
-        Tailnet DNS suffix for split DNS.
+        Tailnet DNS suffix used by the optional MagicDNS health check.
       '';
     };
 
@@ -156,79 +189,69 @@ in
       type = lib.types.int;
       default = 14;
       description = ''
-        Number of days before key expiry to start warning.
+        Number of days before key expiry at which the monitoring service
+        emits a warning.
       '';
     };
   };
 
-  config = lib.mkIf cfg.enable {
-
-    # Validate tags at build time
+  config = lib.mkIf tailscaleEnabled {
     assertions = [
       {
         assertion = invalidTags == [ ];
-        message = "Invalid Tailscale tags: ${lib.concatStringsSep ", " invalidTags}. Tags must start with 'tag:' and contain only alphanumeric characters, hyphens, and underscores.";
+        message =
+          "Invalid Tailscale tags: "
+          + lib.concatStringsSep ", " invalidTags
+          + ". Tags must start with 'tag:' and contain only "
+          + "alphanumeric characters, hyphens, and underscores.";
       }
-    ];
-
-    #########################################################
-    # Tailscale
-    #########################################################
-
-    services.tailscale =
       {
-        enable = true;
-
-        package = pkgs.tailscale;
-
-        useRoutingFeatures =
-          if cfg.advertiseExitNode
-          then "both"
-          else "client";
-
-        openFirewall = false;
-
-        extraUpFlags =
-          [
-            "--hostname=${config.networking.hostName}"
-            "--advertise-tags=${advertisedTags}"
-            "--accept-dns=${lib.boolToString cfg.acceptDns}"
-            "--accept-routes=${lib.boolToString cfg.acceptRoutes}"
-          ]
-          ++ lib.optional cfg.advertiseExitNode "--advertise-exit-node"
-          # Only pass --ssh if Tailscale SSH is explicitly opted in.
-          # Without this, sshd handles connections via authorized_keys.
-          ++ lib.optional cfg.enableTailscaleSsh "--ssh";
+        assertion = metricsIntervalValid;
+        message =
+          "ivali.tailscale.metricsExportInterval must be at least 15 seconds.";
       }
-      // lib.optionalAttrs (cfg.authKeyFile != null) {
-        authKeyFile = cfg.authKeyFile;
-      };
-
-    #########################################################
-    # Exit Node Routing
-    #########################################################
-
-    boot.kernel.sysctl =
-      lib.mkIf cfg.advertiseExitNode {
-        "net.ipv4.ip_forward" = 1;
-        "net.ipv6.conf.all.forwarding" = 1;
-      };
-
-    #########################################################
-    # Packages
-    #########################################################
-
-    environment.systemPackages = [
-      pkgs.tailscale
+      {
+        assertion = keyWarningDaysValid;
+        message =
+          "ivali.tailscale.keyExpiryWarningDays must be non-negative.";
+      }
     ];
 
-    #########################################################
-    # tailscaled resilience
-    #########################################################
+    ##########################################################################
+    # Tailscale daemon
+    ##########################################################################
+
+    services.tailscale = {
+      enable = true;
+      package = pkgs.tailscale;
+
+      useRoutingFeatures =
+        if cfg.advertiseExitNode
+        then "both"
+        else "client";
+
+      # Firewall management is declarative in security/firewall.nix.
+      openFirewall = false;
+
+      extraUpFlags =
+        [
+          "--hostname=${config.networking.hostName}"
+          "--advertise-tags=${advertisedTags}"
+          "--accept-dns=${lib.boolToString cfg.acceptDns}"
+          "--accept-routes=${lib.boolToString cfg.acceptRoutes}"
+        ]
+        ++ lib.optional cfg.advertiseExitNode "--advertise-exit-node"
+        ++ lib.optional cfg.enableTailscaleSsh "--ssh";
+    } // lib.optionalAttrs (cfg.authKeyFile != null) {
+      authKeyFile = cfg.authKeyFile;
+    };
+
+    ##########################################################################
+    # Tailscaled resilience and firewall backend
+    ##########################################################################
 
     systemd.services.tailscaled = {
       wants = [ "network-online.target" ];
-
       after = [ "network-online.target" ];
 
       unitConfig.StartLimitIntervalSec = 0;
@@ -236,60 +259,84 @@ in
       serviceConfig = {
         Restart = "always";
         RestartSec = "5s";
+
+        # Diagnostic workaround for the observed failure in which Tailscale
+        # selects its iptables backend but cannot insert its NAT rule because
+        # nat/POSTROUTING is missing.
+        #
+        # TS_DEBUG_FIREWALL_MODE is a Tailscale debug override. Confirm that
+        # the installed Tailscale release supports this value before relying
+        # on it. Remove this override if it is unsupported or ineffective.
+        Environment = [
+          "TS_DEBUG_FIREWALL_MODE=nftables"
+        ];
       };
     };
 
-    #########################################################
-    # Split DNS
-    #########################################################
-    #
-    # MagicDNS is handled by Tailscale itself: with `acceptDns = true` the
-    # tailscaled binary registers its resolver (100.100.100.100) with
-    # systemd-resolved for the tailnet routing domain. A previous custom
-    # `tailscale-split-dns` service tried to do this with `resolvectl` but
-    # never applied (Tailscale reset the link) and left `tailscale0` with no
-    # DNS, so `.ts.net` queries fell through to the upstream resolver. It has
-    # been removed; do not reintroduce manual split-DNS here.
+    ##########################################################################
+    # Exit-node routing
+    ##########################################################################
 
-    #########################################################
-    # Key Expiry Monitoring
-    #########################################################
+    boot.kernel.sysctl = lib.mkIf cfg.advertiseExitNode {
+      "net.ipv4.ip_forward" = 1;
+      "net.ipv6.conf.all.forwarding" = 1;
+    };
+
+    ##########################################################################
+    # Packages
+    ##########################################################################
+
+    environment.systemPackages = [
+      pkgs.tailscale
+    ];
+
+    ##########################################################################
+    # Key expiry monitoring
+    ##########################################################################
 
     systemd.services.tailscale-key-check = {
       description = "Check Tailscale key expiry";
-
       after = [ "tailscaled.service" ];
       wants = [ "tailscaled.service" ];
 
       serviceConfig = {
         Type = "oneshot";
+        User = "root";
       };
 
       script = ''
         set -euo pipefail
 
-        # Get key expiry info
-        EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
-        EXPIRY_DATE=$(echo "$EXPIRY_JSON" | ${pkgs.jq}/bin/jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
+        EXPIRY_JSON="$(${tailscaleBin} status --json 2>/dev/null || echo '{}')"
+
+        EXPIRY_DATE="$(
+          printf '%s' "$EXPIRY_JSON" \
+            | ${jqBin} -r '.Self.KeyExpiry // empty' 2>/dev/null \
+            || true
+        )"
 
         if [ -z "$EXPIRY_DATE" ] || [ "$EXPIRY_DATE" = "none" ]; then
-          echo "Key does not expire"
+          echo "No expiring node key reported by Tailscale."
           exit 0
         fi
 
-        # Convert expiry date to epoch
-        EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
-        NOW_EPOCH=$(date +%s)
+        EXPIRY_EPOCH="$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo 0)"
+        NOW_EPOCH="$(date +%s)"
+
+        if [ "$EXPIRY_EPOCH" -le 0 ]; then
+          echo "WARNING: Could not parse Tailscale key expiry date."
+          exit 1
+        fi
+
         DAYS_LEFT=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
 
-        echo "Key expires: $EXPIRY_DATE ($DAYS_LEFT days remaining)"
+        echo "Tailscale key expiry: $EXPIRY_DATE ($DAYS_LEFT days remaining)"
 
         if [ "$DAYS_LEFT" -le 0 ]; then
-          echo "CRITICAL: Key has expired!"
+          echo "CRITICAL: Tailscale node key has expired."
           exit 1
         elif [ "$DAYS_LEFT" -le ${toString cfg.keyExpiryWarningDays} ]; then
-          echo "WARNING: Key expires in $DAYS_LEFT days"
-          exit 0
+          echo "WARNING: Tailscale key expires within the configured warning window."
         fi
       '';
     };
@@ -304,254 +351,261 @@ in
       };
     };
 
-    #########################################################
-    # MagicDNS Health Check
-    #########################################################
+    ##########################################################################
+    # Optional MagicDNS health check
+    ##########################################################################
 
-    systemd.services.tailscale-magicdns-check = lib.mkIf (cfg.magicDnsCheck && cfg.tailnetDomain != null) {
-      # Disabled by default (see magicDnsCheck option). When enabled,
-      # validates MagicDNS resolution. tailscale-metrics already monitors
-      # MagicDNS status continuously, so this is only useful as an
-      # explicit assertion that the host's own name resolves.
-      enable = cfg.magicDnsCheck;
-      description = "Check MagicDNS resolution";
+    systemd.services.tailscale-magicdns-check =
+      lib.mkIf (cfg.magicDnsCheck && cfg.tailnetDomain != null) {
+        description = "Check Tailscale MagicDNS resolution";
+        after = [ "tailscaled.service" ];
+        wants = [ "tailscaled.service" ];
 
-      after = [ "tailscaled.service" ];
-      wants = [ "tailscaled.service" ];
+        serviceConfig = {
+          Type = "oneshot";
+          User = "root";
+        };
 
-      serviceConfig = {
-        Type = "oneshot";
+        script = ''
+          set -euo pipefail
+
+          STATUS_JSON="$(${tailscaleBin} status --json 2>/dev/null || echo '{}')"
+
+          DNS_NAME="$(
+            printf '%s' "$STATUS_JSON" \
+              | ${jqBin} -r '.Self.DNSName // empty' 2>/dev/null \
+              || true
+          )"
+
+          if [ -z "$DNS_NAME" ]; then
+            echo "WARNING: Tailscale did not return this node's DNS name."
+            exit 1
+          fi
+
+          if ${hostBin} "$DNS_NAME" >/dev/null 2>&1; then
+            echo "MagicDNS OK: $DNS_NAME resolves."
+          else
+            echo "WARNING: MagicDNS resolution failed for $DNS_NAME."
+            exit 1
+          fi
+        '';
       };
 
-      script = ''
-        set -euo pipefail
+    systemd.timers.tailscale-magicdns-check =
+      lib.mkIf (cfg.magicDnsCheck && cfg.tailnetDomain != null) {
+        description = "Check Tailscale MagicDNS resolution hourly";
+        wantedBy = [ "timers.target" ];
 
-        # Test MagicDNS resolution
-        HOSTNAME=$(tailscale status --json 2>/dev/null | ${pkgs.jq}/bin/jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
-
-        if [ -z "$HOSTNAME" ]; then
-          echo "WARNING: Cannot determine MagicDNS hostname"
-          exit 1
-        fi
-
-        # Try to resolve own MagicDNS name
-        if ${pkgs.host}/bin/host "$HOSTNAME" >/dev/null 2>&1; then
-          echo "MagicDNS OK: $HOSTNAME resolves correctly"
-        else
-          echo "WARNING: MagicDNS resolution failed for $HOSTNAME"
-          exit 1
-        fi
-      '';
-    };
-
-    systemd.timers.tailscale-magicdns-check = lib.mkIf (cfg.magicDnsCheck && cfg.tailnetDomain != null) {
-      enable = cfg.magicDnsCheck;
-      description = "Check MagicDNS resolution hourly";
-      wantedBy = [ "timers.target" ];
-
-      timerConfig = {
-        OnBootSec = "5m";
-        OnUnitActiveSec = "1h";
-        Persistent = true;
+        timerConfig = {
+          OnBootSec = "5m";
+          OnUnitActiveSec = "1h";
+          Persistent = true;
+        };
       };
-    };
 
-    #########################################################
-    # Prometheus Metrics
-    #########################################################
+    ##########################################################################
+    # Prometheus metrics
+    ##########################################################################
 
     systemd.services.tailscale-metrics = {
-      description = "Tailscale Prometheus Metrics";
-
+      description = "Tailscale Prometheus metrics exporter";
       after = [ "tailscaled.service" ];
       wants = [ "tailscaled.service" ];
 
-      path = [ pkgs.jq pkgs.host pkgs.tailscale pkgs.bash pkgs.coreutils pkgs.socat ];
+      path = [
+        pkgs.jq
+        pkgs.host
+        pkgs.tailscale
+        pkgs.bash
+        pkgs.coreutils
+        pkgs.gnugrep
+        pkgs.socat
+      ];
 
       serviceConfig = {
         Type = "simple";
         Restart = "on-failure";
         RestartSec = "10s";
         KillMode = "control-group";
-        # Hardening
+
         NoNewPrivileges = true;
         PrivateTmp = true;
         ProtectSystem = "strict";
         ProtectHome = true;
-        ReadWritePaths = [ "/var/lib/tailscale-metrics" ];
+
+        ReadWritePaths = [ metricsDirectory ];
         StateDirectory = "tailscale-metrics";
       };
 
-      preStart = ''
-        set -euo pipefail
-        METRICS_FILE="/var/lib/tailscale-metrics/metrics.prom"
-
-        # Write initial metrics to avoid serving an empty file
-        TIMESTAMP=$(date +%s)
-        EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
-        EXPIRY_DATE=$(echo "$EXPIRY_JSON" | jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
-        HOSTNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.HostName // empty' 2>/dev/null || echo "unknown")
-        Connected=$(echo "$EXPIRY_JSON" | jq -r '.Self.BackendState // empty' 2>/dev/null || echo "unknown")
-
-        KEY_EXPIRY_DAYS=999
-        if [ -n "$EXPIRY_DATE" ] && [ "$EXPIRY_DATE" != "none" ]; then
-          EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
-          NOW_EPOCH=$(date +%s)
-          KEY_EXPIRY_DAYS=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
-        fi
-
-        DNSNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
-        MAGICDNS_STATUS=1
-        if [ -n "$DNSNAME" ]; then
-          if ! host "$DNSNAME" >/dev/null 2>&1; then
-            MAGICDNS_STATUS=0
-          fi
-        fi
-
-        # Exit node advertising: verified from actual advertised routes via
-        # `tailscale debug prefs` (`.Self.ExitNodeOption` is unreliable).
-        EXIT_NODE_STATUS=0
-        if tailscale debug prefs 2>/dev/null | jq -r '.AdvertiseRoutes[]?' 2>/dev/null | grep -qE '^(0\.0\.0\.0/0|::/0)$'; then
-          EXIT_NODE_STATUS=1
-        fi
-        # Declarative intent from the Nix config (build-time constant).
-        EXIT_NODE_CONFIGURED=${if cfg.advertiseExitNode then "1" else "0"}
-
-        CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
-        {
-          echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
-          echo "# TYPE tailscale_connected gauge"
-          echo "tailscale_connected{host=\"$HOSTNAME\"} $CONNECTED_VAL"
-          echo "# HELP tailscale_key_expiry_days Days until Tailscale key expires"
-          echo "# TYPE tailscale_key_expiry_days gauge"
-          echo "tailscale_key_expiry_days{host=\"$HOSTNAME\"} $KEY_EXPIRY_DAYS"
-          echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
-          echo "# TYPE tailscale_magicdns_status gauge"
-          echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
-          echo "# HELP tailscale_exit_node_configured Exit node requested in declarative config (1=yes, 0=no)"
-          echo "# TYPE tailscale_exit_node_configured gauge"
-          echo "tailscale_exit_node_configured{host=\"$HOSTNAME\"} $EXIT_NODE_CONFIGURED"
-          echo "# HELP tailscale_exit_node_advertised Exit node advertising status (1=advertised, 0=not)"
-          echo "# TYPE tailscale_exit_node_advertised gauge"
-          echo "tailscale_exit_node_advertised{host=\"$HOSTNAME\"} $EXIT_NODE_STATUS"
-          echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
-          echo "# TYPE tailscale_metrics_timestamp gauge"
-          echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"
-        } > "$METRICS_FILE"
-      '';
-
       script = ''
         set -euo pipefail
-        METRICS_FILE="/var/lib/tailscale-metrics/metrics.prom"
+
+        METRICS_FILE="${metricsFile}"
         INTERVAL=${toString cfg.metricsExportInterval}
 
-        # Background: update metrics every N seconds
+        write_metrics() {
+          local timestamp expiry_json expiry_date hostname backend_state
+          local key_expiry_days dns_name magicdns_status
+          local exit_node_status exit_node_configured
+          local connected_val peer_count total_peers tx_bytes rx_bytes
+          local temp_file
+
+          timestamp="$(date +%s)"
+          expiry_json="$(${tailscaleBin} status --json 2>/dev/null || echo '{}')"
+
+          expiry_date="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} -r '.Self.KeyExpiry // empty' 2>/dev/null \
+              || true
+          )"
+
+          hostname="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} -r '.Self.HostName // "unknown"' 2>/dev/null \
+              || echo unknown
+          )"
+
+          backend_state="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} -r '.Self.BackendState // "unknown"' 2>/dev/null \
+              || echo unknown
+          )"
+
+          key_expiry_days=999
+
+          if [ -n "$expiry_date" ] && [ "$expiry_date" != "none" ]; then
+            local expiry_epoch now_epoch
+            expiry_epoch="$(date -d "$expiry_date" +%s 2>/dev/null || echo 0)"
+            now_epoch="$(date +%s)"
+
+            if [ "$expiry_epoch" -gt 0 ]; then
+              key_expiry_days=$(( (expiry_epoch - now_epoch) / 86400 ))
+            fi
+          fi
+
+          dns_name="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} -r '.Self.DNSName // empty' 2>/dev/null \
+              || true
+          )"
+
+          magicdns_status=1
+          if [ -n "$dns_name" ] && ! ${hostBin} "$dns_name" >/dev/null 2>&1; then
+            magicdns_status=0
+          fi
+
+          connected_val=0
+          if [ "$backend_state" = "Running" ]; then
+            connected_val=1
+          fi
+
+          peer_count="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} '[.Peer[]? | select(.Online == true)] | length' \
+                2>/dev/null || echo 0
+          )"
+
+          total_peers="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} '[.Peer[]?] | length' 2>/dev/null || echo 0
+          )"
+
+          tx_bytes="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} -r '.Self.TxnBytes // 0' 2>/dev/null || echo 0
+          )"
+
+          rx_bytes="$(
+            printf '%s' "$expiry_json" \
+              | ${jqBin} -r '.Self.RxBytes // 0' 2>/dev/null || echo 0
+          )"
+
+          exit_node_status=0
+          if ${tailscaleBin} debug prefs 2>/dev/null \
+            | ${jqBin} -r '.AdvertiseRoutes[]?' 2>/dev/null \
+            | ${pkgs.gnugrep}/bin/grep -qE '^(0\.0\.0\.0/0|::/0)$'; then
+            exit_node_status=1
+          fi
+
+          exit_node_configured=${if cfg.advertiseExitNode then "1" else "0"}
+
+          # Write to a temporary file and atomically replace the metrics file.
+          # This prevents scrapers from reading a partially written document.
+          temp_file="$(mktemp "${metricsDirectory}/metrics.XXXXXX")"
+
+          {
+            echo "# HELP tailscale_connected Tailscale connection status"
+            echo "# TYPE tailscale_connected gauge"
+            echo "tailscale_connected{host=\"$hostname\"} $connected_val"
+
+            echo "# HELP tailscale_key_expiry_days Days until key expiry"
+            echo "# TYPE tailscale_key_expiry_days gauge"
+            echo "tailscale_key_expiry_days{host=\"$hostname\"} $key_expiry_days"
+
+            echo "# HELP tailscale_magicdns_status MagicDNS resolution status"
+            echo "# TYPE tailscale_magicdns_status gauge"
+            echo "tailscale_magicdns_status{host=\"$hostname\"} $magicdns_status"
+
+            echo "# HELP tailscale_exit_node_configured Exit node configured in NixOS"
+            echo "# TYPE tailscale_exit_node_configured gauge"
+            echo "tailscale_exit_node_configured{host=\"$hostname\"} $exit_node_configured"
+
+            echo "# HELP tailscale_exit_node_advertised Exit node routes advertised"
+            echo "# TYPE tailscale_exit_node_advertised gauge"
+            echo "tailscale_exit_node_advertised{host=\"$hostname\"} $exit_node_status"
+
+            echo "# HELP tailscale_peers_online Number of online peers"
+            echo "# TYPE tailscale_peers_online gauge"
+            echo "tailscale_peers_online{host=\"$hostname\"} $peer_count"
+
+            echo "# HELP tailscale_peers_total Number of known peers"
+            echo "# TYPE tailscale_peers_total gauge"
+            echo "tailscale_peers_total{host=\"$hostname\"} $total_peers"
+
+            echo "# HELP tailscale_tx_bytes Total transmitted bytes"
+            echo "# TYPE tailscale_tx_bytes counter"
+            echo "tailscale_tx_bytes{host=\"$hostname\"} $tx_bytes"
+
+            echo "# HELP tailscale_rx_bytes Total received bytes"
+            echo "# TYPE tailscale_rx_bytes counter"
+            echo "tailscale_rx_bytes{host=\"$hostname\"} $rx_bytes"
+
+            echo "# HELP tailscale_metrics_timestamp Unix timestamp of last collection"
+            echo "# TYPE tailscale_metrics_timestamp gauge"
+            echo "tailscale_metrics_timestamp{host=\"$hostname\"} $timestamp"
+          } > "$temp_file"
+
+          chmod 0644 "$temp_file"
+          mv -f "$temp_file" "$METRICS_FILE"
+        }
+
+        # Create initial metrics before opening the listener.
+        write_metrics
+
+        # Serve metrics only on loopback. Prometheus scrapes locally.
+        # socat is restarted by systemd if the service fails.
         (
           while true; do
             sleep "$INTERVAL"
-            TIMESTAMP=$(date +%s)
-            EXPIRY_JSON=$(tailscale status --json 2>/dev/null || echo '{}')
-            EXPIRY_DATE=$(echo "$EXPIRY_JSON" | jq -r '.Self.KeyExpiry // empty' 2>/dev/null || echo "")
-            HOSTNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.HostName // empty' 2>/dev/null || echo "unknown")
-            Connected=$(echo "$EXPIRY_JSON" | jq -r '.Self.BackendState // empty' 2>/dev/null || echo "unknown")
-
-            KEY_EXPIRY_DAYS=999
-            if [ -n "$EXPIRY_DATE" ] && [ "$EXPIRY_DATE" != "none" ]; then
-              EXPIRY_EPOCH=$(date -d "$EXPIRY_DATE" +%s 2>/dev/null || echo "0")
-              NOW_EPOCH=$(date +%s)
-              KEY_EXPIRY_DAYS=$(( (EXPIRY_EPOCH - NOW_EPOCH) / 86400 ))
-            fi
-
-            DNSNAME=$(echo "$EXPIRY_JSON" | jq -r '.Self.DNSName // empty' 2>/dev/null || echo "")
-            MAGICDNS_STATUS=1
-            if [ -n "$DNSNAME" ]; then
-              if ! host "$DNSNAME" >/dev/null 2>&1; then
-                MAGICDNS_STATUS=0
-              fi
-            fi
-
-            CONNECTED_VAL=$(if [ "$Connected" = "Running" ]; then echo 1; else echo 0; fi)
-
-            # Connection quality: count online peers and sum throughput
-            PEER_COUNT=$(echo "$EXPIRY_JSON" | jq '[.Peer[] | select(.Online == true)] | length' 2>/dev/null || echo "0")
-            TOTAL_PEERS=$(echo "$EXPIRY_JSON" | jq '[.Peer[]] | length' 2>/dev/null || echo "0")
-            TX_BYTES=$(echo "$EXPIRY_JSON" | jq '.Self.TxnBytes // 0' 2>/dev/null || echo "0")
-            RX_BYTES=$(echo "$EXPIRY_JSON" | jq '.Self.RxBytes // 0' 2>/dev/null || echo "0")
-
-            # Exit node advertising: verified from actual advertised routes via
-            # `tailscale debug prefs` (`.Self.ExitNodeOption` is unreliable).
-            EXIT_NODE_STATUS=0
-            if tailscale debug prefs 2>/dev/null | jq -r '.AdvertiseRoutes[]?' 2>/dev/null | grep -qE '^(0\.0\.0\.0/0|::/0)$'; then
-              EXIT_NODE_STATUS=1
-            fi
-            # Declarative intent from the Nix config (build-time constant).
-            EXIT_NODE_CONFIGURED=${if cfg.advertiseExitNode then "1" else "0"}
-
-            {
-              echo "# HELP tailscale_connected Tailscale connection status (1=connected, 0=disconnected)"
-              echo "# TYPE tailscale_connected gauge"
-              echo "tailscale_connected{host=\"$HOSTNAME\"} $CONNECTED_VAL"
-              echo "# HELP tailscale_key_expiry_days Days until Tailscale key expires"
-              echo "# TYPE tailscale_key_expiry_days gauge"
-              echo "tailscale_key_expiry_days{host=\"$HOSTNAME\"} $KEY_EXPIRY_DAYS"
-              echo "# HELP tailscale_magicdns_status MagicDNS resolution status (1=ok, 0=failed)"
-              echo "# TYPE tailscale_magicdns_status gauge"
-              echo "tailscale_magicdns_status{host=\"$HOSTNAME\"} $MAGICDNS_STATUS"
-              echo "# HELP tailscale_exit_node_configured Exit node requested in declarative config (1=yes, 0=no)"
-              echo "# TYPE tailscale_exit_node_configured gauge"
-              echo "tailscale_exit_node_configured{host=\"$HOSTNAME\"} $EXIT_NODE_CONFIGURED"
-              echo "# HELP tailscale_exit_node_advertised Exit node advertising status (1=advertised, 0=not)"
-              echo "# TYPE tailscale_exit_node_advertised gauge"
-              echo "tailscale_exit_node_advertised{host=\"$HOSTNAME\"} $EXIT_NODE_STATUS"
-              echo "# HELP tailscale_peers_online Number of online Tailscale peers"
-              echo "# TYPE tailscale_peers_online gauge"
-              echo "tailscale_peers_online{host=\"$HOSTNAME\"} $PEER_COUNT"
-              echo "# HELP tailscale_peers_total Total number of Tailscale peers"
-              echo "# TYPE tailscale_peers_total gauge"
-              echo "tailscale_peers_total{host=\"$HOSTNAME\"} $TOTAL_PEERS"
-              echo "# HELP tailscale_tx_bytes Total bytes transmitted"
-              echo "# TYPE tailscale_tx_bytes counter"
-              echo "tailscale_tx_bytes{host=\"$HOSTNAME\"} $TX_BYTES"
-              echo "# HELP tailscale_rx_bytes Total bytes received"
-              echo "# TYPE tailscale_rx_bytes counter"
-              echo "tailscale_rx_bytes{host=\"$HOSTNAME\"} $RX_BYTES"
-              echo "# HELP tailscale_metrics_timestamp Unix timestamp of last metrics collection"
-              echo "# TYPE tailscale_metrics_timestamp gauge"
-              echo "tailscale_metrics_timestamp{host=\"$HOSTNAME\"} $TIMESTAMP"
-            } > "$METRICS_FILE"
+            write_metrics
           done
         ) &
-        UPDATE_PID=$!
+        updater_pid=$!
 
-        # Foreground: serve metrics via socat
-        socat TCP-LISTEN:9121,fork,reuseaddr,bind=127.0.0.1 SYSTEM:'echo "HTTP/1.1 200 OK"; echo "Content-Type: text/plain; version=0.0.4"; echo ""; cat /var/lib/tailscale-metrics/metrics.prom' &
-        SOCAT_PID=$!
+        cleanup() {
+          kill "$updater_pid" 2>/dev/null || true
+          wait "$updater_pid" 2>/dev/null || true
+        }
+        trap cleanup EXIT INT TERM
 
-        # Wait for either to exit
-        wait -n $UPDATE_PID $SOCAT_PID 2>/dev/null || true
-        kill $UPDATE_PID $SOCAT_PID 2>/dev/null || true
-        exit 1
+        exec ${pkgs.socat}/bin/socat \
+          TCP-LISTEN:9121,fork,reuseaddr,bind=127.0.0.1 \
+          SYSTEM:'printf "HTTP/1.1 200 OK\r\nContent-Type: text/plain; version=0.0.4\r\nConnection: close\r\n\r\n"; cat ${metricsFile}'
       '';
     };
 
-    systemd.timers.tailscale-metrics = {
-      description = "Start Tailscale metrics collection";
-      wantedBy = [ "timers.target" ];
-
-      timerConfig = {
-        OnBootSec = "1m";
-        OnUnitActiveSec = "1m";
-        Persistent = true;
-      };
-    };
-
-    # Metrics are served on 127.0.0.1:9121 (loopback only).
-    # Prometheus scrapes locally, so no external firewall rule is needed.
-    # Removed: networking.firewall.allowedTCPPorts = [ 9121 ];
-
-    # Scrape target registration is centralized in observability/prometheus.nix
-    # (single authoritative owner). Do not register a scrape config here.
-
+    # Metrics exporter starts as a service; no public firewall port is opened.
+    # Scrape-target registration remains centralized in observability/prometheus.nix.
   };
 }
 

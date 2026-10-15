@@ -22,6 +22,10 @@
 {
   nixpkgs.config.allowUnfree = true;
 
+  # Repository-wide nixpkgs overlays (see lib/overlays/). Applied to the host's
+  # package set so that anyio/apostrophe build on rebuild.
+  nixpkgs.overlays = import ../lib/overlays;
+
   documentation.doc.enable = false;
 
   nix = {

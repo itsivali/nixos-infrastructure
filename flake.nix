@@ -39,9 +39,13 @@
       # Default username (can be overridden per-host)
       defaultUsername = "ivali";
 
+      # Repository-wide nixpkgs overlays (see lib/overlays/).
+      repoOverlays = import ./lib/overlays;
+
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        overlays = repoOverlays;
       };
 
       # Hermetic source for the Go tools: only Go source + go.mod/go.sum.
@@ -178,6 +182,24 @@
         home-manager-smoke = import ./tests/home-manager-smoke.nix { inherit pkgs sops-nix home-manager; };
         automation-smoke = import ./tests/automation-smoke.nix { inherit pkgs sops-nix home-manager; };
         bitwarden-smoke = import ./tests/bitwarden-smoke.nix { inherit pkgs sops-nix home-manager; };
+
+        # Regression guard for the anyio test-quarantine overlay
+        # (lib/overlays/anyio-tests.nix). Fails evaluation, without building
+        # anyio, if the overlay is no longer applied.
+        anyio-test-quarantine =
+          let
+            expected = [
+              "test_tls_connectable"
+              "test_glob_recurse_symlinks"
+              "test_rglob"
+            ];
+            disabled = pkgs.python312Packages.anyio.disabledTests or [ ];
+            missing = builtins.filter (test: !(builtins.elem test disabled)) expected;
+          in
+          if missing == [ ] then
+            pkgs.runCommand "anyio-test-quarantine" { } "touch $out"
+          else
+            throw "lib/overlays/anyio-tests.nix is not applied; missing disabledTests: ${builtins.concatStringsSep ", " missing}";
       };
     };
 }

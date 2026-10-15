@@ -30,6 +30,7 @@ with pkgs; [
   bitwarden-cli
   bottom
   btop
+  claude-code
   consul
   curl
   direnv
@@ -53,6 +54,7 @@ with pkgs; [
   opencode
   openssl
   packer
+  powertop
   python3
   ripgrep
   rsync

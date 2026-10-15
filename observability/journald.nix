@@ -9,23 +9,22 @@
 #
 # Ownership
 # ---------
-# services.journald.extraConfig
+# services.journald.settings.Journal
 #
 ##############################################################################
 
 { ... }:
 
 {
-  services.journald.extraConfig = ''
-    Storage=persistent
-    Compress=yes
-    ForwardToSyslog=no
-    RateLimitIntervalSec=30s
-    RateLimitBurst=5000
-    SystemMaxUse=50M
-    MaxFileSec=1week
-    MaxRetentionSec=7day
-    Compress=yes
-    Seal=no
-  '';
+  services.journald.settings.Journal = {
+    Storage = "persistent";
+    Compress = "yes";
+    ForwardToSyslog = "no";
+    RateLimitIntervalSec = "30s";
+    RateLimitBurst = "5000";
+    SystemMaxUse = "50M";
+    MaxFileSec = "1week";
+    MaxRetentionSec = "7day";
+    Seal = "no";
+  };
 }

@@ -31,13 +31,13 @@ in
 with pkgs; [
   # Web Browsers
   firefox
-  microsoft-edge
+  google-chrome
 
   # Communication
   zoom-us
 
   # Productivity
-  libreoffice-fresh
+  collabora-desktop
   obsidian
   notion-app-enhanced
   apostrophe

@@ -28,6 +28,7 @@ This directory contains shell scripts for infrastructure automation, GitOps reco
 | `sops-setup.sh` | Initialize SOPS with age encryption | Manual execution |
 | `sops-breakglass.sh` | Emergency decryption without SOPS key | Manual execution |
 | `rotate-sops-key.sh` | Rotate the SOPS encryption key | Manual execution |
+| `gitlab-token-rotate.sh` | Rotate the host GitLab token before expiry | `gitlab-token-rotate.service` |
 | `generate-ssh-key.sh` | Generate SSH key pair for a new host | Manual execution |
 
 ### Monitoring & Alerting

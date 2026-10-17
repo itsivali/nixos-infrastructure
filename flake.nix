@@ -200,6 +200,23 @@
             pkgs.runCommand "anyio-test-quarantine" { } "touch $out"
           else
             throw "lib/overlays/anyio-tests.nix is not applied; missing disabledTests: ${builtins.concatStringsSep ", " missing}";
+
+        # Regression guard for the collabora-desktop coda-qt link-fix overlay
+        # (lib/overlays/collabora-desktop.nix + lib/overlays/patches/). Fails
+        # evaluation, without building collabora-desktop, if the overlay is no
+        # longer applied (e.g. the overlay is dropped before the pinned nixpkgs
+        # contains upstream commit c2342c171205).
+        collabora-desktop-link-fix =
+          let
+            fixPatch = ./lib/overlays/patches/collabora-desktop/0002-fix-coda-qt-link.patch;
+            applied = builtins.any
+              (p: builtins.toString p == builtins.toString fixPatch)
+              (pkgs.collabora-desktop.patches or [ ]);
+          in
+          if applied then
+            pkgs.runCommand "collabora-desktop-link-fix" { } "touch $out"
+          else
+            throw "lib/overlays/collabora-desktop.nix is not applied; missing 0002-fix-coda-qt-link.patch in pkgs.collabora-desktop.patches";
       };
     };
 }

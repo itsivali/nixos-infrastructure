@@ -24,4 +24,5 @@
 
 [
   (import ./anyio-tests.nix)
+  (import ./collabora-desktop.nix)
 ]

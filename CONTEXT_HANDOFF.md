@@ -2312,6 +2312,133 @@ lib/host-templates/laptop.nix:54-58    secret declaration
 lib/host-templates/laptop.nix:282-283  guiPasswordFile wiring
 hosts/prague.nix:63-155     syncthing service + firewall
 security/README.md         port inventory (corrected in !87)
-tests/security-smoke.nix   firewall default-deny assertions (corrected in !87)
-architecture/domains.yaml  domain ownership model
+tests/security-smoke.nix   firewall default-deny tests
+```
+
+# Session Handoff — GitLab Host Token Self-Rotation
+
+## 1. What Changed
+
+The host no longer depends on a manually-rotated GitLab personal access
+token. A scheduled service rotates the dedicated **host** token before it
+expires and re-materialises it through SOPS.
+
+Merged:
+
+```text
+!93  security: store rotated gitlab runner api token in sops
+!94  fix: add missing shebang to diagnostic.sh
+!95  fix: fix collabora-desktop coda-qt link error
+!96  fix: extend anyio test quarantine to python313/314
+!97  feat: add self-rotating gitlab host token      (prague infra)
+```
+
+## 2. Rotation Design
+
+```text
+systemd timer (daily)
+   ↓
+gitlab-token-rotate.sh
+   ↓
+GET /personal_access_tokens/self   → expires_at
+   ↓  (only if <= dropDaysBefore days left)
+POST /personal_access_tokens/self/rotate?expires_at=+newTtlDays
+   ↓
+re-encrypt secrets/gitlab.yaml in a DEDICATED worktree
+   ↓
+commit + push to main
+   ↓
+trigger gitops-reconciler.service → rebuild → new /run/secrets/gitlab_token
+```
+
+Ownership:
+
+```text
+fleet.gitlabTokenRotate.{enable,schedule,dropDaysBefore,newTtlDays}
+systemd gitlab-token-rotate.{service,timer}
+automation/gitlab-token-rotate.nix
+scripts/gitlab-token-rotate.sh
+tests/gitlab-token-rotate-smoke.nix
+```
+
+Defaults: rotate when `<= 7` days remain, new expiry `+30` days.
+
+Key constraint: the reconciler uses `REPO_DIR=/var/lib/gitops`. If the
+rotation service committed into that checkout the reconciler would see
+`local == remote` and **skip the deploy**, so rotation uses a separate
+worktree under its `StateDirectory`.
+
+## 3. Operational Notes
+
+- The host token must carry the `api` (or `self_rotate`) scope.
+- GitLab.com restricts `POST /user/personal_access_tokens` (self) to the
+  `k8s_proxy` scope, so a *new general* PAT cannot be created via API.
+  Only rotating an existing token works via API, which is what this does.
+- The current sops token expires 2026-11-16 (~30 days out), so the first
+  scheduled runs are no-ops (`days_left > 7`). Safe to deploy immediately.
+- Token separation: this is the **host** token, distinct from the
+  operator's `glab` CLI token. See section 5 for the pending step.
+
+## 4. Temporary Cleanup Done
+
+All temporary token material (`/tmp/opencode/.glpat*`, the decrypted SOPS
+worktree, mock-API artifacts) was shredded/removed. No plaintext token
+remains on the host outside `/run/secrets/`.
+
+## 5. Latent Bug Fixed
+
+`automation/channel-bump.nix` declared `sops.secrets.gitlab_api_token`,
+but `secrets/gitlab.yaml` only contains `gitlab_token`. The module was
+never enabled, so it was dormant. Corrected to `gitlab_token` (also fixed
+in the regenerated `DOCS.md`).
+
+## 6. Documentation Drift Found (Not Fixed)
+
+`DOCS.md` is stale relative to reality (generated header says
+`201 documented modules`; a full `ivali docs` regeneration yields `205`
+plus unrelated gruvbox→mokka theme text). Only the rotation module section
+and the channel-bump fix were hand-applied to keep MR !97 minimal. A
+dedicated `docs:` regeneration MR is the correct follow-up.
+
+## 7. Collabora Overlay
+
+`lib/overlays/collabora-desktop.nix` (+ patch
+`patches/collabora-desktop/0002-fix-coda-qt-link.patch`) is a temporary
+workaround. Remove it once the pinned nixpkgs is at/after upstream commit
+`c2342c171205`.
+
+## 8. Next Exact Action
+
+1. Operator: create a **new** glab CLI token in the GitLab UI
+   (scopes `api`, `write_repository`; name e.g. `glab-cli`).
+2. Paste it to the agent so glab can be moved off the host token:
+
+   ```bash
+   glab auth login --hostname gitlab.com --token <new-glab-token>
+   ```
+
+3. Verify: `glab auth status` and confirm the host token is no longer
+   used interactively.
+4. Confirm the next `gitops-reconciler` run enables
+   `gitlab-token-rotate.timer` on prague.
+
+## 9. Repository State
+
+```text
+branch: main (feature/gitlab-host-token-self-rotation merged as !97)
+last:   Merge branch 'feature/gitlab-host-token-self-rotation' into 'main'
+```
+
+## 10. Relevant Documents
+
+```text
+AGENTS.md                          AI operating contract — mandatory
+IVALI_FLOW.md                      Git lifecycle; CI failure handling
+automation/gitlab-token-rotate.nix rotation module
+scripts/gitlab-token-rotate.sh     rotation logic
+tests/gitlab-token-rotate-smoke.nix nixosTest (mock GitLab API)
+secrets/gitlab.yaml                encrypted host token (gitlab_token)
+automation/channel-bump.nix        corrected to gitlab_token
+automation/channel-bump.nix:52-57  secret declaration
+DOCS.md                            module docs (stale — see 4b)
 ```

@@ -147,6 +147,45 @@ write_deploy_state() {
   fi
 }
 
+# Print the commit SHA of the last *successful* deployment, or nothing.
+# Reads the structured state written by write_deploy_state() above.
+gitops_deployed_sha() {
+  local state_file="${1:-/var/lib/deployment/last-deploy.json}"
+  [[ -f "$state_file" ]] || return 0
+  command -v jq >/dev/null 2>&1 || return 0
+  jq -r 'select(.state == "complete") | .commit_sha // empty' "$state_file" 2>/dev/null || true
+}
+
+# Return 0 when a deploy must run, 1 when the running system is already at the
+# remote revision. Args: <local_sha> <remote_sha> <deployed_sha>
+#
+# The reconcile loop must NOT treat "checkout HEAD == origin" as proof of
+# deployment: `git pull` advances HEAD before the build, so an interrupted or
+# failed build leaves the pull applied but the running system un-updated. A
+# HEAD-only check would then log "Already up-to-date" every cycle and never
+# retry, permanently wedging the host (observed 2026-10-17: a 30-minute
+# TimeoutStartSec SIGTERM'd a cold build, after which the loop no-op'd forever).
+# The decision is therefore based on the last successfully deployed revision.
+gitops_deploy_needed() {
+  local local_sha="${1:-}"
+  local remote="${2:-}"
+  local deployed="${3:-}"
+  [[ -z "$remote" ]] && return 0
+  [[ "$local_sha" != "$remote" ]] && return 0
+  [[ "$deployed" != "$remote" ]] && return 0
+  return 1
+}
+
+###########################################################################
+# Sourcing guard — when this file is sourced (by the gitops-deploy-decision
+# test) the helper functions above are defined but the reconciler body below
+# must not run.
+###########################################################################
+
+if [[ "${BASH_SOURCE[0]}" != "$0" ]]; then
+  return 0 2>/dev/null || exit 0
+fi
+
 ###########################################################################
 # Lock — stale detection + mutual exclusion
 ###########################################################################
@@ -281,12 +320,17 @@ step_ok
 
 LOCAL="$(git rev-parse HEAD)"
 REMOTE="$(git rev-parse "origin/${BRANCH}")"
+DEPLOYED="$(gitops_deployed_sha)"
 
-log "LOCAL  = ${LOCAL}"
-log "REMOTE = ${REMOTE}"
+log "LOCAL    = ${LOCAL}"
+log "REMOTE   = ${REMOTE}"
+log "DEPLOYED = ${DEPLOYED:-<none>}"
 
-if [[ "$LOCAL" == "$REMOTE" ]]; then
-  log "Already up-to-date."
+# Retry-safe: skip only when the checkout is current AND the running system was
+# actually deployed at that revision. If a previous build was interrupted after
+# the pull (LOCAL==REMOTE but DEPLOYED!=REMOTE), fall through and retry.
+if ! gitops_deploy_needed "$LOCAL" "$REMOTE" "$DEPLOYED"; then
+  log "Already up-to-date and deployed (${REMOTE})."
   exit 0
 fi
 

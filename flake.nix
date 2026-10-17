@@ -188,18 +188,30 @@
         # anyio, if the overlay is no longer applied.
         anyio-test-quarantine =
           let
-            expected = [
+            expectedTests = [
               "test_tls_connectable"
               "test_glob_recurse_symlinks"
               "test_rglob"
             ];
-            disabled = pkgs.python312Packages.anyio.disabledTests or [ ];
-            missing = builtins.filter (test: !(builtins.elem test disabled)) expected;
+            expectedPaths = [
+              "tests/test_pytest_plugin.py"
+            ];
+
+            # The overlay goes through pythonPackagesExtensions, so it must hold
+            # for every python set the closure can pull anyio from.
+            pythonSets = [ pkgs.python312Packages pkgs.python313Packages pkgs.python314Packages ];
+
+            missingIn =
+              set:
+              builtins.filter (t: !(builtins.elem t (set.anyio.disabledTests or [ ]))) expectedTests
+              ++ builtins.filter (p: !(builtins.elem p (set.anyio.disabledTestPaths or [ ]))) expectedPaths;
+
+            missing = builtins.concatLists (map missingIn pythonSets);
           in
           if missing == [ ] then
             pkgs.runCommand "anyio-test-quarantine" { } "touch $out"
           else
-            throw "lib/overlays/anyio-tests.nix is not applied; missing disabledTests: ${builtins.concatStringsSep ", " missing}";
+            throw "lib/overlays/anyio-tests.nix is not applied; missing: ${builtins.concatStringsSep ", " missing}";
 
         # Regression guard for the collabora-desktop coda-qt link-fix overlay
         # (lib/overlays/collabora-desktop.nix + lib/overlays/patches/). Fails

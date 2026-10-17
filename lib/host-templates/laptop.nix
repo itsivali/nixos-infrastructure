@@ -206,6 +206,16 @@ in
   };
 
   ############################################################################
+  # HOST TOKEN SELF-ROTATION
+  # Rotates the dedicated host GitLab token (secrets/gitlab.yaml ->
+  # gitlab_token) before expiry and triggers the reconciler to apply it.
+  # Kept distinct from the operator's glab CLI token.
+  ############################################################################
+  fleet.gitlabTokenRotate = lib.mkIf (hasGitLabRunner && hasSecrets) {
+    enable = true;
+  };
+
+  ############################################################################
   # DEPLOYMENT HEALTH
   ############################################################################
   fleet.deploymentHealth = lib.mkIf (hasGitLabRunner && hasSecrets) {

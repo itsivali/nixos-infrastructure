@@ -182,6 +182,7 @@
         home-manager-smoke = import ./tests/home-manager-smoke.nix { inherit pkgs sops-nix home-manager; };
         automation-smoke = import ./tests/automation-smoke.nix { inherit pkgs sops-nix home-manager; };
         bitwarden-smoke = import ./tests/bitwarden-smoke.nix { inherit pkgs sops-nix home-manager; };
+        gitlab-token-rotate-smoke = import ./tests/gitlab-token-rotate-smoke.nix { inherit pkgs sops-nix home-manager; };
 
         # Regression guard for the anyio test-quarantine overlay
         # (lib/overlays/anyio-tests.nix). Fails evaluation, without building

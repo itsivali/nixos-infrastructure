@@ -15,7 +15,7 @@
 #
 # Dependencies
 # ------------
-# Requires SOPS secret: secrets/gitlab.yaml -> gitlab_api_token
+# Requires SOPS secret: secrets/gitlab.yaml -> gitlab_token
 # (used for the GitLab MR API call). Pushes via the operator's
 # SSH key, exactly like the reconciler (GIT_SSH_COMMAND).
 #
@@ -52,7 +52,7 @@ let
     git commit -q -m "chore: bump nixpkgs (unstable)"
     git push -u origin "$BR"
 
-    TOKEN="$(cat /run/secrets/gitlab_api_token)"
+    TOKEN="$(cat /run/secrets/gitlab_token)"
     PROJ="willisivali%2Fnixos-infrastructure"
     curl -fsS -X POST \
       "https://gitlab.com/api/v4/projects/$PROJ/merge_requests" \
@@ -79,10 +79,8 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    sops.secrets.gitlab_api_token = {
+    sops.secrets.gitlab_token = {
       sopsFile = ../secrets/gitlab.yaml;
-      owner = "root";
-      mode = "0400";
     };
 
     environment.systemPackages = [ pkgs.git pkgs.curl pkgs.nix ];

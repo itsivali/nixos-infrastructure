@@ -214,6 +214,19 @@
           else
             throw "lib/overlays/anyio-tests.nix is not applied; missing: ${builtins.concatStringsSep ", " missing}";
 
+        # Regression guard for the retry-safe GitOps deploy decision
+        # (scripts/gitops-reconcile.sh). A build that is interrupted after the
+        # pull must still be retried, so the reconciler decides "up to date"
+        # from the last successfully deployed revision plus the checkout, not
+        # from `git rev-parse HEAD` alone.
+        gitops-deploy-decision =
+          pkgs.runCommand "gitops-deploy-decision"
+            { nativeBuildInputs = [ pkgs.bash pkgs.coreutils pkgs.jq ]; }
+            ''
+              bash ${./tests/gitops-deploy-decision.sh} ${./scripts/gitops-reconcile.sh}
+              touch $out
+            '';
+
         # Regression guard for the collabora-desktop coda-qt link-fix overlay
         # (lib/overlays/collabora-desktop.nix + lib/overlays/patches/). Fails
         # evaluation, without building collabora-desktop, if the overlay is no

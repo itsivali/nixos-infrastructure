@@ -153,8 +153,13 @@ in
         # switch and a health gate. On this host (AMD A6 / 14 GB) a cold
         # desktop switch routinely exceeds 10 minutes, so 180s killed every
         # real deploy mid-validation (systemd "start operation timed out").
-        # 1800s (30 min) covers the slowest first-build path with margin.
-        TimeoutStartSec = "1800s";
+        # 1800s (30 min) was STILL too short: on 2026-10-17 a cold 203-
+        # derivation build (large nixpkgs bump) was SIGTERM'd at exactly
+        # 30 min, and because the pull had already advanced the checkout the
+        # loop then no-op'd forever (see scripts/gitops-reconcile.sh
+        # gitops_deploy_needed). 14400s (4 h) covers the slowest cold build;
+        # the retry-safe decision makes a genuine timeout recoverable.
+        TimeoutStartSec = "14400s";
 
         StandardOutput = "journal";
         StandardError = "journal";
@@ -164,7 +169,16 @@ in
         # Establish ownership of /var/lib/gitops — the single source of
         # truth for the local git worktree. CI and recovery are read-only
         # consumers through documented interfaces (EXC-003, EXC-004).
-        StateDirectory = "gitops";
+        # Also own /var/lib/deployment so the unprivileged reconciler can
+        # write last-deploy.json (the deploy-state marker the retry-safe
+        # decision in gitops-reconcile.sh relies on, and which the Go ivali
+        # status/drift commands read). Without this, write_deploy_state()
+        # silently no-ops (mkdir under root-owned /var/lib fails) and the
+        # running system is never recorded as deployed.
+        StateDirectory = [
+          "gitops"
+          "deployment"
+        ];
 
         # Run unconfined: the reconciler is a root service that drives
         # nixos-rebuild/git and must load shared libs (bash -> libreadline).

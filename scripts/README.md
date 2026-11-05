@@ -56,6 +56,17 @@ What it does for SSH:
 
 Installing the configuration:
 
+- **Parallel downloads.** A fresh install fetches thousands of store paths, and
+  wall-clock is dominated by substitution rather than building. The installer
+  raises `max-substitution-jobs` to 32 (Nix default 16), `http-connections` to
+  50 (default 25), and `download-buffer-size` to 256 MiB (default 1 MiB — it
+  fills instantly under concurrency and stalls every job). Tune with
+  `--download-jobs N` / `--http-connections N`. The same values are declared
+  system-wide in `system/nix.nix`, so they persist after the first switch —
+  keep the two in sync. Note that substitution settings are applied by the nix
+  *daemon* and only honoured for a trusted user: before the first switch only
+  root is trusted, so the sudo-run switch gets the tuning while a user-run
+  `nix build` may fall back to defaults. The installer detects this and says so.
 - Generated files (`hosts/<host>.nix`, `hosts/<host>/hardware-configuration.nix`,
   `secrets/hosts/<host>.yaml`, `.sops.yaml`) are **staged in git** — Nix
   evaluates the flake from the git tree and cannot see untracked files.

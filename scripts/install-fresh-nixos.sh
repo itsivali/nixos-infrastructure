@@ -6,7 +6,7 @@
 # user with sudo). The script:
 #
 #   1. Pre-flight checks (disk, network, NixOS version)
-#   2. Enable nix-command + flakes (user config + export)
+#   2. Enable nix-command + flakes, and tune parallel downloads
 #   3. SSH setup FIRST (key, agent, pinned host keys, ~/.ssh/config)
 #   4. Register the key with GitLab (API when a token is given, else guided)
 #   5. Verify SSH auth to the forge, then clone the repo
@@ -46,6 +46,8 @@
 #   --gitlab-token TOKEN     GitLab PAT with `api` scope; uploads the SSH key for you
 #   --no-authorize-local-key Do not add this machine's key to sshAuthorizedKeys
 #   --no-ssh-config          Do not manage the ~/.ssh/config block
+#   --download-jobs N        Parallel substitution (download) jobs
+#   --http-connections N     HTTP connections to the substituters
 #   --yes, -y                Non-interactive mode
 #   --tailnet-domain         Tailscale domain (default: codlet-trench.ts.net)
 #   --ssh-keys KEYS          Comma-separated SSH public keys
@@ -70,6 +72,16 @@ GIT_PUSH_URL="${GIT_PUSH_URL:-git@gitlab.com:willisivali/nixos-infrastructure.gi
 REPO_DIR="${REPO_DIR:-$HOME/nixos-infrastructure}"
 BRANCH="${BRANCH:-main}"
 NIX_FEATURES="nix-command flakes"
+
+# ── Parallel downloads ───────────────────────────────────────────────────────
+# Substitution is network-bound, so these sit well above core count. Defaults
+# must match nix.settings in system/nix.nix, which takes over after the first
+# switch. Nix defaults (16 jobs / 25 connections / 1 MiB buffer) leave a fast
+# link idle for most of a fresh install.
+DOWNLOAD_JOBS="${DOWNLOAD_JOBS:-32}"
+HTTP_CONNECTIONS="${HTTP_CONNECTIONS:-50}"
+DOWNLOAD_BUFFER_SIZE="${DOWNLOAD_BUFFER_SIZE:-268435456}"  # 256 MiB
+NIX_TUNE_OPTS=()   # filled in by tune_nix_downloads
 
 HOST="${HOST:-}"
 USER_NAME="${USER_NAME:-}"
@@ -130,6 +142,8 @@ while [[ $# -gt 0 ]]; do
     --gitlab-token)    GITLAB_TOKEN="$2"; shift 2 ;;
     --no-authorize-local-key) AUTHORIZE_LOCAL_KEY="false"; shift ;;
     --no-ssh-config)   MANAGE_SSH_CONFIG="false"; shift ;;
+    --download-jobs)   DOWNLOAD_JOBS="$2"; shift 2 ;;
+    --http-connections) HTTP_CONNECTIONS="$2"; shift 2 ;;
     --yes|-y)          YES="true";     shift ;;
     --tailnet-domain)  TAILNET_DOMAIN="$2"; shift 2 ;;
     --ssh-keys)        SSH_KEYS="$2";  shift 2 ;;
@@ -181,6 +195,8 @@ while [[ $# -gt 0 ]]; do
       echo ""
       echo "Install"
       echo "  --features LIST          Comma-separated feature flags"
+      echo "  --download-jobs N        Parallel substitution jobs (default: ${DOWNLOAD_JOBS})"
+      echo "  --http-connections N     HTTP connections to the substituters (default: ${HTTP_CONNECTIONS})"
       echo "  --build-only             Build the configuration but do not activate it"
       echo "  --no-rebuild             Stop before build/switch (for CI/testing)"
       echo "  --optimize-btrfs         Run a BTRFS balance + fstrim after install"
@@ -276,8 +292,11 @@ pause() { # pause <prompt>
 }
 
 # ── Nix wrappers ─────────────────────────────────────────────────────────────
+# Every nix invocation in this script carries the download tuning, so the
+# bootstrap downloads in parallel before system/nix.nix is active.
 nix() {
-  command nix --extra-experimental-features "$NIX_FEATURES" "$@"
+  command nix --extra-experimental-features "$NIX_FEATURES" \
+    "${NIX_TUNE_OPTS[@]}" "$@"
 }
 
 # Run a long command, mirroring its output into the install log.
@@ -366,6 +385,77 @@ enable_nix_features() {
 
   export NIX_CONFIG="experimental-features = nix-command flakes"
   log "Experimental features active for this session and future ones"
+}
+
+# Replace or append a single setting in the user's nix.conf.
+set_user_nix_setting() { # set_user_nix_setting <key> <value>
+  local conf="$HOME/.config/nix/nix.conf" key="$1" val="$2"
+  mkdir -p "$(dirname "$conf")"
+  touch "$conf"
+  if grep -Eq "^[[:space:]]*${key}[[:space:]]*=" "$conf"; then
+    sed -i -E "s|^[[:space:]]*${key}[[:space:]]*=.*|${key} = ${val}|" "$conf"
+  else
+    printf '%s = %s\n' "$key" "$val" >> "$conf"
+  fi
+}
+
+# Substitution settings are applied by the nix *daemon*, which only honours
+# client-supplied values for a trusted user. On stock NixOS that is root
+# alone, so before the first switch the operator's own `nix build` may fall
+# back to the defaults while the sudo-run steps still get the tuning.
+nix_user_is_trusted() {
+  local trusted entry
+  trusted="$(command nix --extra-experimental-features nix-command \
+    config show trusted-users 2>/dev/null \
+    || sed -nE 's/^[[:space:]]*trusted-users[[:space:]]*=[[:space:]]*//p' /etc/nix/nix.conf 2>/dev/null)"
+  [[ -n "$trusted" ]] || return 1
+
+  for entry in $trusted; do
+    [[ "$entry" == "$(whoami)" ]] && return 0
+    if [[ "$entry" == @* ]] && id -nG | tr ' ' '\n' | grep -qx "${entry#@}"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# ── Step: Tune parallel downloads ────────────────────────────────────────────
+# A fresh install pulls thousands of store paths; wall-clock is dominated by
+# substitution, not by building. Nix's defaults (16 jobs, 25 connections, a
+# 1 MiB download buffer that stalls every job once full) leave a fast link
+# mostly idle.
+tune_nix_downloads() {
+  section "Tuning parallel downloads"
+
+  NIX_TUNE_OPTS=(
+    --option max-substitution-jobs "$DOWNLOAD_JOBS"
+    --option http-connections "$HTTP_CONNECTIONS"
+    --option download-buffer-size "$DOWNLOAD_BUFFER_SIZE"
+    --option connect-timeout 5
+    --option stalled-download-timeout 30
+  )
+
+  # Persist for this user's future nix calls too, not just this run.
+  set_user_nix_setting max-substitution-jobs "$DOWNLOAD_JOBS"
+  set_user_nix_setting http-connections "$HTTP_CONNECTIONS"
+  set_user_nix_setting download-buffer-size "$DOWNLOAD_BUFFER_SIZE"
+
+  # NIX_CONFIG covers the nix-env fallback in install_tools, which takes no
+  # --option flags.
+  export NIX_CONFIG="experimental-features = ${NIX_FEATURES}
+max-substitution-jobs = ${DOWNLOAD_JOBS}
+http-connections = ${HTTP_CONNECTIONS}
+download-buffer-size = ${DOWNLOAD_BUFFER_SIZE}"
+
+  log "${DOWNLOAD_JOBS} parallel download jobs, ${HTTP_CONNECTIONS} HTTP connections, $((DOWNLOAD_BUFFER_SIZE / 1024 / 1024))MiB buffer"
+
+  if nix_user_is_trusted; then
+    log "$(whoami) is a trusted nix user — the settings apply to every step"
+  else
+    warn "$(whoami) is not a trusted nix user yet, so the daemon ignores these for"
+    warn "user-run commands. The sudo-run switch still gets them, and"
+    warn "system/nix.nix makes them permanent after the first rebuild."
+  fi
 }
 
 # ── Step: Install git, age, sops (bootstrap prerequisites) ───────────────────
@@ -1193,6 +1283,7 @@ check_architecture() {
 build_system() {
   section "Building system closure for ${HOST}"
   note "This is the long step — everything after it is activation only"
+  note "Fetching with ${DOWNLOAD_JOBS} parallel jobs over ${HTTP_CONNECTIONS} connections"
 
   # stderr is left on the terminal so the build progress stays visible.
   BUILT_TOPLEVEL=$( cd "$REPO_DIR" && nix build --no-link --print-out-paths \
@@ -1215,8 +1306,11 @@ switch_system() {
   local current
   current=$(readlink -f /run/current-system 2>/dev/null || echo "")
 
+  # Root is always a trusted user, so the download tuning is honoured here
+  # even when the operator's own account is not yet trusted.
   run_logged sudo nixos-rebuild switch \
     --option experimental-features "$NIX_FEATURES" \
+    "${NIX_TUNE_OPTS[@]}" \
     --flake "$REPO_DIR#${HOST}" || {
     warn "Activation failed — the previous generation is still bootable"
     [[ -n "$current" ]] && note "Previous system: ${current}"
@@ -1533,6 +1627,7 @@ main() {
     preflight_checks
     detect_identity
     enable_nix_features
+    tune_nix_downloads
     install_tools
     setup_ssh_keys
     configure_ssh_client

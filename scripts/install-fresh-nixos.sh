@@ -81,7 +81,12 @@ NIX_FEATURES="nix-command flakes"
 DOWNLOAD_JOBS="${DOWNLOAD_JOBS:-32}"
 HTTP_CONNECTIONS="${HTTP_CONNECTIONS:-50}"
 DOWNLOAD_BUFFER_SIZE="${DOWNLOAD_BUFFER_SIZE:-268435456}"  # 256 MiB
-NIX_TUNE_OPTS=()   # filled in by tune_nix_downloads
+NIX_TUNE_OPTS=()        # user-run nix calls; only set when the user is trusted
+NIX_TUNE_OPTS_PRIV=()   # sudo-run nix calls; root is always trusted
+NIX_USER_TRUSTED="false"
+TRUST_NIX_USER="${TRUST_NIX_USER:-true}"
+NIX_TRUST_CONF_DIR=/run/nix-bootstrap-conf
+NIX_TRUST_DROPIN=/run/systemd/system/nix-daemon.service.d/10-bootstrap-trust.conf
 
 HOST="${HOST:-}"
 USER_NAME="${USER_NAME:-}"
@@ -144,6 +149,7 @@ while [[ $# -gt 0 ]]; do
     --no-ssh-config)   MANAGE_SSH_CONFIG="false"; shift ;;
     --download-jobs)   DOWNLOAD_JOBS="$2"; shift 2 ;;
     --http-connections) HTTP_CONNECTIONS="$2"; shift 2 ;;
+    --no-trust-nix-user) TRUST_NIX_USER="false"; shift ;;
     --yes|-y)          YES="true";     shift ;;
     --tailnet-domain)  TAILNET_DOMAIN="$2"; shift 2 ;;
     --ssh-keys)        SSH_KEYS="$2";  shift 2 ;;
@@ -197,6 +203,7 @@ while [[ $# -gt 0 ]]; do
       echo "  --features LIST          Comma-separated feature flags"
       echo "  --download-jobs N        Parallel substitution jobs (default: ${DOWNLOAD_JOBS})"
       echo "  --http-connections N     HTTP connections to the substituters (default: ${HTTP_CONNECTIONS})"
+      echo "  --no-trust-nix-user      Do not temporarily trust this user with the nix daemon"
       echo "  --build-only             Build the configuration but do not activate it"
       echo "  --no-rebuild             Stop before build/switch (for CI/testing)"
       echo "  --optimize-btrfs         Run a BTRFS balance + fstrim after install"
@@ -400,23 +407,85 @@ set_user_nix_setting() { # set_user_nix_setting <key> <value>
 }
 
 # Substitution settings are applied by the nix *daemon*, which only honours
-# client-supplied values for a trusted user. On stock NixOS that is root
-# alone, so before the first switch the operator's own `nix build` may fall
-# back to the defaults while the sudo-run steps still get the tuning.
+# client-supplied values for a trusted user. Ask the daemon directly rather
+# than parsing trusted-users: the client's view of that setting says nothing
+# about what the daemon will accept, and trust may also come from a runtime
+# override (see ensure_nix_user_trusted). `nix config show` is no good here —
+# it reports the client's own value without ever contacting the daemon.
 nix_user_is_trusted() {
-  local trusted entry
-  trusted="$(command nix --extra-experimental-features nix-command \
-    config show trusted-users 2>/dev/null \
-    || sed -nE 's/^[[:space:]]*trusted-users[[:space:]]*=[[:space:]]*//p' /etc/nix/nix.conf 2>/dev/null)"
-  [[ -n "$trusted" ]] || return 1
+  command nix --extra-experimental-features nix-command store info --json 2>/dev/null \
+    | grep -qE '"trusted":[[:space:]]*(true|1)' && return 0
+  # Older nix: `store ping` predates `store info`.
+  command nix --extra-experimental-features nix-command store ping --json 2>/dev/null \
+    | grep -qE '"trusted":[[:space:]]*(true|1)'
+}
 
-  for entry in $trusted; do
-    [[ "$entry" == "$(whoami)" ]] && return 0
-    if [[ "$entry" == @* ]] && id -nG | tr ' ' '\n' | grep -qx "${entry#@}"; then
-      return 0
-    fi
-  done
-  return 1
+# ── Step: Make the operator a trusted nix user ───────────────────────────────
+# Stock NixOS trusts root alone, so on a fresh machine every download setting
+# below is discarded for user-run commands — and nix warns about each one, on
+# every invocation. system/nix.nix declares the operator trusted, but that
+# only lands at the first switch, which is the very thing we are trying to
+# speed up. Bridge the gap with a runtime-only override: /etc/nix/nix.conf is
+# a store symlink and cannot be edited, so point the daemon at a copy with an
+# extended trusted-users line. /run is tmpfs, so nothing persists past a
+# reboot, and revert_nix_trust_override removes it right after the switch.
+ensure_nix_user_trusted() {
+  section "Ensuring $(whoami) is a trusted nix user"
+
+  if nix_user_is_trusted; then
+    NIX_USER_TRUSTED="true"
+    log "$(whoami) is already a trusted nix user"
+    return
+  fi
+  if [[ "$TRUST_NIX_USER" != "true" ]]; then
+    note "Skipping trust elevation (--no-trust-nix-user)"
+    return
+  fi
+
+  note "Untrusted: the daemon would discard every download setting below"
+  [[ -f /etc/nix/nix.conf ]] || { warn "/etc/nix/nix.conf not found — skipping"; return; }
+
+  sudo install -d -m0755 "$NIX_TRUST_CONF_DIR" "$(dirname "$NIX_TRUST_DROPIN")" || {
+    warn "Could not create the runtime config dir — continuing untrusted"
+    return
+  }
+  sudo cp -L /etc/nix/nix.conf "$NIX_TRUST_CONF_DIR/nix.conf"
+  if grep -q '^trusted-users' "$NIX_TRUST_CONF_DIR/nix.conf"; then
+    sudo sed -i -E "s|^trusted-users = (.*)$|trusted-users = \\1 $(whoami)|" \
+      "$NIX_TRUST_CONF_DIR/nix.conf"
+  else
+    printf 'trusted-users = root %s\n' "$(whoami)" \
+      | sudo tee -a "$NIX_TRUST_CONF_DIR/nix.conf" >/dev/null
+  fi
+
+  printf '[Service]\nEnvironment=NIX_CONF_DIR=%s\n' "$NIX_TRUST_CONF_DIR" \
+    | sudo tee "$NIX_TRUST_DROPIN" >/dev/null
+  sudo systemctl daemon-reload
+  sudo systemctl restart nix-daemon.service || true
+
+  if nix_user_is_trusted; then
+    NIX_USER_TRUSTED="true"
+    log "$(whoami) is now a trusted nix user (runtime override, reverted after the switch)"
+    return
+  fi
+
+  # Never leave a half-applied daemon override behind.
+  warn "Trust elevation did not take — reverting the override"
+  revert_nix_trust_override
+  note "Continuing untrusted; the system build runs via sudo instead"
+}
+
+# Remove the runtime trust override. After the switch, /etc/nix/nix.conf comes
+# from system/nix.nix and already trusts the operator — leaving the override in
+# place would pin the daemon to the pre-switch copy and mask every later
+# declarative nix.settings change until the next reboot.
+revert_nix_trust_override() {
+  [[ -e "$NIX_TRUST_DROPIN" ]] || return 0
+  sudo rm -f "$NIX_TRUST_DROPIN"
+  sudo rm -rf "$NIX_TRUST_CONF_DIR"
+  sudo systemctl daemon-reload
+  sudo systemctl restart nix-daemon.service || true
+  return 0
 }
 
 # ── Step: Tune parallel downloads ────────────────────────────────────────────
@@ -427,7 +496,7 @@ nix_user_is_trusted() {
 tune_nix_downloads() {
   section "Tuning parallel downloads"
 
-  NIX_TUNE_OPTS=(
+  local -a opts=(
     --option max-substitution-jobs "$DOWNLOAD_JOBS"
     --option http-connections "$HTTP_CONNECTIONS"
     --option download-buffer-size "$DOWNLOAD_BUFFER_SIZE"
@@ -435,27 +504,42 @@ tune_nix_downloads() {
     --option stalled-download-timeout 30
   )
 
-  # Persist for this user's future nix calls too, not just this run.
-  set_user_nix_setting max-substitution-jobs "$DOWNLOAD_JOBS"
-  set_user_nix_setting http-connections "$HTTP_CONNECTIONS"
-  set_user_nix_setting download-buffer-size "$DOWNLOAD_BUFFER_SIZE"
-
-  # NIX_CONFIG covers the nix-env fallback in install_tools, which takes no
-  # --option flags.
-  export NIX_CONFIG="experimental-features = ${NIX_FEATURES}
-max-substitution-jobs = ${DOWNLOAD_JOBS}
-http-connections = ${HTTP_CONNECTIONS}
-download-buffer-size = ${DOWNLOAD_BUFFER_SIZE}"
+  # Root is always a trusted nix user, so the sudo-run steps always get these.
+  NIX_TUNE_OPTS_PRIV=("${opts[@]}")
 
   log "${DOWNLOAD_JOBS} parallel download jobs, ${HTTP_CONNECTIONS} HTTP connections, $((DOWNLOAD_BUFFER_SIZE / 1024 / 1024))MiB buffer"
 
   if nix_user_is_trusted; then
+    NIX_USER_TRUSTED="true"
+    NIX_TUNE_OPTS=("${opts[@]}")
+
+    # Persist for this user's future nix calls too, not just this run.
+    set_user_nix_setting max-substitution-jobs "$DOWNLOAD_JOBS"
+    set_user_nix_setting http-connections "$HTTP_CONNECTIONS"
+    set_user_nix_setting download-buffer-size "$DOWNLOAD_BUFFER_SIZE"
+
+    # NIX_CONFIG covers the nix-env fallback in install_tools, which takes no
+    # --option flags.
+    export NIX_CONFIG="experimental-features = ${NIX_FEATURES}
+max-substitution-jobs = ${DOWNLOAD_JOBS}
+http-connections = ${HTTP_CONNECTIONS}
+download-buffer-size = ${DOWNLOAD_BUFFER_SIZE}"
+
     log "$(whoami) is a trusted nix user — the settings apply to every step"
-  else
-    warn "$(whoami) is not a trusted nix user yet, so the daemon ignores these for"
-    warn "user-run commands. The sudo-run switch still gets them, and"
-    warn "system/nix.nix makes them permanent after the first rebuild."
+    return
   fi
+
+  # These are *restricted* settings: the daemon discards client-supplied
+  # values from an untrusted user and warns about each one, on every single
+  # invocation. Passing them anyway buys nothing but a wall of warnings, so
+  # leave NIX_TUNE_OPTS empty and route the one step that actually moves
+  # gigabytes through sudo instead (see build_system).
+  NIX_USER_TRUSTED="false"
+  NIX_TUNE_OPTS=()
+  note "$(whoami) is not a trusted nix user yet, so the daemon would discard"
+  note "these from user-run commands — not passing them avoids the warnings."
+  note "The system build and switch run via sudo, so the fetch is still parallel."
+  note "system/nix.nix trusts ${USER_NAME} from the first switch on."
 }
 
 # ── Step: Install git, age, sops (bootstrap prerequisites) ───────────────────
@@ -1285,12 +1369,43 @@ build_system() {
   note "This is the long step — everything after it is activation only"
   note "Fetching with ${DOWNLOAD_JOBS} parallel jobs over ${HTTP_CONNECTIONS} connections"
 
+  local attr=".#nixosConfigurations.${HOST}.config.system.build.toplevel"
+  local hint="Re-run with full logs:
+  cd ${REPO_DIR} && nix build -L ${attr}"
+
   # stderr is left on the terminal so the build progress stays visible.
-  BUILT_TOPLEVEL=$( cd "$REPO_DIR" && nix build --no-link --print-out-paths \
-    ".#nixosConfigurations.${HOST}.config.system.build.toplevel" ) || {
-    die "Build failed. Re-run with full logs:
-  cd ${REPO_DIR} && nix build -L .#nixosConfigurations.${HOST}.config.system.build.toplevel"
-  }
+  if [[ "$NIX_USER_TRUSTED" == "true" ]]; then
+    BUILT_TOPLEVEL=$( cd "$REPO_DIR" && nix build --no-link --print-out-paths "$attr" ) \
+      || die "Build failed. ${hint}"
+    log "Built: ${BUILT_TOPLEVEL}"
+    return
+  fi
+
+  # This step moves the whole closure over the network, and the download
+  # settings are restricted — an untrusted user's values are discarded. Build
+  # as root so they are honoured. `sudo -H` keeps root's HOME so no
+  # root-owned files land in the operator's ~/.cache/nix, and root reading
+  # this user-owned flake is exactly what scripts/rebuild.sh and the GitOps
+  # reconciler already do.
+  note "Building via sudo so the download tuning is honoured"
+  # `type -P` searches PATH only, so it resolves the real binary rather than
+  # this script's nix() wrapper (which sudo could not run anyway), and it does
+  # not depend on nix being on sudo's secure_path.
+  local nix_bin
+  nix_bin="$(type -P nix || echo /run/current-system/sw/bin/nix)"
+  if BUILT_TOPLEVEL=$( cd "$REPO_DIR" && sudo -H "$nix_bin" \
+    --extra-experimental-features "$NIX_FEATURES" \
+    "${NIX_TUNE_OPTS_PRIV[@]}" \
+    build --no-link --print-out-paths "$attr" ); then
+    log "Built: ${BUILT_TOPLEVEL}"
+    return
+  fi
+
+  # Never let the privileged shortcut be the reason an install fails: fall
+  # back to an unprivileged build at Nix's default parallelism.
+  warn "Privileged build failed — retrying unprivileged (default download parallelism)"
+  BUILT_TOPLEVEL=$( cd "$REPO_DIR" && nix build --no-link --print-out-paths "$attr" ) \
+    || die "Build failed. ${hint}"
   log "Built: ${BUILT_TOPLEVEL}"
 }
 
@@ -1310,7 +1425,7 @@ switch_system() {
   # even when the operator's own account is not yet trusted.
   run_logged sudo nixos-rebuild switch \
     --option experimental-features "$NIX_FEATURES" \
-    "${NIX_TUNE_OPTS[@]}" \
+    "${NIX_TUNE_OPTS_PRIV[@]}" \
     --flake "$REPO_DIR#${HOST}" || {
     warn "Activation failed — the previous generation is still bootable"
     [[ -n "$current" ]] && note "Previous system: ${current}"
@@ -1320,6 +1435,28 @@ switch_system() {
 Then re-run this script once the error is fixed."
   }
   log "System switched to the new configuration"
+}
+
+# ── Step: Hand trust back to the declarative config ────────────────────────
+finalise_nix_trust() {
+  section "Handing nix trust back to the system config"
+
+  if [[ ! -e "$NIX_TRUST_DROPIN" ]]; then
+    if nix_user_is_trusted; then
+      log "$(whoami) is trusted by the system config — nothing to revert"
+    else
+      note "No runtime override was installed"
+    fi
+    return
+  fi
+
+  revert_nix_trust_override
+  if nix_user_is_trusted; then
+    log "Runtime override removed; system/nix.nix now grants the trust"
+  else
+    warn "Runtime override removed, but $(whoami) is not trusted by the new config"
+    warn "Check trusted-users in system/nix.nix, then: sudo systemctl restart nix-daemon"
+  fi
 }
 
 # ── Step: Propagate credentials to the target user ──────────────────────────
@@ -1627,6 +1764,7 @@ main() {
     preflight_checks
     detect_identity
     enable_nix_features
+    ensure_nix_user_trusted
     tune_nix_downloads
     install_tools
     setup_ssh_keys
@@ -1652,6 +1790,7 @@ main() {
     if [[ "$BUILD_ONLY" != "true" ]]; then
       plan+=(
         switch_system
+        finalise_nix_trust
         propagate_user_credentials
         validate_sops
         verify_ssh_daemon

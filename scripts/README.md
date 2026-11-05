@@ -63,10 +63,25 @@ Installing the configuration:
   fills instantly under concurrency and stalls every job). Tune with
   `--download-jobs N` / `--http-connections N`. The same values are declared
   system-wide in `system/nix.nix`, so they persist after the first switch —
-  keep the two in sync. Note that substitution settings are applied by the nix
-  *daemon* and only honoured for a trusted user: before the first switch only
-  root is trusted, so the sudo-run switch gets the tuning while a user-run
-  `nix build` may fall back to defaults. The installer detects this and says so.
+  keep the two in sync.
+- **Trusted-user handling.** These are *restricted* settings: the nix daemon
+  discards client-supplied values from an untrusted user and warns about each
+  one on every invocation. Stock NixOS trusts only root, and `system/nix.nix`
+  grants the operator trust only from the first switch — the very step we want
+  to speed up. So the installer:
+  1. probes the daemon (`nix store info --json`, not `nix config show`, which
+     reports the client's own value without ever asking the daemon);
+  2. if untrusted, installs a **runtime-only** override — `/etc/nix/nix.conf`
+     is a store symlink, so it copies it to `/run/nix-bootstrap-conf` with an
+     extended `trusted-users` line and points the daemon at it through a
+     `/run/systemd/system/nix-daemon.service.d` drop-in. Nothing survives a
+     reboot. `--no-trust-nix-user` opts out;
+  3. removes that override immediately after the switch, since leaving it
+     would pin the daemon to the pre-switch config and mask every later
+     declarative `nix.settings` change until reboot;
+  4. falls back to building via `sudo` (root is always trusted) if elevation
+     fails, and to an unprivileged build at default parallelism if that fails
+     too — the speed-up never becomes a reason the install fails.
 - Generated files (`hosts/<host>.nix`, `hosts/<host>/hardware-configuration.nix`,
   `secrets/hosts/<host>.yaml`, `.sops.yaml`) are **staged in git** — Nix
   evaluates the flake from the git tree and cannot see untracked files.

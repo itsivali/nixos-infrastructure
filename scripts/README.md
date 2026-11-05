@@ -12,6 +12,59 @@ This directory contains shell scripts for infrastructure automation, GitOps reco
 
 ## Scripts
 
+### Install & Bootstrap
+
+| Script | Purpose | Systemd Unit |
+|--------|---------|--------------|
+| `install-fresh-nixos.sh` | Bootstrap a fresh NixOS machine: SSH, repo, age key, host spec, build, switch | Manual execution |
+| `generate-ssh-key.sh` | Generate an SSH key pair and print it for GitLab | Manual execution |
+
+`install-fresh-nixos.sh` runs end to end on a freshly installed NixOS system
+and leaves the host running this flake:
+
+```bash
+# Fresh machine, new age key, key uploaded to GitLab automatically
+GITLAB_TOKEN=glpat-... ./scripts/install-fresh-nixos.sh --fresh --yes
+
+# Migrating an existing host (reuse the age key so secrets still decrypt)
+./scripts/install-fresh-nixos.sh --migrate --age-key-file /mnt/usb/keys.txt
+
+# Evaluate and build only, never activate (CI / rehearsal)
+./scripts/install-fresh-nixos.sh --no-rebuild      # stop before building
+./scripts/install-fresh-nixos.sh --build-only      # build, do not switch
+```
+
+What it does for SSH:
+
+1. Generates `~/.ssh/id_ed25519` (`-a 100`, no passphrase so GitOps stays
+   unattended) and loads it into a temporary `ssh-agent`.
+2. Pins the `gitlab.com` and `github.com` host keys in `~/.ssh/known_hosts`
+   instead of trusting them on first use. The same keys are declared in
+   `ssh/client.nix` — keep both in sync.
+3. Writes a marker-delimited managed block in `~/.ssh/config` (forge and
+   tailnet `Host` entries). Hand-written entries are preserved; the block is
+   rewritten on every run. Opt out with `--no-ssh-config`.
+4. Registers the public key with GitLab — via the API when `--gitlab-token` /
+   `GITLAB_TOKEN` is set, otherwise with a guided prompt.
+5. Probes `ssh -T git@<forge>` and retries until authentication actually
+   succeeds, instead of assuming the key was added.
+6. Adds the key to `sshAuthorizedKeys` in `hosts/<host>.nix` so inbound SSH
+   over the tailnet works after the switch (`--no-authorize-local-key` opts
+   out; `--ssh-keys` adds other devices).
+7. After the switch, verifies `sshd`, the listening port,
+   `/etc/ssh/authorized_keys.d/<user>`, and prints the host key fingerprints.
+
+Installing the configuration:
+
+- Generated files (`hosts/<host>.nix`, `hosts/<host>/hardware-configuration.nix`,
+  `secrets/hosts/<host>.yaml`, `.sops.yaml`) are **staged in git** — Nix
+  evaluates the flake from the git tree and cannot see untracked files.
+- The closure is built first (`nix build`), so a build failure never touches
+  the running system; `nixos-rebuild switch` then only activates it.
+- Post-switch it validates SOPS, `sshd`, failed units, Home Manager, the
+  `ivali` CLI, and that the running system matches the closure it built.
+- Every step is mirrored to `~/.local/state/ivali/install-<timestamp>.log`.
+
 ### GitOps & Deployment
 
 | Script | Purpose | Systemd Unit |
@@ -29,7 +82,6 @@ This directory contains shell scripts for infrastructure automation, GitOps reco
 | `sops-breakglass.sh` | Emergency decryption without SOPS key | Manual execution |
 | `rotate-sops-key.sh` | Rotate the SOPS encryption key | Manual execution |
 | `gitlab-token-rotate.sh` | Rotate the host GitLab token before expiry | `gitlab-token-rotate.service` |
-| `generate-ssh-key.sh` | Generate SSH key pair for a new host | Manual execution |
 
 ### Monitoring & Alerting
 

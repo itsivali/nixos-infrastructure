@@ -26,11 +26,18 @@ let
   # is verified by Tailscale's ACL system, not by SSH trust-on-first-use.
   tailscaleSSHKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIH+YUTVNFHZi8+sTO1aMnGIVk3TjA61T2YFBTcM6/dRZ ssh-host-key";
 
-  # Build the known hosts set
+  # Build the known hosts set.
+  # Pinned forge keys — no trust-on-first-use for the hosts that carry the
+  # infrastructure itself. Keep in sync with the FORGE_KEY_* entries in
+  # scripts/install-fresh-nixos.sh, which pins the same keys pre-switch.
   baseKnownHosts = {
     gitlab-com = {
       hostNames = [ "gitlab.com" ];
       publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAfuCHKVTjquxvt6CM6tdG4SLp1Btn/nOeHHE5UOzRdf";
+    };
+    github-com = {
+      hostNames = [ "github.com" ];
+      publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
     };
   };
 
@@ -64,6 +71,17 @@ in
       Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
       # Prefer EtM MACs
       MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,umac-128-etm@openssh.com
+
+      # ── Host blocks MUST stay last ────────────────────────────────
+      # Keywords above are global; anything added after a Host block
+      # would silently become part of that block instead.
+
+      # Git forges: always the git user, always a key, never a password
+      # prompt. %d expands to the connecting user's home directory.
+      Host gitlab.com github.com
+        User git
+        IdentityFile %d/.ssh/id_ed25519
+        PreferredAuthentications publickey
     '';
   };
 }

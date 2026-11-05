@@ -1178,18 +1178,47 @@ The exact command set should always be confirmed against the current repository 
 
 # Installation
 
-The preferred installation path is the repository's maintained installer.
+The preferred installation path is the repository's maintained installer,
+`scripts/install-fresh-nixos.sh`. It takes a freshly installed NixOS system and
+leaves it running this flake.
 
-From a fresh NixOS environment:
+The repository is private, so copy the installer onto the new machine (USB
+stick, `scp` over the tailnet, or the raw URL with a token) and run it as your
+normal user — never as root.
 
 ```bash
-nix --extra-experimental-features "nix-command flakes" \
-  shell nixpkgs#curl \
-  --command bash -c \
-  'curl -fsSL https://gitlab.com/willisivali/nixos-infrastructure/-/raw/main/scripts/install-fresh-nixos.sh | bash'
+# Fresh machine: new age key, SSH key uploaded to GitLab automatically
+GITLAB_TOKEN=glpat-... bash install-fresh-nixos.sh --fresh --yes
+
+# Migrating an existing host: reuse the age key so secrets still decrypt
+bash install-fresh-nixos.sh --migrate --age-key-file /mnt/usb/keys.txt
 ```
 
-The installer is responsible for bootstrapping the repository and preparing the host configuration.
+The installer:
+
+1. Checks the environment (NixOS, sudo, disk, network) and enables
+   `nix-command` + `flakes`.
+2. **Sets up SSH**: generates `~/.ssh/id_ed25519`, loads it into an agent, pins
+   the `gitlab.com` / `github.com` host keys, writes a managed block in
+   `~/.ssh/config`, registers the key with GitLab (API when a token is given),
+   and verifies `ssh -T git@gitlab.com` actually authenticates before cloning.
+3. Clones the repository, captures `hardware-configuration.nix`, and installs
+   the SOPS age key (`--fresh` generates one, `--migrate` copies yours).
+4. Writes `hosts/<host>.nix` — including this machine's public key in
+   `sshAuthorizedKeys`, so inbound SSH over the tailnet works after the switch.
+5. **Stages the generated files in git.** Nix evaluates the flake from the git
+   tree, so untracked host files would be invisible to the build.
+6. Gates on `nix flake check`, host-spec parsing, formatting, and the
+   architecture linter.
+7. **Installs the configuration**: builds the closure first (a failed build
+   leaves the running system untouched), then `nixos-rebuild switch` activates
+   it. `--build-only` builds without activating; `--no-rebuild` stops earlier.
+8. Verifies the result: SOPS secrets, `sshd` and its authorized keys, failed
+   units, Home Manager, the `ivali` CLI, and that the running system matches
+   the closure it built.
+
+Every step is logged to `~/.local/state/ivali/install-<timestamp>.log`.
+Run `bash install-fresh-nixos.sh --help` for the full flag set.
 
 After installation:
 
@@ -1197,6 +1226,8 @@ After installation:
 ivali status
 ivali doctor
 tailscale status
+ssh -T git@gitlab.com                            # outbound forge access
+ssh <user>@<host>.<tailnet-domain>               # inbound over the tailnet
 ```
 
 Before performing destructive or hardware-sensitive operations, verify the generated configuration and recovery path.

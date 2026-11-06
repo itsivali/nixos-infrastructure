@@ -48,6 +48,7 @@
 #   --no-ssh-config          Do not manage the ~/.ssh/config block
 #   --download-jobs N        Parallel substitution (download) jobs
 #   --http-connections N     HTTP connections to the substituters
+#   --force-host-spec        Regenerate an existing hosts/<host>.nix (backs it up)
 #   --yes, -y                Non-interactive mode
 #   --tailnet-domain         Tailscale domain (default: codlet-trench.ts.net)
 #   --ssh-keys KEYS          Comma-separated SSH public keys
@@ -134,6 +135,7 @@ BUILD_ONLY="${BUILD_ONLY:-false}"
 RE_ENCRYPT="${RE_ENCRYPT:-false}"
 OLD_AGE_KEY_FILE="${OLD_AGE_KEY_FILE:-}"
 COMMIT="${COMMIT:-false}"
+FORCE_HOST_SPEC="${FORCE_HOST_SPEC:-false}"
 OPTIMIZE_BTRFS="${OPTIMIZE_BTRFS:-false}"
 
 # ── SSH defaults ─────────────────────────────────────────────────────────────
@@ -179,6 +181,7 @@ while [[ $# -gt 0 ]]; do
     --download-jobs)   DOWNLOAD_JOBS="$2"; shift 2 ;;
     --http-connections) HTTP_CONNECTIONS="$2"; shift 2 ;;
     --no-trust-nix-user) TRUST_NIX_USER="false"; shift ;;
+    --force-host-spec) FORCE_HOST_SPEC="true"; shift ;;
     --yes|-y)          YES="true";     shift ;;
     --tailnet-domain)  TAILNET_DOMAIN="$2"; shift 2 ;;
     --ssh-keys)        SSH_KEYS="$2";  shift 2 ;;
@@ -209,6 +212,8 @@ while [[ $# -gt 0 ]]; do
       echo "  --push-url URL           Git push URL"
       echo "  --branch BRANCH          Git branch (default: main)"
       echo "  --commit                 Commit the generated host files locally (no push)"
+      echo "  --force-host-spec        Regenerate hosts/<host>.nix from the template."
+      echo "                           Backs it up first; hand-written config is lost."
       echo ""
       echo "SSH"
       echo "  --ssh-key PATH           Private key path (default: ~/.ssh/id_ed25519)"
@@ -1224,13 +1229,17 @@ register_host() {
 
   local sops_key_path="${HOME}/.config/sops/age/keys.txt"
 
-  # If the host spec already exists, offer to preserve it
+  # An existing host spec is hand-tuned: a live prague.nix carries the
+  # firewall module, observability, Syncthing device IDs and folders, extra
+  # tailnet tags, other devices' SSH keys. This template knows none of that,
+  # so overwriting silently discards all of it — and a single mistyped "y" at
+  # a prompt was once enough to lose 218 lines of it. Never overwrite unless
+  # asked to in the flags, and never without a backup first.
   if [[ -f "$host_spec" ]]; then
     log "Host spec '${host_spec}' already exists"
-    local overwrite
-    ask overwrite "Overwrite existing host spec? [y/N]: "
-    if [[ "${overwrite,,}" != "y" ]]; then
-      note "Keeping the existing host spec"
+
+    if [[ "$FORCE_HOST_SPEC" != "true" ]]; then
+      note "Keeping it — pass --force-host-spec to regenerate from the template"
       # The spec is authoritative; make sure this machine's key is in it.
       if [[ -n "$SSH_PUBKEY" && "$AUTHORIZE_LOCAL_KEY" == "true" ]] \
         && ! grep -qF "$(printf '%s' "$SSH_PUBKEY" | awk '{print $2}')" "$host_spec"; then
@@ -1239,6 +1248,17 @@ register_host() {
       fi
       return 0
     fi
+
+    # `.nix.bak.<stamp>`: does not end in .nix, so hosts/hosts.nix will not
+    # import it as a second host, and it matches the `*.bak.*` line in
+    # .gitignore, so it never reaches a commit.
+    local backup
+    backup="${host_spec}.bak.$(date '+%Y%m%d-%H%M%S')"
+    cp "$host_spec" "$backup" || die "Could not back up ${host_spec} — refusing to overwrite it"
+    warn "Regenerating ${host_spec} from the template (--force-host-spec)"
+    warn "Previous version saved to ${backup}"
+    warn "Anything hand-written in it — services, firewall rules, other hosts'"
+    warn "keys — is NOT carried over. Diff the backup before committing."
   fi
 
   mkdir -p "$(dirname "$host_spec")"

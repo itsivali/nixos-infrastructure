@@ -54,6 +54,18 @@ What it does for SSH:
 7. After the switch, verifies `sshd`, the listening port,
    `/etc/ssh/authorized_keys.d/<user>`, and prints the host key fingerprints.
 
+Re-running against a host that already exists:
+
+- An existing `hosts/<host>.nix` is **never overwritten**. A live host spec is
+  hand-tuned — firewall module, observability, Syncthing device IDs, extra
+  tailnet tags, other devices' keys — and the generator's template knows none
+  of it. `--force-host-spec` regenerates anyway, after copying the current
+  file to `hosts/<host>.nix.bak.<timestamp>`; that name neither ends in `.nix`
+  (so `hosts/hosts.nix` will not import it as a second host) nor escapes the
+  `*.bak.*` line in `.gitignore`.
+- The installer still checks that this machine's public key appears in the
+  spec's `sshAuthorizedKeys`, and prints the line to add if it does not.
+
 Running it from inside the checkout it updates:
 
 - The installer **copies itself to a temp path and re-execs** before touching

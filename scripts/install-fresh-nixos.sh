@@ -104,12 +104,15 @@ BRANCH="${BRANCH:-main}"
 NIX_FEATURES="nix-command flakes"
 
 # ── Parallel downloads ───────────────────────────────────────────────────────
-# Substitution is network-bound, so these sit well above core count. Defaults
-# must match nix.settings in system/nix.nix, which takes over after the first
-# switch. Nix defaults (16 jobs / 25 connections / 1 MiB buffer) leave a fast
-# link idle for most of a fresh install.
-DOWNLOAD_JOBS="${DOWNLOAD_JOBS:-32}"
-HTTP_CONNECTIONS="${HTTP_CONNECTIONS:-50}"
+# Defaults must match nix.settings in system/nix.nix, which takes over after
+# the first switch; see the measurements recorded there. Short version: more
+# concurrency did not raise throughput on prague's link, and past ~32
+# connections it caused mass connection resets, so these stay modest. Raise
+# them with --download-jobs / --http-connections on a link that rewards it.
+# The buffer is the one that always pays: Nix's 1 MiB default fills instantly
+# and stalls every job until the decompressor drains it.
+DOWNLOAD_JOBS="${DOWNLOAD_JOBS:-10}"
+HTTP_CONNECTIONS="${HTTP_CONNECTIONS:-12}"
 DOWNLOAD_BUFFER_SIZE="${DOWNLOAD_BUFFER_SIZE:-268435456}"  # 256 MiB
 NIX_TUNE_OPTS=()        # user-run nix calls; only set when the user is trusted
 NIX_TUNE_OPTS_PRIV=()   # sudo-run nix calls; root is always trusted

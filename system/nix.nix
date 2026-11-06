@@ -51,22 +51,34 @@
       # default (0 = no timeout) is correct here.
 
       # ── Parallel downloads ──────────────────────────────────────────
-      # Substitution is network-bound, not CPU-bound, so these are tuned
-      # well above core count. A rebuild that pulls a few thousand paths
-      # spends most of its wall-clock here, not building.
+      # Measured on prague's link (25 Mbps WiFi, no wired port), not
+      # guessed. Throughput from cache.nixos.org turned out to be flat at
+      # ~0.15 MB/s across every setting tried — 16, 32, 64 substitution
+      # jobs, client-side and daemon-side, http2 on and off — so raising
+      # these buys nothing here. What it *did* buy was connection-reset
+      # storms: at 32-64 connections the journal filled with
+      #
+      #   unable to download '...nar.zst': HTTP error 200
+      #   (curl error: Failed sending data to the peer); retrying from offset
+      #
+      # dozens of transfers dying at once, ~15 storms in 30 minutes. At
+      # 10/12 they stopped completely with no loss of throughput.
+      #
+      # So these are deliberately modest. If this fleet ever gains a host
+      # on a link that rewards concurrency, make them per-host rather than
+      # raising them here.
       #
       # Keep in sync with the defaults in scripts/install-fresh-nixos.sh
       # (--download-jobs / --http-connections), which applies the same
       # values during bootstrap, before this config is active.
 
-      # Parallel substitution jobs: how many store paths are fetched at
-      # once. Nix's default of 16 leaves the link idle on a fast line.
-      max-substitution-jobs = 32;
+      # Parallel substitution jobs: how many store paths are fetched at once.
+      max-substitution-jobs = 10;
 
-      # HTTP connections held open to the substituters. Must comfortably
-      # exceed max-substitution-jobs, since narinfo lookups also queue
-      # here.
-      http-connections = 50;
+      # HTTP connections held open to the substituters. Kept just above the
+      # job count so narinfo lookups have room without adding connections
+      # the link cannot keep alive.
+      http-connections = 12;
 
       # Nix's default is 1 MiB, which fills almost immediately when many
       # downloads land at once; a full buffer stalls every substitution

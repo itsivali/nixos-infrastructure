@@ -31,7 +31,15 @@
   nix = {
     settings = {
       experimental-features = [ "nix-command" "flakes" ];
-      auto-optimise-store = true;
+
+      # Deliberately false — see nix.optimise below. Enabling this makes the
+      # daemon deduplicate inline on *every* store import: each file is
+      # hashed as it is added, then hard-linked if a twin already exists.
+      # That cost lands on the critical path of every build and every
+      # substitution, and is brutal on a bootstrap that imports ~20 GiB.
+      # The scheduled pass reclaims exactly the same space off the clock.
+      auto-optimise-store = false;
+
       trusted-users = [ "root" username "gitlab-runner" ];
       substituters = [ "https://cache.nixos.org" ];
       warn-dirty = false;
@@ -89,6 +97,19 @@
       automatic = true;
       dates = "weekly";
       options = "--delete-older-than 5d";
+    };
+
+    # Store deduplication, moved off the build critical path that
+    # auto-optimise-store sits on. `nix store optimise` does the same
+    # hashing and hard-linking in one scheduled pass instead of once per
+    # imported path, so rebuilds stay fast and the space is still reclaimed.
+    #
+    # Scheduled after the weekly GC (OnCalendar=weekly fires Mon 00:00):
+    # collecting garbage first means there is less left to walk. Persistent
+    # is set by the module, so a missed window runs after the next boot.
+    optimise = {
+      automatic = true;
+      dates = [ "Mon 04:15" ];
     };
   };
 

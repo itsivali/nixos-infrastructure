@@ -54,6 +54,19 @@ What it does for SSH:
 7. After the switch, verifies `sshd`, the listening port,
    `/etc/ssh/authorized_keys.d/<user>`, and prints the host key fingerprints.
 
+Running it from inside the checkout it updates:
+
+- The installer **copies itself to a temp path and re-execs** before touching
+  the repo. Without that, `clone_or_update_repo`'s `git checkout` rewrites
+  `scripts/install-fresh-nixos.sh` — the file bash is still reading — so the
+  next invocation silently runs whatever version the target branch carries.
+  (Symptom to recognise: a step counter that disagrees with itself between
+  runs, e.g. `[06/26]` then `[16/14]`.)
+- If the existing checkout is on a **different branch** than `--branch`, it
+  asks before switching, and offers to deploy the checkout as it stands
+  instead. Uncommitted changes are reported and left alone. Non-interactive
+  runs (`--yes`) still follow `--branch`, as instructed, but say so.
+
 Installing the configuration:
 
 - **Parallel downloads.** A fresh install fetches thousands of store paths, and

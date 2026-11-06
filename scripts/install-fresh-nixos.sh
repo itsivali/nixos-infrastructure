@@ -64,6 +64,35 @@
 #   --help, -h               Show this help
 set -euo pipefail
 
+# ── Self-relocation ──────────────────────────────────────────────────────────
+# This installer updates the very checkout it is normally run from: the
+# `git checkout`/`merge` in clone_or_update_repo rewrites
+# scripts/install-fresh-nixos.sh on disk. Two things go wrong when the running
+# script is that file:
+#
+#   * the next invocation silently runs whatever version the branch carries,
+#     not the one the operator thought they were running;
+#   * bash reads a script incrementally rather than all at once, so a file
+#     that changes underneath it can still be read from mid-run.
+#
+# So copy ourselves somewhere the checkout cannot reach and re-exec, before a
+# single repo operation happens. This must stay above the option parser: the
+# re-exec needs the untouched "$@".
+if [[ -z "${IVALI_INSTALLER_RELOCATED:-}" && -f "${BASH_SOURCE[0]}" \
+      && "${1:-}" != "--help" && "${1:-}" != "-h" ]]; then
+  _self_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  _self="${_self_dir}/$(basename "${BASH_SOURCE[0]}")"
+  if _staged="$(mktemp -t install-fresh-nixos-XXXXXX 2>/dev/null)" \
+    && cp "$_self" "$_staged" 2>/dev/null; then
+    chmod +x "$_staged"
+    export IVALI_INSTALLER_RELOCATED="$_self"
+    exec bash "$_staged" "$@"
+  fi
+  # Relocation is a safety net, not a requirement — carry on in place.
+  [[ -n "${_staged:-}" ]] && rm -f "$_staged"
+  unset _self _self_dir _staged
+fi
+
 # ── Defaults ─────────────────────────────────────────────────────────────────
 # Private repo: clone over SSH (requires the key registered with GitLab first).
 # Override with --repo-url if you need HTTPS (e.g. a deploy token).
@@ -322,6 +351,10 @@ require_nixos() {
   command -v sudo >/dev/null 2>&1 || die "sudo is required."
   [[ "$(id -u)" -ne 0 ]] || die "Run as your normal user, not root."
   log "Running on NixOS as a regular user with sudo access"
+  if [[ -n "${IVALI_INSTALLER_RELOCATED:-}" ]]; then
+    note "Running a staged copy, so updating the checkout cannot rewrite this run"
+    note "source: ${IVALI_INSTALLER_RELOCATED}"
+  fi
   if [[ -n "$LOG_FILE" ]]; then note "Log: $LOG_FILE"; fi
 }
 
@@ -884,6 +917,34 @@ clone_or_update_repo() {
   note "$REPO_URL"
 
   if [[ -d "$REPO_DIR/.git" ]]; then
+    # An existing checkout may be sitting on a different branch, with work the
+    # operator cares about. Switching it is destructive to the *working tree*
+    # (commits survive, files on disk do not), and it is how an unsuspecting
+    # run ends up deploying a different config than the one being tested.
+    local current_branch
+    current_branch="$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+    if ! git -C "$REPO_DIR" diff --quiet || ! git -C "$REPO_DIR" diff --cached --quiet; then
+      warn "Checkout has uncommitted changes — they are left in place"
+    fi
+
+    if [[ -n "$current_branch" && "$current_branch" != "$BRANCH" ]]; then
+      warn "Checkout is on '${current_branch}', but --branch says '${BRANCH}'"
+      if interactive; then
+        local switch_branch
+        ask switch_branch "Switch ${REPO_DIR} to '${BRANCH}'? [y/N]: "
+        if [[ "${switch_branch,,}" != "y" ]]; then
+          BRANCH="$current_branch"
+          note "Keeping '${BRANCH}' and skipping fetch — deploying the checkout as it stands"
+          git -C "$REPO_DIR" remote set-url --push origin "$GIT_PUSH_URL"
+          log "Repo ready at $REPO_DIR (branch: $BRANCH, not updated)"
+          return
+        fi
+      else
+        warn "Non-interactive — switching to '${BRANCH}' as instructed"
+      fi
+    fi
+
     git -C "$REPO_DIR" fetch --prune origin "$BRANCH" || die "git fetch failed — check SSH access to $(repo_ssh_host)"
     git -C "$REPO_DIR" checkout "$BRANCH"
     git -C "$REPO_DIR" merge --ff-only "origin/$BRANCH" || warn "Could not fast-forward ${BRANCH} — local commits present"

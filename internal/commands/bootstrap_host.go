@@ -255,8 +255,10 @@ func generateHostSpec(spec template.HostSpec) string {
 	b.WriteString("];\n")
 	b.WriteString("  sshAuthorizedKeys = [\n")
 	for _, k := range spec.SSHAuthorizedKeys {
+		// Nix list items are whitespace-separated: a trailing semicolon here
+		// makes hosts/<host>.nix fail to parse.
 		if k != "" {
-			b.WriteString(fmt.Sprintf("    \"%s\";\n", k))
+			b.WriteString(fmt.Sprintf("    %q\n", k))
 		}
 	}
 	b.WriteString("  ];\n")

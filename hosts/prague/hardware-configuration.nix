@@ -16,33 +16,33 @@
 
   fileSystems."/" =
     {
-      device = "/dev/disk/by-uuid/d2f0f06a-7fe6-442c-824c-eb0a7bbf352d";
+      device = "/dev/disk/by-uuid/20d9eb30-3e96-470f-be50-e5812c0fd73b";
       fsType = "btrfs";
     };
 
   fileSystems."/home" =
     {
-      device = "/dev/disk/by-uuid/d2f0f06a-7fe6-442c-824c-eb0a7bbf352d";
+      device = "/dev/disk/by-uuid/20d9eb30-3e96-470f-be50-e5812c0fd73b";
       fsType = "btrfs";
       options = [ "subvol=home" ];
     };
 
   fileSystems."/nix" =
     {
-      device = "/dev/disk/by-uuid/d2f0f06a-7fe6-442c-824c-eb0a7bbf352d";
+      device = "/dev/disk/by-uuid/20d9eb30-3e96-470f-be50-e5812c0fd73b";
       fsType = "btrfs";
       options = [ "subvol=nix" ];
     };
 
   fileSystems."/boot" =
     {
-      device = "/dev/disk/by-uuid/E05A-301D";
+      device = "/dev/disk/by-uuid/8A46-877E";
       fsType = "vfat";
       options = [ "fmask=0077" "dmask=0077" ];
     };
 
   swapDevices =
-    [{ device = "/dev/disk/by-uuid/2ebdf04f-46a8-4193-b76c-4ab7c01349ed"; }];
+    [{ device = "/dev/disk/by-uuid/7960e34b-eb5f-448e-b527-899a91b90fac"; }];
 
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
   hardware.cpu.amd.updateMicrocode = lib.mkDefault config.hardware.enableRedistributableFirmware;
